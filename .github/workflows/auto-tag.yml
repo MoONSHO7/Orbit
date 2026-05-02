@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Orbit/**'
+      - '.scripts/**'
+      - '.pkgmeta'
+      - 'CHANGELOG.md'
 
 jobs:
   tag:
@@ -23,7 +28,8 @@ jobs:
           #   MAJOR  - manual only (we are pre-1.0)
           #   MINOR  - auto-bumped on every commit to main
           # Reads either current X.Y or historical X.Y.Z tags so the migration is seamless.
-          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          # Filter out alpha/pre-release tags so we only bump from clean stable versions.
+          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*' --sort=-v:refname | grep -v -- '-' | head -n 1)
 
           if [ -z "$LATEST_TAG" ]; then
             # Bootstrap from the highest legacy integer tag so continuity is preserved.

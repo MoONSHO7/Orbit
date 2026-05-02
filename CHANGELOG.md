@@ -9,6 +9,7 @@
 - Added Scale slider to Spotlight QoL
 - Able to Unfavourite / Favourite items in Spotlight using mouse Right-Click
 - Added Tour Tooltip to Tracked Icons/Bars
+- Adjusted Priest color to slightly offwhite so fade actually works on Unit Frames
 
 ### Previous Feature
 - Spotlight!

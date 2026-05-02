@@ -24,6 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build Changelog Data
+        if: ${{ !contains(github.ref_name, '-alpha') }}
         run: python .scripts/update_changelog.py
 
       - name: Build and Package

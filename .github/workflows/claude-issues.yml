@@ -1,0 +1,139 @@
+name: Claude Issue Resolution
+
+on:
+  issues:
+    types: [labeled]
+
+concurrency:
+  group: claude-bot
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    if: |
+      github.event.label.name == 'claude-approved' &&
+      github.event.sender.login == github.repository_owner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai-develop
+          fetch-depth: 0
+
+      - name: Sync ai-develop with main
+        run: |
+          git config user.name  "claude-bot"
+          git config user.email "claude-bot@users.noreply.github.com"
+          git fetch origin main
+          if ! git merge origin/main --no-edit; then
+            git merge --abort
+            echo "::error::Merge conflict between ai-develop and main. Manual resolution required."
+            exit 1
+          fi
+          git push origin ai-develop
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--max-turns 12 --model claude-opus-4-7"
+          prompt: |
+            ${{ secrets.CLAUDE_RULES }}
+
+            ---
+
+            Resolve issue #${{ github.event.issue.number }} directly on the
+            ai-develop branch (already checked out, current with main).
+
+            Available tools and conventions:
+              - GitHub CLI (`gh`) is preinstalled. Before implementing, search for prior
+                context with `gh issue list --state closed --search "<keywords>"` and
+                `gh pr list --state merged --search "<keywords>"` — duplicates and prior
+                fixes save time and may reveal a pattern this repo already uses.
+              - For any change touching a Blizzard API or hooking a stock frame, WebFetch
+                the relevant file from https://github.com/Gethe/wow-ui-source/tree/live
+                before writing code. Verifying the actual API beats inferring from comments.
+              - Library dependencies are managed by BigWigs packager via `.pkgmeta`
+                externals, NOT by adding files to the .toc. If a fix needs a new lib,
+                add it to `.pkgmeta`.
+
+            Steps:
+              1. Investigate and implement the fix.
+              2. Run `python .scripts/check-localization.py` and fix any errors.
+              3. Commit with message: `fix(#${{ github.event.issue.number }}): <one-line summary>`.
+              4. Push ai-develop.
+              5. Post a comment on issue #${{ github.event.issue.number }} containing:
+                 - **Root cause** — what was actually broken and why.
+                 - **Solution** — what you changed and the reasoning.
+                 - **Files touched** — bullet list, one-line rationale each.
+                 - **Validation** — lint result + in-game checks the reviewer should run.
+                 - **Risks / follow-ups** — anything the reviewer should watch for.
+
+            Follow README.md for knowledge.
+
+      - name: Upsert rolling PR (ai-develop -> main)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          PR_NUM=$(gh pr list --base main --head ai-develop --state open --json number -q '.[0].number')
+          ENTRY="- #${ISSUE_NUM}: ${ISSUE_TITLE}"
+
+          if [ -z "$PR_NUM" ]; then
+            printf '## Bundled fixes\n\n%s\n' "$ENTRY" > /tmp/body.md
+            gh pr create --base main --head ai-develop \
+              --title "AI development queue" \
+              --body-file /tmp/body.md
+          else
+            gh pr view "$PR_NUM" --json body -q '.body' > /tmp/body.md
+            printf '\n%s\n' "$ENTRY" >> /tmp/body.md
+            gh pr edit "$PR_NUM" --body-file /tmp/body.md
+          fi
+
+      - name: Comment on issue if run failed
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: [
+                ':warning: **Claude run failed.**',
+                '',
+                `Workflow logs: ${process.env.RUN_URL}`,
+                '',
+                'Common causes:',
+                '- Merge conflict between `ai-develop` and `main` (resolve manually, then re-label).',
+                '- Localization lint error Claude could not auto-fix (check `check-localization.py` output in logs).',
+                '- OAuth token expired or quota exhausted (regenerate `CLAUDE_CODE_OAUTH_TOKEN` if persistent).',
+                '',
+                'Re-add the `claude-approved` label to retry once the underlying issue is resolved.',
+              ].join('\n')
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: ['claude-failed']
+            }).catch(() => {});
+
+      - name: Remove approval label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              name: 'claude-approved'
+            }).catch(() => {});

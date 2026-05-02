@@ -1,124 +1,50 @@
 # GitHub Actions — Orbit
 
-Three workflows: one lint gate, one auto-tagger, one release pipeline.
-
-## Workflows
-
 | File | Trigger | Purpose |
 |------|---------|---------|
-| [`lint.yml`](lint.yml) | pull request, push to `main` | Runs `check-localization.py` as a status check |
-| [`auto-tag.yml`](auto-tag.yml) | push to `main` | Calculates next version and creates a tag |
-| [`release.yml`](release.yml) | tag push matching `X.Y.Z` | Builds and packages the addon, publishes to CurseForge |
+| [`lint.yml`](lint.yml) | PR / push to `main` | `check-localization.py` status check |
+| [`auto-tag.yml`](auto-tag.yml) | push to `main` (paths: `Orbit/**`, `.scripts/**`, `.pkgmeta`, `CHANGELOG.md`) | Bumps MINOR, pushes `X.Y` tag |
+| [`release.yml`](release.yml) | tag push `X.Y` / `X.Y.Z` / `X.Y-alpha.*` | BigWigs packager → CurseForge (alpha or release channel by tag suffix) |
+| [`alpha-release.yml`](alpha-release.yml) | manual (`workflow_dispatch`) | Tags `ai-develop` HEAD as `X.Y-alpha.<timestamp>` |
+| [`claude-issues.yml`](claude-issues.yml) | issue labeled `claude-approved` (owner only) | Claude fixes the issue on `ai-develop`, maintains a rolling PR to `main` |
 
----
+## Versioning
 
-## Versioning scheme
-
-```
-MAJOR . MINOR
-  0   .  249
-  │      │
-  │      └────── bumped on every commit to main
-  └───────────── manual only (we are pre-1.0)
-```
-
-- **MAJOR** — manual only. `git tag -a 1.0 -m "First stable" && git push origin 1.0`.
-- **MINOR** — auto-bumped on every commit to `main`.
-
-After a manual major bump, auto-tag transparently continues from the new major. Historical `X.Y.Z` tags are still matched by `release.yml`, but new releases are always `X.Y`.
-
----
-
-## Release chain
-
-```
-push to main
-   ↓
-auto-tag.yml
-   ↓ bumps MINOR
-   ↓ creates & pushes tag X.Y (uses ORBIT_PAT so release.yml fires)
-   ↓
-release.yml (glob [0-9]*.[0-9]* matches)
-   ↓ runs update_changelog.py
-   ↓ BigWigsMods/packager → CurseForge
-```
-
-Manual major bump:
-
-```
-git tag -a 1.0 -m "First stable release"
-git push origin 1.0
-   ↓
-release.yml (skips auto-tag entirely)
-```
-
----
-
-## Auto-tag bootstrap
-
-On first run after adopting the `X.Y` scheme, there are no existing `[0-9]*.[0-9]*` tags. The script bootstraps from the highest legacy integer tag, treating it as the implied previous `0.N`:
-
-| Before bootstrap | Result |
-|------------------|--------|
-| Latest legacy = `247` | `0.248` |
-| No legacy tags at all | `0.1` |
-
----
-
-## Lint status check
-
-`lint.yml` runs `.scripts/check-localization.py` on every pull request targeting `main`. It catches:
-
-- **Orphan references** — `L.KEY` used in code but not defined in any domain file
-- **Cross-domain collisions** — same key defined in two domain files
-- **Prefix isolation breaks** — a domain prefix appearing in the wrong file
-
-Non-fatal warnings:
-- **Unused keys** — defined but not yet referenced
-
-### Making it a required check
-
-1. **Settings → Branches → Branch protection rules** → edit rule for `main`
-2. Enable **Require status checks to pass before merging**
-3. Search for `Lint / Localization` and add it
-4. Save
-
----
+`MAJOR.MINOR` — MAJOR is manual (`git tag -a 1.0 -m "..." && git push origin 1.0`), MINOR auto-bumps on every qualifying push to `main`. Alpha tags are filtered out when computing the next stable version.
 
 ## Secrets
 
-| Secret | Used by | Purpose | Notes |
-|--------|---------|---------|-------|
-| `ORBIT_PAT` | `auto-tag.yml` | Checkout + push with elevated permissions so release.yml fires on the new tag | **Critical** — if this expires, tags pushed by GH Actions will not trigger release.yml (the default `GITHUB_TOKEN` suppresses downstream workflow runs). |
-| `CURSE_API_KEY` / `CF_API_KEY` | `release.yml` | Upload package to CurseForge via BigWigsMods/packager | |
+| Secret | Used by | Notes |
+|--------|---------|-------|
+| `ORBIT_PAT` | `auto-tag.yml`, `alpha-release.yml` | Personal access token. **Required** — default `GITHUB_TOKEN` won't trigger downstream `release.yml` on tag push. |
+| `CURSE_API_KEY` / `CF_API_KEY` | `release.yml` | CurseForge upload auth |
+| `CLAUDE_CODE_OAUTH_TOKEN` | `claude-issues.yml` | Generate via `claude setup-token`. Consumes Pro/Max 5-hour quota — swap for `ANTHROPIC_API_KEY` if it bottlenecks. |
+| `CLAUDE_RULES` | `claude-issues.yml` | Trimmed copy of project rules (the local CLAUDE.md without sub-addon refs / slash commands). Up to 48 KB. |
 
----
+## Claude issue resolver
 
-## Operational notes
+**Setup** (one-time):
 
-### Why tag pushes need a PAT
+1. Create labels `claude-approved` and `claude-failed`.
+2. Create `ai-develop` branch: `git checkout -b ai-develop main && git push -u origin ai-develop`.
+3. Add secrets `CLAUDE_CODE_OAUTH_TOKEN` and `CLAUDE_RULES` (see above).
+4. Install [github.com/apps/claude](https://github.com/apps/claude) on the repo.
+5. Settings → Actions → General → check "Allow GitHub Actions to create and approve pull requests".
 
-GitHub Actions deliberately prevents infinite loops by suppressing downstream workflow runs when a workflow pushes using the default `GITHUB_TOKEN`. To make `auto-tag.yml`'s tag push trigger `release.yml`, the push must use a Personal Access Token (here: `ORBIT_PAT`).
+**Flow**: label issue `claude-approved` → workflow gate (label + owner) → sync `ai-develop` ← `main` → Claude commits `fix(#N): ...` → posts detail comment → upserts rolling PR `ai-develop → main` → removes label.
 
-### Race-condition guard
+**Failure path**: any step failure posts a comment with run URL + likely causes and applies `claude-failed`. Re-add `claude-approved` to retry.
 
-If two commits hit `main` in rapid succession, two auto-tag jobs may try to create the same tag. The script checks `git rev-parse "$VERSION"` first and exits cleanly if the tag already exists.
+**Concurrency**: `claude-bot` group serializes runs.
 
-### What **won't** trigger a release
+**Reverting**: `git revert <sha>` on `ai-develop` (fixes are direct commits, not per-issue branches).
 
-- Legacy integer tags (`247`, `266-alpha`) — filter excludes them
-- Historical `v1.3.5` / `v1.3.5-data.1` semver-with-prefix tags
-- Anything that's not at least two dot-separated digit-led segments
+## Alpha publishing
 
-If you need to re-release any of those, manually create a new `X.Y` tag.
+Manual trigger: **Actions → Alpha Release → Run workflow** (or `gh workflow run alpha-release.yml`). Always tags `ai-develop` HEAD regardless of trigger context. `release.yml` then publishes to the CurseForge alpha channel (skips `update_changelog.py` — changelog tracks stable only).
 
----
+## Common breakages
 
-## Rollout verification checklist
-
-1. Merge a small no-op PR (docs edit, comment) to `main`.
-2. Watch the Actions tab: `Auto Tag` should run, create a new `X.Y` tag.
-3. `Release AddOn` should then fire on the new tag.
-4. Check CurseForge for the new release within a few minutes.
-
-If any step fails, the job logs identify the exact break point. The most common failure is `ORBIT_PAT` expiry (auto-tag push succeeds but release.yml never fires — symptom: new tag appears but no release workflow run).
+- **Tag created but no release run** → `ORBIT_PAT` expired.
+- **CurseForge upload fails** → `CURSE_API_KEY` rotated.
+- **Claude run silently fails to start** → label gate not satisfied (must be repo owner adding `claude-approved`) or `CLAUDE_CODE_OAUTH_TOKEN` expired.

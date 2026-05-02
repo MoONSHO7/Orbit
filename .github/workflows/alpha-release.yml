@@ -1,0 +1,40 @@
+name: Alpha Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ai-develop
+          fetch-depth: 0
+          token: ${{ secrets.ORBIT_PAT }}
+
+      - name: Compute and push alpha tag
+        run: |
+          # Skip alpha tags when finding latest stable so the base version comes from real releases.
+          LATEST_STABLE=$(git tag --list '[0-9]*.[0-9]*' --sort=-v:refname | grep -v -- '-' | head -n 1)
+
+          if [ -z "$LATEST_STABLE" ]; then
+            LEGACY_INT=$(git tag --list | grep -E '^[0-9]+$' | sort -n | tail -n 1)
+            MAJOR=0
+            MINOR=${LEGACY_INT:-0}
+          else
+            MAJOR=$(echo "$LATEST_STABLE" | cut -d. -f1)
+            MINOR=$(echo "$LATEST_STABLE" | cut -d. -f2)
+          fi
+
+          NEXT_MINOR=$((MINOR + 1))
+          TIMESTAMP=$(date -u +%Y%m%d%H%M)
+          VERSION="${MAJOR}.${NEXT_MINOR}-alpha.${TIMESTAMP}"
+          echo "Alpha version: $VERSION"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Alpha release $VERSION"
+          git push origin "$VERSION"
