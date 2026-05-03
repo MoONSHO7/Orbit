@@ -39,28 +39,34 @@ jobs:
           git push origin ai-develop
 
       - uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_LOG: debug
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 100 --model claude-opus-4-7"
+          claude_args: "--max-turns 100 --model claude-opus-4-7 --debug"
           prompt: |
-            ${{ secrets.CLAUDE_RULES }}
-
-            ---
-
             Resolve issue #${{ github.event.issue.number }} directly on the
             ai-develop branch (already checked out, current with main).
 
-            Available tools and conventions:
-              - GitHub CLI (`gh`) is preinstalled. Before implementing, search for prior
-                context with `gh issue list --state closed --search "<keywords>"` and
-                `gh pr list --state merged --search "<keywords>"` — duplicates and prior
-                fixes save time and may reveal a pattern this repo already uses.
-              - For any change touching a Blizzard API or hooking a stock frame, WebFetch
-                the relevant file from https://github.com/Gethe/wow-ui-source/tree/live
-                before writing code. Verifying the actual API beats inferring from comments.
+            Match effort to issue complexity. For trivial changes (typo fixes, doc
+            edits, no-op tests, single-line fixes), make the change with minimum
+            tool calls — go directly to implement, lint, commit, comment.
+
+            Project context: read `README.md` in any directory you edit before
+            writing code. Sub-directory READMEs document the local conventions.
+
+            Use these escape hatches ONLY when the fix actually needs them:
+              - `gh issue list --state closed --search "<keywords>"` — only if the
+                bug looks recurring or you want to confirm a pattern this repo
+                has already solved. Skip for trivial fixes.
+              - WebFetch from https://github.com/Gethe/wow-ui-source/tree/live —
+                ONLY when the fix calls a Blizzard API you're unsure of, hooks a
+                stock Blizzard frame template, or investigates a taint / secure-
+                handler bug. DO NOT fetch for pure Orbit-internal changes, doc
+                edits, refactoring our own code, or lint fixes.
               - Library dependencies are managed by BigWigs packager via `.pkgmeta`
-                externals, NOT by adding files to the .toc. If a fix needs a new lib,
-                add it to `.pkgmeta`.
+                externals, NOT by adding files to the .toc. If a fix genuinely
+                needs a new lib, add it to `.pkgmeta`.
 
             Steps:
               1. Investigate and implement the fix.
