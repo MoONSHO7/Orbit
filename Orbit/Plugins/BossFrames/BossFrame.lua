@@ -23,6 +23,7 @@ local SYSTEM_ID = "Orbit_BossFrames"
 local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
     defaults = {
         Width = 120, Height = 25, Scale = 100, Spacing = 40,
+        Orientation = 0,
         CastBarHeight = 18, CastBarWidth = 120,
         ReactionColour = true,
         PandemicGlowType = Orbit.Constants.Glow.Type.Pixel,
@@ -205,6 +206,10 @@ function Plugin:AddSettings(dialog, systemFrame)
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
     local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout" }, "Layout", self)
     if currentTab == "Layout" then
+        table.insert(schema.controls, {
+            type = "dropdown", key = "Orientation", label = L.PLU_GRP_ORIENTATION, default = 0,
+            options = { { text = L.PLU_GRP_ORIENT_VERTICAL, value = 0 }, { text = L.PLU_GRP_ORIENT_HORIZONTAL, value = 1 } },
+        })
         table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_BOSS_WIDTH, min = 50, max = 400, step = 1, default = 150 })
         table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_BOSS_HEIGHT, min = 20, max = 100, step = 1, default = 40 })
         table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_BOSS_SPACING, min = 20, max = 100, step = 1, default = 40, formatter = function(v) return v .. "px" end })
@@ -372,10 +377,16 @@ end
 function Plugin:PositionFrames()
     if not self.frames or not self.container then return end
     local spacing = Pixel:Snap(self:GetSetting(1, "Spacing") or 40, self.container:GetEffectiveScale())
+    local horizontal = (self:GetSetting(1, "Orientation") or 0) == 1
     for i, frame in ipairs(self.frames) do
         frame:ClearAllPoints()
-        if i == 1 then frame:SetPoint("TOP", self.container, "TOP", 0, 0)
-        else frame:SetPoint("TOP", self.frames[i - 1], "BOTTOM", 0, -spacing) end
+        if i == 1 then
+            frame:SetPoint(horizontal and "LEFT" or "TOP", self.container, horizontal and "LEFT" or "TOP", 0, 0)
+        elseif horizontal then
+            frame:SetPoint("LEFT", self.frames[i - 1], "RIGHT", spacing, 0)
+        else
+            frame:SetPoint("TOP", self.frames[i - 1], "BOTTOM", 0, -spacing)
+        end
     end
     self:UpdateContainerSize()
 end
@@ -385,6 +396,7 @@ function Plugin:UpdateContainerSize()
     local width = self:GetSetting(1, "Width") or 150
     local scale = (self:GetSetting(1, "Scale") or 100) / 100
     local spacing = self:GetSetting(1, "Spacing") or 40
+    local horizontal = (self:GetSetting(1, "Orientation") or 0) == 1
     local visibleCount = 0
     if self.isPreviewActive or Orbit:IsEditMode() then visibleCount = MAX_BOSS_FRAMES
     else for _, frame in ipairs(self.frames) do if frame:IsShown() then visibleCount = visibleCount + 1 end end end
@@ -399,13 +411,17 @@ function Plugin:UpdateContainerSize()
         local cbHeight = self:GetSetting(1, "CastBarHeight") or 18
         local totalCbWidth = cbWidth + cbHeight
         if totalCbWidth > width then extraWidth = totalCbWidth - width end
-        
+
         local compPos = self:GetSetting(1, "ComponentPositions")
         local cbY = (compPos and compPos.CastBar and compPos.CastBar.posY) or -15
         if cbY < 0 then extraHeight = math.abs(cbY) + cbHeight / 2 end
     end
 
-    self.container:SetSize(width + extraWidth, visibleCount * frameHeight + (visibleCount - 1) * spacing + extraHeight)
+    if horizontal then
+        self.container:SetSize(visibleCount * width + (visibleCount - 1) * spacing + extraWidth, frameHeight + extraHeight)
+    else
+        self.container:SetSize(width + extraWidth, visibleCount * frameHeight + (visibleCount - 1) * spacing + extraHeight)
+    end
     self.container:SetScale(scale)
 end
 
