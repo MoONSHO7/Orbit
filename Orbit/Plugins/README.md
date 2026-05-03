@@ -10,16 +10,19 @@ plugins are the feature layer. they consume core services to implement specific 
 
 ```
 Plugins/
-  ActionBars/       -- action bar containers, button layout, text overlays
-  BossFrames/       -- boss unit frames (1-8)
-  CooldownManager/  -- cooldown viewers, tracked abilities, charge bars
-  Datatexts/        -- data text bars and drawer UI
-  GroupFrames/      -- group unit frames (party + raid, tier-adaptive)
-  MenuItems/        -- micro menu, bag bar, queue status
-  Minimap/          -- minimap replacement (experimental)
-  Extras/           -- small standalone plugins that don't fit a larger bounded context (talking head)
-  Tracked/          -- tracked ability bars and icons
-  UnitFrames/       -- player, target, focus frames and their sub-frames
+  ActionBars/                 -- action bar containers, button layout, text overlays
+  BossFrames/                 -- boss unit frames (1-8)
+  CooldownManager/            -- cooldown viewers, tracked abilities, charge bars
+  CooldownViewerExtensions/   -- shared side-tab registrar for blizzard's CooldownViewerSettings (consumed by Tracked)
+  DamageMeter/                -- multi-instance damage / healing / interrupt meter on top of C_DamageMeter
+  Datatexts/                  -- free-floating datatext system with corner-triggered drawer
+  Extras/                     -- standalone plugins that don't fit a larger bounded context (TalkingHead, MinimapButton)
+  GroupFrames/                -- group unit frames (party + raid, tier-adaptive)
+  MenuItems/                  -- micro menu, bag bar, queue status
+  Minimap/                    -- minimap replacement with canvas-mode component layout
+  StatusBars/                 -- experience / reputation / honor progression bars with canvas text components
+  Tracked/                    -- user-authored tracked ability icons and bars
+  UnitFrames/                 -- player, target, focus frames and their sub-frames
 ```
 
 ## lifecycle

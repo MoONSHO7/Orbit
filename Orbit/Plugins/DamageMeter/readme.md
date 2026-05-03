@@ -11,7 +11,7 @@ blizzard ships the data, we ship the UI. users create up to `MaxMeters` meters (
 | file | responsibility |
 |---|---|
 | DamageMeterConstants.lua | plugin constants (system id, meter/session enum values, event signal names, seed id, meter cap, border/background/title/icon-position enums, default def baseline, position templates, frame-level stride, stretch bounds, metric→label-key map, session-window count). every magic number used outside this file goes here first. |
-| DamageMeter.lua | plugin registration, lifecycle, meter-def factory (`CreateMeter`, `DeleteMeter`, `UpdateMeterDef`, `EnsureSeedMeter`), one-time legacy-master migration (`MigrateLegacyMaster`), view-mode transitions (`EnterBreakdown`/`ExitBreakdown`/`EnterHistory`/`ReturnToChart`), combat-start snap (`SnapAllMetersToCurrent`), blizzard addon bootstrap, session-window priming, per-meter Get/Set routing through `MeterDefs[id]`. |
+| DamageMeter.lua | plugin registration, lifecycle, meter-def factory (`CreateMeter`, `DeleteMeter`, `UpdateMeterDef`, `EnsureSeedMeter`), view-mode transitions (`EnterBreakdown`/`ExitBreakdown`/`EnterHistory`/`ReturnToChart`), combat-start snap (`SnapAllMetersToCurrent`), blizzard addon bootstrap, session-window priming, per-meter Get/Set routing through `MeterDefs[id]`. |
 | DamageMeterData.lua | thin adapter over `C_DamageMeter.*`. sink-only; never arithmetic on returned numbers. |
 | DamageMeterEventBridge.lua | forwards `DAMAGE_METER_*` to `ORBIT_DAMAGEMETER_*` on `Orbit.EventBus`. |
 | DamageMeterDisable.lua | neutralizes blizzard's `DamageMeter` frame and its session windows — offscreen, invisible, no mouse. hooks `UpdateShownState` to re-hide on every show attempt. the hidden session window keeps blizzard's event pipeline alive. |
@@ -37,11 +37,11 @@ never compared, never arithmetic-ed. `combatSources` is already server-ranked so
 ```
 RegisterPlugin → OnLoad → EnsureBlizzardAddonLoaded / cvar
                         → InitEventBridge → InitUI
-                        → MigrateLegacyMaster → RebuildAllMeters
+                        → RebuildAllMeters
                         → RegisterStandardEvents → RegisterVisibilityEvents
 PLAYER_ENTERING_WORLD   → EnsureBlizzardAddonLoaded / cvar
                         → (0.5s) EnsureSessionWindowShown → DisableBlizzardMeter
-ORBIT_PROFILE_CHANGED   → (0.15s) MigrateLegacyMaster → RebuildAllMeters
+ORBIT_PROFILE_CHANGED   → (0.15s) RebuildAllMeters
 
 RebuildAllMeters (internal) → EnsureSeedMeter → NormalizeMeterDefs → ScrubStaleAnchors → stale-frame teardown → layout all defs
 ```
@@ -74,7 +74,7 @@ frames are built eagerly at `OnLoad` (not deferred to `PLAYER_ENTERING_WORLD`) b
 ## rules
 
 - layout dialog has two tabs: **Layout** for per-meter styling, **Behaviour** for plugin-global toggles (auto-switch on combat, auto-reset-on-instance CVar proxy). the footer's **New Meter** button is the only create path (cap `DM.MaxMeters`, label suffixed `(n/max)` at cap); metric + delete live in the in-world right-click menu.
-- meter id `1` is the seed: auto-created on load and persisted. `DeleteMeter` is a no-op for it, and its context menu has no Delete entry. existing profiles with a legacy `MeterDefs[-1]` master entry are migrated silently on load (`MigrateLegacyMaster`).
+- meter id `1` is the seed: auto-created on load and persisted. `DeleteMeter` is a no-op for it, and its context menu has no Delete entry.
 - skin inherits `Orbit.db.GlobalSettings` — font, bar texture, border size/style. no per-meter override.
 - `Plugin:ApplySettings` only re-renders / relayouts; it NEVER calls into blizzard's DamageMeter mutators (that taints the entry data provider — see DamageMeterDisable.lua comment).
 - bars always stack top-to-bottom (rank 1 at the top); fill always grows left-to-right.

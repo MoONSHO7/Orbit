@@ -104,7 +104,7 @@ per-component overrides (font, size, color) are written via `ComponentSettings:F
 1. **set the flag**: `Plugin.canvasMode = true` on your plugin table
 2. **register components**: your plugin's `ApplySettings` must call `PositionUtils.ApplyTextPosition` or equivalent for each positioned component. canvas mode will generate position data that these functions consume.
 3. **provide defaults** (optional): set `Plugin.defaults.ComponentPositions` and `Plugin.defaults.DisabledComponents` to enable the "reset positions" button.
-4. **add a creator** (only if new component type): follow [canvas-creators SKILL.md](file:///c:/Users/benmo/Documents/git/.agent/skills/canvas-creators/SKILL.md) to register a new creator type in `Creators/`.
+4. **add a creator** (only if new component type): register a new creator type in `Creators/` and add it to `Creators/Registry.lua`. existing creators (Aura, CastBar, FontString, IconFrame, Portrait, StatusIconGroup, Texture) are the reference for the contract.
 
 ### component key naming
 

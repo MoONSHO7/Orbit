@@ -1,48 +1,50 @@
-# Orbit Quality of Life (QoL) Modules
+# quality of life modules
 
-The `QoL` directory contains standalone, lightweight quality-of-life adjustments to the Blizzard UI (e.g., making frames draggable, modifying default mouse behaviors, tweaking tooltips).
+the `QoL/` directory contains standalone, lightweight quality-of-life adjustments to the blizzard ui (e.g. making frames draggable, modifying default mouse behaviors, tweaking tooltips, hotkey-driven search).
 
-These modules differ from standard Orbit plugins because they are **Account-Wide** and do not participate in the Orbit Profile system.
+these modules differ from standard orbit plugins because they are **account-wide** and do not participate in the orbit profile system. they also have no edit-mode or canvas-mode footprint — they're not user-arranged ui.
 
-## 1. Naming Structure
-- **Module Name:** Should be descriptive and concisely reflect the functionality (e.g., `MoveMore`, `FastLoot`, `EasyDelete`).
-- **File Name:** PascalCase matching the module name (e.g., `MoveMore.lua`).
-- **Namespace:** Register the module under `Orbit.ModuleName` (e.g., `Orbit.MoveMore = {}`).
-- **Decomposed modules:** Larger QoL features may live in a folder (`QoL/ModuleName/`) with one file per bounded responsibility and a module-local `README.md`. Files are loaded in dependency order via the `.toc` and share the `Orbit.ModuleName` namespace through sub-tables.
+## naming structure
 
-## 2. Setting Up the Configuration UI
-QoL settings are presented in the Orbit configuration panel under the "Quality of Life" tab. They are grouped into expandable accordion sections.
+- **module name** — descriptive, concisely reflects the functionality (`MoveMore`, `FastLoot`, `EasyDelete`, `Spotlight`).
+- **file name** — PascalCase matching the module name (`MoveMore.lua`).
+- **namespace** — register the module under `Orbit.ModuleName` (e.g. `Orbit.MoveMore = {}`).
+- **decomposed modules** — larger qol features may live in a folder (`QoL/ModuleName/`) with one file per bounded responsibility and a module-local `README.md`. files are loaded in dependency order via the `.toc` and share the `Orbit.ModuleName` namespace through sub-tables.
 
-To add a new section, update `Orbit/Core/Config/Advanced/QoL.lua`:
+## configuration ui
 
-1. Create a builder function: `local function BuildMySection(body) ... end`
-2. The builder receives the accordion body frame. Use `Layout:AddControl()` and `Layout:Stack()` to lay out widgets.
-3. Return the computed content height from the builder.
-4. Add the section to `sectionDefs`:
+qol settings are presented in the orbit configuration panel under the "quality of life" tab, grouped into expandable accordion sections.
+
+to add a new section, update `Orbit/Core/Config/Advanced/QoL.lua`:
+
+1. create a builder function: `local function BuildMySection(body) ... end`
+2. the builder receives the accordion body frame. use `Layout:AddControl()` and `Layout:Stack()` to lay out widgets.
+3. return the computed content height from the builder.
+4. add the section to `sectionDefs`:
    ```lua
    local sectionDefs = {
        { "My Section", BuildMySection },
    }
    ```
-5. The accordion and scroll infrastructure handle the rest.
+5. the accordion and scroll infrastructure handle the rest.
 
-## 3. Saving & Reading Settings
-All QoL settings **MUST** be Account-Wide. 
+## saving & reading settings
 
-**Do NOT** use `Orbit.db.profile` or generic `Orbit.db` keys, as this ties the setting to the currently active character profile or risks data wipes.
+all qol settings **must** be account-wide. **do not** use `Orbit.db.profile` or generic `Orbit.db` keys — those tie the setting to the active character profile or risk data wipes on profile switch.
 
-**Use the helpers defined in QoL.lua:**
+use the helpers defined in `QoL.lua`:
+
 ```lua
--- Reading:
+-- reading
 local val = GetAccountSetting("MyCoolSetting", false)
 
--- Saving:
+-- saving
 SetAccountSetting("MyCoolSetting", newValue)
 ```
 
-## 4. Initialization & Architecture
-Modules should define `Enable()` and `Disable()` methods.
-Use a delayed timer on `PLAYER_LOGIN` to read the setting from `Orbit.db.AccountSettings` and invoke your `Enable()` method if active.
+## initialization & architecture
+
+modules define `Enable()` and `Disable()` methods. use a delayed timer on `PLAYER_LOGIN` to read the setting from `Orbit.db.AccountSettings` and invoke `Enable()` if active:
 
 ```lua
 local loader = CreateFrame("Frame")
@@ -57,4 +59,11 @@ loader:SetScript("OnEvent", function()
 end)
 ```
 
-Keep your modules combat-safe. Use `Orbit:SafeAction(callback)` or `InCombatLockdown()` checks before modifying protected Blizzard UI elements.
+keep modules combat-safe. use `Orbit:SafeAction(callback)` or `InCombatLockdown()` checks before modifying protected blizzard ui elements.
+
+## rules
+
+- account-wide only — never touch `Orbit.db.profile`.
+- modules must not depend on other plugins or other qol modules.
+- decomposed modules (`QoL/ModuleName/`) must keep all module-local state inside the `Orbit.ModuleName` namespace; no module-level mutable state in source files.
+- user-visible strings go through `Orbit.L`. see `Orbit/Localization/README.md`.

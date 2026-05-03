@@ -485,72 +485,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     Orbit.GroupFrameSettings(self, dialog, systemFrame)
 end
 
-
--- [ PHASE 0 MIGRATION: lowercase dropdown values ]---------------------------------------------------
--- GrowthDirection / SortMode / Orientation (raid) used to store their English display
--- text as the saved value. Phase 0 split text/value so the stored value is a stable
--- lowercase key and the display text can be localized without breaking saved settings.
--- Runs once per SavedVariables file, gated on a flag.
-local P0_LEGACY_VALUES = {
-    ["Down"] = "down", ["Up"] = "up", ["Left"] = "left", ["Right"] = "right", ["Center"] = "center",
-    ["Vertical"] = "vertical", ["Horizontal"] = "horizontal",
-    ["Group"] = "group", ["Role"] = "role", ["Alphabetical"] = "alphabetical",
-}
-local function MigrateP0DropdownValues(plugin)
-    if plugin:GetSetting(1, "_P0DropdownMigrated") then return end
-    local tiers = plugin:GetSetting(1, "Tiers")
-    if tiers then
-        for _, settings in pairs(tiers) do
-            if type(settings) == "table" then
-                if type(settings.GrowthDirection) == "string" and P0_LEGACY_VALUES[settings.GrowthDirection] then
-                    settings.GrowthDirection = P0_LEGACY_VALUES[settings.GrowthDirection]
-                end
-                if type(settings.SortMode) == "string" and P0_LEGACY_VALUES[settings.SortMode] then
-                    settings.SortMode = P0_LEGACY_VALUES[settings.SortMode]
-                end
-                -- Orientation is numeric (0/1) for Party tier, string for raid tiers.
-                -- Only rewrite the string form.
-                if type(settings.Orientation) == "string" and P0_LEGACY_VALUES[settings.Orientation] then
-                    settings.Orientation = P0_LEGACY_VALUES[settings.Orientation]
-                end
-            end
-        end
-        plugin:SetSetting(1, "Tiers", tiers)
-    end
-    plugin:SetSetting(1, "_P0DropdownMigrated", true)
-end
-
--- DispelFrequency was an unbucketed -0.50..+0.50 slider. Phase 1 narrows it to 5 named
--- speed stops at -0.30/-0.15/0.0/0.15/0.30. Snap any out-of-range saved value to the
--- nearest stop so existing profiles render correctly under the new slider.
-local DISPEL_SPEED_STOPS = { -0.30, -0.15, 0.0, 0.15, 0.30 }
-local function SnapDispelSpeed(value)
-    local best, bestDist = DISPEL_SPEED_STOPS[1], math.huge
-    for _, stop in ipairs(DISPEL_SPEED_STOPS) do
-        local d = math.abs(value - stop)
-        if d < bestDist then best, bestDist = stop, d end
-    end
-    return best
-end
-local function MigrateDispelSpeed(plugin)
-    if plugin:GetSetting(1, "_DispelSpeedMigrated") then return end
-    local tiers = plugin:GetSetting(1, "Tiers")
-    if tiers then
-        for _, settings in pairs(tiers) do
-            if type(settings) == "table" and type(settings.DispelFrequency) == "number" then
-                settings.DispelFrequency = SnapDispelSpeed(settings.DispelFrequency)
-            end
-        end
-        plugin:SetSetting(1, "Tiers", tiers)
-    end
-    plugin:SetSetting(1, "_DispelSpeedMigrated", true)
-end
-
 -- [ ON LOAD ]----------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    MigrateP0DropdownValues(self)
-    MigrateDispelSpeed(self)
-
     HideNativeGroupFrames()
     self:UpdateBlizzardRaidPanelVisibility()
 

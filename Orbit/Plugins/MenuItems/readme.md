@@ -30,4 +30,4 @@ captures and reskins blizzard's native utility bars. uses `NativeBarMixin` from 
 
 ## migration note
 
-Performance and CombatTimer were moved to the Widget Drawer plugin in `Plugins/WidgetDrawer/` as richer, free-floating widgets with sparkline graphs and encounter tracking.
+`Performance` and `CombatTimer` were moved to the Datatexts plugin in `Plugins/Datatexts/` as richer, free-floating datatexts with sparkline graphs and encounter tracking. see `Plugins/Datatexts/README.md`.

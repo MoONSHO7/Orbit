@@ -1,5 +1,3 @@
--- DatatextManager.lua
--- Central registry, position persistence, and update scheduler for Datatexts
 local _, Orbit = ...
 local L = Orbit.L
 local DT = Orbit.Datatexts

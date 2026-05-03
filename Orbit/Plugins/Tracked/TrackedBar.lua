@@ -363,19 +363,8 @@ function Bar:Apply(plugin, frame, record)
     local payload = record.payload
     local hasPayload = payload and payload.id
 
-    -- Width/Height are literal screen X/Y. Older vertical records stored long/short axis; one-time swap.
     local isVertical = plugin:GetSetting(record.id, "Layout") == "Vertical"
     frame._isVertical = isVertical
-    local settings = record.settings
-    if isVertical and settings and not settings.DimensionsLiteral then
-        local w = plugin:GetSetting(record.id, "Width")
-        local h = plugin:GetSetting(record.id, "Height")
-        if w and h and w > h then
-            plugin:SetSetting(record.id, "Width", h)
-            plugin:SetSetting(record.id, "Height", w)
-        end
-    end
-    if settings then settings.DimensionsLiteral = true end
     local frameW = plugin:GetSetting(record.id, "Width") or (isVertical and DEFAULT_HEIGHT or DEFAULT_WIDTH)
     local frameH = plugin:GetSetting(record.id, "Height") or (isVertical and DEFAULT_WIDTH or DEFAULT_HEIGHT)
     local Pixel = OrbitEngine.Pixel

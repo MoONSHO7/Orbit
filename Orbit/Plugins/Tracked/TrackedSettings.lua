@@ -110,14 +110,8 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
 end
 
 -- [ BAR SETTINGS ] ----------------------------------------------------------------------------------
-local ICON_POS_MIGRATION = { Left = 1, Off = 2, Right = 3 }
 function Plugin:_BuildBarSettings(dialog, systemFrame, record)
     local systemIndex = record.id
-    -- Migrate legacy string values from the short-lived dropdown variant.
-    local storedIconPos = self:GetSetting(systemIndex, "IconPosition")
-    if type(storedIconPos) == "string" then
-        self:SetSetting(systemIndex, "IconPosition", ICON_POS_MIGRATION[storedIconPos] or 1)
-    end
     local schema = { controls = {}, extraButtons = {} }
     local SB = OrbitEngine.SchemaBuilder
 

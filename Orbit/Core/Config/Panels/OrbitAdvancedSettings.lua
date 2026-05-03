@@ -99,7 +99,6 @@ local function CreatePluginPanel()
     Orbit._AC.BuildPluginContent(pluginContent, frame)
 
     frame:SetScript("OnShow", function()
-        if Orbit.VisibilityEngine then Orbit.VisibilityEngine:Migrate() end
         SwitchTab(activeTab)
     end)
     return frame

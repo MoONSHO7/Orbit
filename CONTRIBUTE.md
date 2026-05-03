@@ -78,16 +78,19 @@ Orbit/
     Libs/                 -- third-party libraries
     assets/               -- textures and media
   Plugins/
-    ActionBars/           -- action bar containers and button layout
-    BossFrames/           -- boss encounter frames (1-8)
-    CooldownManager/      -- cooldown viewers, tracked abilities, charge bars
-    Datatexts/            -- data text bars and drawer
-    GroupFrames/          -- unified party (1-5) and raid (1-40) frames with tiered layouts
-    MenuItems/            -- micro menu, bag bar, performance, queue, combat timer
-    Minimap/              -- minimap and compartment
-    Misc/                 -- standalone utilities (talking head)
-    Tracked/              -- tracked ability bars and icons
-    UnitFrames/           -- player, target, focus and sub-frames
+    ActionBars/                 -- action bar containers and button layout
+    BossFrames/                 -- boss encounter frames (1-8)
+    CooldownManager/            -- cooldown viewers, charge bars, drag-injected items
+    CooldownViewerExtensions/   -- shared side-tab registrar for blizzard's CooldownViewerSettings
+    DamageMeter/                -- multi-instance damage / healing / interrupt meter on top of C_DamageMeter
+    Datatexts/                  -- free-floating datatext system with corner-triggered drawer
+    Extras/                     -- standalone plugins (TalkingHead, MinimapButton)
+    GroupFrames/                -- unified party (1-5) and raid (6-40) frames with tiered layouts
+    MenuItems/                  -- micro menu, bag bar, queue status
+    Minimap/                    -- minimap and compartment with canvas-mode component placement
+    StatusBars/                 -- experience / reputation / honor bars with canvas text components
+    Tracked/                    -- user-authored tracked ability icons and bars
+    UnitFrames/                 -- player, target, focus and sub-frames
 ```
 
 each directory has its own `README.md`. read it before editing code in that directory.
@@ -153,7 +156,7 @@ sequenceDiagram
 4. implement `OnLoad()` and `ApplySettings()` methods
 5. add settings via `AddSettings(schema, systemIndex)` if needed
 6. add default settings in `Core/Plugin/DefaultProfile.lua`
-7. add all files to `Orbit.toc` in the plugins section
+7. create `Plugins/MyPlugin/MyPlugin.xml` listing every `.lua` file in dependency order, then reference that bundle from `Orbit.toc`. dependencies must load before consumers.
 
 ## common patterns
 

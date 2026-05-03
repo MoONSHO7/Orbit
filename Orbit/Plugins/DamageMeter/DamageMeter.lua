@@ -350,14 +350,6 @@ function Plugin:SnapAllMetersToCurrent()
     end
 end
 
--- Legacy master entry from pre-5.x profiles; drop it so it doesn't render as a phantom bar list.
-function Plugin:MigrateLegacyMaster()
-    local defs = self:GetMeterDefs()
-    if defs[-1] == nil then return end
-    defs[-1] = nil
-    self:SaveMeterDefs(defs)
-end
-
 -- Self-heal orphan anchors: for each def whose anchor.target is not a live meter,
 -- snapshot the child's current visual position into def.position and drop the anchor.
 -- Runs on every rebuild so parent-delete never has to walk children — the child's
@@ -435,8 +427,6 @@ function Plugin:OnLoad()
     self:InitEventBridge()
     self:InitUI()
 
-    self:MigrateLegacyMaster()
-
     -- Eager build so mid-session enables draw immediately instead of waiting on the next zone change.
     -- RebuildAllMeters internally runs EnsureSeedMeter + NormalizeMeterDefs + ScrubStaleAnchors.
     self:RebuildAllMeters()
@@ -451,7 +441,6 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
         C_Timer.After(0.15, function()
-            self:MigrateLegacyMaster()
             self:RebuildAllMeters()
         end)
     end, self)

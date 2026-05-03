@@ -204,11 +204,6 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 default = 200,
             })
         end
-        -- Migrate legacy boolean CastBarIcon (true = Left/1, false = Off/2) to numeric slider value.
-        local storedIconPos = self:GetSetting(systemIndex, "CastBarIcon")
-        if type(storedIconPos) == "boolean" then
-            self:SetSetting(systemIndex, "CastBarIcon", storedIconPos and 1 or 2)
-        end
         table.insert(schema.controls, {
             type = "slider", key = "CastBarIcon", label = L.CMN_ICON_POSITION,
             min = 1, max = 3, step = 1, default = 1,
@@ -257,10 +252,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local borderSize = self:GetSetting(systemIndex, "BorderSize")
     local texture = self:GetSetting(systemIndex, "Texture")
     local showText = self:GetSetting(systemIndex, "CastBarText")
-    local iconPos = self:GetSetting(systemIndex, "CastBarIcon")
-    -- Back-compat: legacy boolean, nil → Left default.
-    if type(iconPos) == "boolean" then iconPos = iconPos and 1 or 2 end
-    if type(iconPos) ~= "number" then iconPos = 1 end
+    local iconPos = self:GetSetting(systemIndex, "CastBarIcon") or 1
     local showIcon = iconPos ~= 2
     local textSize = 10
     local showTimer = self:GetSetting(systemIndex, "CastBarTimer")

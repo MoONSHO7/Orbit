@@ -216,11 +216,6 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
                 min = 120, max = 350, step = 10, default = Orbit.Constants.PlayerCastBar.DefaultWidth,
             })
         end
-        -- Migrate legacy boolean CastBarIcon (true = Left/1, false = Off/2) to numeric slider value.
-        local storedIconPos = self:GetSetting(systemIndex, "CastBarIcon")
-        if type(storedIconPos) == "boolean" then
-            self:SetSetting(systemIndex, "CastBarIcon", storedIconPos and 1 or 2)
-        end
         table.insert(schema.controls, {
             type = "slider", key = "CastBarIcon", label = L.CMN_ICON_POSITION,
             min = 1, max = 3, step = 1, default = 1,

@@ -1,8 +1,4 @@
 -- [ GROUP FRAME SETTINGS ]---------------------------------------------------------------------------
--- Dropdown values for GrowthDirection / SortMode / Orientation (raid) are stable lowercase
--- keys ("down", "group", "vertical"). The display `text` is the English label which is safe
--- to localize. A one-shot SavedVariables migration in GroupFrame.lua:MigrateP0DropdownValues
--- upgrades legacy capitalized values on first load.
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L

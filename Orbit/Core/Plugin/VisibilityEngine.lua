@@ -256,32 +256,6 @@ function VE:AnyFrameHasSetting(settingKey)
     return false
 end
 
--- [ MIGRATION ]--------------------------------------------------------------------------------------
--- One-time migration from per-plugin settings to centralized VisibilityEngine DB
-function VE:Migrate()
-    local db = GetDB()
-    if not db then return end
-    if db._migrated then return end
-    local MIGRATION_MAP = {
-        { setting = "OutOfCombatFade", veKey = "oocFade" },
-        { setting = "ShowOnMouseover", veKey = "mouseOver" },
-        { setting = "Opacity",         veKey = "opacity" },
-    }
-    for _, entry in ipairs(FRAME_REGISTRY) do
-        local plugin = self:GetPlugin(entry)
-        if plugin and plugin.GetSetting then
-            for _, m in ipairs(MIGRATION_MAP) do
-                local val = plugin:GetSetting(entry.index, m.setting)
-                if val ~= nil then
-                    local frameDB = GetFrameDB(entry.key)
-                    if frameDB[m.veKey] == nil then frameDB[m.veKey] = val end
-                end
-            end
-        end
-    end
-    db._migrated = true
-end
-
 -- [ APPLY ] -----------------------------------------------------------------------------------------
 -- 12.0.5+ note: direct SetAlpha on a Blizzard secure frame from insecure context taints it. The
 -- taint then surfaces in Blizzard's own UnitFrame_Update path on the next event (e.g. PLAYER_TARGET_CHANGED

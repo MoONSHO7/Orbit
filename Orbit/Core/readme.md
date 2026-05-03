@@ -14,13 +14,14 @@ Core/
   API.lua           -- public api surface (slash commands, programmatic api)
   Infrastructure/   -- low-level systems (events, pixel math, combat, animation)
   Plugin/           -- plugin lifecycle (registration, profiles, mixins)
-  Shared/           -- constants, media registrations
+  Shared/           -- constants, media registrations, glow controller
   Color/            -- color resolution (class colors, reaction colors, curve engine)
-  Skinning/         -- visual rendering (borders, textures, icons, cast bars)
+  Skinning/         -- visual rendering (borders, textures, icons, cast bars, action buttons)
   UnitDisplay/      -- unit frame mixins (health bars, auras, cast bars, status icons)
   EditMode/         -- edit mode engine (dragging, anchoring, positioning, preview frames)
   CanvasMode/       -- canvas mode dialog (intra-frame component editor, overrides, creators)
   Config/           -- settings ui (schema builder, renderer, widgets, options panel)
+  Onboarding/       -- first-run guided tour (edit mode playground, canvas / drawer hints)
   Libs/             -- third-party libraries
   assets/           -- textures and media files
 ```
@@ -55,10 +56,12 @@ dependencies flow **inward**. plugins depend on core. core never depends on plug
 
 orbit uses strict boundaries for how data is saved and persisted across `/reload` and sessions:
 
-- `Orbit.db.AccountSettings`: **True Account-Wide Application Data**. Used for data that belongs to the human player at the keyboard, regardless of what character or spec they are playing (e.g., Color Picker History, Tutorial Flags, Minimap Icon visibility). This table is entirely immune to the ProfileManager.
-- `Orbit.db.GlobalSettings`: **The Aesthetic Theme for the Current Profile**. Used for UI styling that applies globally across *all* plugins for a specific layout configuration (e.g., universal border sizes, main fonts, status bar textures). 
+- `Orbit.db.AccountSettings` — **true account-wide application data**. data that belongs to the human player at the keyboard regardless of character or spec (color picker history, tutorial flags, minimap icon visibility). entirely immune to `ProfileManager`.
+- `Orbit.db.GlobalSettings` — **the aesthetic theme for the current profile**. ui styling that applies globally across *all* plugins for a specific layout configuration (universal border sizes, main fonts, status bar textures).
+- `Orbit.db.Profiles[name]` — per-profile layout data (plugin settings, frame positions, anchors).
+- `Orbit.db.SpecData[charKey][specID][systemIndex][key]` — per-character per-spec storage layered through `PluginMixin:GetSpecData` / `SetSpecData`.
 
-**Warning**: Do not put non-theme application data into `GlobalSettings`. The `ProfileManager` actively clones `profile.GlobalSettings` into the live `Orbit.db.GlobalSettings` memory block whenever a profile activates (which triggers dynamically on every login and `/reload`). This will permanently erase any un-flushed application data stored there!
+> do not put non-theme application data into `GlobalSettings`. `ProfileManager` clones `profile.GlobalSettings` into the live `Orbit.db.GlobalSettings` memory block on every profile activation (which fires on login and `/reload`). un-flushed application data stored there is permanently erased.
 
 ## rules
 

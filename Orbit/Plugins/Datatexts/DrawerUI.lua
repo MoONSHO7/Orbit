@@ -1,5 +1,3 @@
--- DrawerUI.lua
--- Corner triggers, animated sliding drawer panel, and datatext lock/unlock
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local L = Orbit.L

@@ -218,16 +218,7 @@ function Orbit:OnLoad()
     self.CHAR_KEY = UnitName("player") .. "-" .. GetRealmName()
 
     -- SpecData is character-scoped: { [charKey] = { [specID] = { [sysIdx] = { key = value } } } }
-    -- Migrate legacy account-wide layout ({ [specID] = ... }) under the current character key.
     self.db.SpecData = self.db.SpecData or {}
-    local legacySpecData = false
-    for k in pairs(self.db.SpecData) do
-        if type(k) == "number" then legacySpecData = true; break end
-    end
-    if legacySpecData then
-        local legacy = self.db.SpecData
-        self.db.SpecData = { [self.CHAR_KEY] = legacy }
-    end
     self.db.SpecData[self.CHAR_KEY] = self.db.SpecData[self.CHAR_KEY] or {}
 
     -- Detect class change (character services, PTR copies, realm merges that rename
