@@ -488,6 +488,6 @@ function ComponentDrag:DisableAll()
     self:DeselectComponent()
 end
 
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnHide", function() ComponentDrag:DisableAll() end)
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Exit", function() ComponentDrag:DisableAll() end, ComponentDrag)
 end

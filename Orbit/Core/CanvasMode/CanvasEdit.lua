@@ -287,7 +287,7 @@ end
 
 -- [ INITIALIZATION ]---------------------------------------------------------------------------------
 function CanvasMode:Initialize()
-    if not EditModeManagerFrame then return end
-    EditModeManagerFrame:HookScript("OnHide", function() CanvasMode:ExitAll() end)
+    if not EventRegistry then return end
+    EventRegistry:RegisterCallback("EditMode.Exit", function() CanvasMode:ExitAll() end, CanvasMode)
 end
 

@@ -465,20 +465,29 @@ end
 
 -- [ HIDE NATIVE FRAMES ]-----------------------------------------------------------------------------
 local function HideNativeGroupFrames()
+    UIParent:UnregisterEvent("GROUP_ROSTER_UPDATE")
+    if CompactRaidFrameManager_SetSetting then
+        CompactRaidFrameManager_SetSetting("IsShown", "0")
+    end
     for i = 1, 4 do
         local f = _G["PartyMemberFrame" .. i]
-        if f then OrbitEngine.NativeFrame:Disable(f) end
+        if f then OrbitEngine.NativeFrame:Park(f) end
     end
-    OrbitEngine.NativeFrame:Disable(PartyFrame)
-    OrbitEngine.NativeFrame:Disable(CompactPartyFrame)
-    OrbitEngine.NativeFrame:Disable(CompactRaidFrameContainer)
+    OrbitEngine.NativeFrame:Park(PartyFrame)
+    OrbitEngine.NativeFrame:Park(CompactPartyFrame)
+    OrbitEngine.NativeFrame:Park(CompactRaidFrameContainer)
+    if PartyFrame and PartyFrame.PartyMemberFramePool then
+        for child in PartyFrame.PartyMemberFramePool:EnumerateActive() do
+            OrbitEngine.NativeFrame:Park(child)
+        end
+    end
 end
 
 function Plugin:UpdateBlizzardRaidPanelVisibility()
     if self:GetSetting(1, "HideBlizzardRaidPanel") then
-        OrbitEngine.NativeFrame:Disable(CompactRaidFrameManager)
+        OrbitEngine.NativeFrame:Park(CompactRaidFrameManager)
     else
-        OrbitEngine.NativeFrame:Enable(CompactRaidFrameManager)
+        OrbitEngine.NativeFrame:Unpark(CompactRaidFrameManager)
     end
 end
 function Plugin:AddSettings(dialog, systemFrame)

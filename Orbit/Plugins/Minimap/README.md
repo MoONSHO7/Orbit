@@ -45,7 +45,7 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 
 | frame                                              | action                                   |
 | -------------------------------------------------- | ---------------------------------------- |
-| `MinimapCluster`                                   | hidden via `NativeFrame:Hide`            |
+| `MinimapCluster`                                   | hidden via `NativeFrame:Hide` (full reparent + event teardown) |
 | `MinimapCluster.BorderTop`                         | hidden with cluster                      |
 | `MinimapCluster.ZoneTextButton`                    | hidden with cluster                      |
 | `MinimapCluster.Tracking`                          | hidden with cluster                      |

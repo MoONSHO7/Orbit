@@ -80,7 +80,7 @@ end
 function Plugin:OnLoad()
     self:RegisterStandardEvents()
     if PlayerFrame then
-        OrbitEngine.NativeFrame:Disable(PlayerFrame)
+        OrbitEngine.NativeFrame:Park(PlayerFrame)
     end
 
     self.container = self:CreateVisibilityContainer(UIParent, true)

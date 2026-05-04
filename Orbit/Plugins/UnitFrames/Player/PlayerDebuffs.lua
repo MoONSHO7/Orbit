@@ -25,5 +25,5 @@ function Plugin:OnLoad()
         showRows = true,
         exposeMountedConfig = true,
     })
-    if DebuffFrame then OrbitEngine.NativeFrame:Protect(DebuffFrame) end
+    if DebuffFrame then OrbitEngine.NativeFrame:KeepAliveHidden(DebuffFrame) end
 end

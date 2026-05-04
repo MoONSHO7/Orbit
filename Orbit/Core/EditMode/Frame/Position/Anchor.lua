@@ -678,11 +678,11 @@ Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
     C_Timer.After(delay, function() Anchor:ResyncAll() end)
 end)
 
--- Re-reconcile chains after Edit Mode hooks; scheduled to collapse with in-flight reconciles.
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnShow", function()
+-- Re-reconcile chains after Edit Mode enter; scheduled to collapse with in-flight reconciles.
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Enter", function()
         local delay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.RetryShort) or 0.1
         C_Timer.After(delay, function() Graph:ScheduleReconcileAll(Anchor) end)
-    end)
+    end, Anchor)
 end
 

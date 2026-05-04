@@ -362,12 +362,8 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     if Engine.SelectionResize then Engine.SelectionResize:Attach(selection, frame) end
 
     if not self.editModeHooked then
-        EditModeManagerFrame:HookScript("OnShow", function()
-            self:OnEditModeEnter()
-        end)
-        EditModeManagerFrame:HookScript("OnHide", function()
-            self:OnEditModeExit()
-        end)
+        EventRegistry:RegisterCallback("EditMode.Enter", function() self:OnEditModeEnter() end, self)
+        EventRegistry:RegisterCallback("EditMode.Exit", function() self:OnEditModeExit() end, self)
 
         -- Register combat callback to force visual cleanup and reuse
         Orbit.CombatManager:RegisterCombatCallback(function()

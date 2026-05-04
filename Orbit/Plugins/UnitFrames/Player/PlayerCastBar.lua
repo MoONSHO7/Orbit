@@ -75,25 +75,9 @@ local CHANNEL_SPELLS = {
 }
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
-local function StopBlizzardCastBarHoldFade(f)
-    if f.HoldFadeOutAnim then f.HoldFadeOutAnim:Stop() end
-    f:SetAlpha(0)
-end
 local function DisableBlizzardCastBar()
     if not PlayerCastingBarFrame then return end
-    OrbitEngine.NativeFrame:Disable(PlayerCastingBarFrame)
-    if not PlayerCastingBarFrame.orbitCastBarAlphaHook then
-        hooksecurefunc(PlayerCastingBarFrame, "SetAlpha", function(f, a)
-            if f._orbitCastAlphaParking then return end
-            if a and a ~= 0 then
-                f._orbitCastAlphaParking = true
-                f:SetAlpha(0)
-                f._orbitCastAlphaParking = false
-            end
-        end)
-        hooksecurefunc(PlayerCastingBarFrame, "PlayInterruptAnims", StopBlizzardCastBarHoldFade)
-        PlayerCastingBarFrame.orbitCastBarAlphaHook = true
-    end
+    OrbitEngine.NativeFrame:Park(PlayerCastingBarFrame)
 end
 
 local function GetAnchorAxis(frame) return OrbitEngine.Frame:GetAnchorAxis(frame) end

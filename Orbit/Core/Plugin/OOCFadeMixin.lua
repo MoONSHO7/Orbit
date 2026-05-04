@@ -175,10 +175,10 @@ C_Timer.After(0, function()
     if Orbit.EventBus then Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() C_Timer.After(0.1, UpdateAllFrames) end) end
 end)
 
--- Hook Edit Mode show/hide
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnShow", function() C_Timer.After(0.1, UpdateAllFrames) end)
-    EditModeManagerFrame:HookScript("OnHide", function() C_Timer.After(0.1, UpdateAllFrames) end)
+-- Hook Edit Mode enter/exit
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Enter", function() C_Timer.After(0.1, UpdateAllFrames) end, Mixin)
+    EventRegistry:RegisterCallback("EditMode.Exit",  function() C_Timer.After(0.1, UpdateAllFrames) end, Mixin)
 end
 
 -- Hook CooldownViewerSettings show/hide (delayed for load order)
