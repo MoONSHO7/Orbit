@@ -179,24 +179,6 @@ function Plugin:ReparentAll()
         self:ApplySettings()
     end, { enforceShow = true })
 
-    if not BagsBar._orbitSetPointHooked then
-        hooksecurefunc(BagsBar, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint then
-                return
-            end
-            if f:GetParent() == self.frame then
-                local point = ...
-                if point ~= "CENTER" then
-                    f._orbitRestoringPoint = true
-                    f:ClearAllPoints()
-                    f:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
-                    f._orbitRestoringPoint = nil
-                end
-            end
-        end)
-        BagsBar._orbitSetPointHooked = true
-    end
-
     if not BagsBar._orbitLayoutHooked and BagsBar.Layout then
         hooksecurefunc(BagsBar, "Layout", function(f)
             C_Timer.After(0, function()

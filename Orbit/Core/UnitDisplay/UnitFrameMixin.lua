@@ -48,7 +48,7 @@ end
 
 -- [ NATIVE FRAME HIDING ] ---------------------------------------------------------------------------
 function Mixin:HideNativeUnitFrame(nativeFrame)
-    if nativeFrame then OrbitEngine.NativeFrame:Disable(nativeFrame) end
+    if nativeFrame then OrbitEngine.NativeFrame:Park(nativeFrame) end
 end
 
 -- [ BACKGROUND CREATION ] ---------------------------------------------------------------------------

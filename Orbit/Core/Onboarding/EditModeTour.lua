@@ -73,6 +73,21 @@ overlay.bg = overlay:CreateTexture(nil, "BACKGROUND")
 overlay.bg:SetAllPoints()
 overlay.bg:SetColorTexture(0, 0, 0, OVERLAY_ALPHA)
 
+-- [ EDIT-MODE-MANAGER DIMMER ] ----------------------------------------------------------------------
+local emfDimmer
+local function GetEMFDimmer()
+    if emfDimmer then return emfDimmer end
+    emfDimmer = CreateFrame("Frame", "OrbitEditModeTourEMFBlocker", UIParent)
+    emfDimmer:SetFrameStrata("FULLSCREEN_DIALOG")
+    emfDimmer:SetFrameLevel(BLOCKER_FRAME_LEVEL)
+    emfDimmer:EnableMouse(true)
+    emfDimmer:Hide()
+    emfDimmer.bg = emfDimmer:CreateTexture(nil, "BACKGROUND")
+    emfDimmer.bg:SetAllPoints()
+    emfDimmer.bg:SetColorTexture(0, 0, 0, 1)
+    return emfDimmer
+end
+
 -- [ STAR FIELD ] ------------------------------------------------------------------------------------
 local stars = {}
 local function BuildStars()
@@ -799,10 +814,12 @@ function Tour:StartTour(force)
                 end
             end
         end
-        if EditModeManagerFrame then
-            self._editModeWasShown = EditModeManagerFrame:IsShown()
-            EditModeManagerFrame:SetAlpha(0)
-            EditModeManagerFrame:EnableMouse(false)
+        if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
+            self._editModeWasShown = true
+            local d = GetEMFDimmer()
+            d:ClearAllPoints()
+            d:SetAllPoints(EditModeManagerFrame)
+            d:Show()
         end
         self:ShowTourStop(1)
     end, function(e)
@@ -885,10 +902,7 @@ function Tour:EndTour()
         end
         self._hiddenFrames = nil
     end
-    if EditModeManagerFrame then
-        EditModeManagerFrame:SetAlpha(1)
-        EditModeManagerFrame:EnableMouse(true)
-    end
+    if emfDimmer then emfDimmer:Hide() end
     -- Restore Orbit and Blizzard selection overlays
     if Selection then Selection:RefreshVisuals() end
 end
@@ -1102,18 +1116,18 @@ function Tour:HideDrawerHint(markComplete)
 end
 
 -- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnShow", function()
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Enter", function()
         if Tour.active then return end
         local as = Orbit.db and Orbit.db.AccountSettings
         if not as then return end
         if as.CanvasHintComplete == false then Tour:ShowCanvasHint() end
         if as.DrawerHintComplete == false then Tour:ShowDrawerHint() end
-    end)
-    EditModeManagerFrame:HookScript("OnHide", function()
+    end, Tour)
+    EventRegistry:RegisterCallback("EditMode.Exit", function()
         if Tour.canvasHintActive then Tour:HideCanvasHint(false) end
         if Tour.drawerHintActive then Tour:HideDrawerHint(false) end
-    end)
+    end, Tour)
 end
 
 -- [ SLASH COMMAND (testing) ] -----------------------------------------------------------------------

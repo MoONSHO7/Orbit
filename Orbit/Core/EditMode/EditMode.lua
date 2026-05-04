@@ -5,10 +5,6 @@ local Engine = Orbit.Engine
 Engine.EditMode = Engine.EditMode or {}
 local EditMode = Engine.EditMode
 
--- [ CONSTANTS ]--------------------------------------------------------------------------------------
-local EDIT_MODE_POSITION_X = 20
-local EDIT_MODE_POSITION_Y = 20
-
 -- [ API ]--------------------------------------------------------------------------------------------
 function EditMode:RegisterEnterCallback(callback, owner)
     if not EventRegistry then return end
@@ -42,15 +38,10 @@ if EditModeManagerFrame then
 end
 
 -- [ PERSISTENCE HOOKS ]------------------------------------------------------------------------------
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnShow", function(self)
-        self:ClearAllPoints()
-        self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", EDIT_MODE_POSITION_X, EDIT_MODE_POSITION_Y)
-    end)
-
-    EditModeManagerFrame:HookScript("OnHide", function()
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Exit", function()
         local PM = Orbit.Engine and Orbit.Engine.PositionManager
         if PM then PM:FlushToStorage() end
         if Orbit.AuraPreview then Orbit.AuraPreview:ReleaseIconProvider() end
-    end)
+    end, Orbit)
 end

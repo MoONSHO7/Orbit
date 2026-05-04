@@ -620,12 +620,12 @@ function Dialog:CloseDialog()
 end
 
 -- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnHide", function()
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Exit", function()
         if Dialog:IsShown() then
             Dialog:Cancel()
         end
-    end)
+    end, Dialog)
 end
 
 -- [ EXPORT ] ----------------------------------------------------------------------------------------

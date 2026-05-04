@@ -195,7 +195,7 @@ end
 local function HideNativeBossFrames()
     for i = 1, MAX_BOSS_FRAMES do
         local bossFrame = _G["Boss" .. i .. "TargetFrame"]
-        if bossFrame then OrbitEngine.NativeFrame:Disable(bossFrame) end
+        if bossFrame then OrbitEngine.NativeFrame:Park(bossFrame) end
     end
 end
 

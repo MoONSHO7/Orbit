@@ -62,13 +62,9 @@ function Plugin:OnLoad()
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
 
     -- Register Edit Mode callbacks for visibility updates
-    if EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnShow", function()
-            self:UpdateVisibility()
-        end)
-        EditModeManagerFrame:HookScript("OnHide", function()
-            self:UpdateVisibility()
-        end)
+    if EventRegistry then
+        EventRegistry:RegisterCallback("EditMode.Enter", function() self:UpdateVisibility() end, self)
+        EventRegistry:RegisterCallback("EditMode.Exit", function() self:UpdateVisibility() end, self)
     end
 
     -- Attach to Orbit Frame system

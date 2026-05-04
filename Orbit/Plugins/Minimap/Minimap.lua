@@ -353,10 +353,8 @@ function Plugin:OnLoad()
                 local scale = minimap:GetEffectiveScale()
                 local snappedW = OrbitEngine.Pixel:Snap(w, scale)
                 local bounceW = OrbitEngine.Pixel:Snap(w - 1, scale)
-                minimap._orbitRestoringPoint = true
                 minimap:SetSize(bounceW, bounceW)
                 minimap:SetSize(snappedW, snappedW)
-                minimap._orbitRestoringPoint = nil
                 
                 -- Force a mask refresh to flush texture vertices
                 local mask = self:GetSetting(C.SYSTEM_ID, "Shape") == "round" and C.MASK_ROUND or C.MASK_SQUARE

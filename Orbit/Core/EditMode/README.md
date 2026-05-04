@@ -24,7 +24,7 @@ EditMode/
   EditMode.lua          -- edit mode entry/exit hooks, combat safety
   PositionManager.lua   -- ephemeral position buffer (cancel support)
   MountedVisibility.lua -- hide frames while mounted
-  NativeFrame.lua       -- native blizzard frame suppression/reparenting
+  NativeFrame.lua       -- park/hide blizzard frames without tainting them (12.0.5-safe)
   Frame/
     EditFrame.lua       -- edit mode frame facade (public api)
     EditFrame.xml       -- xml script bundle
@@ -136,6 +136,34 @@ the `IsSpecScopedIndex` gate is intentional opt-in, not auto-opt-in by mixin pre
 - `PositionManager` is ephemeral — it buffers changes until edit mode closes, enabling cancel support
 - prefer `SetFrameVirtual` for content-empty frames, `SetFrameDisabled` for profile-level disable
 - cycle detection must use `AnchorGraph:WouldCreateCycle()` (pure-data, no `GetNumPoints`)
+- listen for edit mode lifecycle via `EventRegistry:RegisterCallback("EditMode.Enter"/"EditMode.Exit", ...)`. Never `EditModeManagerFrame:HookScript("OnShow"/"OnHide", ...)` — the hookscript callback rides the dangerous secure execution chain that runs `ResetPartyFrames` on exit; `EventRegistry` fires after the chain has settled and is the official Blizzard signal.
+- never write to `EditModeManagerFrame` from Orbit code (no `:SetPoint`, `:ClearAllPoints`, `:SetAlpha`, `:EnableMouse`, `:Hide`, `:Show` on it). Use `securecall("HideUIPanel"/"ShowUIPanel", EditModeManagerFrame)` if you must drive it.
+
+## native blizzard frame suppression (`NativeFrame.lua`)
+
+`NativeFrame:Park(frame)` is the canonical way to suppress a Blizzard-owned frame so Orbit's replacement can take its slot. It is taint-safe under WoW 12.0.5+ strict execution rules. The recipe is the addon-community consensus pattern verified across ElvUI, Cell, Bartender4, EllesmereUI, and DandersFrames at HEAD as of 2026-05-04:
+
+1. `frame:UnregisterAllEvents()` — silences Blizzard's update path so `CompactUnitFrame_UpdateAll` etc. never run.
+2. `(frame.HideBase or frame.Hide)(frame)` — uses the pre-EditMode-override `HideBase` reference saved by `EditModeSystemMixin:OnSystemLoad`. Calling `:HideBase()` skips Blizzard's tainted `HideOverride`. `pcall(frame.Hide, frame)` is the fallback for non-EditMode-registered frames.
+3. `frame:SetParent(self.hiddenParent)` — moves the frame off-screen via a single `OrbitHiddenParent` child of UIParent.
+4. Self-installed `hooksecurefunc` re-claim hooks on `Show`, `SetShown`, and `SetParent` that fire `SafeHide` if Blizzard later tries to show or reparent. They check `parked[f]` so `Unpark` makes them no-ops.
+
+What `Park` deliberately does NOT do (these were taint vectors in the pre-Park `Disable`/`Protect`/`Enable` API and are now removed):
+
+- No `:ClearAllPoints` / `:SetPoint` writes — anchor mutations on a Blizzard secure frame taint its descendants. Verified bug: writes to `CompactPartyFrame` tainted `frame.healthBar:GetStatusBarColor()` at `CompactUnitFrame.lua:692` after EditMode exit ran `ResetPartyFrames → CompactPartyFrame:RefreshMembers → CompactUnitFrame_UpdateHealthColor`.
+- No `:SetAlpha` / `:EnableMouse` writes — same propagation surface as anchor writes.
+- No `hooksecurefunc(frame, "SetPoint", ...)` re-fire loop — the loop re-tainted on every Blizzard reposition. Removed entirely.
+- No `RegisterStateDriver(<Blizzard frame>, "visibility", "hide")` — EllesmereUI's HEAD source (Apr 2026) explicitly forbids this with the comment "No RegisterAttributeDriver calls on Blizzard-owned frames — those risk tainting protected state." `Park` covers the equivalent need without writing to the frame's secure attribute namespace.
+
+Use `Park(frame)` for: PlayerFrame, TargetFrame, FocusFrame, BuffFrame, DebuffFrame, BossFrames, PartyMemberFrames, PartyFrame, CompactPartyFrame, CompactRaidFrameContainer, CompactRaidFrameManager, PlayerCastingBarFrame, action bar frames. Combined with `UIParent:UnregisterEvent('GROUP_ROSTER_UPDATE')` and `CompactRaidFrameManager_SetSetting('IsShown', '0')` at the call site (see `Plugins/GroupFrames/GroupFrame.lua:HideNativeGroupFrames`), it kills the entire Blizzard group-frame update path.
+
+`Park` requires combat-out execution — call from plugin OnLoad, not in combat. Re-application is a no-op (idempotent via the `_orbitParkHooked` flag plus the `parked` set).
+
+`Unpark` clears the `parked` flag so the re-claim hooks fall through. Use for live toggles like `HideBlizzardRaidPanel`. The hooks remain installed but become no-ops.
+
+Remaining `NativeFrame` ops (less common): `:Hide(frame, options)` does a full reparent + event/script teardown with `Restore` support — used for MinimapCluster (events left intact via `unregisterEvents = false`). `:SecureHide(frame)` uses `RegisterStateDriver(frame, "visibility", "hide")` — kept for action bars / status tracking bars where the driver path is the documented contract. `:Modify(frame, options)` / `:RestoreModified` apply non-tainting alpha/scale/strata changes for frames Orbit already owns.
+
+`:KeepAliveHidden(frame)` is a softer variant for the case where Orbit reuses Blizzard's own children — e.g. PlayerBuffs/PlayerDebuffs hooks `BuffFrame:Update` and reparents the live aura buttons (`BuffFrame.auraFrames`) into Orbit's grid. The native frame must keep receiving events so its update loop keeps populating `auraFrames`. `KeepAliveHidden` does only `SafeHide(frame)` plus `hooksecurefunc(Show/SetShown)` re-hide hooks — no `UnregisterAllEvents`, no `SetParent`. Combat-guarded. Use when your plugin scrapes button state from a Blizzard manager frame and the manager must keep updating.
 
 ## blizzard grid + snap preview tap-in
 

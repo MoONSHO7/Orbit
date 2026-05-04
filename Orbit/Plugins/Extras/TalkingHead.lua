@@ -128,26 +128,6 @@ function Plugin:ReparentAll()
     OrbitEngine.FrameGuard:UpdateProtection(TalkingHeadFrame, self.frame, function()
         self:ApplySettings()
     end, { enforceShow = false })
-
-    -- Hook SetPoint to prevent position jumping during Edit Mode transitions
-    if not TalkingHeadFrame._orbitSetPointHooked then
-        hooksecurefunc(TalkingHeadFrame, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint then
-                return
-            end
-            -- If Blizzard tries to reposition, immediately restore our position
-            if f:GetParent() == self.frame then
-                local point = ...
-                if point ~= "CENTER" then
-                    f._orbitRestoringPoint = true
-                    f:ClearAllPoints()
-                    f:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
-                    f._orbitRestoringPoint = nil
-                end
-            end
-        end)
-        TalkingHeadFrame._orbitSetPointHooked = true
-    end
 end
 
 function Plugin:ApplySettings()

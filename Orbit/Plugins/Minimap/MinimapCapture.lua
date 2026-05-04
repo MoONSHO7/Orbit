@@ -365,37 +365,6 @@ function Plugin:CaptureBlizzardMinimap()
     OrbitEngine.FrameGuard:Protect(minimap, self.frame)
     OrbitEngine.FrameGuard:UpdateProtection(minimap, self.frame, function() self:ApplySettings() end, { enforceShow = true })
 
-    -- Hook SetPoint and SetSize to prevent Blizzard from repositioning or resizing
-    -- the minimap away from our intended values.
-    if not minimap._orbitSetPointHooked then
-        hooksecurefunc(minimap, "SetPoint", function(f, ...)
-            if f._orbitRestoringPoint or f._orbitGuardSuspended then return end
-            if f:GetParent() == self.frame then
-                local point = ...
-                local relFrame = select(2, ...)
-                if point ~= "CENTER" or relFrame ~= self.frame then
-                    f._orbitRestoringPoint = true
-                    f:ClearAllPoints()
-                    f:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
-                    f:SetSize(self.frame:GetWidth(), self.frame:GetHeight())
-                    f._orbitRestoringPoint = nil
-                end
-            end
-        end)
-        hooksecurefunc(minimap, "SetSize", function(f, w, h)
-            if f._orbitRestoringPoint or f._orbitGuardSuspended then return end
-            if f:GetParent() == self.frame then
-                local intended = self.frame:GetWidth()
-                if intended and (math.abs(w - intended) > 0.5 or math.abs(h - intended) > 0.5) then
-                    f._orbitRestoringPoint = true
-                    f:SetSize(intended, intended)
-                    f._orbitRestoringPoint = nil
-                end
-            end
-        end)
-        minimap._orbitSetPointHooked = true
-    end
-
     -- Click actions are handled by OrbitMinimapClickCapture (created in OnLoad),
     -- a MEDIUM-strata Button with SetPropagateMouseClicks(true) that covers the whole
     -- minimap area, sitting above the Minimap surface but below HIGH-strata plugin frames. No per-frame hook needed.

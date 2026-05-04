@@ -104,7 +104,7 @@ Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()
     if TargetFrame then
-        OrbitEngine.NativeFrame:Disable(TargetFrame)
+        OrbitEngine.NativeFrame:Park(TargetFrame)
     end
 
     -- Note: TargetFrameToT is now managed by TargetOfTargetFrame.lua plugin

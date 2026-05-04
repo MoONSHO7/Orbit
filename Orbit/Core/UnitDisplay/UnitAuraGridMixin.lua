@@ -465,11 +465,11 @@ function Mixin:CreateAuraGridPlugin(config)
     Frame:HookScript("OnSizeChanged", function()
         if Orbit:IsEditMode() then self:ResizePreviewAuras() else self:UpdateAuras() end
     end)
-    if config.useBlizzardButtons and EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnHide", function()
+    if config.useBlizzardButtons and EventRegistry then
+        EventRegistry:RegisterCallback("EditMode.Exit", function()
             Frame._orbitSkinVersion = (Frame._orbitSkinVersion or 0) + 1
             self:ApplySettings()
-        end)
+        end, self)
     end
 
     if config.useBlizzardButtons then
@@ -535,7 +535,6 @@ function Mixin:CreateAuraGridPlugin(config)
             self._agFrame._previewTexCache = nil; self:UpdateVisibility()
         end,
         Exit = function()
-            if config.useBlizzardButtons then self:_returnBlizzardButtons() end
             self:UpdateVisibility()
         end,
     }, self)
@@ -685,7 +684,7 @@ function Mixin:UpdateAuras()
     opts.size = iconH; opts.sizeW = iconW; opts.spacing = spacing; opts.maxPerRow = iconsPerRow
     opts.anchor = anchor; opts.growthX = growthX; opts.growthY = growthY; opts.yOffset = 0
     Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, opts)
-    if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; skinSettings._growthX = growthX; skinSettings._growthY = growthY; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings) end
+    if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; skinSettings._growthX = growthX; skinSettings._growthY = growthY; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH) end
 
     if cancelable and not InCombatLockdown() then
         Frame._scratchAuras = Frame._scratchAuras or {}
@@ -699,13 +698,16 @@ end
 -- Mixin:_updateBlizzardBuffs() lives in UnitAuraGridReparenting.lua
 
 -- [ GRID GROUP BORDER ]------------------------------------------------------------------------------
-function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
+function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH)
     if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 or Frame._groupBorderActive then
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         return
     end
+    local scale = Frame:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
     local firstIcon = activeIcons[1]
-    local iconW, iconH = firstIcon:GetWidth(), firstIcon:GetHeight()
+    iconW = iconW and Orbit.Engine.Pixel:Snap(iconW, scale) or firstIcon:GetWidth()
+    iconH = iconH and Orbit.Engine.Pixel:Snap(iconH, scale) or firstIcon:GetHeight()
     local maxPerRow = skinSettings._maxPerRow or math.huge
     local cols = math.min(#activeIcons, maxPerRow)
     local rows = math.ceil(#activeIcons / maxPerRow)
@@ -721,8 +723,6 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
     local Skin = Orbit.Skin
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local iconNineSlice = Skin:GetActiveIconBorderStyle()
-    local scale = Frame:GetEffectiveScale()
-    if not scale or scale < 0.01 then scale = 1 end
     -- Compute directional offsets from first icon's origin corner
     local extX = (gx == "LEFT") and -gridW or gridW
     local extY = (gy == "UP") and gridH or -gridH
@@ -770,7 +770,10 @@ function Mixin:_returnBlizzardButtons()
     local blizzFrame = cfg.blizzardFrame
     if not blizzFrame or not blizzFrame.auraFrames then return end
     for _, btn in ipairs(blizzFrame.auraFrames) do
-        if not btn.isAuraAnchor then btn:SetParent(blizzFrame.AuraContainer) end
+        if not btn.isAuraAnchor then
+            btn:SetParent(blizzFrame.AuraContainer)
+            btn._orbitSkinned = nil
+        end
     end
 end
 
@@ -977,6 +980,7 @@ function Mixin:ApplySettings()
 
     OrbitEngine.Frame:RestorePosition(Frame, self, 1)
     self:UpdateVisibility()
+    if Orbit:IsEditMode() then self:ResizePreviewAuras() else self:UpdateAuras() end
 end
 
 -- [ UPDATE LAYOUT ]----------------------------------------------------------------------------------

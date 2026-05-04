@@ -101,7 +101,7 @@ Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()
     if FocusFrame then
-        OrbitEngine.NativeFrame:Disable(FocusFrame)
+        OrbitEngine.NativeFrame:Park(FocusFrame)
     end
 
     -- Note: FocusFrameToT is now managed by TargetOfFocusFrame.lua plugin
@@ -275,5 +275,5 @@ end
 
 -- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
 Orbit:RegisterBlizzardHider("Focus Frame", function()
-    if FocusFrame then OrbitEngine.NativeFrame:Disable(FocusFrame) end
+    if FocusFrame then OrbitEngine.NativeFrame:Park(FocusFrame) end
 end)

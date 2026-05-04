@@ -5,15 +5,11 @@ local Engine = Orbit.Engine
 Engine.NativeFrame = Engine.NativeFrame or {}
 local NativeFrame = Engine.NativeFrame
 
--- [ CONSTANTS ]--------------------------------------------------------------------------------------
-local OFFSCREEN_OFFSET = 10000
-
 -- [ STATE ]------------------------------------------------------------------------------------------
 NativeFrame.hiddenParent = nil
 NativeFrame.hidden = {}
-NativeFrame.disabled = {}
+NativeFrame.parked = {}
 NativeFrame.modified = {}
-NativeFrame.protected = {}
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local function TableCount(t)
@@ -22,24 +18,100 @@ local function TableCount(t)
     return count
 end
 
+local function EnsureHiddenParent(self)
+    if self.hiddenParent then return end
+    self.hiddenParent = CreateFrame("Frame", "OrbitHiddenParent", UIParent)
+    self.hiddenParent:SetAllPoints(UIParent)
+    self.hiddenParent:Hide()
+end
 
+local function SafeHide(frame)
+    if frame.HideBase then frame:HideBase() else pcall(frame.Hide, frame) end
+end
 
--- [ SCENARIO 1: HIDE & REPLACE ]---------------------------------------------------------------------
+-- [ PARK / UNPARK ]----------------------------------------------------------------------------------
+function NativeFrame:Park(nativeFrame)
+    if not nativeFrame or self.parked[nativeFrame] then return false end
+    if InCombatLockdown() then return false end
+
+    EnsureHiddenParent(self)
+
+    nativeFrame:UnregisterAllEvents()
+    SafeHide(nativeFrame)
+    nativeFrame:SetParent(self.hiddenParent)
+
+    if not nativeFrame._orbitParkHooked then
+        local parked = self.parked
+        local hiddenParent = self.hiddenParent
+        hooksecurefunc(nativeFrame, "Show", function(f)
+            if InCombatLockdown() then return end
+            if parked[f] then SafeHide(f) end
+        end)
+        hooksecurefunc(nativeFrame, "SetShown", function(f, shown)
+            if InCombatLockdown() then return end
+            if shown and parked[f] then SafeHide(f) end
+        end)
+        hooksecurefunc(nativeFrame, "SetParent", function(f, parent)
+            if InCombatLockdown() then return end
+            if parked[f] and parent ~= hiddenParent then f:SetParent(hiddenParent) end
+        end)
+        nativeFrame._orbitParkHooked = true
+    end
+
+    self.parked[nativeFrame] = true
+    return true
+end
+
+function NativeFrame:Unpark(nativeFrame)
+    if not nativeFrame or not self.parked[nativeFrame] then return false end
+    self.parked[nativeFrame] = nil
+    return true
+end
+
+-- [ KEEP-ALIVE HIDE ]--------------------------------------------------------------------------------
+function NativeFrame:KeepAliveHidden(nativeFrame)
+    if not nativeFrame then return false end
+    if InCombatLockdown() then return false end
+
+    SafeHide(nativeFrame)
+
+    if not nativeFrame._orbitKeepAliveHooked then
+        hooksecurefunc(nativeFrame, "Show", function(f)
+            if InCombatLockdown() then return end
+            SafeHide(f)
+        end)
+        hooksecurefunc(nativeFrame, "SetShown", function(f, shown)
+            if InCombatLockdown() then return end
+            if shown then SafeHide(f) end
+        end)
+        nativeFrame._orbitKeepAliveHooked = true
+    end
+    return true
+end
+
+local combatExitFrame = CreateFrame("Frame")
+combatExitFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+combatExitFrame:SetScript("OnEvent", function()
+    if not NativeFrame.hiddenParent then return end
+    for f in pairs(NativeFrame.parked) do
+        f:UnregisterAllEvents()
+        if f:GetParent() ~= NativeFrame.hiddenParent then f:SetParent(NativeFrame.hiddenParent) end
+        if f:IsShown() then SafeHide(f) end
+    end
+end)
+
+-- [ HIDE (FULL REPARENT + EVENT TEARDOWN) ]----------------------------------------------------------
 function NativeFrame:Hide(nativeFrame, options)
     if not nativeFrame then return false end
     if InCombatLockdown() then return false end
     options = options or {}
 
-    if not self.hiddenParent then
-        self.hiddenParent = CreateFrame("Frame", "OrbitHiddenParent", UIParent)
-        self.hiddenParent:Hide()
-        self.hiddenParent:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-    end
+    EnsureHiddenParent(self)
 
-    local backup = { parent = nativeFrame:GetParent(), shown = nativeFrame:IsShown(), events = {} }
+    local backup = { parent = nativeFrame:GetParent(), shown = nativeFrame:IsShown() }
 
     nativeFrame:SetParent(self.hiddenParent)
-    nativeFrame:Hide()
+    SafeHide(nativeFrame)
 
     if options.unregisterEvents ~= false then nativeFrame:UnregisterAllEvents() end
 
@@ -62,57 +134,7 @@ function NativeFrame:HideMany(frames, options)
     for _, frame in ipairs(frames) do self:Hide(frame, options) end
 end
 
--- [ SCENARIO 2: DISABLE ONLY ]-----------------------------------------------------------------------
--- Offscreen + alpha 0 + mouse-off. UnregisterAllEvents/Hide/SetParent all leave taint that breaks
--- Blizzard's CompactUnitFrame_UpdateHealthColor secret comparison under 12.0.5+.
-function NativeFrame:Disable(nativeFrame)
-    if not nativeFrame then return false end
-    if InCombatLockdown() then return false end
-
-    local backup = {
-        alpha = nativeFrame:GetAlpha(),
-        mouse = nativeFrame:IsMouseEnabled(),
-        clamped = nativeFrame:IsClampedToScreen(),
-    }
-
-    nativeFrame:SetClampedToScreen(false)
-    nativeFrame:ClearAllPoints()
-    nativeFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-    nativeFrame:SetAlpha(0)
-    nativeFrame:EnableMouse(false)
-
-    if not nativeFrame.orbitDisableSetPointHooked then
-        local disabledRef = self.disabled
-        hooksecurefunc(nativeFrame, "SetPoint", function(f)
-            if not disabledRef[f] then return end
-            if f._orbitParking then return end
-            if InCombatLockdown() then return end
-            f._orbitParking = true
-            f:ClearAllPoints()
-            f:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-            f._orbitParking = false
-        end)
-        nativeFrame.orbitDisableSetPointHooked = true
-    end
-
-    self.disabled[nativeFrame] = backup
-    return true
-end
-
-function NativeFrame:Enable(nativeFrame)
-    if not nativeFrame then return false end
-    if InCombatLockdown() then return false end
-    local backup = self.disabled[nativeFrame]
-    if not backup then return false end
-
-    self.disabled[nativeFrame] = nil
-    nativeFrame:SetClampedToScreen(backup.clamped)
-    if backup.alpha then nativeFrame:SetAlpha(backup.alpha) end
-    nativeFrame:EnableMouse(backup.mouse ~= false)
-    return true
-end
-
--- [ SCENARIO 3: MODIFY IN-PLACE ]--------------------------------------------------------------------
+-- [ MODIFY (NON-TAINTING ALPHA / SCALE / STRATA) ]---------------------------------------------------
 function NativeFrame:Modify(nativeFrame, options)
     if not nativeFrame then return nil end
     options = options or {}
@@ -148,53 +170,7 @@ function NativeFrame:RestoreModified(nativeFrame)
     return true
 end
 
--- [ SCENARIO 4: PROTECT ] ---------------------------------------------------------------------------
-function NativeFrame:Protect(nativeFrame)
-    if not nativeFrame then return false end
-    if InCombatLockdown() then return false end
-    if self.protected and self.protected[nativeFrame] then return true end
-
-    local backup = {
-        alpha = nativeFrame:GetAlpha(),
-        mouse = nativeFrame:IsMouseEnabled(),
-        clamped = nativeFrame:IsClampedToScreen(),
-    }
-
-    nativeFrame:SetClampedToScreen(false)
-    nativeFrame:SetClampRectInsets(0, 0, 0, 0)
-    nativeFrame:ClearAllPoints()
-    nativeFrame:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-    nativeFrame:SetAlpha(0)
-    nativeFrame:EnableMouse(false)
-
-    if not nativeFrame.orbitProtectedHook then
-        hooksecurefunc(nativeFrame, "SetPoint", function(f)
-            if InCombatLockdown() then return end
-            if not f.isMovingOffscreen then
-                f.isMovingOffscreen = true
-                f:ClearAllPoints()
-                f:SetPoint("BOTTOMRIGHT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-                f.isMovingOffscreen = false
-            end
-        end)
-
-        hooksecurefunc(nativeFrame, "SetAlpha", function(f, a)
-            if f.isSettingAlpha then return end
-            if a and a ~= 0 then
-                f.isSettingAlpha = true
-                f:SetAlpha(0)
-                f.isSettingAlpha = false
-            end
-        end)
-
-        nativeFrame.orbitProtectedHook = true
-    end
-
-    self.protected[nativeFrame] = backup
-    return true
-end
-
--- [ SCENARIO 5: SECURE HIDE ] -----------------------------------------------------------------------
+-- [ SECURE HIDE (STATE DRIVER) ]---------------------------------------------------------------------
 function NativeFrame:SecureHide(nativeFrame)
     if not nativeFrame then return false end
     if InCombatLockdown() then return false end
@@ -205,9 +181,9 @@ function NativeFrame:SecureHide(nativeFrame)
 end
 
 -- [ QUERIES ]----------------------------------------------------------------------------------------
+function NativeFrame:IsParked(nativeFrame) return self.parked[nativeFrame] ~= nil end
 function NativeFrame:IsHidden(nativeFrame) return self.hidden[nativeFrame] ~= nil end
-function NativeFrame:IsDisabled(nativeFrame) return self.disabled[nativeFrame] ~= nil end
-function NativeFrame:IsProtected(nativeFrame) return self.protected[nativeFrame] ~= nil end
+function NativeFrame:IsModified(nativeFrame) return self.modified[nativeFrame] ~= nil end
 
 -- [ RESTORE ]----------------------------------------------------------------------------------------
 function NativeFrame:Restore(nativeFrame)
@@ -229,9 +205,7 @@ end
 function NativeFrame:GetStatus()
     return {
         hidden = TableCount(self.hidden),
-        disabled = TableCount(self.disabled),
+        parked = TableCount(self.parked),
         modified = TableCount(self.modified),
-        protected = TableCount(self.protected),
     }
 end
-

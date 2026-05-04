@@ -300,5 +300,5 @@ function Mixin:_updateBlizzardBuffs()
     skinSettings._maxPerRow = iconsPerRow
     skinSettings._growthX = growthX
     skinSettings._growthY = growthY
-    self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings)
+    self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH)
 end

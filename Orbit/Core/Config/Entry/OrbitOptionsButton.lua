@@ -115,19 +115,14 @@ if InCombatLockdown() then
 end
 
 -- [ EDIT MODE LIFECYCLE ]----------------------------------------------------------------------------
--- Show when Edit Mode enters
-if EditModeManagerFrame then
-    EditModeManagerFrame:HookScript("OnShow", function()
-        Button:Show()
-    end)
-
-    EditModeManagerFrame:HookScript("OnHide", function()
+if EventRegistry then
+    EventRegistry:RegisterCallback("EditMode.Enter", function() Button:Show() end, Button)
+    EventRegistry:RegisterCallback("EditMode.Exit", function()
         Button:Hide()
-        -- Also hide the options panel
         if Orbit.OptionsPanel and Orbit.OptionsPanel.Hide then
             Orbit.OptionsPanel:Hide()
         end
-    end)
+    end, Button)
 end
 
 -- Export
