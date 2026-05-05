@@ -102,6 +102,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
     if not viewer.orbitPosHooked then
         local function ReAnchor()
             if viewer._orbitRestoringPos or (anchor and not anchor:IsShown()) then return end
+            if InCombatLockdown() then return end
             viewer._orbitRestoringPos = true
             viewer:ClearAllPoints()
             local point = GetViewerAnchorPoint(self, anchor)
@@ -116,6 +117,7 @@ function CDM:SetupViewerHooks(viewer, anchor)
     if not viewer.orbitHideHooked then
         hooksecurefunc(viewer, "Hide", function(s)
             if s._orbitRestoringVis or (anchor and (not anchor:IsShown() or anchor.orbitMountedSuppressed)) then return end
+            if InCombatLockdown() then return end
             s._orbitRestoringVis = true; s:Show(); s:SetAlpha(1); s._orbitRestoringVis = false
         end)
         viewer.orbitHideHooked = true
@@ -134,8 +136,11 @@ end
 function CDM:EnforceViewerParentage(viewer, anchor)
     if not viewer or not anchor then return end
     if anchor.orbitMountedSuppressed then return end
+    -- Viewers are InCombatProtect; protected setters taint Orbit when blocked. PLAYER_REGEN_ENABLED retries via CheckAll.
+    if InCombatLockdown() then return end
     if viewer:GetParent() ~= anchor then viewer:SetParent(anchor) end
-    viewer:SetScale(1)
+    -- EditModeSystemMixin:SetScale always calls the protected SetScaleBase, even when scale is unchanged.
+    if viewer:GetScale() ~= 1 then viewer:SetScale(1) end
     viewer:ClearAllPoints()
     local point = GetViewerAnchorPoint(self, anchor)
     viewer:SetPoint(point, anchor, point, 0, 0)
@@ -239,7 +244,8 @@ function CDM:CheckViewer(viewer, anchor)
     if viewer:GetParent() ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
     local _, _, relativeTo = viewer:GetPoint(1)
     if relativeTo ~= anchor then self:EnforceViewerParentage(viewer, anchor); return end
-    if not viewer:IsShown() and not anchor.orbitMountedSuppressed then viewer:Show(); viewer:SetAlpha(1) end
+    -- viewer:Show() is protected on InCombatProtect cooldown viewers; defer to PLAYER_REGEN_ENABLED to avoid taint.
+    if not viewer:IsShown() and not anchor.orbitMountedSuppressed and not InCombatLockdown() then viewer:Show(); viewer:SetAlpha(1) end
 end
 
 -- [ PLAYER ENTERING WORLD ] -------------------------------------------------------------------------
