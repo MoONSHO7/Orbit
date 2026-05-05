@@ -632,7 +632,7 @@ function Plugin:ApplySettings(frame)
     end
     if not self.blizzBars[index] then local config = BAR_CONFIG[index]; if config then self.blizzBars[index] = _G[config.blizzName] end end
     local blizzBar = self.blizzBars[index]
-    if blizzBar then OrbitEngine.NativeFrame:Park(blizzBar) end
+    if blizzBar then OrbitEngine.NativeFrame:KeepAliveHidden(blizzBar) end
     if enabled == false then
         UnregisterStateDriver(actualFrame, "visibility")
         if blizzBar then OrbitEngine.NativeFrame:SecureHide(blizzBar) end
