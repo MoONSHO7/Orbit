@@ -458,6 +458,9 @@ function Anchor:SetFrameDisabled(frame, disabled)
     elseif not changed then
         return
     end
+    if not disabled and Engine.FrameSelection and EditModeManagerFrame and EditModeManagerFrame:IsShown() then
+        Engine.FrameSelection:UpdateVisuals(frame)
+    end
     local root = self:GetRootParent(frame)
     if root then Graph:ScheduleReconcileChain(root, self) end
 end
