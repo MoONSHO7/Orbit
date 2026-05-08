@@ -100,10 +100,10 @@ end
 function ResultRow:Create(parent, width)
     local row = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
     row:SetSize(width, ROW_HEIGHT)
-    -- AnyUp only: AnyDown would dispatch and close on mouse-down, pre-empting OnDragStart.
     row:RegisterForClicks("AnyUp")
     row:RegisterForDrag("LeftButton")
     row:EnableMouse(true)
+    row:SetAttribute("useOnKeyDown", false)
 
     local function OnDragStart(self)
         local entry = (self._entry) or (self:GetParent() and self:GetParent()._entry)

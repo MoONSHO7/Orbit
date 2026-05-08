@@ -23,7 +23,7 @@ local DEFAULT_UNUSABLE_COLOR = { pins = { { position = 0, color = { r = 0.4, g =
 local DEFAULT_CD_SWIPE = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } }
 
 local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
-local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
+local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 
 local BAR_ART_ATLASES = {
@@ -34,7 +34,6 @@ local BAR_ART_FALLBACK = BAR_ART_ATLASES.Alliance
 
 local SPECIAL_BAR_INDICES = { [STANCE_BAR_INDEX] = true, [POSSESS_BAR_INDEX] = true }
 local DROPPABLE_CURSOR_TYPES = { spell = true, petaction = true, flyout = true, item = true, macro = true, mount = true }
-local rangeButtons = {}
 local cachedOORColor, cachedOOMColor, cachedUnusableColor
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
@@ -122,15 +121,10 @@ local function RefreshIconColor(plugin, button)
     end
 end
 
-local function HookButtonState(plugin, button)
-    if button.__orbitStateHooked then return end
-    if button.UpdateUsable then hooksecurefunc(button, "UpdateUsable", function(self) RefreshIconColor(plugin, self) end) end
-    if button.Update then hooksecurefunc(button, "Update", function(self)
-        RefreshIconColor(plugin, self)
-        local _, sid = GetActionInfo(self.action)
-        if sid and C_Spell.SpellHasRange(sid) then rangeButtons[self] = true else rangeButtons[self] = nil end
-    end) end
-    button.__orbitStateHooked = true
+local function RefreshAllManagedButtons(plugin)
+    for _, buttons in pairs(plugin.buttons) do
+        for _, button in ipairs(buttons) do RefreshIconColor(plugin, button) end
+    end
 end
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
@@ -304,24 +298,24 @@ function Plugin:OnLoad()
         }, self)
     end
     Orbit.EventBus:On("UPDATE_MULTI_CAST_ACTIONBAR", function() C_Timer.After(0.1, function() self:ApplyAll() end) end, self)
-    local function DebouncePetBarUpdate()
+    local function RefreshPetBar()
         if InCombatLockdown() then
-            Orbit.CombatManager:QueueUpdate(DebouncePetBarUpdate)
-        else
-            if self.petDebounce then self.petDebounce:Cancel() end
-            self.petDebounce = C_Timer.NewTimer(0.1, function()
-                self.petDebounce = nil
-                local container = self.containers[PET_BAR_INDEX]
-                if container then self:ApplySettings(container) end
-            end)
+            Orbit.CombatManager:QueueUpdate(RefreshPetBar)
+            return
         end
+        if self.petDebounce then self.petDebounce:Cancel() end
+        self.petDebounce = C_Timer.NewTimer(0.05, function()
+            self.petDebounce = nil
+            if self.containers[PET_BAR_INDEX] then self:LayoutButtons(PET_BAR_INDEX) end
+        end)
     end
 
-    Orbit.EventBus:On("UNIT_PET", function(unit)
-        if unit ~= "player" then return end
-        DebouncePetBarUpdate()
-    end, self)
-    Orbit.EventBus:On("PET_BAR_UPDATE", DebouncePetBarUpdate, self)
+    Orbit.EventBus:On("UNIT_PET", RefreshPetBar, self)
+    Orbit.EventBus:On("PET_BAR_UPDATE", RefreshPetBar, self)
+    Orbit.EventBus:On("PET_UI_UPDATE", RefreshPetBar, self)
+    Orbit.EventBus:On("UPDATE_VEHICLE_ACTIONBAR", RefreshPetBar, self)
+    Orbit.EventBus:On("PLAYER_CONTROL_GAINED", RefreshPetBar, self)
+    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", RefreshPetBar, self)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end
@@ -364,10 +358,11 @@ function Plugin:OnLoad()
             for index in pairs(self.containers) do self:LayoutButtons(index) end
         end)
     end, self)
-    -- [ SPELL STATE HOOKS ]--------------------------------------------------------------------------
-    Orbit.EventBus:On("PLAYER_TARGET_CHANGED", function()
-        for button in pairs(rangeButtons) do RefreshIconColor(self, button) end
-    end, self)
+    -- [ SPELL STATE EVENTS ]-------------------------------------------------------------------------
+    local function RefreshAll() RefreshAllManagedButtons(self) end
+    Orbit.EventBus:On("PLAYER_TARGET_CHANGED", RefreshAll, self)
+    Orbit.EventBus:On("ACTIONBAR_UPDATE_USABLE", RefreshAll, self)
+    Orbit.EventBus:On("SPELL_UPDATE_USABLE", RefreshAll, self)
     local plugin = self
     -- [ PROC GLOW HOOKS ]----------------------------------------------------------------------------
     if ActionButtonSpellAlertManager then
@@ -571,7 +566,6 @@ function Plugin:LayoutButtons(index)
                 if useMasque then MasqueBridge:AddActionButton(masqueGroup, button) end
                 if not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup) then Orbit.Skin.ActionButtonSkin:Apply(button, skinSettings) end
                 ABText:Apply(self, button, index)
-                HookButtonState(self, button)
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", pos.x, pos.y)
