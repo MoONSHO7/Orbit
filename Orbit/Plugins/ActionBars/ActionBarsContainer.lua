@@ -13,7 +13,7 @@ local VEHICLE_EXIT_TEXCOORDS = { 0.140625, 0.859375, 0.140625, 0.859375 }
 local VEHICLE_EXIT_VISIBILITY = "[canexitvehicle] show; hide"
 local BUTTON_SIZE = 32
 local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
-local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [nopet] hide; show"
+local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 local DEFAULT_BOTTOM_OFFSET_Y = 40
 

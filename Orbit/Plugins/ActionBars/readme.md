@@ -30,7 +30,7 @@ graph LR
 3. `ActionButtonSkinning` (in core/skinning) handles visual overrides
 4. skin settings include `iconBorder = true` to opt into `GlobalSettings.IconBorderStyle` (NineSlice/LSM icon borders). when `IconPadding = 0`, a single group border wraps the container instead of per-icon borders. containers set `mergeBorders = true` in `anchorOptions`, enabling cross-bar group borders when anchored at padding=0
 5. visibility is driven by combat state and ooc fade settings
-6. spell state hooks (`UpdateUsable`, `ActionBarButtonRangeCheckFrame`, `PLAYER_TARGET_CHANGED`) tint icons for out-of-range, out-of-mana, and not-usable states
+6. spell state events (`ACTIONBAR_UPDATE_USABLE`, `SPELL_UPDATE_USABLE`, `ACTION_RANGE_CHECK_UPDATE`, `PLAYER_TARGET_CHANGED`) drive `RefreshIconColor` to tint icons for out-of-range, out-of-mana, and not-usable states. **No `hooksecurefunc` on Blizzard's `ActionButton.Update` / `.UpdateUsable`** — those hooks taint the secure call frame under 12.0.5+ secret-value strictness, which propagates into `ActionButton_ApplyCooldown` (rejecting secret `start`/`duration`) and `UpdateShownButtons` (blocking `SetShown` in combat).
 
 ## adding a new bar feature
 
@@ -42,8 +42,11 @@ graph LR
 ## rules
 
 - pet bar has special handling (index-based, no ooc fade)
-- pet bar listens for `UNIT_PET` with a 0.3s debounce to call `ApplySettings` after summon/dismiss (re-registers the state driver to force `[nopet]` re-evaluation)
-- pet bar visibility driver (`[nopet] hide`) is suspended in edit mode so the frame stays selectable for positioning; `ApplyAll` restores it on exit
+- pet bar visibility driver: `[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide` — positive `pet` form, with `nooverridebar`/`nopossessbar` exclusions so the bar stays hidden during mind-control / possession (matches ElvUI/Bartender pattern; `[nopet]` alone leaks the bar through these states)
+- pet bar listens for `UNIT_PET`, `PET_BAR_UPDATE`, `PET_UI_UPDATE`, `UPDATE_VEHICLE_ACTIONBAR`, `PLAYER_CONTROL_GAINED`, `PLAYER_ENTERING_WORLD`. handler runs `LayoutButtons(PET_BAR_INDEX)` only — Blizzard's `PetActionButtonMixin` still drives icon/cooldown updates on the reparented buttons; we only need to refresh hide-empty + skinning + layout
+- 50ms trailing-edge debounce coalesces UNIT_PET (which fires before action info loads) with the immediately-following PET_BAR_UPDATE (which fires once info is loaded) into a single LayoutButtons call with fresh data
+- state driver is set once at container creation and once in `ApplySettings`; it does NOT need re-registration on pet events — WoW state drivers re-evaluate macro conditions automatically when the underlying state changes
+- pet bar visibility driver is suspended in edit mode so the frame stays selectable for positioning; `ApplyAll` restores it on exit
 - button reparenting must preserve secure frame references for combat
 - all grid math must use pixel-snapped values
 - bar visibility uses macro conditional drivers (`RegisterStateDriver`)
