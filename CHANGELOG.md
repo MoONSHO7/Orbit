@@ -1,6 +1,10 @@
 [start]
 
 ### Updates
+- Action bars now reveal at full opacity when Spellbook/Talents is open
+- Fixed Minimap clock randomly switching between 12h and 24h format
+- Added Minimap tracking button (fades in on hover)
+- Fixed Minimap compartment flyout closing while a dropdown menu is open
 - Various Bugfixes
 - New UI Scale Slider in Orbit QoL settings
 - Some missed Pixel Perfect situations addressed
