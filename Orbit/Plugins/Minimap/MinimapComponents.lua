@@ -129,14 +129,32 @@ do
     end)
 end
 
+-- Format time using the cached military-time flag instead of re-reading the CVar.
+-- GameTime_GetFormattedTime always calls GetCVarBool("timeMgrUseMilitaryTime") internally,
+-- so if anything else flips that CVar the clock format can desync from the user's preference.
+local function FormatClockTime(hour, minute)
+    if _clockUseMilitary then
+        return format(TIMEMANAGER_TICKER_24HOUR, hour, minute)
+    else
+        if hour == 0 then
+            hour = 12
+        elseif hour > 12 then
+            hour = hour - 12
+        end
+        return format(TIMEMANAGER_TICKER_12HOUR, hour, minute)
+    end
+end
+
 function Plugin:UpdateClock()
     if _clockUseLocal == nil then RefreshClockCVars() end
     local text = self.frame.Clock.Text
+    local hour, minute
     if _clockUseLocal then
-        text:SetText(GameTime_GetLocalTime(_clockUseMilitary))
+        hour, minute = tonumber(date("%H")), tonumber(date("%M"))
     else
-        text:SetText(GameTime_GetGameTime(_clockUseMilitary))
+        hour, minute = GetGameTime()
     end
+    text:SetText(FormatClockTime(hour, minute))
     self.frame.Clock:SetSize(text:GetStringWidth() + 2, text:GetStringHeight() + 2)
 end
 
