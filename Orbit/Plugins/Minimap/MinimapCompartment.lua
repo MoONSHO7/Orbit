@@ -680,8 +680,8 @@ function Plugin:ReleaseCollectedButtons()
             button._orbitOrigHeight = nil
             button._orbitOrigScale = nil
 
-            -- Show the button if it wasn't explicitly hidden by the addon
-            if not (button.db and button.db.hide) then
+            -- Show the button if it wasn't explicitly hidden by the addon OR by HUD view.
+            if not (button.db and button.db.hide) and not button._orbitHudHidden then
                 button:Show()
             end
         end
@@ -753,9 +753,11 @@ function Plugin:ApplyAddonCompartment()
             self._rescanHook = f
         end
     else
+        -- HUD view: skip release so buttons stay parked in the hidden holder (no Minimap flash on toggle).
+        local isHud = (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud"
         self._compartmentActive = false
         if self._compartmentFlyout then self._compartmentFlyout:Hide() end
-        self:ReleaseCollectedButtons()
+        if not isHud then self:ReleaseCollectedButtons() end
         if self._compartmentButton then self._compartmentButton:Hide() end
     end
 end

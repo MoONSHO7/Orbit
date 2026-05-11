@@ -65,19 +65,16 @@ Dialog.OverrideContainer.Title:SetPoint("TOPLEFT", Dialog.OverrideContainer, "TO
 -- [ DOCK LAYOUT ] -----------------------------------------------------------------------------------
 function Dialog:LayoutDockIcons()
     local container = self.DisabledDock.IconContainer
-    local stride = OrbitEngine.Pixel:Multiple(C.DOCK_ICON_SIZE + C.DOCK_ICON_SPACING, container:GetEffectiveScale())
+    local stride = C.DOCK_ICON_SIZE + C.DOCK_ICON_SPACING
     local x = 0
-    local iconCount = 0
 
     for key, icon in pairs(self.dockComponents) do
         if icon:IsShown() then
             icon:ClearAllPoints()
             icon:SetPoint("TOPLEFT", container, "TOPLEFT", x, 0)
             x = x + stride
-            iconCount = iconCount + 1
         end
     end
-
 end
 
 -- [ ADD TO DOCK ] -----------------------------------------------------------------------------------

@@ -52,6 +52,7 @@ local FRAME_REGISTRY = {
     { key = "ExperienceBar",        display = "XP / Rep Bar",          plugin = "Experience Bar",     index = 1 },
     { key = "HonorBar",             display = "Honor Bar",             plugin = "Honor Bar",          index = 1 },
     { key = "PortalDock",           display = "Portal Dock",           plugin = "Portal Dock",        index = 1 },
+    { key = "RaidPanel",            display = "Raid Panel",            plugin = "Raid Panel",         index = 1 },
 }
 
 -- O(1) reverse lookup: { [pluginName] = { [systemIndex] = key } }
@@ -87,6 +88,7 @@ local BLIZZARD_REGISTRY = {
     { key = "BlizzFocusFrame",       display = "Focus Frame",           blizzardFrame = "FocusFrame",                ownedBy = "Focus Frame",      secure = true },
     { key = "BlizzPartyFrame",       display = "Party Frame",           blizzardFrame = "PartyFrame",                ownedBy = "Group Frames",     secure = true },
     { key = "BlizzRaidFrame",        display = "Raid Frames",           blizzardFrame = "CompactRaidFrameContainer", ownedBy = "Group Frames",     secure = true },
+    { key = "BlizzRaidManager",      display = "Raid Manager",          blizzardFrame = "CompactRaidFrameManager",   ownedBy = "Raid Panel",       secure = true },
     { key = "BlizzMainMenuBar",      display = "Action Bar 1",          blizzardFrame = "MainMenuBar",               ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
     { key = "BlizzMultiBarBL",       display = "Action Bar 2",          blizzardFrame = "MultiBarBottomLeft",        ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
     { key = "BlizzMultiBarBR",       display = "Action Bar 3",          blizzardFrame = "MultiBarBottomRight",       ownedBy = "Action Bars",      secure = true, propagateAlpha = true },

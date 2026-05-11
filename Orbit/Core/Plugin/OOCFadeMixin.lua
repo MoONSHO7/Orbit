@@ -310,10 +310,13 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
     UpdateFrameVisibility(frame, nil, ManagedFrames[frame])
 end
 
--- Remove OOC Fade behavior from a frame
+-- Tear down hover ticker AND any in-flight UIFrameFadeIn/Out so a caller's subsequent SetAlpha sticks.
 function Mixin:RemoveOOCFade(frame)
     if not frame then return end
     ManagedFrames[frame] = nil
+    if frame.orbitOOCHoverTicker then frame.orbitOOCHoverTicker:Hide() end
+    frame.orbitMouseOver = nil
+    Orbit.Animation:StopHoverFade(frame)
     frame:SetAlpha(1)
 end
 

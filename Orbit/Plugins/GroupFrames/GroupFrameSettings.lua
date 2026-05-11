@@ -5,6 +5,7 @@ local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local SB = OrbitEngine.SchemaBuilder
 local Helpers = Orbit.GroupFrameHelpers
+local HealerReg = Orbit.HealerAuraRegistry
 
 -- [ ADD SETTINGS ]-----------------------------------------------------------------------------------
 local ICON_BUTTON_SIZE = 20
@@ -233,15 +234,6 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                 local maxFlatRows = math.max(1, math.ceil(tierMax / 5))
                 table.insert(schema.controls, { type = "slider", key = "FlatRows", label = L.PLU_GRP_ROWS, min = 1, max = maxFlatRows, step = 1, default = 1, onChange = TierMOC("FlatRows") })
             end
-            table.insert(schema.controls, {
-                type = "checkbox", key = "HideBlizzardRaidPanel", label = L.PLU_GRP_HIDE_BLIZZ_RAID, default = false,
-                onChange = function(val)
-                    plugin:SetSetting(1, "HideBlizzardRaidPanel", val)
-                    if plugin.UpdateBlizzardRaidPanelVisibility then
-                        plugin:UpdateBlizzardRaidPanelVisibility()
-                    end
-                end,
-            })
             local showPower = plugin:GetTierSetting("ShowPowerBar", editTier)
             if showPower == nil then showPower = true end
             table.insert(schema.controls, { type = "checkbox", key = "ShowPowerBar", label = L.PLU_GRP_HEALER_POWER, default = true, onChange = function(val)
@@ -260,13 +252,34 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
         if not isParty and (plugin:GetTierSetting("SortMode", editTier) or "group") == "group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = L.PLU_GRP_SHOW_GROUPS, default = true, onChange = TierMOC("ShowGroupLabels") })
         end
+        local colorByAuraRefresh = function()
+            if plugin.UpdateAllColorByAura then plugin:UpdateAllColorByAura() end
+        end
+        local colorByAuraColor = plugin:GetTierSetting("ColorByAuraColor", editTier) or { r = 0.2, g = 0.8, b = 0.2, a = 1 }
+        local colorByAuraOptions = { { text = L.PLU_GRP_COLOR_BY_AURA_NONE, value = 0 } }
+        for _, spell in ipairs(HealerReg:GetCurrentSpecSpells()) do
+            colorByAuraOptions[#colorByAuraOptions + 1] = { text = spell.label, value = spell.spellId }
+        end
+        table.insert(schema.controls, {
+            type = "dropdown", key = "ColorByAuraSpellId", label = L.PLU_GRP_COLOR_BY_AURA, default = 0,
+            options = colorByAuraOptions,
+            valueColor = {
+                initialValue = colorByAuraColor,
+                callback = function(c)
+                    plugin:SetTierSetting("ColorByAuraColor", { r = c.r, g = c.g, b = c.b, a = c.a or 1 }, editTier)
+                    colorByAuraRefresh()
+                end,
+            },
+            onChange = TierMOC("ColorByAuraSpellId", colorByAuraRefresh),
+        })
+
         local dispelRefresh = function()
             Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin)
             if plugin.UpdateAllDispelIndicators then plugin:UpdateAllDispelIndicators(plugin) end
             if plugin.RefreshDispelPreview then plugin:RefreshDispelPreview() end
         end
         local dispelToggle = function() dispelRefresh(); if dialog.orbitTabCallback then dialog.orbitTabCallback() end end
-        
+
         local dispelEnabled = plugin:GetTierSetting("DispelIndicatorEnabled", editTier)
         if dispelEnabled == nil then dispelEnabled = true end
 

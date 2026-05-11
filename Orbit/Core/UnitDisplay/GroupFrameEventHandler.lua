@@ -48,6 +48,7 @@ local function DispatchAuraConsumers(f, plugin, callbacks, snapshot)
     if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(f, plugin) end
     if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(f, plugin) end
     if plugin.UpdateDispelIndicator then plugin:UpdateDispelIndicator(f, plugin, snapshot.harmful) end
+    if plugin.UpdateColorByAura then plugin:UpdateColorByAura(f) end
     f._auraSnapshot = nil
 end
 
@@ -168,6 +169,7 @@ function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
         if callbacks.UpdatePrivateAuras then callbacks.UpdatePrivateAuras(self, plugin) end
         if callbacks.UpdateHealerAuras then callbacks.UpdateHealerAuras(self, plugin) end
         if callbacks.UpdateMissingRaidBuffs then callbacks.UpdateMissingRaidBuffs(self, plugin) end
+        if plugin.UpdateColorByAura then plugin:UpdateColorByAura(self) end
         StatusDispatch(self, plugin, "UpdateAllPartyStatusIcons")
         StatusDispatch(self, plugin, "UpdateStatusText")
         UpdateInRange(self)
@@ -212,6 +214,7 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
                     f._auraSnapshot = snap
                     callbacks.UpdateDebuffs(f, plugin)
                     callbacks.UpdateBuffs(f, plugin)
+                    if plugin.UpdateColorByAura then plugin:UpdateColorByAura(f) end
                     f._auraSnapshot = nil
                 end
             end
