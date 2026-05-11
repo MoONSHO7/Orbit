@@ -80,7 +80,12 @@ function ABText:Apply(plugin, button, systemIndex)
         button.HotKey:SetDrawLayer("OVERLAY", 7)
         if KeybindSystem then
             local shortKey = KeybindSystem:GetForButton(button)
-            if shortKey and shortKey ~= "" then button.HotKey:SetText(shortKey) else button.HotKey:SetText("") end
+            if shortKey and shortKey ~= "" then
+                button.HotKey:SetText(shortKey)
+                if shortKey:find("|A:Gamepad_") then
+                    button.HotKey:SetHeight(math.max(button.HotKey:GetHeight() or 0, 16))
+                end
+            else button.HotKey:SetText("") end
         else button.HotKey:SetText("") end
         ApplyComponentPosition(button.HotKey, "Keybind", "RIGHT", "TOP", 2, 2)
     end
