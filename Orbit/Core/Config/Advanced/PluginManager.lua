@@ -20,7 +20,7 @@ local PLUGIN_GROUPS = {
         { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
         { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
-    { header = L.PLG_GROUP_FRAMES, names = { "Group Frames", "Boss Frames" } },
+    { header = L.PLG_GROUP_FRAMES, names = { "Group Frames", "Boss Frames", "Raid Panel" } },
     { header = L.PLG_COMBAT,       names = { "Action Bars", "Cooldown Manager", { label = "Tracked Cooldowns", plugins = { "Tracked Items" } }, "Damage Meter" } },
     { header = L.PLG_UI,           names = {
         { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },

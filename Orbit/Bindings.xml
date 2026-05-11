@@ -1,5 +1,9 @@
 <Bindings>
-    <Binding name="ORBIT_SPOTLIGHT_TOGGLE" header="ORBIT" category="BINDING_HEADER_ORBIT">
+    <Binding name="ORBIT_SPOTLIGHT_TOGGLE" category="BINDING_HEADER_ORBIT">
         Orbit.Spotlight:Toggle()
+    </Binding>
+    <Binding name="ORBIT_MINIMAP_TOGGLEVIEW" category="BINDING_HEADER_ORBIT">
+        local plugin = Orbit and Orbit:GetPlugin("Orbit_Minimap")
+        if plugin and plugin.ToggleView then plugin:ToggleView() end
     </Binding>
 </Bindings>

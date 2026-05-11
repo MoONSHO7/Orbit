@@ -80,6 +80,7 @@ local TIER_DEFAULTS = {
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
         DispelColorPoison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+        ColorByAuraSpellId = 0, ColorByAuraColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
         AggroIndicatorEnabled = true, AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1, AggroFrequency = 0.25, AggroNumLines = 8,
@@ -125,6 +126,7 @@ local TIER_DEFAULTS = {
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
         DispelColorPoison = { r = 0.0, g = 0.6, b = 0.0, a = 1 },
+        ColorByAuraSpellId = 0, ColorByAuraColor = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
     },
 }
 -- Heroic / World inherit from Mythic with size overrides
@@ -164,7 +166,6 @@ local Plugin = Orbit:RegisterPlugin("Group Frames", SYSTEM_ID, {
     defaults = {
         Tiers = TIER_DEFAULTS,
         _EditTier = nil,
-        HideBlizzardRaidPanel = false,
     },
 })
 
@@ -483,13 +484,6 @@ local function HideNativeGroupFrames()
     end
 end
 
-function Plugin:UpdateBlizzardRaidPanelVisibility()
-    if self:GetSetting(1, "HideBlizzardRaidPanel") then
-        OrbitEngine.NativeFrame:Park(CompactRaidFrameManager)
-    else
-        OrbitEngine.NativeFrame:Unpark(CompactRaidFrameManager)
-    end
-end
 function Plugin:AddSettings(dialog, systemFrame)
     Orbit.GroupFrameSettings(self, dialog, systemFrame)
 end
@@ -497,7 +491,6 @@ end
 -- [ ON LOAD ]----------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     HideNativeGroupFrames()
-    self:UpdateBlizzardRaidPanelVisibility()
 
     self._currentTier = self:GetCurrentTier()
 
@@ -810,6 +803,11 @@ function Plugin:AssignPartyUnits()
 
                 if currentUnit ~= unit or guidChanged then
                     SafeUnregisterUnitWatch(frame)
+                    Orbit.AuraMixin:WipeCaches(frame)
+                    if frame._colorByAuraOverride then
+                        frame._colorByAuraOverride = nil
+                        if frame.ApplyHealthColor then frame:ApplyHealthColor() end
+                    end
                     frame:SetAttribute("unit", unit)
                     frame.unit = unit
                     frame._guidCache = newGuid
@@ -861,6 +859,11 @@ function Plugin:AssignRaidUnits()
 
                 if currentUnit ~= token or guidChanged then
                     SafeUnregisterUnitWatch(frame)
+                    Orbit.AuraMixin:WipeCaches(frame)
+                    if frame._colorByAuraOverride then
+                        frame._colorByAuraOverride = nil
+                        if frame.ApplyHealthColor then frame:ApplyHealthColor() end
+                    end
                     frame:SetAttribute("unit", token)
                     frame.unit = token
                     frame._guidCache = newGuid
@@ -1016,6 +1019,7 @@ function Plugin:ApplySettings()
             UpdateHealerAuras(frame, self)
             UpdateMissingRaidBuffs(frame, self)
             UpdatePrivateAuras(frame, self)
+            self:UpdateColorByAura(frame)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
             if frame.UpdateAll then frame:UpdateAll() end
         end
@@ -1033,6 +1037,52 @@ function Plugin:UpdateVisuals()
         if not frame.preview and frame.unit and frame.UpdateAll then
             frame:UpdateAll()
             UpdatePowerBar(frame, self)
+        end
+    end
+end
+
+-- [ COLOR BY AURA ]----------------------------------------------------------------------------------
+local function FindSpecSpellAltId(spellId)
+    for _, spell in ipairs(HealerReg:GetCurrentSpecSpells()) do
+        if spell.spellId == spellId then return spell.altSpellId end
+    end
+end
+
+local function IsTrackedAuraPresent(unit, spellId, altSpellId)
+    local found = false
+    AuraUtil.ForEachAura(unit, "HELPFUL", 40, function(aura)
+        local sid = aura.spellId
+        if not issecretvalue(sid) and (sid == spellId or (altSpellId and sid == altSpellId)) then
+            found = true
+            return true
+        end
+    end, true)
+    return found
+end
+
+function Plugin:UpdateColorByAura(frame)
+    if not frame or not frame.Health or not frame.unit then return end
+    local hadOverride = frame._colorByAuraOverride ~= nil
+    local function clear()
+        if hadOverride then frame._colorByAuraOverride = nil; frame:ApplyHealthColor() end
+    end
+    local spellId = self:GetTierSetting("ColorByAuraSpellId")
+    if not spellId or spellId == 0 then clear(); return end
+    local unit = frame.unit
+    if not UnitExists(unit) then clear(); return end
+    if IsTrackedAuraPresent(unit, spellId, FindSpecSpellAltId(spellId)) then
+        frame._colorByAuraOverride = self:GetTierSetting("ColorByAuraColor")
+        frame:ApplyHealthColor()
+    else
+        clear()
+    end
+end
+
+function Plugin:UpdateAllColorByAura()
+    if not self.frames then return end
+    for _, frame in ipairs(self.frames) do
+        if not frame.preview and frame.unit and frame:IsShown() then
+            self:UpdateColorByAura(frame)
         end
     end
 end

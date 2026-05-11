@@ -3,6 +3,10 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
+-- Key Bindings panel label for ORBIT_MINIMAP_TOGGLEVIEW (defined in Orbit/Bindings.xml).
+-- Header is BINDING_HEADER_ORBIT (set by Spotlight); this binding appears under "Orbit" alongside it.
+_G.BINDING_NAME_ORBIT_MINIMAP_TOGGLEVIEW = Orbit.L.PLU_MINIMAP_BINDING_TOGGLE_VIEW
+
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Minimap"
 
@@ -10,8 +14,13 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
     canvasMode = true,
     canvasDefaultZoom = 1.0,
     defaults = {
+        View = "minimap",
+        Hud_Size = 800,
+        Hud_Opacity = 30,
+        Hud_Rotate = false,
         Size = 220,
         Shape = "square",
+        BorderRing = "none",
         BorderColor = { r = 0, g = 0, b = 0, a = 1 },
         DifficultyDisplay = "icon",
         LeftClickAction = "none",
@@ -24,6 +33,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         DisabledComponents = { "Status" },
         ComponentPositions = {
             Compartment = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = -10, posX = 110.0000305175781, posY = -135.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
+            Tracking    = { anchorX = "LEFT",  anchorY = "BOTTOM", offsetX = -15, offsetY = -10, posX = -110.0000305175781, posY = -135.0000305175781, justifyH = "LEFT",  selfAnchorY = "BOTTOM" },
             Zoom = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 15, offsetY = 35, posX = 110.0000305175781, posY = -90.00003051757812, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
             Missions = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 20, offsetY = 20, posX = -105.0000305175781, posY = -105.0000305175781, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
             Coords = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 30, offsetY = 10, posX = 95.00003051757812, posY = -115.0000305175781, justifyH = "RIGHT", selfAnchorY = "BOTTOM" },
@@ -46,7 +56,6 @@ local DEFAULT_TEXT_SIZE = C.DEFAULT_TEXT_SIZE
 local BORDER_COLOR = C.BORDER_COLOR
 local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
 local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
-local BORDER_RING_ATLAS = C.BORDER_RING_ATLAS
 
 local CLICK_ACTION_KEYS = {
     LeftButton = "LeftClickAction",
@@ -84,6 +93,7 @@ function Plugin:OnLoad()
     Orbit.IconPreviewAtlases = Orbit.IconPreviewAtlases or {}
     Orbit.IconPreviewAtlases.Zoom = "common-icon-zoomin"
     Orbit.IconPreviewAtlases.Compartment = "Map-Filter-Button"
+    Orbit.IconPreviewAtlases.Tracking = "ui-hud-minimap-tracking-up"
     Orbit.IconPreviewAtlases.Difficulty = nil
     Orbit.IconPreviewAtlases.Mail = "ui-hud-minimap-mail-up"
     Orbit.IconPreviewAtlases.CraftingOrder = "UI-HUD-Minimap-CraftingOrder-Over-2x"
@@ -96,12 +106,24 @@ function Plugin:OnLoad()
     self.frame:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Minimap"
-    
+
+    -- HUD host: surface reparents here while HUD is active so self.frame stays put and FrameAnchor children don't follow.
+    self.hudFrame = CreateFrame("Frame", "OrbitMinimapHUD", UIParent)
+    self.hudFrame:SetSize(DEFAULT_SIZE, DEFAULT_SIZE)
+    self.hudFrame:SetPoint("CENTER", UIParent, "CENTER", 0, -50)
+    self.hudFrame:SetFrameStrata(Orbit.Constants.Strata.Base)
+    self.hudFrame:Hide()
+    OrbitEngine.Pixel:Enforce(self.hudFrame)
+
     self.frame:SetScript("OnSizeChanged", function(f, w, h)
         local minimapSurface = self:GetBlizzardMinimap()
         if minimapSurface and minimapSurface:GetParent() == f then
             local scale = minimapSurface:GetEffectiveScale()
             minimapSurface:SetSize(OrbitEngine.Pixel:Snap(w, scale), OrbitEngine.Pixel:Snap(h, scale))
+        end
+        -- Re-apply the border ring so it tracks the new container size (Edit Mode drag, slider, etc.).
+        if self.ApplyBorderRing then
+            self:ApplyBorderRing(self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR)
         end
     end)
 
@@ -116,12 +138,6 @@ function Plugin:OnLoad()
     self.frame.bg:SetAllPoints(self.frame)
     self.frame.bg:SetColorTexture(0, 0, 0, 1)
 
-    -- OVERLAY layer keeps the round-shape border above the minimap render surface; visible only when Shape = "round".
-    self.frame.RoundBorder = self.frame:CreateTexture(nil, "OVERLAY", nil, 7)
-    self.frame.RoundBorder:SetAtlas(BORDER_RING_ATLAS, true)
-    self.frame.RoundBorder:SetAllPoints(self.frame)
-    self.frame.RoundBorder:Hide()
-
     -- Overlay shares the container's LOW strata; interactive children raised above ClickCapture via explicit frame levels.
     self.frame.Overlay = CreateFrame("Frame", nil, self.frame)
     self.frame.Overlay:SetAllPoints()
@@ -129,6 +145,22 @@ function Plugin:OnLoad()
     self.frame.Overlay:SetFrameLevel(self.frame:GetFrameLevel() + 10)
     -- No-op shim: reparented MiniMapMailFrameMixin/MiniMapCraftingOrderFrameMixin call self:GetParent():Layout() after their events.
     self.frame.Overlay.Layout = function() end
+
+    self.frame.BorderRing = self.frame.Overlay:CreateTexture(nil, "OVERLAY", nil, 7)
+    self.frame.BorderRing:Hide()
+    OrbitEngine.Pixel:Enforce(self.frame.BorderRing)
+
+    -- Solid-fill ring (BasicMinimap-style): a SetColorTexture backdrop clipped by the same
+    -- Circle.tga used as the minimap surface mask. Sized to minimap + BorderSize*2 so the
+    -- visible "ring" around the masked map matches BorderSize exactly. BACKGROUND of the
+    -- container so the captured Minimap surface draws above it.
+    self.frame.SolidRing = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.frame.SolidRing._mask = self.frame:CreateMaskTexture()
+    self.frame.SolidRing._mask:SetTexture(C.MASK_ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    self.frame.SolidRing:AddMaskTexture(self.frame.SolidRing._mask)
+    self.frame.SolidRing:Hide()
+    OrbitEngine.Pixel:Enforce(self.frame.SolidRing)
+    OrbitEngine.Pixel:Enforce(self.frame.SolidRing._mask)
 
     -- ClickCapture: transparent button covering the minimap at LOW strata; dispatches configured click actions.
     local clickCapture = CreateFrame("Button", "OrbitMinimapClickCapture", self.frame)
@@ -243,6 +275,9 @@ function Plugin:OnLoad()
     -- [ Compartment component ]
     self:CreateCompartmentButton()
 
+    -- [ Tracking component ]
+    self:CreateTrackingButton()
+
     -- [ Zoom component ] — two stacked buttons, shown on minimap hover
     self:CreateZoomButtons()
 
@@ -263,6 +298,11 @@ function Plugin:OnLoad()
         key = "Compartment",
         sourceOverride = self._compartmentButton.icon,
         onPositionChange = MPC("Compartment"),
+    })
+    OrbitEngine.ComponentDrag:Attach(self._trackingButton, self.frame, {
+        key = "Tracking",
+        sourceOverride = self._trackingButton.icon,
+        onPositionChange = MPC("Tracking"),
     })
     OrbitEngine.ComponentDrag:Attach(self.frame.ZoomContainer, self.frame, { key = "Zoom", onPositionChange = MPC("Zoom") })
     if self.frame.DifficultyIcon then OrbitEngine.ComponentDrag:Attach(self.frame.DifficultyIcon, self.frame, { key = DIFFICULTY_ICON_KEY, onPositionChange = MPC(DIFFICULTY_ICON_KEY) }) end
@@ -295,6 +335,14 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("ZONE_CHANGED_INDOORS", OnZoneChanged, self)
     Orbit.EventBus:On("ZONE_CHANGED_NEW_AREA", OnZoneChanged, self)
 
+    -- HUD view isn't a positionable edit-mode frame; entering edit mode while in HUD forces minimap view.
+    EventRegistry:RegisterCallback("EditMode.Enter", function()
+        if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then
+            self:SetSetting(SYSTEM_ID, "View", "minimap")
+            self:ApplySettings()
+        end
+    end, self)
+
     -- Canvas preview: renders a live snapshot of the minimap container for the canvas viewport.
     -- The real live frames (ZoneText, Clock, Coords, icons) are already children of self.frame
     -- and are registered as draggable components — so the canvas dialog picks them up directly.
@@ -323,9 +371,10 @@ function Plugin:OnLoad()
         preview.bg:SetAllPoints()
         preview.bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
 
-        if shape == "round" then
+        if shape == "round" or shape == "splatter" then
+            local previewMask = shape == "splatter" and C.MASK_HUD or C.MASK_ROUND
             local bgMask = preview:CreateMaskTexture(nil, "BACKGROUND", nil, 0)
-            bgMask:SetTexture(MASK_ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            bgMask:SetTexture(previewMask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             bgMask:SetAllPoints(preview.bg)
             preview.bg:AddMaskTexture(bgMask)
         end
@@ -356,8 +405,10 @@ function Plugin:OnLoad()
                 minimap:SetSize(bounceW, bounceW)
                 minimap:SetSize(snappedW, snappedW)
                 
-                -- Force a mask refresh to flush texture vertices
-                local mask = self:GetSetting(C.SYSTEM_ID, "Shape") == "round" and C.MASK_ROUND or C.MASK_SQUARE
+                -- Force a mask refresh to flush texture vertices. HUD view is always splatter.
+                local view = self:GetSetting(C.SYSTEM_ID, "View") or "minimap"
+                local effectiveShape = view == "hud" and "splatter" or (self:GetSetting(C.SYSTEM_ID, "Shape") or "square")
+                local mask = effectiveShape ~= "square" and self:GetRoundMaskSource() or C.MASK_SQUARE
                 minimap:SetMaskTexture(mask)
                 
                 -- Global update if available
@@ -392,17 +443,39 @@ function Plugin:UsesAddonClickAction()
     return false
 end
 
+function Plugin:HasAnyClickAction()
+    for _, settingKey in pairs(CLICK_ACTION_KEYS) do
+        if self:GetSetting(SYSTEM_ID, settingKey) ~= "none" then
+            return true
+        end
+    end
+    return false
+end
+
+function Plugin:UsesTrackingClickAction()
+    for _, settingKey in pairs(CLICK_ACTION_KEYS) do
+        if self:GetSetting(SYSTEM_ID, settingKey) == "tracking" then
+            return true
+        end
+    end
+    return false
+end
+
 function Plugin:IsCanvasComponentHidden(componentKey)
     if componentKey == DIFFICULTY_ICON_KEY or componentKey == DIFFICULTY_TEXT_KEY then
         return componentKey ~= self:GetActiveDifficultyCanvasKey()
     end
-    return componentKey == "Compartment" and self:UsesAddonClickAction()
+    if componentKey == "Compartment" then return self:UsesAddonClickAction() end
+    if componentKey == "Tracking"    then return self:UsesTrackingClickAction() end
+    return false
 end
 
 function Plugin:IsComponentDisabled(componentKey)
     if componentKey == DIFFICULTY_ICON_KEY or componentKey == DIFFICULTY_TEXT_KEY then
         componentKey = "Difficulty"
     end
+    -- HUD view hides all decorative components — it's a clean navigation overlay.
+    if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then return true end
     if self:IsCanvasComponentHidden(componentKey) then return true end
     return Orbit.PluginMixin.IsComponentDisabled(self, componentKey)
 end
@@ -410,6 +483,43 @@ end
 function Plugin:GetMinimapClickAction(button)
     local settingKey = CLICK_ACTION_KEYS[button]
     return settingKey and self:GetSetting(SYSTEM_ID, settingKey) or "none"
+end
+
+-- Override PluginMixin's VE handler so HUD view is invisible to the Visibility Engine —
+-- no mounted-hide, no vehicle/pet-battle alpha override, no opacity setting re-application.
+-- Normal Minimap view falls through to the default behavior.
+function Plugin:UpdateVisibility()
+    if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then return end
+    return Orbit.PluginMixin.UpdateVisibility(self)
+end
+
+-- Hide/show third-party addon minimap buttons (LibDBIcon + legacy minimap-parented buttons).
+-- Used by HUD view to keep the overlay clean. State is remembered per-button so we only restore
+-- what we actually hid, never force-show a button the user had previously hidden in their addon.
+function Plugin:SetAddonIconsShown(shown)
+    local lib = LibStub and LibStub("LibDBIcon-1.0", true)
+    if lib and lib.objects then
+        for _, btn in pairs(lib.objects) do
+            if shown then
+                if btn._orbitHudHidden then btn:Show(); btn._orbitHudHidden = nil end
+            elseif btn:IsShown() then
+                btn._orbitHudHidden = true; btn:Hide()
+            end
+        end
+    end
+    if Minimap and Minimap.GetChildren then
+        for _, child in ipairs({ Minimap:GetChildren() }) do
+            local name = child.GetName and child:GetName() or ""
+            local isAddonButton = name:match("^LibDBIcon10_") or (child.IsObjectType and child:IsObjectType("Button") and not name:lower():find("^minimap"))
+            if isAddonButton then
+                if shown then
+                    if child._orbitHudHidden then child:Show(); child._orbitHudHidden = nil end
+                elseif child:IsShown() then
+                    child._orbitHudHidden = true; child:Hide()
+                end
+            end
+        end
+    end
 end
 
 function Plugin:GetComponentPositions(systemIndex)
@@ -581,24 +691,36 @@ function Plugin:ApplySettings()
     self._applyingSettings = true
 
     local isEditMode = Orbit:IsEditMode()
-    local size = self:GetSetting(SYSTEM_ID, "Size") or DEFAULT_SIZE
-    local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
+    local view = self:GetSetting(SYSTEM_ID, "View") or "minimap"
+    local isHud = view == "hud"
 
-    -- Size (square minimap)
-    frame:SetSize(size, size)
-    -- Sync the edit mode selection overlay to the new size immediately
+    local minimapSize = self:GetSetting(SYSTEM_ID, "Size") or DEFAULT_SIZE
+    local hudSize = self:GetSetting(SYSTEM_ID, "Hud_Size") or 800
+    local size = isHud and hudSize or minimapSize
+    local surfaceParent = isHud and self.hudFrame or self.frame
+
+    -- self.frame always reflects its saved size; hudFrame only sizes when active.
+    frame:SetSize(minimapSize, minimapSize)
+    if isHud then self.hudFrame:SetSize(hudSize, hudSize) end
     if isEditMode then OrbitEngine.FrameSelection:ForceUpdate(frame) end
 
-    -- Rotate minimap
-    local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
-    local rotate = self:GetSetting(SYSTEM_ID, "RotateMinimap") and true or false
-    if shape == "square" then rotate = false end -- Disable rotation for square maps
+    -- Rotate minimap. HUD has its own toggle; in minimap view only round/splatter shapes can rotate.
+    local rotate
+    if isHud then
+        rotate = self:GetSetting(SYSTEM_ID, "Hud_Rotate") and true or false
+    else
+        local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
+        rotate = (shape == "round" or shape == "splatter") and self:GetSetting(SYSTEM_ID, "RotateMinimap") and true or false
+    end
     SetCVar("rotateMinimap", rotate and "1" or "0")
 
-    -- Keep the Minimap render surface in sync with the container.
-    -- Skip when FarmHud is active — it owns the surface position/size while its HUD is open.
+    -- Reparent + size the Minimap surface to whichever host is active. FarmHud owns it while open.
     local minimapSurface = self:GetBlizzardMinimap()
     if minimapSurface and not self._farmHudActive then
+        if minimapSurface:GetParent() ~= surfaceParent then
+            OrbitEngine.FrameGuard:UpdateProtection(minimapSurface, surfaceParent, function() self:ApplySettings() end, { enforceShow = true })
+            minimapSurface:SetParent(surfaceParent)
+        end
         local surfaceScale = minimapSurface:GetEffectiveScale()
         local snappedSize = OrbitEngine.Pixel:Snap(size, surfaceScale)
         local bounceSize = OrbitEngine.Pixel:Snap(size - 1, surfaceScale)
@@ -606,15 +728,19 @@ function Plugin:ApplySettings()
         minimapSurface:SetSize(bounceSize, bounceSize)
         minimapSurface:SetSize(snappedSize, snappedSize)
         minimapSurface:ClearAllPoints()
-        minimapSurface:SetPoint("CENTER", frame, "CENTER", 0, 0)
+        minimapSurface:SetPoint("CENTER", surfaceParent, "CENTER", 0, 0)
     end
 
     -- Shape + Border
     self:ApplyShape()
 
-    -- Background
-    local backdropColor = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
-    if frame.bg then frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a) end
+    -- Background. Suppressed in round/splatter/HUD — ApplyShape already hid the bg so the masked
+    -- surface sits over the game world cleanly without a square backdrop bleeding through.
+    local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
+    if frame.bg and shape == "square" and not isHud then
+        local backdropColor = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
+        frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a)
+    end
 
     local s = Orbit.db.GlobalSettings.TextScale
     local textMultiplier = s == "Small" and 0.85 or s == "Large" and 1.15 or s == "ExtraLarge" and 1.30 or 1
@@ -743,29 +869,85 @@ function Plugin:ApplySettings()
         if savedPositions then OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions) end
     end
 
-    -- Restore position from saved variables
+    -- Position: hudFrame is centered (non-movable); self.frame restores its saved position regardless of view.
+    self.hudFrame:ClearAllPoints()
+    self.hudFrame:SetPoint("CENTER", UIParent, "CENTER", 0, -50)
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
 
-    -- Ensure minimap is captured (e.g. after reload).
-    -- Skip when FarmHud is active — it legitimately reparented the minimap for its HUD overlay.
+    -- Force-perturb zoom so the C++ terrain renderer re-scales after a view swap even if the target == current zoom.
+    local function SetZoomWithRefresh(m, target)
+        if not (m and m.SetZoom and m.GetZoom and m.GetZoomLevels) then return end
+        local maxZ = m:GetZoomLevels() - 1
+        local bump = target < maxZ and target + 1 or target - 1
+        m:SetZoom(bump)
+        m:SetZoom(target)
+    end
+
+    -- View swap: hudFrame hosts surface + opacity; self.frame stays in place but hidden when HUD is on.
+    if isHud then
+        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(frame) end
+        local opacity = (self:GetSetting(SYSTEM_ID, "Hud_Opacity") or 30) / 100
+        self.hudFrame:SetAlpha(opacity)
+        self.hudFrame:EnableMouse(false)
+        self.hudFrame:EnableMouseWheel(false)
+        if minimapSurface then
+            self._preHudZoom = minimapSurface.GetZoom and minimapSurface:GetZoom() or nil
+            SetZoomWithRefresh(minimapSurface, 0)
+            minimapSurface:EnableMouse(false)
+            minimapSurface:EnableMouseWheel(false)
+        end
+        self.frame:Hide()
+        self.hudFrame:Show()
+        self:SetAddonIconsShown(false)
+    else
+        if minimapSurface then
+            if self._preHudZoom then SetZoomWithRefresh(minimapSurface, self._preHudZoom); self._preHudZoom = nil end
+            minimapSurface:EnableMouse(true)
+            minimapSurface:EnableMouseWheel(true)
+        end
+        self.hudFrame:Hide()
+        self.frame:Show()
+        self:SetAddonIconsShown(true)
+    end
+
+    -- Re-capture if the surface ended up outside our two hosts (e.g. lost on reload). FarmHud is its own.
     local minimap = self:GetBlizzardMinimap()
-    if minimap and minimap:GetParent() ~= frame and not self._farmHudActive then
+    local currentParent = minimap and minimap:GetParent()
+    if minimap and currentParent ~= self.frame and currentParent ~= self.hudFrame and not self._farmHudActive then
         self:CaptureBlizzardMinimap()
     end
 
-    -- Show the container
-    frame:Show()
+    -- ClickCapture: only intercept mouse clicks when at least one action is configured.
+    if frame.ClickCapture then
+        frame.ClickCapture:EnableMouse(self:HasAnyClickAction())
+    end
 
     -- Addon compartment (debounced to avoid C stack overrides during sliders)
     if self._compartmentTimer then self._compartmentTimer:Cancel() end
     self._compartmentTimer = C_Timer.NewTimer(0.2, function()
         self:ApplyAddonCompartment()
+        self:ApplyTrackingButton()
     end)
 
-    -- Visibility Engine integration (opacity, OOC fade, mounted, mouseover)
-    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID) end
+    -- Visibility Engine integration (opacity, OOC fade, mounted, mouseover).
+    -- Skipped in HUD view — the OOC fade hooks SetAlpha and overrides our Hud_Opacity slider.
+    if Orbit.OOCFadeMixin and not isHud then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID) end
 
     self._applyingSettings = nil
+end
+
+-- [ VIEW TOGGLE ]------------------------------------------------------------------------------------
+-- Hotkey-driven swap between the normal Minimap layout and the centered HUD overlay.
+-- Debounced (0.3s) so rapid mashing doesn't cause overlapping ApplySettings calls and the position/size
+-- jitter that produces.
+function Plugin:ToggleView()
+    if InCombatLockdown() then Orbit.CombatManager:QueueUpdate(function() self:ToggleView() end); return end
+    if self._viewToggleDebounce then return end
+    self._viewToggleDebounce = true
+    C_Timer.After(0.3, function() self._viewToggleDebounce = nil end)
+    local current = self:GetSetting(SYSTEM_ID, "View") or "minimap"
+    self:SetSetting(SYSTEM_ID, "View", current == "hud" and "minimap" or "hud")
+    self:ApplySettings()
 end
 
 -- [ TEARDOWN ]---------------------------------------------------------------------------------------

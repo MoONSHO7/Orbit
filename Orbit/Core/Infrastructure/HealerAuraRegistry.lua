@@ -95,6 +95,7 @@ local _activeSlots = {}    -- { { key, spellId, label, altSpellId }, ... }
 local _activeRaidBuffs = {} -- { { key = "RaidBuff", spellId, label }, ... }
 local _activeKeys = {}     -- { "HealerAura1", ..., "RaidBuff" }
 local _allSlotKeys = {}    -- all 7 + RaidBuff (for DisabledComponents)
+local _currentSpecSpells = {} -- full SPEC_SPELLS[specId] list for the active spec
 
 -- Build all slot keys (for DisabledComponents defaults)
 for i = 1, MAX_HEALER_SLOTS do _allSlotKeys[#_allSlotKeys + 1] = SLOT_KEYS[i] end
@@ -108,6 +109,7 @@ local function BuildCaches()
     _activeSlots = {}
     _activeRaidBuffs = {}
     _activeKeys = {}
+    _currentSpecSpells = spells or {}
     if spells then
         for i, spell in ipairs(spells) do
             if i > MAX_HEALER_SLOTS then break end
@@ -138,6 +140,7 @@ function Registry:ActiveRaidBuffs() return _activeRaidBuffs end
 function Registry:ActiveKeys() return _activeKeys end
 function Registry:AllSlotKeys() return _allSlotKeys end
 function Registry:SlotCount() return #_activeSlots end
+function Registry:GetCurrentSpecSpells() return _currentSpecSpells end
 
 function Registry:GetSlotLabel(key)
     for _, slot in ipairs(_activeSlots) do

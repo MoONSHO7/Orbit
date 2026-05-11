@@ -27,6 +27,11 @@ local function IsInCombatContext(frame)
     return InCombatLockdown() or UnitAffectingCombat("player")
 end
 
+local function IsSpellUIOpen()
+    local psf = PlayerSpellsFrame
+    return psf and psf:IsShown()
+end
+
 local function IsCursorRevealing(frame)
     if not frame or not frame.orbitCursorReveal then return false end
     local ct = GetCursorInfo()
@@ -85,7 +90,7 @@ local function UpdateFrameVisibility(frame, _, data)
     end
     if isMountedHidden then
         local _, _, mouseOver, showWithTarget = GetVESettings(data)
-        local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target")) or IsCursorRevealing(frame)
+        local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target")) or IsCursorRevealing(frame) or IsSpellUIOpen()
         if not revealFull then
             frame:SetAlpha(0)
             if not frame._oocFadeHidden then frame._oocFadeHidden = true; SetGroupBorderOOCHidden(frame, true) end
@@ -105,7 +110,7 @@ local function UpdateFrameVisibility(frame, _, data)
     end
     local isHovering = frame.orbitMouseOver
     local hasTarget = UnitExists("target")
-    local revealFull = (mouseOver and isHovering) or (showWithTarget and hasTarget) or IsCursorRevealing(frame)
+    local revealFull = (mouseOver and isHovering) or (showWithTarget and hasTarget) or IsCursorRevealing(frame) or IsSpellUIOpen()
     local shouldOOCHide = oocFade and not IsInCombatContext(frame) and not revealFull
     -- Alpha Lock caps reveal at base opacity instead of pushing to 1.0 on mouseOver/target.
     local finalAlpha
@@ -189,6 +194,26 @@ C_Timer.After(2, function()
     end
 end)
 
+-- Hook PlayerSpellsFrame (spellbook / talents) show/hide for action bar reveal.
+-- The frame is load-on-demand (Blizzard_PlayerSpells), so hook via ADDON_LOADED.
+local function HookSpellUI()
+    local psf = PlayerSpellsFrame
+    if psf and not psf._orbitOOCHooked then
+        psf:HookScript("OnShow", function() C_Timer.After(0.05, UpdateAllFrames) end)
+        psf:HookScript("OnHide", function() C_Timer.After(0.05, UpdateAllFrames) end)
+        psf._orbitOOCHooked = true
+    end
+end
+HookSpellUI()
+local spellUILoader = CreateFrame("Frame")
+spellUILoader:RegisterEvent("ADDON_LOADED")
+spellUILoader:SetScript("OnEvent", function(_, _, addon)
+    if addon == "Blizzard_PlayerSpells" then
+        HookSpellUI()
+        spellUILoader:UnregisterAllEvents()
+    end
+end)
+
 -- [ MIXIN FUNCTIONS ]--------------------------------------------------------------------------------
 function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover, veKey)
     if not frame then return end
@@ -244,7 +269,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             if Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
                 local isMH = d.veKey and Orbit.VisibilityEngine:GetFrameSetting(d.veKey, "hideMounted")
                 if isMH then
-                    local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver) or IsCursorRevealing(self)
+                    local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver) or IsCursorRevealing(self) or IsSpellUIOpen()
                     if not revealFull then isMountedHide = true end
                 end
             end
@@ -252,6 +277,9 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             local finalAlpha = alpha
             if isMountedHide then 
                 finalAlpha = 0
+            elseif IsSpellUIOpen() then
+                -- Spell UI override: show bars at full alpha
+                finalAlpha = math.max(alpha, 1)
             elseif not oocFade and maxAlpha >= 1 and not mouseOver then
                 -- Fast path: no VE effects active
                 finalAlpha = alpha
@@ -282,10 +310,13 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
     UpdateFrameVisibility(frame, nil, ManagedFrames[frame])
 end
 
--- Remove OOC Fade behavior from a frame
+-- Tear down hover ticker AND any in-flight UIFrameFadeIn/Out so a caller's subsequent SetAlpha sticks.
 function Mixin:RemoveOOCFade(frame)
     if not frame then return end
     ManagedFrames[frame] = nil
+    if frame.orbitOOCHoverTicker then frame.orbitOOCHoverTicker:Hide() end
+    frame.orbitMouseOver = nil
+    Orbit.Animation:StopHoverFade(frame)
     frame:SetAlpha(1)
 end
 

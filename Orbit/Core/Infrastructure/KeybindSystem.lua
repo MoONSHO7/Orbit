@@ -87,18 +87,16 @@ function KeybindSystem:GetForButton(button)
         return nil
     end
 
-    -- Try bindingAction first
     if button.bindingAction then
         local key = GetBindingKey(button.bindingAction)
         if key then
             local text = GetBindingText(key, 1)
             if text and text ~= "" then
-                return self:Format(text)
+                return IsBindingForGamePad(key) and text or self:Format(text)
             end
         end
     end
 
-    -- Try button name click binding
     if button.GetName then
         local name = button:GetName()
         if name then
@@ -106,7 +104,7 @@ function KeybindSystem:GetForButton(button)
             if key then
                 local text = GetBindingText(key, 1)
                 if text and text ~= "" then
-                    return self:Format(text)
+                    return IsBindingForGamePad(key) and text or self:Format(text)
                 end
             end
         end
@@ -246,7 +244,7 @@ function KeybindSystem:GetForSpell(spellID)
             if bindKey then
                 local text = GetBindingText(bindKey, 1)
                 if text and text ~= "" then
-                    key = KeybindSystem:Format(text)
+                    key = IsBindingForGamePad(bindKey) and text or KeybindSystem:Format(text)
                     spellKeybindMap[spellID] = key
                     return key
                 end
@@ -280,6 +278,7 @@ local CACHE_INVALIDATION_EVENTS = {
     "PLAYER_TALENT_UPDATE",
     "PLAYER_SPECIALIZATION_CHANGED",
     "SPELLS_CHANGED",
+    "GAME_PAD_ACTIVE_CHANGED",
 }
 
 for _, event in ipairs(CACHE_INVALIDATION_EVENTS) do

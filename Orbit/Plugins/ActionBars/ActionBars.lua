@@ -26,12 +26,6 @@ local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 
-local BAR_ART_ATLASES = {
-    Alliance = { left = "UI-HUD-ActionBar-Gryphon-Left", right = "UI-HUD-ActionBar-Gryphon-Right" },
-    Horde = { left = "UI-HUD-ActionBar-Wyvern-Left", right = "UI-HUD-ActionBar-Wyvern-Right" },
-}
-local BAR_ART_FALLBACK = BAR_ART_ATLASES.Alliance
-
 local SPECIAL_BAR_INDICES = { [STANCE_BAR_INDEX] = true, [POSSESS_BAR_INDEX] = true }
 local DROPPABLE_CURSOR_TYPES = { spell = true, petaction = true, flyout = true, item = true, macro = true, mount = true }
 local cachedOORColor, cachedOOMColor, cachedUnusableColor
@@ -57,7 +51,6 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     defaults = {
         IconSize = 34, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
-        ShowBarArt = false,
         DisabledComponents = {},
         ComponentPositions = {}, GlobalComponentPositions = {
             Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
@@ -159,15 +152,14 @@ function Plugin:AddSettings(dialog, systemFrame)
     local tabs = { "Layout", "Glow", "Colors" }
     local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
     if currentTab == "Layout" then
-        if systemIndex == 1 then
-            table.insert(schema.controls, { type = "slider", key = "NumActionBars", label = "|cFFFFD100" .. L.PLU_AB_NUM_BARS .. "|r", min = 1, max = 8, step = 1, default = 4, isGlobal = true,
-                onChange = function(val)
-                    self:SetSetting(1, "NumActionBars", val)
-                    for index, cont in pairs(self.containers) do
-                        if index <= 8 then self:ApplySettings(cont) end
-                    end
-                end })
-        end
+        table.insert(schema.controls, { type = "slider", key = "NumActionBars", label = "|cFFFFD100" .. L.PLU_AB_NUM_BARS .. "|r", min = 1, max = 8, step = 1, default = 4,
+            getValue = function() return self:GetSetting(1, "NumActionBars") end,
+            onChange = function(val)
+                self:SetSetting(1, "NumActionBars", val)
+                for index, cont in pairs(self.containers) do
+                    if index <= 8 then self:ApplySettings(cont) end
+                end
+            end })
         local config = BAR_CONFIG[systemIndex]
         local isSpecialBar = (config and config.isSpecial) or SPECIAL_BAR_INDICES[systemIndex]
         if config and config.count > 1 and not isSpecialBar then
@@ -199,10 +191,6 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
         table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_AB_ICON_PADDING, min = 0, max = 10, step = 1, default = 2,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
-        if systemIndex == 1 then
-            table.insert(schema.controls, { type = "checkbox", key = "ShowBarArt", label = L.PLU_AB_SHOW_BAR_ART, default = false,
-                onChange = function(val) self:SetSetting(1, "ShowBarArt", val); self:ApplySettings(container) end })
-        end
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = L.PLU_AB_HIDE_EMPTY, default = false }) end
     elseif currentTab == "Glow" then
@@ -462,30 +450,6 @@ end
 
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end
 
--- [ BAR ART ] ---------------------------------------------------------------------------------------
-local function UpdateBarArt(plugin, container)
-    local show = plugin:GetSetting(1, "ShowBarArt")
-    if not show then
-        if container.barArtLeft then container.barArtLeft:Hide() end
-        if container.barArtRight then container.barArtRight:Hide() end
-        return
-    end
-    local faction = UnitFactionGroup("player")
-    local atlases = BAR_ART_ATLASES[faction] or BAR_ART_FALLBACK
-    if not container.barArtLeft then
-        container.barArtLeft = container:CreateTexture(nil, "ARTWORK")
-        container.barArtRight = container:CreateTexture(nil, "ARTWORK")
-    end
-    container.barArtLeft:SetAtlas(atlases.left, true)
-    container.barArtLeft:ClearAllPoints()
-    container.barArtLeft:SetPoint("BOTTOMRIGHT", container, "BOTTOMLEFT", 0, 0)
-    container.barArtLeft:Show()
-    container.barArtRight:SetAtlas(atlases.right, true)
-    container.barArtRight:ClearAllPoints()
-    container.barArtRight:SetPoint("BOTTOMLEFT", container, "BOTTOMRIGHT", 0, 0)
-    container.barArtRight:Show()
-end
-
 -- [ BUTTON LAYOUT AND SKINNING ] --------------------------------------------------------------------
 function Plugin:LayoutButtons(index)
     if InCombatLockdown() then return end
@@ -591,7 +555,6 @@ function Plugin:LayoutButtons(index)
     if rawPadding == 0 then Orbit.Skin:ApplyIconGroupBorder(container, iconNineSlice)
     else Orbit.Skin:ClearIconGroupBorder(container) end
     Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
-    if index == 1 then UpdateBarArt(self, container) end
 end
 
 -- [ SETTINGS APPLICATION ] --------------------------------------------------------------------------

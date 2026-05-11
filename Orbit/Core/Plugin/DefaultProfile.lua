@@ -578,6 +578,9 @@ Orbit.Profile.defaults = {
             ["Orbit_MicroMenu"] = {
                 ["Orbit_MicroMenu"] = { Anchor = false, Padding = -5, Rows = 1, Position = { y = 1, x = 0, point = "BOTTOMRIGHT" } },
             },
+            ["Orbit_RaidPanel"] = {
+                [1] = { IconSize = 24, Spacing = 5, DisplayMode = 3, DisplayShape = 1, Compactness = 0, FadeEffect = 0, Anchor = false, Position = { y = 0, x = 200, point = "LEFT" } },
+            },
             ["Orbit_TargetCastBar"] = {
                 [1] = { Anchor = { target = "OrbitTargetFrame", padding = 0, edge = "TOP", align = "CENTER" }, CastBarHeight = 18, CastBarTextSize = 10, CastBarIcon = 1 },
             },

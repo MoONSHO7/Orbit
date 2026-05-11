@@ -36,8 +36,10 @@ function ABPreview:Setup(plugin, container, systemIndex)
         local globalFontName = Orbit.db.GlobalSettings.Font
         local fontPath = LSM:Fetch("font", globalFontName) or "Fonts\\FRIZQT__.TTF"
 
+        local kbPreview = (C_GamePad and C_GamePad.IsEnabled and C_GamePad.IsEnabled()) and "|A:Gamepad_Gen_1_32:14:14|a" or "Q"
+
         OrbitEngine.IconCanvasPreview:AttachTextComponents(preview, {
-            { key = "Keybind", preview = "Q", anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2 },
+            { key = "Keybind", preview = kbPreview, anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2 },
             { key = "MacroText", preview = "Macro", anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2 },
             { key = "Timer", preview = "5", anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
             { key = "Stacks", preview = "3", anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2 },

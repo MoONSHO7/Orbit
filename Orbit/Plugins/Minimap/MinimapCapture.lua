@@ -118,6 +118,18 @@ Plugin.GetBlizzardMinimap = GetBlizzardMinimap
 Plugin.GetBlizzardCluster = GetBlizzardCluster
 
 -- [ BLIZZARD ART STRIPPING ]-------------------------------------------------------------------------
+-- Hidden parent for Blizzard's compass/backdrop art. Reparenting (rather than :Hide() or SetAlpha(0))
+-- ensures the original ring can't reappear when WoW redraws on rotateMinimap toggle, zone change, or
+-- any other internal trigger that mutates the original parent's visibility state.
+local _hiddenHolder
+local function GetHiddenHolder()
+    if not _hiddenHolder then
+        _hiddenHolder = CreateFrame("Frame", "OrbitMinimapHiddenHolder", UIParent)
+        _hiddenHolder:Hide()
+    end
+    return _hiddenHolder
+end
+
 local function StripBlizzardArt()
     local cluster = GetBlizzardCluster()
     if not cluster then return end
@@ -125,8 +137,9 @@ local function StripBlizzardArt()
     -- Hide the entire cluster (takes BorderTop, ZoneTextButton, Tracking, IndicatorFrame, InstanceDifficulty)
     OrbitEngine.NativeFrame:Hide(cluster, { unregisterEvents = false, clearScripts = false })
 
-    if MinimapBackdrop then MinimapBackdrop:SetAlpha(0) end
-    if MinimapCompassTexture then MinimapCompassTexture:Hide() end
+    local holder = GetHiddenHolder()
+    if MinimapBackdrop and MinimapBackdrop.SetParent then MinimapBackdrop:SetParent(holder) end
+    if MinimapCompassTexture and MinimapCompassTexture.SetParent then MinimapCompassTexture:SetParent(holder) end
 
     -- Suppress Blizzard's edit mode selection on the minimap cluster
     if cluster.Selection then cluster.Selection:SetAlpha(0); cluster.Selection:EnableMouse(false) end
@@ -346,10 +359,13 @@ function Plugin:CaptureBlizzardMinimap()
 
     StripBlizzardArt()
 
-    minimap:SetParent(self.frame)
+    -- Parent to whichever host matches the current view so a re-capture mid-HUD doesn't snap us back.
+    local view = self:GetSetting(C.SYSTEM_ID, "View") or "minimap"
+    local host = (view == "hud" and self.hudFrame) or self.frame
+    minimap:SetParent(host)
     minimap:ClearAllPoints()
-    minimap:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
-    minimap:SetSize(self.frame:GetWidth(), self.frame:GetHeight())
+    minimap:SetPoint("CENTER", host, "CENTER", 0, 0)
+    minimap:SetSize(host:GetWidth(), host:GetHeight())
 
     minimap:EnableMouse(true)
     if minimap.RegisterForClicks then
@@ -358,12 +374,13 @@ function Plugin:CaptureBlizzardMinimap()
     minimap:SetArchBlobRingScalar(0)
     minimap:SetQuestBlobRingScalar(0)
 
-    -- Apply the correct mask immediately at capture time.
-    local shape = self:GetSetting(C.SYSTEM_ID, "Shape") or "square"
-    if shape == "round" then minimap:SetMaskTexture(C.MASK_ROUND) else minimap:SetMaskTexture(C.MASK_SQUARE) end
+    -- Apply the correct mask immediately at capture time (ApplyShape will reconcile if needed).
+    local shape = view == "hud" and "splatter" or (self:GetSetting(C.SYSTEM_ID, "Shape") or "square")
+    local isMasked = shape == "round" or shape == "splatter"
+    minimap:SetMaskTexture(isMasked and self:GetRoundMaskSource() or C.MASK_SQUARE)
 
-    OrbitEngine.FrameGuard:Protect(minimap, self.frame)
-    OrbitEngine.FrameGuard:UpdateProtection(minimap, self.frame, function() self:ApplySettings() end, { enforceShow = true })
+    OrbitEngine.FrameGuard:Protect(minimap, host)
+    OrbitEngine.FrameGuard:UpdateProtection(minimap, host, function() self:ApplySettings() end, { enforceShow = true })
 
     -- Click actions are handled by OrbitMinimapClickCapture (created in OnLoad),
     -- a MEDIUM-strata Button with SetPropagateMouseClicks(true) that covers the whole

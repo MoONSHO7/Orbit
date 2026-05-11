@@ -38,6 +38,21 @@ end
 function HealthMixin:ApplyHealthColor()
     if not self.Health then return end
 
+    local override = self._colorByAuraOverride
+    if override then
+        local tex = self.Health:GetStatusBarTexture()
+        if tex and tex.SetGradient then
+            REUSE_COLOR_L:SetRGBA(1, 1, 1, 1)
+            tex:SetGradient("HORIZONTAL", REUSE_COLOR_L, REUSE_COLOR_L)
+        end
+        if tex then
+            tex:SetVertexColor(override.r, override.g, override.b, override.a or 1)
+        else
+            self.Health:SetStatusBarColor(override.r, override.g, override.b, override.a or 1)
+        end
+        return
+    end
+
     local globalBarCurve = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BarColorCurve
     if not globalBarCurve or not globalBarCurve.pins or #globalBarCurve.pins == 0 then
         self.Health:SetStatusBarColor(DEFAULT_BAR_COLOR.r, DEFAULT_BAR_COLOR.g, DEFAULT_BAR_COLOR.b)

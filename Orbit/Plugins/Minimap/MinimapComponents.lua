@@ -9,6 +9,7 @@ local C = Orbit.MinimapConstants
 local SYSTEM_ID = C.SYSTEM_ID
 local MASK_SQUARE = C.MASK_SQUARE
 local MASK_ROUND = C.MASK_ROUND
+local BORDER_RING_OPTIONS = C.BORDER_RING_OPTIONS
 local COORDS_UPDATE_INTERVAL = C.COORDS_UPDATE_INTERVAL
 local ZOOM_BUTTON_W = C.ZOOM_BUTTON_W
 local ZOOM_BUTTON_IN_H = C.ZOOM_BUTTON_IN_H
@@ -19,16 +20,26 @@ local ZOOM_FADE_OUT = C.ZOOM_FADE_OUT
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 -- [ SHAPE ] -----------------------------------------------------------------------------------------
+-- The active BorderRing option can override the round mask with its own shipped texture file —
+-- e.g. Blizzard uses minimap.tga which has cardinal spike protrusions matching the ring atlas.
+-- Other options fall back to Circle.tga (MASK_ROUND).
+function Plugin:GetRoundMaskSource()
+    -- HUD view and the Splatter shape both render through the splatter.tga mask.
+    if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then return C.MASK_HUD end
+    if (self:GetSetting(SYSTEM_ID, "Shape") or "square") == "splatter" then return C.MASK_HUD end
+    local opt = BORDER_RING_OPTIONS[self:GetSetting(SYSTEM_ID, "BorderRing") or "none"]
+    if opt and opt.mask then return opt.mask end
+    return MASK_ROUND
+end
+
 function Plugin:ApplyShape()
     local frame = self.frame
-    local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
+    local view = self:GetSetting(SYSTEM_ID, "View") or "minimap"
+    local shape = view == "hud" and "splatter" or (self:GetSetting(SYSTEM_ID, "Shape") or "square")
     local minimap = self:GetBlizzardMinimap()
-    local isRound = shape == "round"
+    local isMasked = shape == "round" or shape == "splatter"
 
-    -- Apply mask to the Blizzard minimap render surface and, if present, the HybridMinimap
-    -- vector tile canvas. HybridMinimap uses its own CircleMask texture that must be updated
-    -- independently; toggling SetUseMaskTexture off/on is required to flush the change.
-    local mask = isRound and MASK_ROUND or MASK_SQUARE
+    local mask = isMasked and self:GetRoundMaskSource() or MASK_SQUARE
     if minimap then minimap:SetMaskTexture(mask) end
     if HybridMinimap then
         HybridMinimap.MapCanvas:SetUseMaskTexture(false)
@@ -36,40 +47,126 @@ function Plugin:ApplyShape()
         HybridMinimap.MapCanvas:SetUseMaskTexture(true)
     end
 
-    -- Clip the background texture to the same shape.
-    -- Textures use AddMaskTexture; we cache the mask texture object on the bg.
+    -- Hide bg in masked modes so no square backdrop bleeds through under the ring/mask edge.
     if frame.bg then
-        if isRound then
-            if not frame.bg._orbitMask then
-                frame.bg._orbitMask = frame:CreateMaskTexture()
-                frame.bg._orbitMask:SetTexture(MASK_ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-                frame.bg._orbitMask:SetAllPoints(frame.bg)
-                frame.bg:AddMaskTexture(frame.bg._orbitMask)
-            end
-            frame.bg._orbitMask:Show()
+        if isMasked then
+            if frame.bg._orbitMask then frame.bg._orbitMask:Hide() end
+            frame.bg:SetColorTexture(0, 0, 0, 0)
+            frame.bg:Hide()
         else
-            if frame.bg._orbitMask then
-                frame.bg._orbitMask:Hide()
-            end
+            frame.bg:Show()
+            if frame.bg._orbitMask then frame.bg._orbitMask:Hide() end
         end
     end
 
-    -- Square border vs. round ring.
-    -- For round: force-clear any NineSlice overlay and hide the border frame entirely,
-    -- regardless of the global border style setting. The round shape uses the ring atlas instead.
     local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
     local bc = self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR
-    if isRound then
+    if isMasked then
         Orbit.Skin:ClearNineSliceBorder(frame)
         Orbit.Skin:SkinBorder(frame, frame, 0, bc, false, true)
-        if frame.RoundBorder then
-            frame.RoundBorder:SetVertexColor(bc.r, bc.g, bc.b, bc.a or 1)
-            frame.RoundBorder:Show()
-        end
+        self:ApplyBorderRing(bc)
     else
         Orbit.Skin:SkinBorder(frame, frame, borderSize, bc)
-        if frame.RoundBorder then frame.RoundBorder:Hide() end
+        if frame.BorderRing then frame.BorderRing:Hide() end
     end
+end
+
+-- [ BORDER RING ] -----------------------------------------------------------------------------------
+-- Shared by ApplyBorderRing AND the rotation driver so the driver never reads a stale saved BorderRing.
+function Plugin:GetEffectiveRingChoice()
+    local view = self:GetSetting(SYSTEM_ID, "View") or "minimap"
+    local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
+    if view == "hud" or shape == "splatter" then return "none" end
+    return self:GetSetting(SYSTEM_ID, "BorderRing") or "none"
+end
+
+function Plugin:ApplyBorderRing(color)
+    local ring = self.frame and self.frame.BorderRing
+    local solid = self.frame and self.frame.SolidRing
+    if not ring or not solid then return end
+    local opt = BORDER_RING_OPTIONS[self:GetEffectiveRingChoice()]
+    if not opt then ring:Hide(); solid:Hide(); return end
+
+    -- Pixel-snapped offsets (SetPoint isn't covered by Pixel:Enforce — it only hooks size methods).
+    local scale = self.frame:GetEffectiveScale()
+    local ox = OrbitEngine.Pixel:Snap(opt.offsetX or 0, scale)
+    local oy = OrbitEngine.Pixel:Snap(opt.offsetY or 0, scale)
+
+    -- Solid colored ring (BorderSize-controlled backdrop clipped by Circle.tga).
+    if opt.fill then
+        local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
+        local size = self.frame:GetWidth() + borderSize * 2
+        solid:SetColorTexture(color.r, color.g, color.b, color.a or 1)
+        solid:ClearAllPoints()
+        solid:SetSize(size, size)
+        solid:SetPoint("CENTER", self.frame, "CENTER", ox, oy)
+        solid._mask:SetSize(size, size)
+        solid._mask:ClearAllPoints()
+        solid._mask:SetPoint("CENTER", solid, "CENTER", 0, 0)
+        solid:Show()
+    else
+        solid:Hide()
+    end
+
+    -- Decorative atlas/texture overlay drawn above the masked minimap.
+    if opt.atlas or opt.texture then
+        if opt.atlas then
+            ring:SetAtlas(opt.atlas, false)
+        else
+            ring:SetTexture(opt.texture, "CLAMP", "CLAMP")
+            ring:SetTexCoord(0, 1, 0, 1)
+        end
+        ring:SetDrawLayer("OVERLAY", opt.sublevel or 7)
+        ring:ClearAllPoints()
+        local size = self.frame:GetWidth()
+        local padding = opt.padding or 0
+        ring:SetSize(size * (opt.ratioX or 1) + padding, size * (opt.ratioY or 1) + padding)
+        ring:SetPoint("CENTER", self.frame, "CENTER", ox, oy)
+        ring:SetVertexColor(color.r, color.g, color.b, color.a or 1)
+        -- Reset rotation/alpha when the new option doesn't drive them, so we don't inherit
+        -- residual state from a previously-selected animated option.
+        local trackingFacing = opt.rotatable and self:GetSetting(SYSTEM_ID, "RotateMinimap")
+        if not (trackingFacing or opt.spinSeconds) then ring:SetRotation(0) end
+        if not opt.pulse then ring:SetAlpha(1) end
+        ring:Show()
+        self:EnsureBorderRingDriver()
+    else
+        ring:Hide()
+    end
+end
+
+-- Always-on OnUpdate driver, created lazily once. Re-checks conditions every frame so toggling
+-- ring options / RotateMinimap takes effect without needing to start/stop the driver. Runs every
+-- frame for smooth rotation tracking (SetRotation is cheap). Drives three animation hooks:
+--   * rotatable: track GetPlayerFacing when RotateMinimap is on (Blizzard)
+--   * spinSeconds: continuous spin, one revolution per N seconds (Void)
+--   * pulse: alpha oscillates between pulse.min and pulse.max over pulse.period seconds (Void)
+function Plugin:EnsureBorderRingDriver()
+    if self._ringRotationDriver then return end
+    local plugin = self
+    local TAU = 2 * math.pi
+    self._ringRotationDriver = CreateFrame("Frame")
+    self._ringRotationDriver:SetScript("OnUpdate", function()
+        local ring = plugin.frame and plugin.frame.BorderRing
+        if not ring or not ring:IsShown() then return end
+        local opt = BORDER_RING_OPTIONS[plugin:GetEffectiveRingChoice()]
+        if not opt then return end
+
+        if opt.rotatable and plugin:GetSetting(SYSTEM_ID, "RotateMinimap") then
+            local facing = GetPlayerFacing()
+            if facing then ring:SetRotation(-facing) end
+        elseif opt.spinSeconds then
+            ring:SetRotation((GetTime() % opt.spinSeconds) / opt.spinSeconds * TAU)
+        end
+
+        if opt.pulse then
+            local p = opt.pulse
+            local period = p.period or 4
+            local minA, maxA = p.min or 0.8, p.max or 1.0
+            local phase = (GetTime() % period) / period * TAU
+            ring:SetAlpha((minA + maxA) / 2 + (maxA - minA) / 2 * math.sin(phase))
+        end
+    end)
 end
 
 -- [ ZONE TEXT ]--------------------------------------------------------------------------------------
@@ -129,14 +226,32 @@ do
     end)
 end
 
+-- Format time using the cached military-time flag instead of re-reading the CVar.
+-- GameTime_GetFormattedTime always calls GetCVarBool("timeMgrUseMilitaryTime") internally,
+-- so if anything else flips that CVar the clock format can desync from the user's preference.
+local function FormatClockTime(hour, minute)
+    if _clockUseMilitary then
+        return format(TIMEMANAGER_TICKER_24HOUR, hour, minute)
+    else
+        if hour == 0 then
+            hour = 12
+        elseif hour > 12 then
+            hour = hour - 12
+        end
+        return format(TIMEMANAGER_TICKER_12HOUR, hour, minute)
+    end
+end
+
 function Plugin:UpdateClock()
     if _clockUseLocal == nil then RefreshClockCVars() end
     local text = self.frame.Clock.Text
+    local hour, minute
     if _clockUseLocal then
-        text:SetText(GameTime_GetLocalTime(_clockUseMilitary))
+        hour, minute = tonumber(date("%H")), tonumber(date("%M"))
     else
-        text:SetText(GameTime_GetGameTime(_clockUseMilitary))
+        hour, minute = GetGameTime()
     end
+    text:SetText(FormatClockTime(hour, minute))
     self.frame.Clock:SetSize(text:GetStringWidth() + 2, text:GetStringHeight() + 2)
 end
 
@@ -338,7 +453,96 @@ function Plugin:StartAutoZoomOut()
     end)
 end
 
--- [ CALENDAR PENDING INVITES ]-----------------------------------------------------------------------
+-- [ TRACKING BUTTON ]-------------------------------------------------------------------------------
+
+local TRACKING_BUTTON_SIZE = 24
+local TRACKING_FADE_IN = 0.15
+local TRACKING_FADE_OUT = 0.3
+
+function Plugin:CreateTrackingButton()
+    if self._trackingButton then return end
+    local frame = self.frame
+
+    -- Toggle button — parented to Overlay so it renders above the Minimap surface.
+    local btn = CreateFrame("Button", "OrbitMinimapTrackingButton", frame.Overlay or frame)
+    btn:SetSize(TRACKING_BUTTON_SIZE, TRACKING_BUTTON_SIZE)
+    btn:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 2, 2)
+    btn:SetFrameLevel(frame.ClickCapture:GetFrameLevel() + 2)
+    btn.orbitOriginalWidth  = TRACKING_BUTTON_SIZE
+    btn.orbitOriginalHeight = TRACKING_BUTTON_SIZE
+
+    btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+    btn.highlight:SetAllPoints(btn)
+    btn.highlight:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+    btn.highlight:SetAlpha(0.5)
+    btn.highlight:SetBlendMode("ADD")
+
+    -- Atlas icon: Blizzard's tracking binoculars
+    btn.icon = btn:CreateTexture(nil, "ARTWORK")
+    btn.icon:SetAllPoints(btn)
+    btn.icon:SetAtlas("ui-hud-minimap-tracking-up", false)
+
+    -- Visual used by canvas mode dock preview
+    btn.visual = btn.icon
+
+    btn:SetScript("OnMouseDown", function() btn.icon:SetAlpha(0.6) end)
+    btn:SetScript("OnMouseUp",   function() btn.icon:SetAlpha(1) end)
+
+    -- Start hidden; revealed on minimap hover.
+    btn:SetAlpha(0)
+
+    btn:SetScript("OnClick", function(b) self:RunMinimapClickAction("tracking", b) end)
+    btn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+        GameTooltip:SetText(Orbit.L.PLU_MINIMAP_ACT_TRACK, 1, 1, 1)
+        GameTooltip:AddLine("Click to open tracking menu", 0.7, 0.7, 0.7)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    self._trackingButton = btn
+end
+
+function Plugin:ApplyTrackingButton()
+    local frame = self.frame
+    local btn = self._trackingButton
+    if not btn then return end
+
+    local useClickAction = self:UsesTrackingClickAction()
+
+    if not useClickAction and not self:IsComponentDisabled("Tracking") then
+        btn:Show()
+
+        if not frame._trackingHoverHooked then
+            local minimap = Minimap
+            local function ShowTrackingButton()
+                if not btn:IsShown() then return end
+                UIFrameFadeIn(btn, TRACKING_FADE_IN, btn:GetAlpha(), 1)
+            end
+            local function HideTrackingButton()
+                if not btn:IsShown() then return end
+                if btn:IsMouseOver() then return end
+                if minimap and minimap:IsMouseOver() then return end
+                UIFrameFadeOut(btn, TRACKING_FADE_OUT, btn:GetAlpha(), 0)
+            end
+            frame:HookScript("OnEnter", ShowTrackingButton)
+            frame:HookScript("OnLeave", HideTrackingButton)
+            if minimap then
+                minimap:HookScript("OnEnter", ShowTrackingButton)
+                minimap:HookScript("OnLeave", HideTrackingButton)
+            end
+            btn:HookScript("OnEnter", ShowTrackingButton)
+            btn:HookScript("OnLeave", HideTrackingButton)
+            frame._trackingHoverHooked = true
+        end
+    else
+        btn:SetAlpha(0)
+        btn:Hide()
+    end
+end
+
+-- [ CALENDAR PENDING INVITES ]----------------------------------------------------------------------
+
 function Plugin:UpdateCalendarInvites()
     local glow = self.frame.Clock.InviteGlow
     local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0

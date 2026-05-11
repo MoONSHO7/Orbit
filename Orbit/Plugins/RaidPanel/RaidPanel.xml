@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="RaidPanelData.lua"/>
+    <Script file="RaidPanelLayout.lua"/>
+    <Script file="RaidPanelVisibility.lua"/>
+    <Script file="RaidPanelMenus.lua"/>
+    <Script file="RaidPanelIcon.lua"/>
+    <Script file="RaidPanel.lua"/>
+</Ui>
