@@ -121,6 +121,21 @@ function Plugin:AddSettings(dialog, systemFrame)
             tooltip = L.PLU_MINIMAP_AUTO_ZOOM_TT,
             default = true,
         })
+
+        -- Addon Tray Direction
+        table.insert(schema.controls, {
+            type = "dropdown",
+            key = "FlyoutDirection",
+            label = L.PLU_MINIMAP_FLYOUT_DIR,
+            options = {
+                { value = "auto",  label = L.PLU_MINIMAP_FLYOUT_AUTO },
+                { value = "left",  label = L.PLU_MINIMAP_FLYOUT_LEFT },
+                { value = "right", label = L.PLU_MINIMAP_FLYOUT_RIGHT },
+                { value = "above", label = L.PLU_MINIMAP_FLYOUT_ABOVE },
+                { value = "below", label = L.PLU_MINIMAP_FLYOUT_BELOW },
+            },
+            default = "auto",
+        })
     elseif currentTab == L.PLU_MINIMAP_TAB_HUD then
         -- HUD Size (used when View = "hud", toggled via the bindable hotkey)
         table.insert(schema.controls, {

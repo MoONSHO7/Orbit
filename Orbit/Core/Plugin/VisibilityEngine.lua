@@ -274,6 +274,21 @@ local function HasNonDefaultSecureSettings(self, entry)
     if self:GetFrameSetting(entry.key, "hideMounted") then return true end
     return false
 end
+
+-- True if the user has explicitly stored any value that differs from the default for this entry.
+-- Compares each stored value against the actual DEFAULTS table (not truthiness).
+local function HasUserCustomisedSettings(key)
+    local db = GetDB()
+    if not db then return false end
+    local frameDB = db[key]
+    if not frameDB then return false end
+    for settingKey, defaultValue in pairs(DEFAULTS) do
+        local stored = frameDB[settingKey]
+        if stored ~= nil and stored ~= defaultValue then return true end
+    end
+    return false
+end
+
 function VE:ApplySecureBlizzardFrame(entry)
     if IsOwnedByEnabledPlugin(entry) then return end
     local frame = _G[entry.blizzardFrame]
@@ -311,17 +326,24 @@ end
 function VE:ApplyBlizzardSettings()
     if not Orbit.OOCFadeMixin then return end
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
-        local frame = _G[entry.blizzardFrame]
-        if frame then
-            if entry.secure then
-                self:ApplySecureBlizzardFrame(entry)
-            else
-                if entry.key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
-                Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
-                -- Minimap: apply opacity to cluster children (including Minimap itself for engine-rendered POI pins)
-                if entry.key == "BlizzMinimap" then
-                    local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
-                    for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+        if IsOwnedByEnabledPlugin(entry) then
+            -- Plugin manages this frame — skip VE application.
+        else
+            local frame = _G[entry.blizzardFrame]
+            if frame then
+                if entry.secure then
+                    self:ApplySecureBlizzardFrame(entry)
+                elseif not HasUserCustomisedSettings(entry.key) then
+                    -- All settings at defaults — skip to avoid forcing alpha on frames another addon manages.
+                else
+                    if entry.key == "BlizzMinimap" then frame.orbitOpacityExternal = true end
+                    Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
+                    if entry.key == "BlizzMinimap" then
+                        local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
+                        if opacity < 1 then
+                            for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                        end
+                    end
                 end
             end
         end
@@ -367,6 +389,8 @@ function VE:ApplyFrame(key)
     if not Orbit.OOCFadeMixin then return end
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
         if entry.key == key then
+            if IsOwnedByEnabledPlugin(entry) then return end
+            if not entry.secure and not HasUserCustomisedSettings(entry.key) then return end
             local frame = _G[entry.blizzardFrame]
             if frame then
                 if entry.secure then
@@ -376,7 +400,9 @@ function VE:ApplyFrame(key)
                     Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
                     if key == "BlizzMinimap" then
                         local opacity = (self:GetFrameSetting(key, "opacity") or 100) / 100
-                        for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                        if opacity < 1 then
+                            for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                        end
                     end
                 end
             end
