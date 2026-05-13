@@ -24,107 +24,143 @@ function Plugin:AddSettings(dialog, systemFrame)
         controls = {},
     }
 
-    -- Scale
-    SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
-        key = "Scale",
-        label = "Scale",
-        default = C.DEFAULT_SCALE,
-    })
+    SB:SetTabRefreshCallback(dialog, self, systemFrame)
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour" }, "Layout")
 
-    -- Width
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "Width",
-        label = "Width",
-        min = C.WIDTH_MIN,
-        max = C.WIDTH_MAX,
-        step = C.WIDTH_STEP,
-        default = C.DEFAULT_WIDTH,
-        onChange = OnChange(self, systemIndex, "Width"),
-    })
+    if currentTab == "Layout" then
+        -- Scale
+        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
+            key = "Scale",
+            label = "Scale",
+            default = C.DEFAULT_SCALE,
+        })
 
-    -- Height
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "Height",
-        label = "Height",
-        min = C.HEIGHT_MIN,
-        max = C.HEIGHT_MAX,
-        step = C.HEIGHT_STEP,
-        default = C.DEFAULT_HEIGHT,
-        onChange = OnChange(self, systemIndex, "Height"),
-    })
+        -- Width
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "Width",
+            label = "Width",
+            min = C.WIDTH_MIN,
+            max = C.WIDTH_MAX,
+            step = C.WIDTH_STEP,
+            default = C.DEFAULT_WIDTH,
+            onChange = OnChange(self, systemIndex, "Width"),
+        })
 
-    -- Show Border
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "ShowBorder",
-        label = "Show Border",
-        default = true,
-        onChange = OnChange(self, systemIndex, "ShowBorder"),
-    })
+        -- Height
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "Height",
+            label = "Height",
+            min = C.HEIGHT_MIN,
+            max = C.HEIGHT_MAX,
+            step = C.HEIGHT_STEP,
+            default = C.DEFAULT_HEIGHT,
+            onChange = OnChange(self, systemIndex, "Height"),
+        })
 
-    -- Background Opacity
-    table.insert(schema.controls, {
-        type = "slider",
-        key = "BackgroundOpacity",
-        label = "Background Opacity",
-        min = C.BG_OPACITY_MIN,
-        max = C.BG_OPACITY_MAX,
-        step = C.BG_OPACITY_STEP,
-        default = C.BG_OPACITY_DEFAULT,
-        formatter = function(v) return v .. "%" end,
-        onChange = OnChange(self, systemIndex, "BackgroundOpacity"),
-    })
+        -- Show Border
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowBorder",
+            label = "Show Border",
+            default = true,
+            onChange = OnChange(self, systemIndex, "ShowBorder"),
+        })
 
-    -- Class Color Headers
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "ClassColorHeaders",
-        label = "Class Color Headers",
-        default = false,
-        onChange = OnChange(self, systemIndex, "ClassColorHeaders"),
-    })
+        -- Background Opacity
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "BackgroundOpacity",
+            label = "Background Opacity",
+            min = C.BG_OPACITY_MIN,
+            max = C.BG_OPACITY_MAX,
+            step = C.BG_OPACITY_STEP,
+            default = C.BG_OPACITY_DEFAULT,
+            formatter = function(v) return v .. "%" end,
+            onChange = OnChange(self, systemIndex, "BackgroundOpacity"),
+        })
 
-    -- Header Separators
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "HeaderSeparators",
-        label = "Header Separators",
-        default = true,
-        onChange = OnChange(self, systemIndex, "HeaderSeparators"),
-    })
+        -- Hover Fade Opacity (100 = disabled; below 100 = fade out when not moused over)
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "Opacity",
+            label = "Hover Fade Opacity",
+            min = C.OPACITY_MIN,
+            max = C.OPACITY_MAX,
+            step = C.OPACITY_STEP,
+            default = C.OPACITY_DEFAULT,
+            formatter = function(v)
+                if v >= 100 then return "Off" end
+                return v .. "%"
+            end,
+            onChange = OnChange(self, systemIndex, "Opacity"),
+        })
 
-    -- Quest Marker Style
-    table.insert(schema.controls, {
-        type = "dropdown",
-        key = "QuestMarkerStyle",
-        label = "Quest Marker Style",
-        default = "Simplified",
-        options = {
-            { label = "Simplified", value = "Simplified" },
-            { label = "Icons", value = "Icons" },
-        },
-        onChange = OnChange(self, systemIndex, "QuestMarkerStyle"),
-    })
+    elseif currentTab == "Behaviour" then
+        -- Class Color Headers
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ClassColorHeaders",
+            label = "Class Color Headers",
+            default = false,
+            onChange = OnChange(self, systemIndex, "ClassColorHeaders"),
+        })
 
-    -- Skin Progress Bars
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "SkinProgressBars",
-        label = "Skin Progress Bars",
-        default = true,
-        onChange = OnChange(self, systemIndex, "SkinProgressBars"),
-    })
+        -- Header Separators
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "HeaderSeparators",
+            label = "Header Separators",
+            default = true,
+            onChange = OnChange(self, systemIndex, "HeaderSeparators"),
+        })
 
-    -- Auto-Collapse in Combat
-    table.insert(schema.controls, {
-        type = "checkbox",
-        key = "AutoCollapseCombat",
-        label = "Collapse in Combat",
-        default = false,
-        onChange = OnChange(self, systemIndex, "AutoCollapseCombat"),
-    })
+        -- Quest Marker Style
+        table.insert(schema.controls, {
+            type = "dropdown",
+            key = "QuestMarkerStyle",
+            label = "Quest Marker Style",
+            default = "Simplified",
+            options = {
+                { label = "Simplified", value = "Simplified" },
+                { label = "Icons", value = "Icons" },
+            },
+            onChange = OnChange(self, systemIndex, "QuestMarkerStyle"),
+        })
+
+        -- Skin Progress Bars
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "SkinProgressBars",
+            label = "Skin Progress Bars",
+            default = true,
+            onChange = OnChange(self, systemIndex, "SkinProgressBars"),
+        })
+
+        -- Progress Bar Label Mode
+        table.insert(schema.controls, {
+            type = "dropdown",
+            key = "ProgressBarMode",
+            label = "Progress Bar Label",
+            default = "Percent",
+            options = {
+                { label = "Percent (75%)", value = "Percent" },
+                { label = "X / Y (150 / 200)", value = "XY" },
+                { label = "Both (150 / 200  (75%))", value = "Both" },
+            },
+            onChange = OnChange(self, systemIndex, "ProgressBarMode"),
+        })
+
+        -- Auto-Collapse in Combat
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "AutoCollapseCombat",
+            label = "Collapse in Combat",
+            default = false,
+            onChange = OnChange(self, systemIndex, "AutoCollapseCombat"),
+        })
+    end
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end

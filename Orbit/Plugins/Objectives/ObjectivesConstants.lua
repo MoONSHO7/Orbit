@@ -19,6 +19,12 @@ Orbit.ObjectivesConstants = {
     CONTENT_PADDING = 6,
     HEADER_SEPARATOR_HEIGHT = 2,
 
+    -- Hover fade (Opacity = 100 means disabled; below 100 enables fade-to-opacity when moused out)
+    OPACITY_MIN = 0,
+    OPACITY_MAX = 100,
+    OPACITY_STEP = 5,
+    OPACITY_DEFAULT = 100,
+
     -- All tracker module globals that Blizzard creates
     TRACKER_MODULES = {
         "ScenarioObjectiveTracker",

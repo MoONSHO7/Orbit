@@ -215,13 +215,14 @@ local POI_COLOR_DEFAULT = { r = 0.45, g = 0.45, b = 0.45 }
 local POI_COLOR_COMPLETE = { r = 0.90, g = 0.80, b = 0.10 }
 
 -- Quest classification → atlas icon mapping (for Icon mode)
+-- Uses Blizzard's world-map POI atlas family, matching how the game renders quest icons on the map.
 local POI_CLASSIFICATION_ATLAS = {
-    [Enum.QuestClassification.Campaign]       = "questlog-questtypeicon-story",
+    [Enum.QuestClassification.Campaign]       = "Quest-Campaign-Available",
     [Enum.QuestClassification.Important]      = "importantavailablequesticon",
-    [Enum.QuestClassification.Legendary]      = "legendaryavailablequesticon",
-    [Enum.QuestClassification.Calling]        = "questlog-questtypeicon-daily",
-    [Enum.QuestClassification.Meta]           = "Wrapperavailablequesticon",
-    [Enum.QuestClassification.Recurring]      = "questlog-questtypeicon-daily",
+    [Enum.QuestClassification.Legendary]      = "UI-QuestPoiLegendary-QuestBang",
+    [Enum.QuestClassification.Calling]        = "Quest-DailyCampaign-Available",
+    [Enum.QuestClassification.Meta]           = "quest-wrapper-available",
+    [Enum.QuestClassification.Recurring]      = "quest-recurring-available",
     [Enum.QuestClassification.BonusObjective] = "Bonus-Objective-Star",
     [Enum.QuestClassification.Threat]         = "questlog-questtypeicon-raid",
     [Enum.QuestClassification.WorldQuest]     = "Worldquest-icon",
@@ -245,8 +246,8 @@ if Enum.QuestTag then
     end
 end
 
-local POI_ATLAS_DEFAULT = "questlog-questtypeicon-quest"
-local POI_ATLAS_COMPLETE = "UI-QuestIcon-TurnIn-Normal"
+local POI_ATLAS_DEFAULT = "QuestNormal"
+local POI_ATLAS_COMPLETE = "QuestTurnin"
 
 -- Returns the atlas icon for a quest block
 local function GetPOIAtlas(block)
@@ -255,7 +256,12 @@ local function GetPOIAtlas(block)
     local questID = block.poiQuestID
     if not questID then return POI_ATLAS_DEFAULT end
 
-    -- 1. Quest Tags override classification for type-specific icons
+    -- 1. Ready to turn in — takes priority over type icon
+    if C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(questID) then
+        return POI_ATLAS_COMPLETE
+    end
+
+    -- 2. Quest Tags override classification for type-specific icons
     if C_QuestLog.GetQuestTagInfo then
         local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
         if tagInfo and tagInfo.tagID and POI_TAG_ATLAS[tagInfo.tagID] then
@@ -263,12 +269,12 @@ local function GetPOIAtlas(block)
         end
     end
 
-    -- 2. Campaign check
+    -- 3. Campaign check
     if C_CampaignInfo and C_CampaignInfo.IsCampaignQuest(questID) then
         return POI_CLASSIFICATION_ATLAS[Enum.QuestClassification.Campaign]
     end
 
-    -- 3. Classification
+    -- 4. Classification
     local classification = C_QuestInfoSystem.GetQuestClassification(questID)
     if classification and POI_CLASSIFICATION_ATLAS[classification] then
         return POI_CLASSIFICATION_ATLAS[classification]
@@ -333,21 +339,13 @@ end
 local function StripPOIButton(poiButton)
     if not poiButton then return end
 
-    -- In Icon mode: leave Blizzard's native rendering intact, only strip the oversized glow
-    if GetPOIMode() == "Icons" then
-        if poiButton.Glow then poiButton.Glow:SetAlpha(0) end
-        return
-    end
-
-    -- Simplified mode: strip all Blizzard decorations
+    -- Strip all Blizzard decorations — in both modes we render our own content on a clean surface
     local nt = poiButton:GetNormalTexture() or poiButton.NormalTexture
     if nt then nt:SetAlpha(0) end
 
-    -- Strip pushed state border
     local pt = poiButton:GetPushedTexture() or poiButton.PushedTexture
     if pt then pt:SetAlpha(0) end
 
-    -- Strip highlight
     local hl = poiButton:GetHighlightTexture() or poiButton.HighlightTexture
     if hl then hl:SetAlpha(0) end
 
@@ -355,17 +353,18 @@ local function StripPOIButton(poiButton)
     if poiButton.Glow then poiButton.Glow:SetAlpha(0) end
 end
 
--- Apply the correct Display.Icon content based on mode
--- In Simplified mode: show the quest number filling the button
--- In Icons mode: leave Blizzard's default Display.Icon alone (it shows quest type icons natively)
+-- Apply the correct Display.Icon content based on mode.
+-- Simplified: fills the button with the quest number (Blizzard's own digit texture).
+-- Icons: explicitly sets the Blizzard POI atlas so the map-style quest icon is rendered.
 local function ApplyPOIDisplay(poiButton, block)
     if not poiButton or not poiButton.Display or not poiButton.Display.Icon then return end
     local icon = poiButton.Display.Icon
-    local isIconMode = GetPOIMode() == "Icons"
 
-    if isIconMode then
-        -- Let Blizzard's native icon render untouched
+    if GetPOIMode() == "Icons" then
+        icon:SetAtlas(GetPOIAtlas(block))
         icon:SetAlpha(1)
+        icon:ClearAllPoints()
+        icon:SetAllPoints(poiButton)
     else
         -- Simplified: fill the button with the quest number
         icon:SetAlpha(1)
@@ -514,6 +513,45 @@ local function OnAddObjective(block, key)
     end
 end
 
+-- [ SKIN: PROGRESS BAR LABEL ]-----------------------------------------------------------------------
+local function FormatProgressLabel(bar)
+    if not bar or not bar.Label then return end
+    local _, max = bar:GetMinMaxValues()
+    local val = bar:GetValue()
+    if not max or max == 0 then return end
+
+    local mode = Plugin:GetSetting(SYSTEM_ID, "ProgressBarMode") or "Percent"
+    local text
+    if mode == "XY" then
+        text = math.floor(val) .. " / " .. math.floor(max)
+    elseif mode == "Both" then
+        local pct = math.floor((val / max) * 100 + 0.5)
+        text = math.floor(val) .. " / " .. math.floor(max) .. "  (" .. pct .. "%)"
+    else -- "Percent"
+        text = math.floor((val / max) * 100 + 0.5) .. "%"
+    end
+
+    bar._orbitUpdating = true
+    bar.Label:SetText(text)
+    bar._orbitUpdating = false
+end
+
+local function EnsureProgressLabelHook(bar)
+    if not bar or not bar.Label then return end
+    if bar._orbitLabelHooked then return end
+
+    hooksecurefunc(bar.Label, "SetText", function(self, text)
+        if bar._orbitUpdating then return end
+        -- Only reformat when Blizzard is writing real content, not clearing
+        if text and text ~= "" then
+            FormatProgressLabel(bar)
+        end
+    end)
+
+    bar._orbitLabelHooked = true
+    FormatProgressLabel(bar)
+end
+
 -- [ SKIN: PROGRESS BAR ]-----------------------------------------------------------------------------
 local function SkinProgressBar(tracker, key)
     local progressBar = tracker.usedProgressBars and tracker.usedProgressBars[key]
@@ -575,6 +613,7 @@ local function SkinProgressBar(tracker, key)
     if bar.Label then ApplyFont(bar.Label) end
 
     bar._orbitSkinned = true
+    EnsureProgressLabelHook(bar)
 end
 
 -- [ SKIN: TIMER BAR ]--------------------------------------------------------------------------------
@@ -883,6 +922,27 @@ function Plugin:ApplySkins()
             ApplyHeaderColors(tracker.Header, classColorHeaders)
             ApplyHeaderFont(tracker.Header)
             ApplyHeaderSeparator(tracker.Header, headerSeparators ~= false, classColorHeaders)
+        end
+    end
+
+    -- Propagate live setting changes to already-rendered blocks and bars
+    self:ReSkinExistingBlocks()
+end
+
+-- [ RE-SKIN EXISTING BLOCKS ]------------------------------------------------------------------------
+-- Installs progress label hooks on bars that were skinned before ProgressBarMode existed,
+-- and forces an immediate re-format when the mode setting changes.
+function Plugin:ReSkinExistingBlocks()
+    for _, moduleName in pairs(C.TRACKER_MODULES) do
+        local tracker = _G[moduleName]
+        if tracker and tracker.usedProgressBars then
+            for _, progressBar in pairs(tracker.usedProgressBars) do
+                local bar = progressBar and progressBar.Bar
+                if bar then
+                    EnsureProgressLabelHook(bar)
+                    FormatProgressLabel(bar)
+                end
+            end
         end
     end
 end
