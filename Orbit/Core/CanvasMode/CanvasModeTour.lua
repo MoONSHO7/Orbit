@@ -106,7 +106,8 @@ local function MakeBorderEdge(parent, horiz, p1, r1, p2, r2)
     t:SetColorTexture(BORDER_CLR.r, BORDER_CLR.g, BORDER_CLR.b, BORDER_CLR.a)
     t:SetPoint(p1, parent, r1)
     t:SetPoint(p2, parent, r2)
-    if horiz then t:SetHeight(TOOLTIP_BORDER) else t:SetWidth(TOOLTIP_BORDER) end
+    local edgeSize = OrbitEngine.Pixel:Multiple(TOOLTIP_BORDER, parent:GetEffectiveScale())
+    if horiz then t:SetHeight(edgeSize) else t:SetWidth(edgeSize) end
     return t
 end
 
@@ -115,6 +116,7 @@ tip:SetFrameStrata(Orbit.Constants.Strata.Topmost)
 tip:SetFrameLevel(999)
 tip:Hide()
 OrbitEngine.Pixel:Enforce(tip)
+local tipScale = tip:GetEffectiveScale() or 1
 
 tip.bg = tip:CreateTexture(nil, "BACKGROUND")
 tip.bg:SetAllPoints()
@@ -126,26 +128,27 @@ MakeBorderEdge(tip, false, "TOPRIGHT", "TOPRIGHT", "BOTTOMRIGHT", "BOTTOMRIGHT")
 
 -- Directional accent bars (point toward the pulse highlight)
 local ACCENT_WIDTH = 2
-local B = TOOLTIP_BORDER
+local accentSize = OrbitEngine.Pixel:Multiple(ACCENT_WIDTH, tipScale)
+local B = OrbitEngine.Pixel:Multiple(TOOLTIP_BORDER, tipScale)
 tip.accentBars = {}
 tip.accentBars.top = tip:CreateTexture(nil, "ARTWORK")
 tip.accentBars.top:SetColorTexture(ACCENT.r, ACCENT.g, ACCENT.b, 0.8)
-tip.accentBars.top:SetHeight(ACCENT_WIDTH)
+tip.accentBars.top:SetHeight(accentSize)
 tip.accentBars.top:SetPoint("TOPLEFT", B, -B)
 tip.accentBars.top:SetPoint("TOPRIGHT", -B, -B)
 tip.accentBars.bottom = tip:CreateTexture(nil, "ARTWORK")
 tip.accentBars.bottom:SetColorTexture(ACCENT.r, ACCENT.g, ACCENT.b, 0.8)
-tip.accentBars.bottom:SetHeight(ACCENT_WIDTH)
+tip.accentBars.bottom:SetHeight(accentSize)
 tip.accentBars.bottom:SetPoint("BOTTOMLEFT", B, B)
 tip.accentBars.bottom:SetPoint("BOTTOMRIGHT", -B, B)
 tip.accentBars.left = tip:CreateTexture(nil, "ARTWORK")
 tip.accentBars.left:SetColorTexture(ACCENT.r, ACCENT.g, ACCENT.b, 0.8)
-tip.accentBars.left:SetWidth(ACCENT_WIDTH)
+tip.accentBars.left:SetWidth(accentSize)
 tip.accentBars.left:SetPoint("TOPLEFT", B, -B)
 tip.accentBars.left:SetPoint("BOTTOMLEFT", B, B)
 tip.accentBars.right = tip:CreateTexture(nil, "ARTWORK")
 tip.accentBars.right:SetColorTexture(ACCENT.r, ACCENT.g, ACCENT.b, 0.8)
-tip.accentBars.right:SetWidth(ACCENT_WIDTH)
+tip.accentBars.right:SetWidth(accentSize)
 tip.accentBars.right:SetPoint("TOPRIGHT", -B, -B)
 tip.accentBars.right:SetPoint("BOTTOMRIGHT", -B, B)
 
@@ -166,28 +169,32 @@ local function ApplyAccentDirection(tooltipPoint)
 end
 
 -- Step counter (e.g. "1 / 3")
+local tipPad = OrbitEngine.Pixel:Multiple(TOOLTIP_PAD, tipScale)
+local titleInset = OrbitEngine.Pixel:Multiple(TOOLTIP_PAD + 4, tipScale)
+local textWidth = OrbitEngine.Pixel:Multiple(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4, tipScale)
 tip.counter = tip:CreateFontString(nil, "OVERLAY", FONT)
-tip.counter:SetPoint("TOPLEFT", TOOLTIP_PAD + 4, -TOOLTIP_PAD)
+tip.counter:SetPoint("TOPLEFT", titleInset, -tipPad)
 tip.counter:SetTextColor(0.5, 0.5, 0.5)
 tip.counter:SetJustifyH("LEFT")
 
 tip.title = tip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-tip.title:SetPoint("TOPLEFT", tip.counter, "BOTTOMLEFT", 0, -2)
+tip.title:SetPoint("TOPLEFT", tip.counter, "BOTTOMLEFT", 0, -OrbitEngine.Pixel:Multiple(2, tipScale))
 tip.title:SetTextColor(TITLE_CLR.r, TITLE_CLR.g, TITLE_CLR.b)
 tip.title:SetJustifyH("LEFT")
-tip.title:SetWidth(OrbitEngine.Pixel:Snap(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4, tip:GetEffectiveScale()))
+tip.title:SetWidth(textWidth)
 
 tip.text = tip:CreateFontString(nil, "OVERLAY", FONT)
-tip.text:SetPoint("TOPLEFT", tip.title, "BOTTOMLEFT", 0, -3)
+tip.text:SetPoint("TOPLEFT", tip.title, "BOTTOMLEFT", 0, -OrbitEngine.Pixel:Multiple(3, tipScale))
 tip.text:SetTextColor(TEXT_CLR.r, TEXT_CLR.g, TEXT_CLR.b)
 tip.text:SetJustifyH("LEFT")
-tip.text:SetWidth(OrbitEngine.Pixel:Snap(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4, tip:GetEffectiveScale()))
-tip.text:SetSpacing(2)
+tip.text:SetWidth(textWidth)
+tip.text:SetSpacing(OrbitEngine.Pixel:Multiple(2, tipScale))
 
 -- Next / Done button
 tip.nextBtn = CreateFrame("Button", nil, tip, "UIPanelButtonTemplate")
+OrbitEngine.Pixel:Enforce(tip.nextBtn)
 tip.nextBtn:SetSize(NEXT_BTN_WIDTH, NEXT_BTN_HEIGHT)
-tip.nextBtn:SetPoint("BOTTOMRIGHT", tip, "BOTTOMRIGHT", -TOOLTIP_PAD, TOOLTIP_PAD)
+tip.nextBtn:SetPoint("BOTTOMRIGHT", tip, "BOTTOMRIGHT", -tipPad, tipPad)
 tip.nextBtn:SetScript("OnClick", function()
     if Dialog.tourIndex < #TOUR_STOPS then
         Dialog:ShowTourStop(Dialog.tourIndex + 1)
@@ -321,12 +328,14 @@ end
 
 -- [ TOUR BUTTON (in dialog header, hard left) ] -----------------------------------------------------
 local btn = CreateFrame("Button", nil, Dialog.TitleContainer)
+OrbitEngine.Pixel:Enforce(btn)
+local btnScale = btn:GetEffectiveScale() or 1
 btn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-btn:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 0, 5)
+btn:SetPoint("TOPLEFT", Dialog, "TOPLEFT", 0, OrbitEngine.Pixel:Multiple(5, btnScale))
 btn:SetFrameLevel(Dialog.TitleContainer:GetFrameLevel() + 1)
 btn.Icon = btn:CreateTexture(nil, "ARTWORK")
 btn.Icon:SetTexture("Interface\\common\\help-i")
-btn.Icon:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+btn.Icon:SetSize(OrbitEngine.Pixel:Snap(BUTTON_SIZE, btnScale), OrbitEngine.Pixel:Snap(BUTTON_SIZE, btnScale))
 btn.Icon:SetPoint("CENTER")
 btn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")

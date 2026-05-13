@@ -23,7 +23,7 @@ function W:Update()
         end
     end
     local color = lowest <= DURABILITY_LOW and "|cffff0000" or (lowest <= DURABILITY_MED and "|cffffa500" or "|cff00ff00")
-    self:SetText(string.format("%s%.0f%%|r Dur", color, lowest))
+    self:SetText(L.PLU_DT_DURABILITY_TEXT_F:format(color, lowest))
 end
 
 function W:ShowTooltip()
@@ -43,7 +43,7 @@ function W:ShowTooltip()
     local cost = GetRepairAllCost()
     if cost and cost > 0 then
         GameTooltip:AddLine(" ")
-        GameTooltip:AddDoubleLine("Repair Cost:", DT.Formatting:FormatMoney(cost), 1, 1, 1, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.PLU_DT_DURABILITY_REPAIR_COST, DT.Formatting:FormatMoney(cost), 1, 1, 1, 1, 1, 1)
     end
     GameTooltip:Show()
 end

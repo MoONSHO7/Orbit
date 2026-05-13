@@ -7,6 +7,9 @@ local OrbitEngine = Orbit.Engine
 Orbit.GroupCanvasRegistration = {}
 local Reg = Orbit.GroupCanvasRegistration
 
+-- [ CONSTANTS ]--------------------------------------------------------------------------------------
+local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
+
 -- [ TIER-AWARE CALLBACKS ]---------------------------------------------------------------------------
 local function MakeTierPositionCallback(plugin, key)
 	return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
@@ -116,9 +119,6 @@ local function MakeStatusIconsPositionCallback(plugin)
 		end
 	end
 end
-
--- [ CONSTANTS ]--------------------------------------------------------------------------------------
-local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
 
 -- Propagates the StatusIcons grouped position to each individual status icon key.
 function Reg:FanOutStatusIcons(positions)
@@ -318,6 +318,18 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 		frame.MarkerIcon.orbitSpriteCols = 4
 		frame.MarkerIcon:Show()
 	end
+	if frame.DispelIcon then
+		local dispelOverrides = savedPositions.DispelIcon and savedPositions.DispelIcon.overrides
+		local dispelSize = (dispelOverrides and dispelOverrides.IconSize) or cfg.dispelIconSize or cfg.statusIconSize
+		local dSnap = OrbitEngine.Pixel:Snap(dispelSize, scale)
+		frame.DispelIcon:SetSize(dSnap, dSnap)
+		frame.DispelIcon.orbitOriginalWidth, frame.DispelIcon.orbitOriginalHeight = dSnap, dSnap
+		if plugin.IsComponentDisabled and plugin:IsComponentDisabled("DispelIcon") then
+			Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, nil)
+		else
+			Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, "Magic")
+		end
+	end
 	local auraSkin = Orbit.Constants.Aura.SkinNoTimer
 	if frame.DefensiveIcon then
 		frame.DefensiveIcon.Icon:SetTexture(StatusMixin:GetDefensiveTexture())
@@ -504,6 +516,19 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 		if frame.PrivateAuraAnchor then
 			frame.PrivateAuraAnchor:Hide()
 		end
+		if frame.DispelIcon then
+			if isDisabled("DispelIcon") then
+				Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, nil)
+			else
+				local dispelPos = savedPositions.DispelIcon
+				local dispelSize = (dispelPos and dispelPos.overrides and dispelPos.overrides.IconSize) or cfg.dispelIconSize or cfg.statusIconSize
+				local dSnap = OrbitEngine.Pixel:Snap(dispelSize, frameScale)
+				frame.DispelIcon:SetSize(dSnap, dSnap)
+				frame.DispelIcon.orbitOriginalWidth, frame.DispelIcon.orbitOriginalHeight = dSnap, dSnap
+				if dispelPos then ApplyTextPosition(frame.DispelIcon, frame, dispelPos, nil, nil, nil, false) end
+				Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, "Magic")
+			end
+		end
 		for _, slot in ipairs(healerSlots) do
 			if not isDisabled(slot.key) then
 				local slotPos = savedPositions[slot.key]
@@ -547,6 +572,7 @@ function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, 
 				"DefensiveIcon",
 				"CrowdControlIcon",
 				"PrivateAuraAnchor",
+				"DispelIcon",
 			}
 		for _, key in ipairs(hideKeys) do
 			if frame[key] then

@@ -37,6 +37,11 @@ function CM:QueueUpdate(callback, context)
         return
     end
     if #self.updateQueue >= MAX_QUEUE_SIZE then
+        -- Log only once per combat session so a flood doesn't spam the ring buffer.
+        if not self._queueOverflowLogged and Orbit.ErrorHandler then
+            self._queueOverflowLogged = true
+            Orbit.ErrorHandler:LogError("CombatManager", "QueueUpdate", "queue size limit reached (" .. MAX_QUEUE_SIZE .. ")")
+        end
         return
     end
     table.insert(self.updateQueue, { callback = callback, context = context })
@@ -49,6 +54,7 @@ function CM:OnCombatStart()
 end
 
 function CM:OnCombatEnd()
+    self._queueOverflowLogged = false
     local queue = self.updateQueue
     self.updateQueue = {}
     for _, update in ipairs(queue) do
@@ -60,6 +66,9 @@ function CM:OnCombatEnd()
         end
         if not ok then
             Orbit:Print("|cFFFF0000CombatManager Error|r:", tostring(err))
+            if Orbit.ErrorHandler then
+                Orbit.ErrorHandler:LogError("CombatManager", "queued_callback", err)
+            end
         end
     end
     if EventRegistry then

@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
@@ -114,10 +115,10 @@ function Plugin:SetupCanvasPreview() end
 
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, "Essential Cooldowns")
-    self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
-    self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
-    self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
+    self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, L.PLU_COOLDOWN_ESSENTIAL)
+    self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, L.PLU_COOLDOWN_UTILITY)
+    self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, L.PLU_COOLDOWN_BUFFICON)
+    self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, L.PLU_COOLDOWN_BUFFBAR,
         { horizontal = false, vertical = true, mergeBorders = true })
     self.buffBarAnchor.orbitWidthSync = true
     self.buffBarAnchor.orbitNoGroupSelect = true
@@ -188,7 +189,7 @@ function Plugin:OnLoad()
         local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         name:SetPoint("LEFT", preview, "LEFT", 5, 0)
-        name:SetText("Preview Buff")
+        name:SetText(L.PLU_COOLDOWN_PREVIEW_BUFF)
         name:SetTextColor(1, 1, 1, 1)
 
         local timer = preview:CreateFontString(nil, "OVERLAY", nil, 7)

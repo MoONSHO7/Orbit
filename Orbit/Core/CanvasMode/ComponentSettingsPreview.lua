@@ -87,7 +87,8 @@ function Settings:ApplyPortraitPreview()
     local pScale = comp:GetEffectiveScale()
     local size = OrbitEngine.Pixel:Snap(32 * scale, pScale)
     local ringData = PORTRAIT_RING_DATA[ringAtlas]
-    local ringOS = OrbitEngine.Pixel:Snap(((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale, pScale)
+    local scaledOvershoot = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
+    local ringOS = OrbitEngine.Pixel:Multiple(scaledOvershoot, pScale)
     comp:SetSize(size, size)
 
     if not comp._ring then
@@ -212,7 +213,7 @@ function Settings:ApplyHealthTextPreview()
         }
         visual:SetText(SAMPLE_TEXT[mode] or "100%")
     else
-        visual:SetText("Offline")
+        visual:SetText(Orbit.L.CMN_OFFLINE)
     end
     visual:Show()
 end
@@ -313,7 +314,8 @@ function Settings:ApplyStyle(container, key, value)
         C_Timer.After(0.01, function()
             if container and visual and visual.GetStringWidth then
                 local cScale = container:GetEffectiveScale()
-                container:SetSize(OrbitEngine.Pixel:Snap((visual:GetStringWidth() or (value * 3)) + 2, cScale), OrbitEngine.Pixel:Snap((visual:GetStringHeight() or value) + 2, cScale))
+                local pad = OrbitEngine.Pixel:Multiple(2, cScale)
+                container:SetSize(OrbitEngine.Pixel:Snap(visual:GetStringWidth() or (value * 3), cScale) + pad, OrbitEngine.Pixel:Snap(visual:GetStringHeight() or value, cScale) + pad)
                 ReanchorContainer(container)
             end
         end)
@@ -327,7 +329,8 @@ function Settings:ApplyStyle(container, key, value)
             C_Timer.After(0.01, function()
                 if container and visual and visual.GetStringWidth then
                     local cScale = container:GetEffectiveScale()
-                    container:SetSize(OrbitEngine.Pixel:Snap((visual:GetStringWidth() or ((size or 12) * 3)) + 2, cScale), OrbitEngine.Pixel:Snap((visual:GetStringHeight() or (size or 12)) + 2, cScale))
+                    local pad = OrbitEngine.Pixel:Multiple(2, cScale)
+                    container:SetSize(OrbitEngine.Pixel:Snap(visual:GetStringWidth() or ((size or 12) * 3), cScale) + pad, OrbitEngine.Pixel:Snap(visual:GetStringHeight() or (size or 12), cScale) + pad)
                     ReanchorContainer(container)
                 end
             end)

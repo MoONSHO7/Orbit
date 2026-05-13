@@ -52,10 +52,11 @@ function Plugin:AddSettings(dialog, systemFrame)
             key = "BorderRing",
             label = L.PLU_MINIMAP_BORDER_RING,
             options = {
-                { value = "none",     label = L.PLU_MINIMAP_BORDER_RING_NONE },
-                { value = "blizzard", label = L.PLU_MINIMAP_BORDER_RING_BLIZZARD },
-                { value = "round",    label = L.PLU_MINIMAP_BORDER_RING_ROUND },
-                { value = "void",     label = L.PLU_MINIMAP_BORDER_RING_VOID },
+                { value = "none",        label = L.PLU_MINIMAP_BORDER_RING_NONE },
+                { value = "blizzard",    label = L.PLU_MINIMAP_BORDER_RING_BLIZZARD },
+                { value = "round",       label = L.PLU_MINIMAP_BORDER_RING_ROUND },
+                { value = "fadedcircle", label = L.PLU_MINIMAP_BORDER_RING_FADED_CIRCLE },
+                { value = "void",        label = L.PLU_MINIMAP_BORDER_RING_VOID },
             },
             default = "none",
             visibleIf = function() return self:GetSetting(SYSTEM_ID, "Shape") == "round" end,
@@ -78,17 +79,13 @@ function Plugin:AddSettings(dialog, systemFrame)
 
         -- Border Colour
         table.insert(schema.controls, {
-            type = "colorcurve",
+            type = "color",
             key = "BorderColor",
             label = L.PLU_MINIMAP_BORDER,
-            singleColor = true,
-            default = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 1 } } } },
+            default = { r = 0, g = 0, b = 0, a = 1 },
             onChange = function(val)
-                local color = val and val.pins and val.pins[1] and val.pins[1].color
-                if color then
-                    self:SetSetting(SYSTEM_ID, "BorderColor", color)
-                    self:ApplySettings()
-                end
+                self:SetSetting(SYSTEM_ID, "BorderColor", val)
+                self:ApplySettings()
             end,
         })
     elseif currentTab == L.PLU_MINIMAP_TAB_BEHAVIOUR then

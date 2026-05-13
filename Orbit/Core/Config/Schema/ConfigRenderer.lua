@@ -177,20 +177,23 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
     local default = def.default
 
     local function GetVal()
-        -- Support custom getValue for controls that read from non-standard sources
+        local val
         if def.getValue then
-            local val = def.getValue()
-            if val == nil then
-                return default
-            end
-            return val
+            val = def.getValue()
+        else
+            val = plugin:GetSetting(systemIndex, key)
         end
-
-        local val = plugin:GetSetting(systemIndex, key)
-        if val == nil then
-            return default
+        if val ~= nil then return val end
+        if default ~= nil then return default end
+        -- Preview-only fallback: surface the inherited global so the swatch reflects the color
+        -- actually rendered in the world when no local override exists. Saving still writes locally.
+        -- Mirrors OverrideUtils.ApplyTextColor's final white fallback so the swatch matches reality
+        -- even when GlobalSettings.FontColorCurve has never been persisted.
+        if key == "CustomColorCurve" then
+            local g = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
+            return g or { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
         end
-        return val
+        return nil
     end
 
     -- Helper builder for callback

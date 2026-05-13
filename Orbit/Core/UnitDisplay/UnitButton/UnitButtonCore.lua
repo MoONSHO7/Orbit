@@ -73,7 +73,6 @@ function CoreMixin:CreateCanvasPreview(options)
     bar:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
 
-    -- The cleric inspects the health bar's aura for class-colored enchantments
     local barCurve = globalSettings.BarColorCurve
     local barColor
     if barCurve and barCurve.pins and #barCurve.pins > 0 then

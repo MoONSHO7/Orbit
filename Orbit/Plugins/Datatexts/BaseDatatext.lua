@@ -44,7 +44,7 @@ function BaseDatatext:CreateFrame(width, height)
     if self.frame then return self.frame end
     local frameType = self.isSecure and "Button" or "Frame"
     local template = self.isSecure and "SecureActionButtonTemplate" or nil
-    local f = CreateFrame(frameType, "Orbitdatatext" .. self.name, UIParent, template)
+    local f = CreateFrame(frameType, "OrbitDatatext" .. self.name, UIParent, template)
     f:SetSize(width or DEFAULT_WIDTH, height or DEFAULT_HEIGHT)
     Orbit.Engine.Pixel:Enforce(f)
     f:SetClampedToScreen(true)
@@ -304,8 +304,8 @@ function BaseDatatext:BuildTooltip()
     self:PopulateTooltip(GameTooltip)
     if self.leftClickHint or self.rightClickHint then
         GameTooltip:AddLine(" ")
-        if self.leftClickHint then GameTooltip:AddDoubleLine("Left Click", self.leftClickHint, 0.7, 0.7, 0.7, 1, 1, 1) end
-        if self.rightClickHint then GameTooltip:AddDoubleLine("Right Click", self.rightClickHint, 0.7, 0.7, 0.7, 1, 1, 1) end
+        if self.leftClickHint then GameTooltip:AddDoubleLine(L.CMN_LEFT_CLICK, self.leftClickHint, 0.7, 0.7, 0.7, 1, 1, 1) end
+        if self.rightClickHint then GameTooltip:AddDoubleLine(L.CMN_RIGHT_CLICK, self.rightClickHint, 0.7, 0.7, 0.7, 1, 1, 1) end
     end
     GameTooltip:Show()
 end

@@ -31,8 +31,8 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
     local minDiffX, minDiffY = threshold, threshold
 
     -- Anchor candidates (use separate threshold for anchors)
-    local anchorCandidateX_Target, anchorCandidateX_Edge = nil, nil
-    local anchorCandidateY_Target, anchorCandidateY_Edge = nil, nil
+    local anchorCandidateX_Target, anchorCandidateX_Edge, anchorCandidateX_CenterDist = nil, nil, nil
+    local anchorCandidateY_Target, anchorCandidateY_Edge, anchorCandidateY_CenterDist = nil, nil, nil
     local minDiffX_Anchor, minDiffY_Anchor = anchorThreshold, anchorThreshold
 
     -- Get frame options

@@ -9,7 +9,6 @@ local DEFAULT_FONT_HEIGHT = 12
 local TEXT_PADDING = 5
 local TIGHT_FIT_MARGIN = 2
 
--- The rogue mapped out which components can be pickpocketed to new positions
 local COMPONENT_POSITION_MAP = {
     { key = "Name",             parentKey = "TextFrame" },
     { key = "HealthText",       parentKey = "TextFrame" },
@@ -26,8 +25,6 @@ local COMPONENT_POSITION_MAP = {
     { key = "GroupPositionText",parentKey = nil },
     { key = "ReadyCheckIcon",   parentKey = nil },
     { key = "RestingIcon",      parentKey = nil },
-    { key = "Buffs",             parentKey = nil, isAura = true },
-    { key = "Debuffs",           parentKey = nil, isAura = true },
 }
 
 Engine.UnitButton = Engine.UnitButton or {}
@@ -49,7 +46,6 @@ function CanvasMixin:UpdateTextLayout()
         if positions and (positions.Name or positions.HealthText) then return end
     end
 
-    -- The wizard casts Comprehend Layout on the cramped parchment
     local height = self:GetHeight()
     if issecretvalue and issecretvalue(height) then height = FALLBACK_HEIGHT end
     local _, fontHeight = self.Name:GetFont()

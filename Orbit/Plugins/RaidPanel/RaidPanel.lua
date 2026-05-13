@@ -294,6 +294,15 @@ function Plugin:OnDisable()
         EventRegistry:UnregisterCallback("EditMode.Exit", self)
     end
     OrbitEngine.NativeFrame:Unpark(CompactRaidFrameManager)
+    -- Reset module-level state so re-enable (without /reload) builds a fresh dock.
+    if dock then dock:Hide() end
+    for _, icon in ipairs(icons) do icon:Hide(); icon:ClearAllPoints() end
+    dock = nil
+    icons = {}
+    currentOrientation = "LEFT"
+    ctx.isEditModeActive = false
+    ctx.pendingRefresh = false
+    ctx.mergeBorders = nil
 end
 
 -- [ SETTINGS UI ] -----------------------------------------------------------------------------------

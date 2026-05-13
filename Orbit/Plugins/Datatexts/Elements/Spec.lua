@@ -149,8 +149,12 @@ function W:CreateSpecButtons(numSpecs)
             GameTooltip:ClearLines()
             GameTooltip:AddLine(name, 1, 0.82, 0)
             
-            local displayRole = role == "DAMAGER" and "DAMAGE" or role
-            GameTooltip:AddLine(L.PLU_DT_SPEC_ROLE .. " " .. (displayRole or L.PLU_DT_SPEC_UNKNOWN), 1, 1, 1)
+            local roleText
+            if role == "DAMAGER" then roleText = L.PLU_DT_SPEC_ROLE_DAMAGE
+            elseif role == "TANK" then roleText = L.PLU_DT_SPEC_ROLE_TANK
+            elseif role == "HEALER" then roleText = L.PLU_DT_SPEC_ROLE_HEALER
+            else roleText = L.PLU_DT_SPEC_UNKNOWN end
+            GameTooltip:AddLine(L.PLU_DT_SPEC_ROLE .. " " .. roleText, 1, 1, 1)
             GameTooltip:AddLine(" ")
 
             local currentSpec = GetSpecialization()
@@ -200,7 +204,7 @@ function W:CreateSpecButtons(numSpecs)
                     }
                 end
             end
-            if #items > 0 then DT.Menu:Open(btn, items, name .. " Loadouts") end
+            if #items > 0 then DT.Menu:Open(btn, items, L.PLU_DT_SPEC_LOADOUTS_F:format(name)) end
         end)
         
         self.specButtons[i] = btn

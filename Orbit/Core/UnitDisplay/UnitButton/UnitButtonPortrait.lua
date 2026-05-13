@@ -23,8 +23,10 @@ function PortraitMixin:CreatePortrait()
     if self.Portrait then return end
 
     local container = CreateFrame("Frame", nil, self.OverlayFrame or self)
+    Engine.Pixel:Enforce(container)
+    local cScale = container:GetEffectiveScale()
     container:SetSize(PORTRAIT_DEFAULT_SIZE, PORTRAIT_DEFAULT_SIZE)
-    container:SetPoint("RIGHT", self, "LEFT", -4, 0)
+    container:SetPoint("RIGHT", self, "LEFT", -Engine.Pixel:Multiple(4, cScale), 0)
     container:SetFrameLevel(self:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
 
     container.StaticTexture = container:CreateTexture(nil, "ARTWORK")
@@ -35,9 +37,10 @@ function PortraitMixin:CreatePortrait()
     container.bg = container:CreateTexture(nil, "BACKGROUND")
     container.bg:SetAllPoints()
 
+    local initialOS = Engine.Pixel:Multiple(PORTRAIT_RING_OVERSHOOT, cScale)
     container.Ring = container:CreateTexture(nil, "OVERLAY")
-    container.Ring:SetPoint("TOPLEFT", -PORTRAIT_RING_OVERSHOOT, PORTRAIT_RING_OVERSHOOT)
-    container.Ring:SetPoint("BOTTOMRIGHT", PORTRAIT_RING_OVERSHOOT, -PORTRAIT_RING_OVERSHOOT)
+    container.Ring:SetPoint("TOPLEFT", -initialOS, initialOS)
+    container.Ring:SetPoint("BOTTOMRIGHT", initialOS, -initialOS)
     container.Ring:SetAtlas("hud-PlayerFrame-portraitring-large")
     container.Ring:Hide()
 
@@ -117,7 +120,8 @@ function PortraitMixin:UpdatePortrait()
     local ringData = PORTRAIT_RING_DATA[ringAtlas]
     local pScale = portrait:GetEffectiveScale() or 1
     local snappedSize = Engine.Pixel:Snap(size, pScale)
-    local ringOS = Engine.Pixel:Snap(((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale, pScale)
+    local scaledOvershoot = ((ringData and ringData.overshoot) or PORTRAIT_RING_OVERSHOOT) * scale
+    local ringOS = Engine.Pixel:Multiple(scaledOvershoot, pScale)
     portrait:SetSize(snappedSize, snappedSize)
     portrait.Ring:ClearAllPoints()
     portrait.Ring:SetPoint("TOPLEFT", -ringOS, ringOS)

@@ -149,7 +149,7 @@ function FrameFactory:AddText(frame, opts)
     local relativePoint = opts.relativePoint or point
 
     local scale = frame:GetEffectiveScale()
-    local ox, oy = Engine.Pixel:Snap(opts.x or 0, scale), Engine.Pixel:Snap(opts.y or 0, scale)
+    local ox, oy = Engine.Pixel:Multiple(opts.x or 0, scale), Engine.Pixel:Multiple(opts.y or 0, scale)
     if opts.useOverlay then
         local overlay = CreateFrame("Frame", nil, frame)
         overlay:SetAllPoints()

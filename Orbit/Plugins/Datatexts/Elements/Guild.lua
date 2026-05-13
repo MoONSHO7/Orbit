@@ -8,14 +8,14 @@ local L = Orbit.L
 local W = DT.BaseDatatext:New("Guild")
 
 function W:Update()
-    if not IsInGuild() then self:SetText("|cff888888No Guild|r"); return end
+    if not IsInGuild() then self:SetText(L.PLU_DT_GUILD_OFFLINE); return end
     local total = GetNumGuildMembers() or 0
     local online = 0
     for i = 1, total do
         local _, _, _, _, _, _, _, _, isOnline, _, _, _, _, isMobile = GetGuildRosterInfo(i)
         if isOnline and not isMobile then online = online + 1 end
     end
-    self:SetText(string.format("|cff00ff00%d|r Members", online))
+    self:SetText(L.PLU_DT_GUILD_MEMBERS_F:format(online))
 end
 
 function W:ShowTooltip()
@@ -48,7 +48,7 @@ function W:ShowTooltip()
         end
     end
     
-    GameTooltip:AddDoubleLine("Online:", string.format("%d / %d", online, total), 1, 1, 1, 0.7, 0.7, 0.7)
+    GameTooltip:AddDoubleLine(L.PLU_DT_GUILD_ONLINE, string.format("%d / %d", online, total), 1, 1, 1, 0.7, 0.7, 0.7)
     
     if online > 0 then
         GameTooltip:AddLine(" ")
@@ -56,12 +56,12 @@ function W:ShowTooltip()
             GameTooltip:AddDoubleLine(line.name, line.zone, line.r, line.g, line.b, 0.7, 0.7, 0.7)
         end
         if online > 25 then
-            GameTooltip:AddLine(string.format("... and %d more", online - 25), 0.7, 0.7, 0.7)
+            GameTooltip:AddLine(L.PLU_DT_GUILD_MORE_F:format(online - 25), 0.7, 0.7, 0.7)
         end
     end
     
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "Guild Roster", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_GUILD_ROSTER, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -70,7 +70,7 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function() ToggleGuildFrame() end)
-    self.leftClickHint = "Guild Roster"
+    self.leftClickHint = L.PLU_DT_GUILD_ROSTER
     self:RegisterEvent("GUILD_ROSTER_UPDATE")
     self:RegisterEvent("PLAYER_GUILD_UPDATE")
     self:SetCategory("SOCIAL")

@@ -40,7 +40,7 @@ function Handle:Create(component, parent, callbacks)
 
     if not handle.header then
         handle.header = CreateFrame("Frame", nil, handle)
-        handle.header:SetHeight(HEADER_HEIGHT)
+        handle.header:SetHeight(Engine.Pixel:Snap(HEADER_HEIGHT, handle.header:GetEffectiveScale()))
         handle.header.bg = handle.header:CreateTexture(nil, "BACKGROUND")
         handle.header.bg:SetAllPoints()
         handle.header.bg:SetColorTexture(0.3, 0.8, 0.3, 0.8)

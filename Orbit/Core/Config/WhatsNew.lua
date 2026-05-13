@@ -325,8 +325,8 @@ end)
 -- [ HIDE HANDLER ] ----------------------------------------------------------------------------------
 Window:SetScript("OnHide", function()
     PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
-    if Orbit.db then
-        Orbit.db.WhatsNewRead = Orbit.LatestChangelogVersion
+    if Orbit.db and Orbit.db.AccountSettings then
+        Orbit.db.AccountSettings.WhatsNewRead = Orbit.LatestChangelogVersion
     end
 end)
 
@@ -353,7 +353,7 @@ trigger:SetScript("OnEvent", function(self)
         if not Orbit.db then
             return
         end
-        if Orbit.db.WhatsNewRead == Orbit.LatestChangelogVersion then
+        if Orbit.db.AccountSettings and Orbit.db.AccountSettings.WhatsNewRead == Orbit.LatestChangelogVersion then
             return
         end
         Orbit:ShowWhatsNew()

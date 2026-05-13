@@ -41,8 +41,16 @@ OrbitDB.GlobalSettings.TrackedContainers[1042] = {
     },
 }
 
-OrbitDB.GlobalSettings.NextTrackedContainerId = 1043
+OrbitDB.NextTrackedContainerId = 1043  -- account-scoped (see "id allocation" below)
 ```
+
+## id allocation
+
+`NextTrackedContainerId` lives at `Orbit.db.NextTrackedContainerId` (**account-scoped**, not under a profile). Each `AllocateId` reads and increments this counter. The records themselves are profile-scoped under `GlobalSettings.TrackedContainers`, but two independently-created profiles can never allocate the same id — because the WoW frame names `OrbitTrackedContainer<id>` / `OrbitTrackedBar<id>` live in the same global namespace and `CreateFrame` errors on duplicates.
+
+`EnsureStore` runs a one-time migration on first load: it walks every profile's `GlobalSettings.TrackedContainers` (record ids) and any legacy `GlobalSettings.NextTrackedContainerId` (per-profile counter), then sets `Orbit.db.NextTrackedContainerId` to one past the highest. Legacy per-profile counters are left in place as read-only dead fields so a downgrade preserves user state.
+
+`TrackedContainer:Build` and `TrackedBar:Build` also short-circuit with a `_G[frameName]` lookup before calling `CreateFrame`, returning the existing frame (and re-binding `recordId` / `orbitPlugin`) if one is already alive. `RefreshForCurrentSpec` tears down a wrapper whose `_orbitTrackedMode` doesn't match the new record's mode, so a legacy cross-profile id collision where the same id is icons in one profile and a bar in another rebuilds cleanly instead of rendering wrong-mode geometry.
 
 bar `payload` shape (built by `Orbit.CooldownDragDrop:BuildTrackedBarPayload` at drop time, captures everything the bar needs to pick a render mode without a second API/tooltip lookup):
 

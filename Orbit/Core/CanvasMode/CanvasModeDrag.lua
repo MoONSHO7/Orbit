@@ -38,7 +38,7 @@ local function DetectCreatorType(key, source)
     local isIconFrame = source and source.Icon and source.Icon.GetTexture and key ~= "CastBar"
 
     if isFontString then return "FontString", true, false, false end
-    if key == "StatusIcons" or key == "RoleIcon" or key == "LeaderIcon" or key == "Missions" or key == "PvpIcon" then return "CyclingAtlas", false, false, false end
+    if key == "StatusIcons" or key == "RoleIcon" or key == "LeaderIcon" or key == "Missions" or key == "PvpIcon" or key == "DispelIcon" then return "CyclingAtlas", false, false, false end
     if key == "Buffs" or key == "Debuffs" then return "Aura", false, true, false end
     -- Known aura icons + healer aura keys (dynamic keys not in standard icon sets)
     local isAuraKey = AURA_ICON_KEYS[key] or (isIconFrame and not STANDARD_ICON_KEYS[key])

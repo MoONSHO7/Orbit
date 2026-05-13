@@ -73,7 +73,7 @@ function Icons:FindRegions(icon)
     end
     if not regions.icon then
         for _, region in ipairs(kids) do
-            if region:IsObjectType("Texture") and region ~= regions.border and region ~= regions.procs then
+            if region:IsObjectType("Texture") and region ~= regions.border and region ~= regions.proc then
                 local layer = region:GetDrawLayer()
                 if layer == "BACKGROUND" or layer == "BORDER" or layer == "ARTWORK" then regions.icon = region; break end
             end

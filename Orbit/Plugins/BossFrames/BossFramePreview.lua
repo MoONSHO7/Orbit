@@ -1,4 +1,5 @@
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -77,6 +78,9 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
     if not self.frames then return end
     if not Helpers then Helpers = Orbit.BossFrameHelpers end
 
+    local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
+    local txnActive = Txn and Txn:IsActive() and Txn:GetPlugin() == self
+
     local width = self:GetSetting(1, "Width") or PREVIEW_DEFAULTS.Width
     local height = self:GetSetting(1, "Height") or PREVIEW_DEFAULTS.Height
     local textureName = self:GetSetting(1, "Texture")
@@ -92,7 +96,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
 
             self:UpdateFrameLayout(frame, borderSize, { powerBarRatio = POWER_BAR_HEIGHT_RATIO })
 
-            if self.ApplyPreviewBackdrop then self:ApplyPreviewBackdrop(frame) end
+            self:ApplyPreviewBackdrop(frame)
 
             if frame.Health then
                 Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
@@ -113,8 +117,9 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             if frame.Name then
-                frame._fullName = "Boss " .. i
-                frame.Name:SetText("Boss " .. i)
+                local bossLabel = L.PLU_BOSS_PREVIEW_INDEX_F:format(i)
+                frame._fullName = bossLabel
+                frame.Name:SetText(bossLabel)
                 frame.Name:Show()
             end
 
@@ -123,7 +128,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 frame.HealthText:Show()
             end
 
-            if self.ApplyTextStyling then self:ApplyTextStyling(frame) end
+            self:ApplyTextStyling(frame)
 
             if frame.Name and componentPositions.Name and componentPositions.Name.overrides then
                 OrbitEngine.OverrideUtils.ApplyOverrides(frame.Name, componentPositions.Name.overrides)
@@ -154,7 +159,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                     if frame.CastBar.Text then
                         local textDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Text")
                         frame.CastBar.Text:SetShown(not textDisabled)
-                        if not textDisabled then frame.CastBar.Text:SetText("Boss Ability (Preview)") end
+                        if not textDisabled then frame.CastBar.Text:SetText(L.PLU_BOSS_PREVIEW_ABILITY) end
                     end
                     if frame.CastBar.Timer then
                         local timerDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Timer")

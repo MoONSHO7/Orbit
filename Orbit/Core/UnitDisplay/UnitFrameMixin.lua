@@ -115,9 +115,7 @@ end
 
 -- Updates only font size without repositioning (preserves Canvas Mode custom positions)
 function Mixin:UpdateTextSize(frame, textSize)
-    if not frame then return end
     if not textSize or textSize <= 0 then
-        local height = frame:GetHeight() or 40
         textSize = 14
     end
     local globalFontName = Orbit.db.GlobalSettings.Font
@@ -186,14 +184,12 @@ function Mixin:GetPreviewTextColor(isPlayer, className, reaction)
 end
 
 function Mixin:ApplyPreviewBackdrop(frame)
-    if not frame then return end
     self:CreateBackground(frame)
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, { r = 0.08, g = 0.08, b = 0.08, a = 0.5 })
 end
 
 function Mixin:UpdateBackdropColor(frame, systemIndex, inheritFromPlayer)
-    if not frame then return end
     self:CreateBackground(frame)
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
@@ -389,7 +385,10 @@ end
 -- Creates OverlayFrame, LevelText, RareEliteIcon, MarkerIcon, Portrait + ComponentDrag registration
 function Mixin:CreateOverlayIcons(frame, systemIndex)
     local Constants = Orbit.Constants
+    local Pixel = OrbitEngine.Pixel
     local iconSize = Constants.UnitFrame.StatusIconSize
+    local oScale = frame:GetEffectiveScale() or 1
+    local snappedIcon = Pixel:Snap(iconSize, oScale)
 
     if not frame.OverlayFrame then
         frame.OverlayFrame = CreateFrame("Frame", nil, frame)
@@ -400,22 +399,22 @@ function Mixin:CreateOverlayIcons(frame, systemIndex)
     if not frame.LevelText then
         frame.LevelText = frame.OverlayFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         frame.LevelText:SetDrawLayer("OVERLAY", 7)
-        frame.LevelText:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+        frame.LevelText:SetPoint("TOPLEFT", frame, "TOPRIGHT", Pixel:Multiple(4, oScale), 0)
     end
 
     if not frame.RareEliteIcon then
         frame.RareEliteIcon = frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-        frame.RareEliteIcon:SetSize(iconSize, iconSize)
-        frame.RareEliteIcon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 2, 0)
+        frame.RareEliteIcon:SetSize(snappedIcon, snappedIcon)
+        frame.RareEliteIcon:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", Pixel:Multiple(2, oScale), 0)
         frame.RareEliteIcon:Hide()
     end
 
     if not frame.MarkerIcon then
         frame.MarkerIcon = frame.OverlayFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-        frame.MarkerIcon:SetSize(iconSize, iconSize)
+        frame.MarkerIcon:SetSize(snappedIcon, snappedIcon)
         frame.MarkerIcon.orbitOriginalWidth = iconSize
         frame.MarkerIcon.orbitOriginalHeight = iconSize
-        frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -2)
+        frame.MarkerIcon:SetPoint("TOP", frame, "TOP", 0, -Pixel:Multiple(2, oScale))
         frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
         frame.MarkerIcon:Hide()
     end

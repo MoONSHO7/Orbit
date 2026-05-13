@@ -59,9 +59,9 @@ function W:Update()
     local wowOnline = C_FriendList.GetNumOnlineFriends()
     local total = (bnetOnline or 0) + (wowOnline or 0)
     if total > 0 then
-        self:SetText(string.format("|cff00ff00%d|r Online", total))
+        self:SetText(L.PLU_DT_FRIENDS_ONLINE_F:format(total))
     else
-        self:SetText("|cff888888No Friends|r")
+        self:SetText(L.PLU_DT_FRIENDS_NONE)
     end
 end
 
@@ -81,11 +81,11 @@ function W:ShowTooltip()
     
     -- WoW Friends (Character)
     if wowOnline > 0 then
-        friendsByGame["World of Warcraft (Character)"] = {}
+        friendsByGame[L.PLU_DT_FRIENDS_WOW_CHAR_GROUP] = {}
         for i = 1, wowTotal do
             local info = C_FriendList.GetFriendInfoByIndex(i)
             if info and info.connected then
-                table.insert(friendsByGame["World of Warcraft (Character)"], info)
+                table.insert(friendsByGame[L.PLU_DT_FRIENDS_WOW_CHAR_GROUP], info)
                 wowCount = wowCount + 1
             end
         end
@@ -106,16 +106,16 @@ function W:ShowTooltip()
         end
     end
 
-    GameTooltip:AddDoubleLine("Battle.net:", string.format("%d Online", bnetTotalOnline or 0), 1, 1, 1, 0.7, 0.7, 0.7)
-    GameTooltip:AddDoubleLine("WoW Character:", string.format("%d / %d online", wowCount or 0, wowTotal or 0), 1, 1, 1, 0.7, 0.7, 0.7)
-    
+    GameTooltip:AddDoubleLine(L.PLU_DT_FRIENDS_BNET_LABEL, L.PLU_DT_FRIENDS_BNET_ONLINE_F:format(bnetTotalOnline or 0), 1, 1, 1, 0.7, 0.7, 0.7)
+    GameTooltip:AddDoubleLine(L.PLU_DT_FRIENDS_WOW_CHAR_LABEL, L.PLU_DT_FRIENDS_WOW_RATIO_F:format(wowCount or 0, wowTotal or 0), 1, 1, 1, 0.7, 0.7, 0.7)
+
     local gameOrder = {}
     for game in pairs(friendsByGame) do table.insert(gameOrder, game) end
     table.sort(gameOrder, function(a, b)
         if a == "World of Warcraft" and b ~= "World of Warcraft" then return true end
         if b == "World of Warcraft" and a ~= "World of Warcraft" then return false end
-        if a == "World of Warcraft (Character)" and b ~= "World of Warcraft (Character)" then return true end
-        if b == "World of Warcraft (Character)" and a ~= "World of Warcraft (Character)" then return false end
+        if a == L.PLU_DT_FRIENDS_WOW_CHAR_GROUP and b ~= L.PLU_DT_FRIENDS_WOW_CHAR_GROUP then return true end
+        if b == L.PLU_DT_FRIENDS_WOW_CHAR_GROUP and a ~= L.PLU_DT_FRIENDS_WOW_CHAR_GROUP then return false end
         if a:match("Battle%.net") and not b:match("Battle%.net") then return false end
         if b:match("Battle%.net") and not a:match("Battle%.net") then return true end
         return a < b
@@ -126,13 +126,13 @@ function W:ShowTooltip()
         GameTooltip:AddLine(gameName, 0.2, 0.8, 1)
         
         for _, friend in ipairs(friendsByGame[gameName]) do
-            if gameName == "World of Warcraft (Character)" then
+            if gameName == L.PLU_DT_FRIENDS_WOW_CHAR_GROUP then
                 local r, g, b = GetClassColorFromLocalized(friend.className)
                 local name = friend.name
                 if friend.level then name = name .. " |cffaaaaaa" .. friend.level .. "|r" end
                 GameTooltip:AddDoubleLine(name, friend.area or "", r, g, b, 0.7, 0.7, 0.7)
             else
-                local name = friend.accountName or "Unknown"
+                local name = friend.accountName or L.PLU_DT_FRIENDS_UNKNOWN
                 local infoText = friend.gameAccountInfo.richPresence or ""
                 local r, g, b = 0.5, 0.5, 0.5
                 
@@ -157,7 +157,7 @@ function W:ShowTooltip()
     end
     
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "Friends List", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_FRIENDS_LIST, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -166,7 +166,7 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function() ToggleFriendsFrame() end)
-    self.leftClickHint = "Friends List"
+    self.leftClickHint = L.PLU_DT_FRIENDS_LIST
     self:RegisterEvent("BN_FRIEND_ACCOUNT_ONLINE")
     self:RegisterEvent("BN_FRIEND_ACCOUNT_OFFLINE")
     self:RegisterEvent("FRIENDLIST_UPDATE")

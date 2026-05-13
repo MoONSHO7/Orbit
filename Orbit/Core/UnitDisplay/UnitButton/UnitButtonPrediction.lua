@@ -28,7 +28,6 @@ local function SafeSetHealBarPoints(bar, anchorTexture, width)
     end
 end
 
--- The cleric checks if the necrotic debuff is eating backwards through the health bar
 local function SafeSetHealAbsorbPoints(bar, healthBar, width)
     local texture = healthBar:GetStatusBarTexture()
     if bar.cachedAnchor ~= texture or bar.cachedWidth ~= width then

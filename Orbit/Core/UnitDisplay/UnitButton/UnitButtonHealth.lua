@@ -59,7 +59,6 @@ function HealthMixin:ApplyHealthColor()
         return
     end
 
-    -- The paladin casts Detect Magic to determine the bar's true color
     local useGradientTexture = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitHealthUseGradient
     local hasClassPin = Engine.ColorCurve:CurveHasClassPin(globalBarCurve)
     local isGradient = #globalBarCurve.pins > 1

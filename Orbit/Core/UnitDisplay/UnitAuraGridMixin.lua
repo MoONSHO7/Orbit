@@ -52,11 +52,13 @@ local ARROW_ATLAS = "bag-arrow"
 
 local function CreateCollapseArrow(frame, plugin)
     local btn = CreateFrame("Button", nil, frame)
-    btn:SetSize(ARROW_SIZE, ARROW_SIZE * 2)
-    btn:SetPoint("LEFT", frame, "TOPRIGHT", 4, -15)
+    local bScale = btn:GetEffectiveScale() or 1
+    local Pixel = OrbitEngine.Pixel
+    btn:SetSize(Pixel:Snap(ARROW_SIZE, bScale), Pixel:Snap(ARROW_SIZE * 2, bScale))
+    btn:SetPoint("LEFT", frame, "TOPRIGHT", Pixel:Multiple(4, bScale), -Pixel:Snap(ARROW_SIZE, bScale))
     btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     btn.tex = btn:CreateTexture(nil, "ARTWORK")
-    btn.tex:SetSize(ARROW_TEX_SIZE.w, ARROW_TEX_SIZE.h)
+    btn.tex:SetSize(Pixel:Snap(ARROW_TEX_SIZE.w, bScale), Pixel:Snap(ARROW_TEX_SIZE.h, bScale))
     btn.tex:SetPoint("CENTER")
     btn.tex:SetAtlas(ARROW_ATLAS)
     btn.tex:SetAlpha(0.7)

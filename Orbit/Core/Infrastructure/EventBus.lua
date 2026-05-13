@@ -72,6 +72,9 @@ function EventBus:Fire(event, ...)
             end
             if not ok then
                 Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
+                if Orbit.ErrorHandler then
+                    Orbit.ErrorHandler:LogError("EventBus", event, err)
+                end
             end
         end
     end

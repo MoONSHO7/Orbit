@@ -321,7 +321,6 @@ function Dialog:Open(frame, plugin, systemIndex)
     local tlScale = self.TransformLayer:GetEffectiveScale()
     self.TransformLayer:SetSize(Orbit.Engine.Pixel:Snap(layerW, tlScale), Orbit.Engine.Pixel:Snap(layerH, tlScale))
 
-    -- The cleric's Detect Magic reveals changes to the dungeon walls in real time
     self:HookSourceSizeChanged(canvasFrame)
 
     -- Get saved positions (use global if synced for Action Bars)
@@ -333,7 +332,8 @@ function Dialog:Open(frame, plugin, systemIndex)
         savedPositions = plugin and plugin.GetComponentPositions and plugin:GetComponentPositions(systemIndex) or plugin and plugin:GetSetting(systemIndex, "ComponentPositions") or {}
     end
 
-    local defaults = plugin and plugin.defaults and plugin.defaults.ComponentPositions
+    local defaults = (plugin and plugin.GetDefaultComponentPositions and plugin:GetDefaultComponentPositions())
+        or (plugin and plugin.defaults and plugin.defaults.ComponentPositions)
     if defaults then
         for key, defaultPos in pairs(defaults) do
             if not savedPositions[key] or not savedPositions[key].anchorX then

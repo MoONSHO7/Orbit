@@ -161,19 +161,24 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.NameFrame:SetAllPoints(f.Health)
     f.NameFrame:SetFrameLevel(f:GetFrameLevel() + Constants.Levels.Overlay)
 
+    local fScale = f:GetEffectiveScale() or 1
+    local textInset = Engine.Pixel:Multiple(TEXT_INSET, fScale)
+    local shadowX = Engine.Pixel:Multiple(SHADOW_OFFSET_X, fScale)
+    local shadowY = -Engine.Pixel:Multiple(math.abs(SHADOW_OFFSET_Y), fScale)
+
     f.Name = f.NameFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", TEXT_INSET, 0)
+    f.Name:SetPoint("LEFT", f.TextFrame, "LEFT", textInset, 0)
     f.Name:SetJustifyH("LEFT")
-    f.Name:SetShadowOffset(SHADOW_OFFSET_X, SHADOW_OFFSET_Y)
+    f.Name:SetShadowOffset(shadowX, shadowY)
     f.Name:SetShadowColor(0, 0, 0, 1)
     f.Name:SetWordWrap(false)
     f.Name:SetNonSpaceWrap(false)
     f.Name:SetText("Unit Name")
 
     f.HealthText = f.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.HealthText:SetPoint("RIGHT", -TEXT_INSET, 0)
+    f.HealthText:SetPoint("RIGHT", -textInset, 0)
     f.HealthText:SetJustifyH("RIGHT")
-    f.HealthText:SetShadowOffset(SHADOW_OFFSET_X, SHADOW_OFFSET_Y)
+    f.HealthText:SetShadowOffset(shadowX, shadowY)
     f.HealthText:SetShadowColor(0, 0, 0, 1)
     f.HealthText:SetText("100%")
 
@@ -223,7 +228,6 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
 
     f.DamageBarOnUpdate = DamageBarOnUpdate
 
-    -- The party registers with the Clique click-cast guild, no invitation needed
     if ClickCastFrames then ClickCastFrames[f] = true end
     RegisterUnitWatch(f)
     f:SetScript("OnShow", function(self) self:UpdateAll() end)

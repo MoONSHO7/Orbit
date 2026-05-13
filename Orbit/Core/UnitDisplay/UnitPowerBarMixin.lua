@@ -60,6 +60,7 @@ function Mixin:CreatePowerBarPlugin(config)
         local w, h = self:GetWidth(), self:GetHeight()
 
         local preview = CreateFrame("Frame", nil, parent)
+        OrbitEngine.Pixel:Enforce(preview)
         preview:SetSize(w, h)
         preview.sourceFrame = self
         preview.sourceWidth = w

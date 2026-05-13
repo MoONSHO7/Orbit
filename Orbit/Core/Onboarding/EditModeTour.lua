@@ -492,7 +492,7 @@ ShowResizePulse = function()
     end
 end
 
--- [ TOUR STOPS (deferred init — needs frame refs) ] -------------------------------------------------
+-- [ TOUR STOPS (deferred init — needs frame refs) ] -----------------------------------------------
 TOUR_STOPS = {
     { anchorKey = "A",
       title = L.TOUR_EM_STEP1_TITLE, text = L.TOUR_EM_STEP1_TEXT,

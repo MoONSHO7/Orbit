@@ -11,6 +11,7 @@ local SWATCH_HEIGHT = 20
 local COMPACT_SWATCH_SIZE = 21
 local COMPACT_ROW_HEIGHT = 26
 local WIDGET_SIZE = { width = 260, height = 32 }
+local CHECKERBOARD = "Interface\\AddOns\\Orbit\\Core\\assets\\Other\\Orbit_Checkerboard.tga"
 
 function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
     if not self.colorPool then self.colorPool = {} end
@@ -29,8 +30,16 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
             edgeSize = 1,
         })
         frame.Swatch:SetBackdropBorderColor(0, 0, 0, 1)
+        frame.Swatch:SetBackdropColor(0, 0, 0, 0)
 
-        frame.Swatch.Color = frame.Swatch:CreateTexture(nil, "OVERLAY")
+        frame.Swatch.Checkerboard = frame.Swatch:CreateTexture(nil, "BACKGROUND")
+        frame.Swatch.Checkerboard:SetPoint("TOPLEFT", 1, -1)
+        frame.Swatch.Checkerboard:SetPoint("BOTTOMRIGHT", -1, 1)
+        frame.Swatch.Checkerboard:SetTexture(CHECKERBOARD, "REPEAT", "REPEAT")
+        frame.Swatch.Checkerboard:SetHorizTile(true)
+        frame.Swatch.Checkerboard:SetVertTile(true)
+
+        frame.Swatch.Color = frame.Swatch:CreateTexture(nil, "ARTWORK")
         frame.Swatch.Color:SetPoint("TOPLEFT", 1, -1)
         frame.Swatch.Color:SetPoint("BOTTOMRIGHT", -1, 1)
         frame.Swatch.Color:SetColorTexture(1, 1, 1, 1)
@@ -39,8 +48,8 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
             local lib = LibStub and LibStub("LibOrbitColorPicker-1.0", true)
             if not lib then return end
             
-            if Orbit.db and not Orbit.db.RecentColors then
-                Orbit.db.RecentColors = {}
+            if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.RecentColors then
+                Orbit.db.AccountSettings.RecentColors = {}
             end
 
             local initData = { r = frame.r, g = frame.g, b = frame.b, a = frame.a }
@@ -49,7 +58,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
                 initialData = initData,
                 hasOpacity = true,
                 forceSingleColor = true,
-                recentColorsDb = Orbit.db and Orbit.db.RecentColors,
+                recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,
                 onOpen = function(picker)
                     local as = Orbit.db and Orbit.db.AccountSettings
                     if as and not as.ColorPickerTourComplete then

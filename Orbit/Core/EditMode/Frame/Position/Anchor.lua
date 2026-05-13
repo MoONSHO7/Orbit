@@ -183,45 +183,38 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions)
         padding = Orbit.Engine.Pixel:Multiple(padding, child:GetEffectiveScale())
     end
 
-    local ok, err = pcall(function()
-        if edge == "BOTTOM" then
-            if align == "LEFT" then
-                child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding)
-            elseif align == "RIGHT" then
-                child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding)
-            else
-                child:SetPoint("TOP", parent, "BOTTOM", 0, -padding)
-            end
-        elseif edge == "TOP" then
-            if align == "LEFT" then
-                child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding)
-            elseif align == "RIGHT" then
-                child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding)
-            else
-                child:SetPoint("BOTTOM", parent, "TOP", 0, padding)
-            end
-        elseif edge == "LEFT" then
-            if align == "TOP" then
-                child:SetPoint("TOPRIGHT", parent, "TOPLEFT", -padding, 0)
-            elseif align == "BOTTOM" then
-                child:SetPoint("BOTTOMRIGHT", parent, "BOTTOMLEFT", -padding, 0)
-            else
-                child:SetPoint("RIGHT", parent, "LEFT", -padding, 0)
-            end
-        elseif edge == "RIGHT" then
-            if align == "TOP" then
-                child:SetPoint("TOPLEFT", parent, "TOPRIGHT", padding, 0)
-            elseif align == "BOTTOM" then
-                child:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", padding, 0)
-            else
-                child:SetPoint("LEFT", parent, "RIGHT", padding, 0)
-            end
+    if edge == "BOTTOM" then
+        if align == "LEFT" then
+            child:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 0, -padding)
+        elseif align == "RIGHT" then
+            child:SetPoint("TOPRIGHT", parent, "BOTTOMRIGHT", 0, -padding)
+        else
+            child:SetPoint("TOP", parent, "BOTTOM", 0, -padding)
         end
-    end)
-
-    if not ok then
-        Orbit.ErrorHandler:LogError("Anchor", "SetPoint", tostring(err))
-        return false
+    elseif edge == "TOP" then
+        if align == "LEFT" then
+            child:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 0, padding)
+        elseif align == "RIGHT" then
+            child:SetPoint("BOTTOMRIGHT", parent, "TOPRIGHT", 0, padding)
+        else
+            child:SetPoint("BOTTOM", parent, "TOP", 0, padding)
+        end
+    elseif edge == "LEFT" then
+        if align == "TOP" then
+            child:SetPoint("TOPRIGHT", parent, "TOPLEFT", -padding, 0)
+        elseif align == "BOTTOM" then
+            child:SetPoint("BOTTOMRIGHT", parent, "BOTTOMLEFT", -padding, 0)
+        else
+            child:SetPoint("RIGHT", parent, "LEFT", -padding, 0)
+        end
+    elseif edge == "RIGHT" then
+        if align == "TOP" then
+            child:SetPoint("TOPLEFT", parent, "TOPRIGHT", padding, 0)
+        elseif align == "BOTTOM" then
+            child:SetPoint("BOTTOMLEFT", parent, "BOTTOMRIGHT", padding, 0)
+        else
+            child:SetPoint("LEFT", parent, "RIGHT", padding, 0)
+        end
     end
     return true
 end

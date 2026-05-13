@@ -22,7 +22,7 @@ function W:Update()
     end
     self.activeCount = active
     local color = active >= QUEST_HIGH and "|cffff0000" or (active >= QUEST_LOW and "|cffffa500" or "|cff00ff00")
-    self:SetText(string.format("%s%d|r/%d Quests", color, active, MAX_QUESTS))
+    self:SetText(L.PLU_DT_QUEST_TEXT_F:format(color, active, MAX_QUESTS))
 end
 
 function W:ShowTooltip()

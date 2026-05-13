@@ -1,6 +1,9 @@
 -- [ HEALER AURA REGISTRY ] --------------------------------------------------------------------------
 -- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (10 slots + RaidBuff per spec).
+-- The `label` fields below are developer-facing comments; GetSlotLabel resolves the rendered name
+-- via C_Spell.GetSpellName(spellId) so the WoW client returns the player's locale.
 local _, Orbit = ...
+local L = Orbit.L
 
 Orbit.HealerAuraRegistry = {}
 local Registry = Orbit.HealerAuraRegistry
@@ -144,9 +147,14 @@ function Registry:GetCurrentSpecSpells() return _currentSpecSpells end
 
 function Registry:GetSlotLabel(key)
     for _, slot in ipairs(_activeSlots) do
-        if slot.key == key then return slot.label end
+        if slot.key == key then
+            local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(slot.spellId)
+            return name or slot.label
+        end
     end
-    if key == RAID_BUFF_KEY and _activeRaidBuffs[1] then return "Raid Buff" end
+    if key == RAID_BUFF_KEY and _activeRaidBuffs[1] then
+        return L.CMN_RAID_BUFF or "Raid Buff"
+    end
     return key
 end
 

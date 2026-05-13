@@ -18,17 +18,19 @@ function PositionManager:SetPosition(frame, point, x, y)
     ActiveAnchors[name] = nil
 end
 
-function PositionManager:SetAnchor(frame, target, edge, padding, align, fallback)
+function PositionManager:SetAnchor(frame, target, edge, padding, align, fallback, ancestry)
     if not frame then return end
     local name = frame:GetName()
     if not name then return end
     local targetName = type(target) == "table" and target:GetName() or target
-    if ActiveAnchors[name] then
-        ActiveAnchors[name].target, ActiveAnchors[name].edge = targetName, edge
-        ActiveAnchors[name].padding, ActiveAnchors[name].align = padding, align
-        ActiveAnchors[name].fallback = fallback
+    local entry = ActiveAnchors[name]
+    if entry then
+        entry.target, entry.edge = targetName, edge
+        entry.padding, entry.align = padding, align
+        entry.fallback = fallback
+        entry.ancestry = ancestry
     else
-        ActiveAnchors[name] = { target = targetName, edge = edge, padding = padding, align = align, fallback = fallback }
+        ActiveAnchors[name] = { target = targetName, edge = edge, padding = padding, align = align, fallback = fallback, ancestry = ancestry }
     end
     ActivePositions[name] = nil
 end

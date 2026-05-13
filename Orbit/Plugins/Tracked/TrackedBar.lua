@@ -2,6 +2,7 @@
 -- Single-payload bar: charges (segmented), active+cd (drain/fill), or cd-only (fill). H or V layout.
 local _, Orbit = ...
 
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local DragDrop = Orbit.CooldownDragDrop
@@ -133,12 +134,21 @@ end
 
 -- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
 function Bar:Build(plugin, record)
-    local frame = CreateFrame("Frame", "OrbitTrackedBar" .. record.id, UIParent)
+    local frameName = "OrbitTrackedBar" .. record.id
+    local frame = _G[frameName]
+    if frame and frame._orbitTrackedMode == "bar" then
+        frame.systemIndex = record.id
+        frame.recordId = record.id
+        frame.orbitPlugin = plugin
+        return frame
+    end
+    frame = CreateFrame("Frame", frameName, UIParent)
+    frame._orbitTrackedMode = "bar"
     OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
     frame:SetClampedToScreen(true)
     frame.systemIndex = record.id
-    frame.editModeName = "Tracked Bar"
+    frame.editModeName = L.PLU_TRACKED_BAR_NAME
     frame.orbitPlugin = plugin
     frame.recordId = record.id
     frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }

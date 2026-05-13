@@ -780,7 +780,7 @@ function Plugin:OnUpdate(elapsed)
 
         -- Timer shows current stage
         if bar.Timer and bar.Timer:IsShown() then
-            bar.Timer:SetText(string.format("Rank %d", bar.currentStage))
+            bar.Timer:SetText(L.PLU_CASTBAR_RANK_F:format(bar.currentStage))
         end
     end
 end
@@ -933,7 +933,6 @@ function Plugin:ApplyColor()
                 bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
             end
         else
-            -- The party has no curve map; consult the ancient CastBarColor scroll instead
             bar.colorCurve = nil
             local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             if bar.orbitBar then
@@ -957,7 +956,7 @@ function Plugin:ShowPreview()
     targetBar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
     targetBar:SetValue(PREVIEW_CAST_PROGRESS)
     if bar.Text then
-        bar.Text:SetText("Preview Cast")
+        bar.Text:SetText(L.PLU_CASTBAR_PREVIEW)
     end
     if bar.Icon then bar.Icon:SetTexture(PREVIEW_ICON_ID) end
     if bar.Timer then

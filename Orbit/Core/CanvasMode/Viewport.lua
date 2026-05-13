@@ -58,7 +58,7 @@ Dialog.BorderFrame.Border:SetAtlas("questlog-frame")
 Dialog.BorderFrame.Border:SetAllPoints()
 Dialog.BorderFrame.TopDetail = Dialog.BorderFrame:CreateTexture(nil, "ARTWORK")
 Dialog.BorderFrame.TopDetail:SetAtlas("questlog-frame-filigree", true)
-Dialog.BorderFrame.TopDetail:SetPoint("TOP", 0, 1)
+Dialog.BorderFrame.TopDetail:SetPoint("TOP", 0, OrbitEngine.Pixel:Multiple(1, Dialog.BorderFrame:GetEffectiveScale()))
 
 -- Divider (created in Dock.lua after DisabledDock is available)
 
@@ -245,7 +245,7 @@ Dialog.SyncToggle:SetFrameLevel(Dialog.BorderOverlay:GetFrameLevel() + 1)
 Dialog.SyncToggle:Hide()
 
 Dialog.SyncToggle.label = Dialog.SyncToggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-Dialog.SyncToggle.label:SetPoint("RIGHT", Dialog.SyncToggle, "LEFT", -2, 0)
+Dialog.SyncToggle.label:SetPoint("RIGHT", Dialog.SyncToggle, "LEFT", -OrbitEngine.Pixel:Multiple(2, Dialog.SyncToggle:GetEffectiveScale()), 0)
 Dialog.SyncToggle.label:SetText(L.CFG_CM_SYNC)
 Dialog.SyncToggle.label:SetTextColor(SYNC_LABEL_COLOR.r, SYNC_LABEL_COLOR.g, SYNC_LABEL_COLOR.b, SYNC_LABEL_COLOR.a)
 

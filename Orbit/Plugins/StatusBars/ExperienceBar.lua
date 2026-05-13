@@ -17,8 +17,8 @@ local PENDING_COLOR = { r = 0.2, g = 0.9, b = 0.2, a = 0.5 }
 local WARBAND_PREFIX = ""
 
 local REACTION_LABEL = {
-    [1] = "Hated",    [2] = "Hostile",  [3] = "Unfriendly", [4] = "Neutral",
-    [5] = "Friendly", [6] = "Honored",  [7] = "Revered",    [8] = "Exalted",
+    [1] = L.PLU_REP_REACTION_1, [2] = L.PLU_REP_REACTION_2, [3] = L.PLU_REP_REACTION_3, [4] = L.PLU_REP_REACTION_4,
+    [5] = L.PLU_REP_REACTION_5, [6] = L.PLU_REP_REACTION_6, [7] = L.PLU_REP_REACTION_7, [8] = L.PLU_REP_REACTION_8,
 }
 
 local MODE_XP = "xp"
@@ -82,7 +82,7 @@ local function BuildRepRecord(watched)
             current = majorData.renownReputationEarned or 0,
             min = 0,
             max = majorData.renownLevelThreshold,
-            level = string.format("Renown %d", majorData.renownLevel or 0),
+            level = L.PLU_REP_RENOWN_F:format(majorData.renownLevel or 0),
             color = RC:GetOverride("RENOWN"),
             isAccountWide = isAccountWide,
         }
@@ -93,9 +93,10 @@ local function BuildRepRecord(watched)
         if value and threshold and threshold > 0 then
             local renownLevel = majorData and majorData.renownLevel
             local cycles = ParagonCycles(value, threshold, hasReward)
+            local paragonWord = hasReward and L.PLU_REP_PARAGON_READY or L.PLU_REP_PARAGON
             local levelLabel = renownLevel
-                and string.format("Renown %d — %s", renownLevel, hasReward and "Paragon!" or "Paragon")
-                or (hasReward and "Paragon!" or "Paragon")
+                and L.PLU_REP_RENOWN_PARAGON_F:format(renownLevel, paragonWord)
+                or paragonWord
             return {
                 mode = MODE_REP, factionID = factionID,
                 name = (majorData and majorData.name) or watched.name,
@@ -116,7 +117,7 @@ local function BuildRepRecord(watched)
     if reactionMax <= reactionMin then reactionMax = reactionMin + 1 end
     return {
         mode = MODE_REP, factionID = factionID,
-        name = watched.name or "Unknown",
+        name = watched.name or L.PLU_REP_UNKNOWN_FACTION,
         current = watched.currentStanding or reactionMin,
         min = reactionMin,
         max = reactionMax,
@@ -296,10 +297,10 @@ function Plugin:UpdateXP(level)
     local eta = (rate and rate > 0 and remaining > 0) and ((remaining / rate) * 3600) or 0
 
     local ctx = {
-        cur = currentXP, max = maxXP, rested = rested, level = level, name = "Experience",
+        cur = currentXP, max = maxXP, rested = rested, level = level, name = L.PLU_XP_NAME,
         perhour = rate, session = gained, eta = eta, pending = pending,
     }
-    Orbit.StatusBarBase:SetComponentText(frame.Name, "Experience")
+    Orbit.StatusBarBase:SetComponentText(frame.Name, L.PLU_XP_NAME)
     Orbit.StatusBarBase:SetComponentText(frame.Level, tostring(level))
     Orbit.StatusBarBase:SetComponentText(frame.Value, Orbit.StatusBarTextTemplate:Render(Orbit.StatusBarBase:ResolveTemplate(self, SYSTEM_ID), ctx))
     Orbit.StatusBarBase:SyncPreviewText(self, frame)
@@ -383,13 +384,13 @@ function Plugin:OnShiftClick()
     if record.mode == MODE_XP then
         local cur, max = UnitXP("player"), UnitXPMax("player")
         if not issecretvalue(cur) and not issecretvalue(max) and max > 0 then
-            text = string.format("[XP: Level %d — %d/%d (%.1f%%)]", record.level, cur, max, (cur / max) * 100)
+            text = L.PLU_XP_CHAT_LINK_F:format(record.level, cur, max, (cur / max) * 100)
         end
     else
         local prog = record.current - record.min
         local span = record.max - record.min
         if span > 0 then
-            text = string.format("[%s — %s — %d/%d (%.1f%%)]", record.name, record.level, prog, span, (prog / span) * 100)
+            text = L.PLU_REP_CHAT_LINK_F:format(record.name, record.level, prog, span, (prog / span) * 100)
         end
     end
     if text then editBox:Insert(text) end

@@ -17,7 +17,7 @@ function W:Update()
     if pct > 0 then
         self:SetText(string.format("|cff00ff00%.0f%%|r", pct))
     else
-        self:SetText("|cff888888Idle|r")
+        self:SetText("|cff888888" .. L.PLU_DT_COMBAT_STATUS_IDLE .. "|r")
     end
 end
 
@@ -31,8 +31,8 @@ function W:ShowTooltip()
         return
     end
     local pct = (speed / BASE_SPEED) * 100
-    GameTooltip:AddDoubleLine("Current:", string.format("%.0f%%", pct), 1, 1, 1, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Yards/sec:", string.format("%.1f", speed), 1, 1, 1, 0.7, 0.7, 0.7)
+    GameTooltip:AddDoubleLine(L.PLU_DT_SPEED_CURRENT, string.format("%.0f%%", pct), 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_SPEED_YARDS, string.format("%.1f", speed), 1, 1, 1, 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end
 

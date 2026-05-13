@@ -94,8 +94,9 @@ end
 function Dialog:ResetPositions()
     if not self.targetPlugin or not self.previewFrame then return end
     local plugin = self.targetPlugin
-    
-    local defaults = plugin.defaults and plugin.defaults.ComponentPositions
+
+    local defaults = plugin.GetDefaultComponentPositions and plugin:GetDefaultComponentPositions()
+        or (plugin.defaults and plugin.defaults.ComponentPositions)
     local isSynced = self.SyncToggle and self.SyncToggle:IsShown() and self.SyncToggle.isSynced
     if (isSynced or not defaults or not next(defaults)) and plugin.defaults and plugin.defaults.GlobalComponentPositions then
         defaults = plugin.defaults.GlobalComponentPositions
@@ -141,7 +142,8 @@ function Dialog:ResetPositions()
     end
 
     self:ClearDock()
-    local defaultDisabled = plugin.defaults and plugin.defaults.DisabledComponents or {}
+    local defaultDisabled = (plugin.GetDefaultDisabledComponents and plugin:GetDefaultDisabledComponents())
+        or (plugin.defaults and plugin.defaults.DisabledComponents) or {}
     self.disabledComponentKeys = {}
     for _, key in ipairs(defaultDisabled) do table.insert(self.disabledComponentKeys, key) end
     for _, key in ipairs(defaultDisabled) do

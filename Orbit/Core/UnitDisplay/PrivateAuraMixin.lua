@@ -27,7 +27,8 @@ function Mixin:CreateAnchors(frame, plugin, iconSize)
     frame._privateAuraIDs = {}
     frame._privateAuraUnit = unit
 
-    local positions = plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or {}
+    local positions = plugin.GetComponentPositions and plugin:GetComponentPositions(1)
+        or (plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions")) or {}
     local posData = positions.PrivateAuraAnchor or {}
     local overrides = posData.overrides
     local size = (overrides and overrides.IconSize) or iconSize

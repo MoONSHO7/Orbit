@@ -187,12 +187,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             self:ApplyFrameStyle(frame, showThisPower)
 
             -- Preview backdrop
-            if self.ApplyPreviewBackdrop then self:ApplyPreviewBackdrop(frame)
-            elseif self.CreateBackground then
-                self:CreateBackground(frame)
-                local globalSettings = Orbit.db.GlobalSettings or {}
-                Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
-            end
+            self:ApplyPreviewBackdrop(frame)
 
             -- Health bar
             if frame.Health then
@@ -308,12 +303,13 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
             local healerAuraSize = isParty and PARTY_HEALER_AURA_ICON_SIZE or RAID_HEALER_AURA_ICON_SIZE
             local statusIconSize = isParty and 24 or RAID_STATUS_ICON_SIZE
             local statusIcons = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }
-            local hideKeys = not isParty and { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon" } or nil
+            local hideKeys = not isParty and { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "MainTankIcon", "DispelIcon" } or nil
             Orbit.GroupCanvasRegistration:ShowCanvasModeIcons(self, frame, isCanvasMode, {
                 statusIcons = statusIcons,
                 statusIconSize = statusIconSize, statusIconSpacing = statusIconSize + 4,
                 privateAuraSize = privateAuraSize,
                 healerAuraSize = healerAuraSize,
+                dispelIconSize = statusIconSize,
                 hideKeys = hideKeys,
             }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs(), HealerReg:ActiveKeys())
 
@@ -392,7 +388,7 @@ function Orbit.GroupFramePreviewMixin:HidePreview()
     end
 
     self:UpdateFrameUnits()
-    if self.ApplySettings then self:ApplySettings() end
+    self:ApplySettings()
     self:UpdateContainerSize()
 end
 
@@ -413,8 +409,7 @@ end
 
 -- [ PREVIEW BACKDROP ]-------------------------------------------------------------------------------
 function Orbit.GroupFramePreviewMixin:ApplyPreviewBackdrop(frame)
-    if not frame then return end
-    if self.CreateBackground then self:CreateBackground(frame) end
+    self:CreateBackground(frame)
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(frame, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 end

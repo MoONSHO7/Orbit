@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 
@@ -66,6 +67,7 @@ local TIER_DEFAULTS = {
             Buffs = { anchorX = "LEFT", anchorY = "CENTER", offsetX = -2, offsetY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER", posX = -110, posY = 0, overrides = { MaxIcons = 4, IconSize = 34, MaxRows = 2 } },
             Debuffs = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = -2, offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = 110, posY = 0, overrides = { MaxIcons = 4, IconSize = 34, MaxRows = 2 } },
             MainTankIcon = { anchorX = "LEFT", offsetX = 25, anchorY = "TOP", offsetY = 1, justifyH = "LEFT", selfAnchorY = "TOP", posX = -55, posY = 19, overrides = { Scale = 0.7 } },
+            DispelIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 65, posY = -10, overrides = { IconSize = 18 } },
         },
         DisabledComponents = (function()
             local d = { "CrowdControlIcon", "RoleIcon" }
@@ -108,6 +110,7 @@ local TIER_DEFAULTS = {
             CrowdControlIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 2 },
             PrivateAuraAnchor = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0, posY = 0, overrides = { IconSize = 20 } },
             Buffs = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 48, posY = -18, overrides = { MaxIcons = 5, IconSize = 18, MaxRows = 2 } },
+            DispelIcon = { anchorX = "RIGHT", offsetX = 1, anchorY = "TOP", offsetY = 1, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 38, posY = 15, overrides = { IconSize = 14 } },
         },
         DisabledComponents = (function()
             local d = { "CrowdControlIcon" }
@@ -146,6 +149,7 @@ TIER_DEFAULTS.World = setmetatable({
         HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 7, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -7, overrides = { ShowHealthValue = false, FontSize = 8 } },
         ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
         MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -16, posY = 14, overrides = { Scale = 0.6 } },
+        DispelIcon = { anchorX = "RIGHT", offsetX = 1, anchorY = "TOP", offsetY = 1, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 22, posY = 10, overrides = { IconSize = 10 } },
     },
     DisabledComponents = (function()
         local d = { "CrowdControlIcon" }
@@ -208,6 +212,16 @@ function Plugin:SetTierSetting(key, value, tier)
     if not tiers[tier] then tiers[tier] = {} end
     tiers[tier][key] = value
     self:SetSetting(1, "Tiers", tiers)
+end
+
+function Plugin:GetDefaultComponentPositions()
+    local defaults = TIER_DEFAULTS[self:GetCurrentTier()]
+    return defaults and defaults.ComponentPositions
+end
+
+function Plugin:GetDefaultDisabledComponents()
+    local defaults = TIER_DEFAULTS[self:GetCurrentTier()]
+    return defaults and defaults.DisabledComponents
 end
 
 function Plugin:CopyTierSettings(sourceTier, destTier)
@@ -435,7 +449,7 @@ local function CreateGroupFrame(index, plugin)
     local frameName = "OrbitGroupFrame" .. index
 
     local frame = OrbitEngine.UnitButton:Create(plugin.container, unit, frameName, true)
-    frame.editModeName = "Group Frame " .. index
+    frame.editModeName = L.PLU_GROUP_FRAME_INDEX_F:format(index)
     frame.systemIndex = 1
     frame.groupIndex = index
 
@@ -496,7 +510,7 @@ function Plugin:OnLoad()
 
     self.container = CreateFrame("Frame", "OrbitGroupFrameContainer", UIParent, "SecureHandlerStateTemplate")
     self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
-    self.container.editModeName = "Group Frames"
+    self.container.editModeName = L.PLU_GROUP_FRAMES_NAME
     self.container.systemIndex = 1
     self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_GroupFrames") - 1)
@@ -524,7 +538,7 @@ function Plugin:OnLoad()
             self:EnsureAuraIcon(firstFrame, k, GetComponentIconSize(self, k))
         end
     end
-    local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+    local iconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "DispelIcon" }
     for _, k in ipairs(HealerReg:ActiveKeys()) do iconKeys[#iconKeys + 1] = k end
     Orbit.GroupCanvasRegistration:RegisterComponents(self, self.container, firstFrame,
         { "Name", "HealthText" }, iconKeys, AURA_BASE_ICON_SIZE)
@@ -536,7 +550,7 @@ function Plugin:OnLoad()
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
 
     self.container.orbitCanvasFrame = self.frames[1]
-    self.container.orbitCanvasTitle = "Group Frame: " .. self:GetCurrentTier()
+    self.container.orbitCanvasTitle = L.PLU_GROUP_FRAME_TITLE_F:format(self:GetCurrentTier())
 
     self:RestoreTierPosition(self._currentTier)
 
@@ -633,7 +647,7 @@ function Plugin:OnLoad()
                 self:SetSetting(1, "_EditTier", activeTier)
                 self._editTierOverride = activeTier
                 self._currentTier = activeTier
-                self.container.orbitCanvasTitle = "Group Frame: " .. activeTier
+                self.container.orbitCanvasTitle = L.PLU_GROUP_FRAME_TITLE_F:format(activeTier)
                 self:ApplySettings()
                 UnregisterStateDriver(self.container, "visibility")
                 self.container:Show()
@@ -725,7 +739,7 @@ function Plugin:CheckTierChange()
     if newTier ~= self._currentTier then
         local oldTier = self._currentTier
         self._currentTier = newTier
-        self.container.orbitCanvasTitle = "Group Frame: " .. newTier
+        self.container.orbitCanvasTitle = L.PLU_GROUP_FRAME_TITLE_F:format(newTier)
         if not InCombatLockdown() then
             self._pendingTierApply = nil
             self:SaveCurrentTierPosition(oldTier)
@@ -754,6 +768,7 @@ function Plugin:PrepareIconsForCanvasMode()
         crowdControlSize = GetCCSize(self),
         privateAuraSize = GetPrivateAuraSize(self),
         healerAuraSize = GetHealerAuraSize(self),
+        dispelIconSize = isParty and 24 or RAID_STATUS_ICON_SIZE,
     }, HealerReg:ActiveSlots(), HealerReg:ActiveRaidBuffs())
 end
 
@@ -806,7 +821,7 @@ function Plugin:AssignPartyUnits()
                     Orbit.AuraMixin:WipeCaches(frame)
                     if frame._colorByAuraOverride then
                         frame._colorByAuraOverride = nil
-                        if frame.ApplyHealthColor then frame:ApplyHealthColor() end
+                        frame:ApplyHealthColor()
                     end
                     frame:SetAttribute("unit", unit)
                     frame.unit = unit
@@ -862,7 +877,7 @@ function Plugin:AssignRaidUnits()
                     Orbit.AuraMixin:WipeCaches(frame)
                     if frame._colorByAuraOverride then
                         frame._colorByAuraOverride = nil
-                        if frame.ApplyHealthColor then frame:ApplyHealthColor() end
+                        frame:ApplyHealthColor()
                     end
                     frame:SetAttribute("unit", token)
                     frame.unit = token
@@ -950,12 +965,12 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     for _, k in ipairs({ "RoleIcon", "LeaderIcon", "MainTankIcon", "MarkerIcon" }) do
         if frame[k] and frame[k].SetSize then frame[k]:SetSize(iconSize, iconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = iconSize, iconSize end
     end
-    for _, k in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon" }) do
+    for _, k in ipairs({ "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "DispelIcon" }) do
         if frame[k] and frame[k].SetSize then frame[k]:SetSize(centerIconSize, centerIconSize); frame[k].orbitOriginalWidth, frame[k].orbitOriginalHeight = centerIconSize, centerIconSize end
     end
 
     if savedPositions then
-        local allIconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor" }
+        local allIconKeys = { "RoleIcon", "LeaderIcon", "MainTankIcon", "StatusIcons", "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIcon", "MarkerIcon", "DefensiveIcon", "CrowdControlIcon", "PrivateAuraAnchor", "DispelIcon" }
         local activeKeys = HealerReg:ActiveKeys()
         for _, k in ipairs(activeKeys) do allIconKeys[#allIconKeys + 1] = k end
         for _, k in ipairs(activeKeys) do
@@ -999,6 +1014,7 @@ function Plugin:ApplySettings()
     local borderSize = self:GetSetting(1, "BorderSize")
     for _, frame in ipairs(self.frames) do
         if not frame.preview and frame.unit then
+            Orbit.AuraMixin:InvalidateContainerLayout(frame)
             frame:SetSize(tierWidth, tierHeight)
             UpdateFrameLayout(frame, borderSize, self)
             Orbit:SafeAction(function() self:ApplyFrameStyle(frame) end)
@@ -1021,6 +1037,7 @@ function Plugin:ApplySettings()
             UpdatePrivateAuras(frame, self)
             self:UpdateColorByAura(frame)
             StatusDispatch(frame, self, "UpdateAllPartyStatusIcons")
+            Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, self)
             if frame.UpdateAll then frame:UpdateAll() end
         end
     end

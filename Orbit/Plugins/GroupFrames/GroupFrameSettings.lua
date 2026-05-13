@@ -116,7 +116,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             plugin:SaveCurrentTierPosition()
             plugin:SetSetting(1, "_EditTier", val)
             plugin._editTierOverride = val
-            plugin.container.orbitCanvasTitle = "Group Frame: " .. val
+            plugin.container.orbitCanvasTitle = L.PLU_GROUP_FRAME_TITLE_F:format(val)
             plugin:ApplySettings()
             plugin:RestoreTierPosition(val)
             plugin:ShowPreview()

@@ -30,6 +30,13 @@ local CYCLING_ATLASES = {
         { atlas = "AllianceAssaultsMapBanner" },
         { atlas = "HordeAssaultsMapBanner" },
     },
+    DispelIcon = {
+        { atlas = "icons_64x64_magic" },
+        { atlas = "icons_64x64_curse" },
+        { atlas = "icons_64x64_disease" },
+        { atlas = "icons_64x64_poison" },
+        { atlas = "icons_64x64_bleed" },
+    },
     -- Expansion landing page button — cycles through all known expansion icons
     Missions = {
         { atlas = "GarrLanding-MinimapIcon-Horde-Up" },           -- WoD (Horde)

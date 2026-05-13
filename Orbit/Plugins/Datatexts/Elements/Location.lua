@@ -26,7 +26,7 @@ function W:Update()
     local zone = GetSubZoneText()
     if not zone or zone == "" then zone = GetZoneText() end
     local c = GetPvPColor()
-    self:SetText(string.format("|cff%02x%02x%02x%s|r", c[1] * 255, c[2] * 255, c[3] * 255, zone or "Unknown"))
+    self:SetText(string.format("|cff%02x%02x%02x%s|r", c[1] * 255, c[2] * 255, c[3] * 255, zone or L.PLU_DT_LOCATION_UNKNOWN))
 end
 
 function W:ShowTooltip()
@@ -34,14 +34,14 @@ function W:ShowTooltip()
     GameTooltip:ClearLines()
     GameTooltip:AddLine(L.PLU_DT_LOCATION_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Zone:", GetZoneText() or "Unknown", 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_LOCATION_ZONE, GetZoneText() or L.PLU_DT_LOCATION_UNKNOWN, 1, 1, 1, 1, 1, 1)
     local subZone = GetSubZoneText()
-    if subZone and subZone ~= "" then GameTooltip:AddDoubleLine("Sub-Zone:", subZone, 1, 1, 1, 0.7, 0.7, 0.7) end
+    if subZone and subZone ~= "" then GameTooltip:AddDoubleLine(L.PLU_DT_LOCATION_SUB_ZONE, subZone, 1, 1, 1, 0.7, 0.7, 0.7) end
     local mapID = C_Map.GetBestMapForUnit("player")
     if mapID then
         local pos = C_Map.GetPlayerMapPosition(mapID, "player")
         if pos then
-            GameTooltip:AddDoubleLine("Coords:", string.format("%.1f, %.1f", pos.x * 100, pos.y * 100), 1, 1, 1, 0.7, 0.7, 0.7)
+            GameTooltip:AddDoubleLine(L.PLU_DT_LOCATION_COORDS, string.format("%.1f, %.1f", pos.x * 100, pos.y * 100), 1, 1, 1, 0.7, 0.7, 0.7)
         end
     end
 
@@ -59,8 +59,8 @@ function W:ShowTooltip()
                     GameTooltip:AddLine(L.PLU_DT_LOCATION_LOCKOUTS, 1, 0.82, 0)
                     hasLockouts = true
                 end
-                local progressMsg = (numEncounters and numEncounters > 0) and string.format("%d/%d", encounterProgress or 0, numEncounters) or "Defeated"
-                local label = string.format("%s - %s", name or "Unknown", difficultyName or "")
+                local progressMsg = (numEncounters and numEncounters > 0) and string.format("%d/%d", encounterProgress or 0, numEncounters) or L.PLU_DT_LOCATION_DEFEATED
+                local label = string.format("%s - %s", name or L.PLU_DT_LOCATION_UNKNOWN, difficultyName or "")
                 GameTooltip:AddDoubleLine(label, progressMsg, 1, 1, 1, 1, 1, 1)
             end
         end
@@ -73,7 +73,7 @@ function W:ShowTooltip()
                     GameTooltip:AddLine(L.PLU_DT_LOCATION_LOCKOUTS, 1, 0.82, 0)
                     hasLockouts = true
                 end
-                GameTooltip:AddDoubleLine(name, "Defeated", 1, 1, 1, 1, 0.2, 0.2)
+                GameTooltip:AddDoubleLine(name, L.PLU_DT_LOCATION_DEFEATED, 1, 1, 1, 1, 0.2, 0.2)
             end
         end
     end
