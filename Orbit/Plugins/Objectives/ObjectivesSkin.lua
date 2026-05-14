@@ -768,28 +768,13 @@ end
 -- [ SKIN: UI WIDGET SCENARIO HEADER ]----------------------------------------------------------
 local function SkinWidgetScenarioHeader(self)
     if not IsUnderObjectivesTracker(self) then return end
-
-    if self.Frame then self.Frame:SetAlpha(0) end
-    if self.DecorationBottomLeft then self.DecorationBottomLeft:SetAlpha(0) end
-    if self.DecorationBottomRight then self.DecorationBottomRight:SetAlpha(0) end
-    
-    if self.HeaderText then 
-        ApplyFont(self.HeaderText)
-        self.HeaderText:ClearAllPoints()
-        self.HeaderText:SetPoint("TOPLEFT", self, "TOPLEFT", 15, -4)
-    end
+    if self.HeaderText then ApplyFont(self.HeaderText) end
 end
 
 -- [ SKIN: UI WIDGET BUTTON HEADER ]------------------------------------------------------------
 local function SkinWidgetButtonHeader(self)
     if not IsUnderObjectivesTracker(self) then return end
-
-    if self.Frame then self.Frame:SetAlpha(0) end
-    if self.HeaderText then 
-        ApplyFont(self.HeaderText)
-        self.HeaderText:ClearAllPoints()
-        self.HeaderText:SetPoint("TOPLEFT", self, "TOPLEFT", 15, -4) 
-    end
+    if self.HeaderText then ApplyFont(self.HeaderText) end
 end
 
 -- [ INSTALL HOOKS ]----------------------------------------------------------------------------------
