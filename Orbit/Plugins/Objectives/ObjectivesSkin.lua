@@ -381,7 +381,7 @@ local function ApplyBlockIcon(block)
         _blockIcons[block] = ico
     end
 
-    ico:SetAtlas(GetPOIAtlas(block), true)
+    ico:SetAtlas(GetPOIAtlas(block), false)
     ico:Show()
 
     -- Color the quest title text to match quest type
