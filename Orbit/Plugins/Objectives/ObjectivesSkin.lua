@@ -261,11 +261,14 @@ end
 -- reparenting it to a hidden frame, then render our own icon texture directly
 -- on the block. This avoids all timing issues with UpdateButtonStyle overwriting
 -- Display.Icon, and avoids taint from SetAlpha(0) on Blizzard-owned textures.
+-- A thin transparent Button (same size/anchor as the icon) is layered on top to
+-- restore the click-to-focus (super-track) behaviour the native poiButton provided.
 
 local POI_SIZE = 18
 
 -- External weak-keyed tables — never write custom state onto Blizzard pool frames.
 local _blockIcons     = setmetatable({}, { __mode = "k" })  -- block -> our icon texture
+local _blockClickBtns = setmetatable({}, { __mode = "k" })  -- block -> focus click button
 local _poiSuppressed  = setmetatable({}, { __mode = "k" })  -- poiButton -> true
 
 -- Hidden parent: POI buttons reparented here are invisible and mouse-disabled.
@@ -412,11 +415,13 @@ local function ApplyBlockIcon(block)
     -- Suppress Blizzard's POI button — it may have just been assigned
     SuppressPOI(block)
 
-    -- Hide icon immediately if this block has no quest POI
+    -- Hide icon and click button immediately if this block has no quest POI
     local questID = block.poiQuestID
     if not questID then
         local ico = _blockIcons[block]
         if ico then ico:Hide() end
+        local clickBtn = _blockClickBtns[block]
+        if clickBtn then clickBtn:Hide() end
         return
     end
 
@@ -442,6 +447,31 @@ local function ApplyBlockIcon(block)
         local c = GetPOIColor(block)
         block.HeaderText:SetTextColor(c.r, c.g, c.b)
     end
+
+    -- Transparent Button layered over the icon — restores click-to-focus behaviour
+    -- that Blizzard's native poiButton provided before we suppressed it.
+    -- Left-click focuses the quest (super-track); clicking the focused quest clears it.
+    local clickBtn = _blockClickBtns[block]
+    if not clickBtn then
+        clickBtn = CreateFrame("Button", nil, block)
+        -- Same anchor/size as the icon texture
+        if block.HeaderText then
+            clickBtn:SetPoint("TOPRIGHT", block.HeaderText, "TOPLEFT", -4, 0)
+        else
+            clickBtn:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, 0)
+        end
+        clickBtn:SetSize(POI_SIZE, POI_SIZE)
+        clickBtn:RegisterForClicks("LeftButtonUp")
+        clickBtn:SetScript("OnClick", function()
+            if not (C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID) then return end
+            local qID = block.poiQuestID
+            if not qID then return end
+            local current = C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID()
+            C_SuperTrack.SetSuperTrackedQuestID(current == qID and 0 or qID)
+        end)
+        _blockClickBtns[block] = clickBtn
+    end
+    clickBtn:Show()
 end
 
 -- [ SKIN: BLOCK (quest/achievement/etc) ]------------------------------------------------------------
@@ -484,10 +514,13 @@ local function OnAddBlock(_, block)
     -- assigned from a previous pool use before our hooks were installed)
     SuppressPOI(block)
 
-    -- Hide stale icon from previous quest so it doesn't flash with wrong atlas
-    -- before AddPOIButton fires and ApplyBlockIcon sets the correct one.
+    -- Hide stale icon and click button from previous quest so they don't flash
+    -- with wrong atlas/position before AddPOIButton fires and ApplyBlockIcon
+    -- sets the correct ones.
     local ico = _blockIcons[block]
     if ico then ico:Hide() end
+    local clickBtn = _blockClickBtns[block]
+    if clickBtn then clickBtn:Hide() end
 
     -- Skin the checkmark on completed objectives
     local check = block.currentLine and block.currentLine.Check
