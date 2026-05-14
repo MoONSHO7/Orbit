@@ -3,6 +3,10 @@
 ### Updates
 - Added Objectives Colours tab: font size sliders for quest titles and objectives, custom colour pickers for normal, completed, and focused quests, and a top-line decoration option
 - Added QoL > Automation section: auto-accept quests, auto-turn-in quests (hold Shift to skip), with optional guard against accidentally accepting multiple quests at once
+- Added Custom Quest Colors toggle (Objectives > Colours): colour quest titles by type (Legendary, Raid, Dungeon, PvP, Campaign, etc.) — toggle off for default Blizzard colours
+- Fixed auto turn-in not completing quests (reward was never claimed)
+- Fixed raid-tagged quests incorrectly showing legendary orange colour
+- Removed non-functional Quest Marker Style option
 - Added Raid Panel (Marker Bar) Plugin
 - Added HUD Minimap (toggleable via keybind)
 - Updated Minimap Borders (new Splatter shape + Behaviour settings tab)
