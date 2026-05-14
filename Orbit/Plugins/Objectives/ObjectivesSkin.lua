@@ -257,24 +257,11 @@ local function SkinQuestItemButton(button)
 end
 
 -- [ SKIN: POI BUTTON / BLOCK ICON ]-----------------------------------------------------------------
--- Ellesmere-inspired approach: completely suppress Blizzard's POI button by
--- reparenting it to a hidden frame, then render our own icon texture directly
--- on the block. This avoids all timing issues with UpdateButtonStyle overwriting
--- Display.Icon, and avoids taint from SetAlpha(0) on Blizzard-owned textures.
--- A thin transparent Button (same size/anchor as the icon) is layered on top to
--- restore the click-to-focus (super-track) behaviour the native poiButton provided.
+-- Style Blizzard's native poiButton to show a slim atlas icon instead of the
+-- default numbered circle.  The button stays in place and functional, so
+-- click-to-focus (super-track) works natively — no custom click handling needed.
 
 local POI_SIZE = 18
-
--- External weak-keyed tables — never write custom state onto Blizzard pool frames.
-local _blockIcons     = setmetatable({}, { __mode = "k" })  -- block -> our icon texture
-local _blockClickBtns = setmetatable({}, { __mode = "k" })  -- block -> focus click button
-local _poiSuppressed  = setmetatable({}, { __mode = "k" })  -- poiButton -> true
-local _blockPoiHooked = setmetatable({}, { __mode = "k" })  -- block -> true (per-instance AddPOIButton hook installed)
-
--- Hidden parent: POI buttons reparented here are invisible and mouse-disabled.
-local _poiHiddenParent = CreateFrame("Frame")
-_poiHiddenParent:Hide()
 
 -- Quest classification → header text color mapping
 local POI_COLORS = {
@@ -333,13 +320,8 @@ local function GetPOIAtlas(block)
         return POI_ATLAS_COMPLETE
     end
 
-    if C_QuestLog.GetQuestTagInfo then
-        local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
-        if tagInfo and tagInfo.tagID and POI_TAG_ATLAS[tagInfo.tagID] then
-            return POI_TAG_ATLAS[tagInfo.tagID]
-        end
-    end
-
+    -- Classification checked first — Legendary / Campaign / Important should
+    -- take visual priority over generic tags like Raid or Dungeon.
     if C_CampaignInfo and C_CampaignInfo.IsCampaignQuest(questID) then
         return POI_CLASSIFICATION_ATLAS[Enum.QuestClassification.Campaign]
     end
@@ -347,6 +329,13 @@ local function GetPOIAtlas(block)
     local classification = C_QuestInfoSystem.GetQuestClassification(questID)
     if classification and POI_CLASSIFICATION_ATLAS[classification] then
         return POI_CLASSIFICATION_ATLAS[classification]
+    end
+
+    if C_QuestLog.GetQuestTagInfo then
+        local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
+        if tagInfo and tagInfo.tagID and POI_TAG_ATLAS[tagInfo.tagID] then
+            return POI_TAG_ATLAS[tagInfo.tagID]
+        end
     end
 
     return POI_ATLAS_DEFAULT
@@ -392,94 +381,62 @@ local function GetPOIColor(block)
     return GetNormalQuestColor()
 end
 
--- Suppress a POI button by reparenting to a hidden frame and disabling mouse.
--- Always re-applies SetParent and EnableMouse so that repeated calls (from
--- ApplyBlockIcon on every AddPOIButton) counteract any state changes made by
--- GetPOIButton reuse (SetSelected, UpdateButtonStyle, Show, etc.).
--- Installs the SetParent hook only once per button instance.
--- Safe to call with block.poiButton == nil (no-op).
-local function SuppressPOI(block)
-    local pb = block and block.poiButton
-    if not pb then return end
-    -- Re-apply every time: GetPOIButton may call Show/UpdateButtonStyle on a
-    -- reused button without going through SetParent, so we must re-suppress here.
-    pb:SetParent(_poiHiddenParent)
-    pb:EnableMouse(false)
-    if not _poiSuppressed[pb] then
-        _poiSuppressed[pb] = true
-        hooksecurefunc(pb, "SetParent", function(self, parent)
-            if parent ~= _poiHiddenParent then
-                self:SetParent(_poiHiddenParent)
-            end
-        end)
-    end
-end
-
--- Create or update our own icon texture directly on the block.
--- Called from the AddPOIButton mixin hook (where poiQuestID is guaranteed set).
-local function ApplyBlockIcon(block)
+-- Strip Blizzard's POI button visuals and overlay our slim atlas icon.
+-- The button itself remains in place, mouse-enabled, and fully functional
+-- so that native click-to-focus (super-track toggle) works without any
+-- custom click handling.
+-- Called from the AddPOIButton hook — safe to call repeatedly (idempotent).
+local function SkinPOIButton(block)
     if not block then return end
-
-    -- Suppress Blizzard's POI button — it may have just been assigned
-    SuppressPOI(block)
-
-    -- Hide icon and click button immediately if this block has no quest POI
+    local pb = block.poiButton
     local questID = block.poiQuestID
-    if not questID then
-        local ico = _blockIcons[block]
-        if ico then ico:Hide() end
-        local clickBtn = _blockClickBtns[block]
-        if clickBtn then clickBtn:Hide() end
+
+    -- No POI button or no quest — hide our overlay icon if it exists
+    if not pb or not questID then
+        if block._orbitIcon then block._orbitIcon:Hide() end
         return
     end
 
-    -- Create our icon texture once per block (persists across pool reuse)
-    local ico = _blockIcons[block]
-    if not ico then
-        ico = block:CreateTexture(nil, "OVERLAY")
-        -- Position to the left of the header text, matching Blizzard's native placement
-        if block.HeaderText then
-            ico:SetPoint("TOPRIGHT", block.HeaderText, "TOPLEFT", -4, 0)
-        else
-            ico:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, 0)
+    -- Reposition the button to the left of the header text
+    pb:ClearAllPoints()
+    if block.HeaderText then
+        pb:SetPoint("TOPRIGHT", block.HeaderText, "TOPLEFT", -4, 0)
+    else
+        pb:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, 0)
+    end
+    pb:SetSize(POI_SIZE, POI_SIZE)
+
+    -- Hide all native visual regions (background circle, number, glow, etc.)
+    for i = 1, pb:GetNumRegions() do
+        local region = select(i, pb:GetRegions())
+        if region and region ~= pb._orbitIcon then
+            region:SetAlpha(0)
         end
-        ico:SetSize(POI_SIZE, POI_SIZE)
-        _blockIcons[block] = ico
+    end
+    -- Also strip children's regions (e.g. Display sub-frame)
+    for _, child in pairs({ pb:GetChildren() }) do
+        if child.GetNumRegions then
+            for i = 1, child:GetNumRegions() do
+                local region = select(i, child:GetRegions())
+                if region then region:SetAlpha(0) end
+            end
+        end
     end
 
-    ico:SetAtlas(GetPOIAtlas(block), false)
-    ico:Show()
+    -- Create our overlay icon on the button (once per button instance)
+    if not pb._orbitIcon then
+        pb._orbitIcon = pb:CreateTexture(nil, "OVERLAY", nil, 7)
+        pb._orbitIcon:SetAllPoints()
+    end
+    pb._orbitIcon:SetAtlas(GetPOIAtlas(block), false)
+    pb._orbitIcon:SetAlpha(1)
+    pb._orbitIcon:Show()
 
-    -- Color the quest title text to match quest type
+    -- Color the quest title text to match quest type / focus state
     if block.HeaderText then
         local c = GetPOIColor(block)
         block.HeaderText:SetTextColor(c.r, c.g, c.b)
     end
-
-    -- Transparent Button layered over the icon — restores click-to-focus behaviour
-    -- that Blizzard's native poiButton provided before we suppressed it.
-    -- Left-click focuses the quest (super-track); clicking the focused quest clears it.
-    local clickBtn = _blockClickBtns[block]
-    if not clickBtn then
-        clickBtn = CreateFrame("Button", nil, block)
-        -- Same anchor/size as the icon texture
-        if block.HeaderText then
-            clickBtn:SetPoint("TOPRIGHT", block.HeaderText, "TOPLEFT", -4, 0)
-        else
-            clickBtn:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, 0)
-        end
-        clickBtn:SetSize(POI_SIZE, POI_SIZE)
-        clickBtn:RegisterForClicks("LeftButtonUp")
-        clickBtn:SetScript("OnClick", function()
-            if not (C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID) then return end
-            local qID = block.poiQuestID
-            if not qID then return end
-            local current = C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID()
-            C_SuperTrack.SetSuperTrackedQuestID(current == qID and 0 or qID)
-        end)
-        _blockClickBtns[block] = clickBtn
-    end
-    clickBtn:Show()
 end
 
 -- [ SKIN: BLOCK (quest/achievement/etc) ]------------------------------------------------------------
@@ -501,10 +458,10 @@ local function SkinBlockFonts(block, skinFonts)
 end
 
 -- Reapply POI color to a block's HeaderText based on highlight state.
--- Guard: only act on blocks we've actually skinned (have an entry in _blockIcons).
+-- Guard: only act on blocks that have a POI button we've skinned.
 local function ReapplyBlockColor(block)
     if not block.HeaderText then return end
-    if not _blockIcons[block] then return end
+    if not block.poiButton then return end
     local c = GetPOIColor(block)
     if block.isHighlighted then
         block.HeaderText:SetTextColor(math.min(1, c.r * 1.3), math.min(1, c.g * 1.3), math.min(1, c.b * 1.3))
@@ -518,18 +475,6 @@ local function OnAddBlock(_, block)
     SkinQuestItemButton(block.ItemButton)
     SkinQuestItemButton(block.itemButton)
 
-    -- Suppress any existing POI button on this block (in case it was already
-    -- assigned from a previous pool use before our hooks were installed)
-    SuppressPOI(block)
-
-    -- Hide stale icon and click button from previous quest so they don't flash
-    -- with wrong atlas/position before AddPOIButton fires and ApplyBlockIcon
-    -- sets the correct ones.
-    local ico = _blockIcons[block]
-    if ico then ico:Hide() end
-    local clickBtn = _blockClickBtns[block]
-    if clickBtn then clickBtn:Hide() end
-
     -- Skin the checkmark on completed objectives
     local check = block.currentLine and block.currentLine.Check
     if check and not check._orbitSkinned then
@@ -540,7 +485,7 @@ local function OnAddBlock(_, block)
     end
 
     -- Hook per-instance UpdateHighlight and SetHeader to defend POI colors.
-    -- Hook per-instance AddPOIButton so ApplyBlockIcon fires on every re-render.
+    -- Hook per-instance AddPOIButton so SkinPOIButton fires on every re-render.
     -- Mixin methods are shallow-copied to instances, so mixin-level hooks don't fire
     -- after the first render — per-instance hooks are required for all three.
     if not block._orbitColorHooked then
@@ -553,11 +498,11 @@ local function OnAddBlock(_, block)
         block._orbitColorHooked = true
     end
 
-    if not _blockPoiHooked[block] then
+    if not block._orbitPoiHooked then
         if block.AddPOIButton then
-            hooksecurefunc(block, "AddPOIButton", ApplyBlockIcon)
+            hooksecurefunc(block, "AddPOIButton", SkinPOIButton)
         end
-        _blockPoiHooked[block] = true
+        block._orbitPoiHooked = true
     end
 
     -- Apply font override to block text (always on)
@@ -827,6 +772,7 @@ end
 local _superTrackFrame = CreateFrame("Frame")
 _superTrackFrame:RegisterEvent("SUPER_TRACKING_CHANGED")
 _superTrackFrame:SetScript("OnEvent", function()
+    local old = _superTrackedQuestID
     _superTrackedQuestID = C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID() or nil
     Plugin:ReSkinExistingPOIButtons()
 end)
@@ -885,10 +831,10 @@ function Plugin:InstallSkinHooks()
 
     self._hooksInstalled = true
 
-    -- Hook POI button creation. After AddPOIButton, block.poiButton AND
-    -- block.poiQuestID are both set — safe to suppress + apply our icon.
+    -- Hook POI button creation at the mixin level. After AddPOIButton,
+    -- block.poiButton AND block.poiQuestID are both set — safe to skin.
     if ObjectiveTrackerQuestPOIBlockMixin and ObjectiveTrackerQuestPOIBlockMixin.AddPOIButton then
-        hooksecurefunc(ObjectiveTrackerQuestPOIBlockMixin, "AddPOIButton", ApplyBlockIcon)
+        hooksecurefunc(ObjectiveTrackerQuestPOIBlockMixin, "AddPOIButton", SkinPOIButton)
     end
 
     -- Hook UI widget status bars (globally, then filter to Objectives inside the function)
@@ -1027,9 +973,9 @@ function Plugin:ReSkinExistingBlocks()
 end
 
 -- [ RE-SKIN EXISTING POI BUTTONS ]-------------------------------------------------------------------
--- Suppress any POI buttons and apply our block icons for blocks that were
--- already populated before our AddPOIButton hook fired (e.g. on reload).
--- Also deferred via C_Timer.After(0.5) to catch late-populated blocks.
+-- Re-skin POI buttons on blocks that were already populated before our
+-- AddPOIButton hook fired (e.g. on reload).  Also called from
+-- SUPER_TRACKING_CHANGED to refresh focus colors.
 function Plugin:ReSkinExistingPOIButtons()
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
@@ -1039,18 +985,15 @@ function Plugin:ReSkinExistingPOIButtons()
                     if block then
                         -- Install per-instance AddPOIButton hook for blocks that
                         -- existed before OnAddBlock fired (e.g. on reload / late init).
-                        -- Mixin-level hooks miss these instances because Mixin() copies
-                        -- method references at block-creation time.
-                        if not _blockPoiHooked[block] then
+                        -- Mixin-level hooks miss these because Mixin() copies method
+                        -- references at block-creation time.
+                        if not block._orbitPoiHooked then
                             if block.AddPOIButton then
-                                hooksecurefunc(block, "AddPOIButton", ApplyBlockIcon)
+                                hooksecurefunc(block, "AddPOIButton", SkinPOIButton)
                             end
-                            _blockPoiHooked[block] = true
+                            block._orbitPoiHooked = true
                         end
-                        SuppressPOI(block)
-                        if block.poiQuestID then
-                            ApplyBlockIcon(block)
-                        end
+                        SkinPOIButton(block)
                     end
                 end
             end
