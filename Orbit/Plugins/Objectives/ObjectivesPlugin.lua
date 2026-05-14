@@ -34,32 +34,13 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
 Mixin(Plugin, Orbit.NativeBarMixin)
 
 -- [ COLOUR MIGRATION ]--------------------------------------------------------------------------------
--- One-time migration from colour-curve {pins=...} format (stored by the old "color" widget type)
--- to plain {r,g,b,a} tables (used by the current "solidcolor" widget type).
--- Runs at the start of OnLoad so GetSetting always returns clean data, including for the
--- settings panel colour swatches.
+-- Migrates colour-curve {pins=...} format to plain {r,g,b,a} tables. Runs once at OnLoad.
 local COLOR_KEYS = { "TitleColor", "CompletedColor", "FocusColor" }
-
-local function ExtractPinColor(c)
-    if type(c) ~= "table" then return nil end
-    if type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then
-        return c  -- already plain {r,g,b,a}
-    end
-    if c.pins and c.pins[1] and type(c.pins[1].color) == "table" then
-        local pin = c.pins[1].color
-        if type(pin.r) == "number" and type(pin.g) == "number" and type(pin.b) == "number" then
-            return { r = pin.r, g = pin.g, b = pin.b, a = pin.a or 1 }
-        end
-    end
-    return nil
-end
 
 local function MigrateColorSettings(plugin)
     for _, key in ipairs(COLOR_KEYS) do
         local raw = plugin:GetSetting(SYSTEM_ID, key)
-        local clean = ExtractPinColor(raw)
-        -- Only write back if the raw value was in the old format (pins) — avoid
-        -- writing defaults into SavedVariables for users who never touched the picker.
+        local clean = C.ValidateColor(raw, nil)
         if clean and clean ~= raw then
             plugin:SetSetting(SYSTEM_ID, key, clean)
         end
@@ -69,11 +50,8 @@ end
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     -- When disabled via Plugin Manager (requires reload), skip all initialisation
-    -- so the native Blizzard ObjectiveTrackerFrame remains untouched.
     if not Orbit:IsPluginEnabled(self.name) then return end
 
-    -- Migrate any colour settings that were saved in {pins=...} curve format
-    -- (written by the old "color" widget type) to plain {r,g,b,a} tables.
     MigrateColorSettings(self)
 
     -- Create container frame that will own the Blizzard ObjectiveTrackerFrame
@@ -94,8 +72,8 @@ function Plugin:OnLoad()
     self.scrollChild:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", 0, 0)
     self.scrollChild:SetSize(C.DEFAULT_WIDTH, C.DEFAULT_HEIGHT)
 
-    -- Default position: right side, below minimap (matches Blizzard's native position)
-    self.frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -80, -260)
+    -- Default position: right side, below minimap
+    self.frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", C.DEFAULT_ANCHOR_X, C.DEFAULT_ANCHOR_Y)
 
     -- Register to Orbit edit mode + position persistence
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
@@ -169,22 +147,15 @@ function Plugin:CaptureTracker()
         
         -- Let Blizzard render as many blocks as it wants (for scrolling)
         tracker.GetAvailableHeight = function()
-            return 50000
+            return C.MAX_TRACKER_HEIGHT
         end
 
-        local function handleScroll(_, delta)
+        local function HandleScroll(_, delta)
             if not ObjectiveTrackerFrame then return end
             
-            local visibleHeight = self.frame:GetHeight() - (self:GetContentInset()*2)
-            -- Add arbitrary padding at the bottom so the last item isn't strictly flush against the border
-            local BOTTOM_PADDING = 20
-            local maxScroll = math.max(0, ObjectiveTrackerFrame:GetHeight() - visibleHeight + BOTTOM_PADDING)
-            
-            -- Scrolling down (delta < 0) means we want to push the content UP so we see lower items.
-            -- Pushing content UP means a POSITIVE Y offset on the TOPLEFT anchor.
-            self._currentScroll = self._currentScroll - (delta * 60)
-            
-            -- Clamp between 0 (top) and maxScroll (bottom)
+            local visibleHeight = self.frame:GetHeight() - (self:GetContentInset() * 2)
+            local maxScroll = math.max(0, ObjectiveTrackerFrame:GetHeight() - visibleHeight + C.SCROLL_BOTTOM_PADDING)
+            self._currentScroll = self._currentScroll - (delta * C.SCROLL_SPEED)
             if self._currentScroll < 0 then self._currentScroll = 0 end
             if self._currentScroll > maxScroll then self._currentScroll = maxScroll end
             
@@ -193,9 +164,9 @@ function Plugin:CaptureTracker()
         end
         
         self.frame:EnableMouseWheel(true)
-        self.frame:SetScript("OnMouseWheel", handleScroll)
+        self.frame:SetScript("OnMouseWheel", HandleScroll)
         tracker:EnableMouseWheel(true)
-        tracker:SetScript("OnMouseWheel", handleScroll)
+        tracker:SetScript("OnMouseWheel", HandleScroll)
 
         -- Replace UpdateHeight to track exact height of modules
         local origUpdateHeight = tracker.UpdateHeight
@@ -209,12 +180,11 @@ function Plugin:CaptureTracker()
                     h = h + module.contentsHeight
                 end
             end
-            container:SetHeight(math.max(h, 50))
+            container:SetHeight(math.max(h, C.MIN_TRACKER_HEIGHT))
             
             -- Clamp scroll offset if container height became smaller
-            local visibleHeight = self.frame:GetHeight() - (self:GetContentInset()*2)
-            local BOTTOM_PADDING = 20
-            local maxScroll = math.max(0, container:GetHeight() - visibleHeight + BOTTOM_PADDING)
+            local visibleHeight = self.frame:GetHeight() - (self:GetContentInset() * 2)
+            local maxScroll = math.max(0, container:GetHeight() - visibleHeight + C.SCROLL_BOTTOM_PADDING)
             if self._currentScroll > maxScroll then
                 self._currentScroll = maxScroll
                 self.scrollChild:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, self._currentScroll)

@@ -374,21 +374,22 @@ local function BuildAutomation(body)
     Layout:AddControl(body, preventCb)
 
     -- Auto Turn In
-    local turninCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN, nil, GetAccountSetting("AutoTurninQuests", false), function(checked)
-        SetAccountSetting("AutoTurninQuests", checked)
+    local turninCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN, nil, GetAccountSetting("AutoTurnInQuests", false), function(checked)
+        SetAccountSetting("AutoTurnInQuests", checked)
     end)
     Layout:AddControl(body, turninCb)
 
     -- Hold Shift to Skip (sub-option)
-    local shiftCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN_HOLD_SHIFT, L.PLU_AUTO_TURNIN_HOLD_SHIFT_TT, GetAccountSetting("AutoTurninHoldShift", true), function(checked)
-        SetAccountSetting("AutoTurninHoldShift", checked)
+    local shiftCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN_HOLD_SHIFT, L.PLU_AUTO_TURNIN_HOLD_SHIFT_TT, GetAccountSetting("AutoTurnInHoldShift", true), function(checked)
+        SetAccountSetting("AutoTurnInHoldShift", checked)
     end)
     Layout:AddControl(body, shiftCb)
 
     return Layout:Stack(body, 0, STACK_GAP)
 end
 
-local function BuildColors(body)    local desc = Layout:CreateDescription(body, L.PLU_COLORS_DESC, A.MUTED)
+local function BuildColors(body)
+    local desc = Layout:CreateDescription(body, L.PLU_COLORS_DESC, A.MUTED)
     Layout:AddControl(body, desc)
     desc:SetPoint("TOPLEFT", body, "TOPLEFT", 10, -8)
     desc:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, -8)

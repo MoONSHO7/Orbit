@@ -1,7 +1,5 @@
 -- [ OBJECTIVES SKIN ]--------------------------------------------------------------------------------
--- Hook-based skinning for Blizzard's ObjectiveTracker modules.
--- Applies Orbit's visual theme (fonts, bar textures, colors) via hooksecurefunc.
--- Idempotent — safe to call repeatedly via ApplySettings.
+-- Hook-based skinning for ObjectiveTracker modules. Applies Orbit theme via hooksecurefunc. Idempotent.
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -13,14 +11,12 @@ local SYSTEM_ID = C.SYSTEM_ID
 local pairs = pairs
 local select = select
 local hooksecurefunc = hooksecurefunc
-local STANDARD_TEXT_FONT = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
-local MAX_QUESTS = 35
+local STANDARD_TEXT_FONT = STANDARD_TEXT_FONT
 
 -- Retrieve the plugin (registered in ObjectivesPlugin.lua, loaded before this file)
 local Plugin = Orbit:GetPlugin("Objectives")
 
--- Module-level enabled flag — cheap O(1) guard for hook callbacks that fire
--- every frame.  Set by Plugin:SetSkinEnabled() from OnLoad / OnDisable / ApplySettings.
+-- Module-level enabled flag — O(1) guard for hook callbacks.
 local _enabled = false
 
 function Plugin:SetSkinEnabled(state)
@@ -48,39 +44,16 @@ end
 local POI_COLOR_DEFAULT_FALLBACK  = C.TITLE_COLOR_DEFAULT
 local POI_COLOR_COMPLETE_FALLBACK = C.COMPLETED_COLOR_DEFAULT
 
--- Guard: return c only if it is a valid {r,g,b} colour table.
--- Also recovers colours that were saved in colour-curve {pins=...} format
--- by a previous session that used "color" (CreateColorCurvePicker) instead
--- of "solidcolor" (CreateColorPicker).
-local function ValidateColor(c, fallback)
-    if type(c) ~= "table" then return fallback end
-    -- Already a plain {r,g,b[,a]} table
-    if type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then
-        return c
-    end
-    -- Colour-curve legacy format: extract from pins[1].color
-    if c.pins and c.pins[1] and type(c.pins[1].color) == "table" then
-        local pin = c.pins[1].color
-        if type(pin.r) == "number" and type(pin.g) == "number" and type(pin.b) == "number" then
-            return { r = pin.r, g = pin.g, b = pin.b, a = pin.a or 1 }
-        end
-    end
-    return fallback
-end
-
 local function GetNormalQuestColor()
-    local c = Plugin:GetSetting(SYSTEM_ID, "TitleColor")
-    return ValidateColor(c, POI_COLOR_DEFAULT_FALLBACK)
+    return C.ValidateColor(Plugin:GetSetting(SYSTEM_ID, "TitleColor"), POI_COLOR_DEFAULT_FALLBACK)
 end
 
 local function GetCompletedQuestColor()
-    local c = Plugin:GetSetting(SYSTEM_ID, "CompletedColor")
-    return ValidateColor(c, POI_COLOR_COMPLETE_FALLBACK)
+    return C.ValidateColor(Plugin:GetSetting(SYSTEM_ID, "CompletedColor"), POI_COLOR_COMPLETE_FALLBACK)
 end
 
 local function GetFocusQuestColor()
-    local c = Plugin:GetSetting(SYSTEM_ID, "FocusColor")
-    return ValidateColor(c, C.FOCUS_COLOR_DEFAULT)
+    return C.ValidateColor(Plugin:GetSetting(SYSTEM_ID, "FocusColor"), C.FOCUS_COLOR_DEFAULT)
 end
 
 local function IsUnderObjectivesTracker(frame)
@@ -180,8 +153,7 @@ local function SkinMinimizeButton(header)
 
     btn:SetSize(16, 16)
 
-    -- Hide Blizzard atlas textures — must be reapplied after every SetCollapsed
-    -- because Blizzard calls SetAtlas on these textures to swap the icon.
+    -- Hide Blizzard atlas textures — reapplied after every SetCollapsed (Blizzard calls SetAtlas).
     local function SuppressNativeTextures()
         local nt = btn:GetNormalTexture()
         if nt then nt:SetAlpha(0) end
@@ -247,7 +219,7 @@ local function UpdateQuestCounter(header)
     local fs = header and header._orbitQuestCount
     if not fs then return end
     local count = C_QuestLog.GetNumQuestWatches() or 0
-    local max = (Constants and Constants.QuestWatchConsts and Constants.QuestWatchConsts.MAX_QUEST_WATCHES) or MAX_QUESTS
+    local max = (Constants and Constants.QuestWatchConsts and Constants.QuestWatchConsts.MAX_QUEST_WATCHES) or C.MAX_QUESTS
     fs:SetText(count .. "/" .. max)
 end
 
@@ -272,11 +244,7 @@ local function SkinQuestItemButton(button)
 end
 
 -- [ SKIN: POI BUTTON / BLOCK ICON ]-----------------------------------------------------------------
--- Style Blizzard's native poiButton to show a slim atlas icon instead of the
--- default numbered circle.  The button stays in place and functional, so
--- click-to-focus (super-track) works natively — no custom click handling needed.
-
-local POI_SIZE = 18
+-- Style native poiButton with slim atlas icon. Button stays functional for click-to-focus.
 
 -- Quest classification → header text color mapping
 local POI_COLORS = {
@@ -377,13 +345,13 @@ local function GetPOIColor(block)
         if tagInfo then
             local tagID = tagInfo.tagID
             if tagID == Enum.QuestTag.Group or tagID == Enum.QuestTag.Dungeon then
-                return { r = 0.40, g = 0.70, b = 1.00 }
+                return C.TAG_COLOR_GROUP
             elseif tagID == Enum.QuestTag.Raid then
-                return { r = 0.90, g = 0.30, b = 0.10 }
+                return C.TAG_COLOR_RAID
             elseif tagID == Enum.QuestTag.PvP then
-                return { r = 0.90, g = 0.20, b = 0.20 }
+                return C.TAG_COLOR_PVP
             elseif tagID == Enum.QuestTag.Account then
-                return { r = 0.40, g = 0.80, b = 0.95 }
+                return C.TAG_COLOR_ACCOUNT
             end
         end
     end
@@ -396,11 +364,7 @@ local function GetPOIColor(block)
     return GetNormalQuestColor()
 end
 
--- Strip Blizzard's POI button visuals and overlay our slim atlas icon.
--- The button itself remains in place, mouse-enabled, and fully functional
--- so that native click-to-focus (super-track toggle) works without any
--- custom click handling.
--- Called from the AddPOIButton hook — safe to call repeatedly (idempotent).
+-- Strip native POI visuals and overlay slim atlas icon. Idempotent.
 local function SkinPOIButton(block)
     if not _enabled then return end
     if not block then return end
@@ -420,7 +384,7 @@ local function SkinPOIButton(block)
     else
         pb:SetPoint("TOPRIGHT", block, "TOPRIGHT", -2, 0)
     end
-    pb:SetSize(POI_SIZE, POI_SIZE)
+    pb:SetSize(C.POI_SIZE, C.POI_SIZE)
 
     -- Hide all native visual regions (background circle, number, glow, etc.)
     for i = 1, pb:GetNumRegions() do
@@ -474,14 +438,13 @@ local function SkinBlockFonts(block, skinFonts)
 end
 
 -- Reapply POI color to a block's HeaderText based on highlight state.
--- Guard: only act on blocks that have a POI button we've skinned.
 local function ReapplyBlockColor(block)
     if not _enabled then return end
     if not block.HeaderText then return end
     if not block.poiButton then return end
     local c = GetPOIColor(block)
     if block.isHighlighted then
-        block.HeaderText:SetTextColor(math.min(1, c.r * 1.3), math.min(1, c.g * 1.3), math.min(1, c.b * 1.3))
+        block.HeaderText:SetTextColor(math.min(1, c.r * C.HIGHLIGHT_BRIGHTEN), math.min(1, c.g * C.HIGHLIGHT_BRIGHTEN), math.min(1, c.b * C.HIGHLIGHT_BRIGHTEN))
     else
         block.HeaderText:SetTextColor(c.r, c.g, c.b)
     end
@@ -502,10 +465,7 @@ local function OnAddBlock(_, block)
         check._orbitSkinned = true
     end
 
-    -- Hook per-instance UpdateHighlight and SetHeader to defend POI colors.
-    -- Hook per-instance AddPOIButton so SkinPOIButton fires on every re-render.
-    -- Mixin methods are shallow-copied to instances, so mixin-level hooks don't fire
-    -- after the first render — per-instance hooks are required for all three.
+    -- Per-instance hooks required: mixin methods are shallow-copied, so mixin-level hooks miss re-renders.
     if not block._orbitColorHooked then
         if block.UpdateHighlight then
             hooksecurefunc(block, "UpdateHighlight", ReapplyBlockColor)
@@ -609,7 +569,7 @@ local function SkinProgressBar(tracker, key)
     end
 
     -- Resize bar to fill the block width and set a clean height
-    bar:SetHeight(14)
+    bar:SetHeight(C.PROGRESS_BAR_HEIGHT)
     bar:ClearAllPoints()
     bar:SetPoint("TOPLEFT", progressBar, "TOPLEFT", 0, 0)
     bar:SetPoint("TOPRIGHT", progressBar, "TOPRIGHT", 0, 0)
@@ -617,7 +577,7 @@ local function SkinProgressBar(tracker, key)
     if tracker.ContentsFrame then
         progressBar:SetPoint("RIGHT", tracker.ContentsFrame, "RIGHT", -15, 0)
     end
-    progressBar:SetHeight(16)
+    progressBar:SetHeight(C.PROGRESS_BAR_CONTAINER_HEIGHT)
 
     -- Apply Orbit bar texture
     local texture = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
@@ -632,7 +592,7 @@ local function SkinProgressBar(tracker, key)
     end
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, 0.85)
+    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
 
     -- Add Orbit border around the bar
     Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
@@ -673,11 +633,11 @@ local function SkinTimerBar(tracker, key)
     end
 
     -- Resize
-    bar:SetHeight(14)
+    bar:SetHeight(C.PROGRESS_BAR_HEIGHT)
     bar:ClearAllPoints()
     bar:SetPoint("TOPLEFT", timerBar, "TOPLEFT", 0, 0)
     bar:SetPoint("TOPRIGHT", timerBar, "TOPRIGHT", 0, 0)
-    timerBar:SetHeight(16)
+    timerBar:SetHeight(C.PROGRESS_BAR_CONTAINER_HEIGHT)
 
     -- Apply Orbit bar texture
     local texture = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
@@ -692,7 +652,7 @@ local function SkinTimerBar(tracker, key)
     end
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, 0.85)
+    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
 
     -- Add Orbit border
     Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
@@ -712,7 +672,7 @@ local function SkinWidgetStatusBar(self)
 
     -- ONE-TIME SETUP: Textures and backgrounds never reset
     if not bar._orbitSkinned then
-        bar:SetHeight(14)
+        bar:SetHeight(C.PROGRESS_BAR_HEIGHT)
 
         if bar.BGLeft then bar.BGLeft:SetAlpha(0) end
         if bar.BGRight then bar.BGRight:SetAlpha(0) end
@@ -735,7 +695,7 @@ local function SkinWidgetStatusBar(self)
         end
         local gs = Orbit.db and Orbit.db.GlobalSettings
         local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-        bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, 0.85)
+        bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
 
         Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
         bar._orbitSkinned = true
@@ -798,7 +758,7 @@ end
 local _superTrackFrame = CreateFrame("Frame")
 _superTrackFrame:RegisterEvent("SUPER_TRACKING_CHANGED")
 _superTrackFrame:SetScript("OnEvent", function()
-    _superTrackedQuestID = C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID() or nil
+    _superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
     if not _enabled then return end
     Plugin:ReSkinExistingPOIButtons()
 end)
@@ -825,9 +785,6 @@ function Plugin:InstallSkinHooks()
     end)
 
     -- Skin each module's header and hook AddBlock / GetProgressBar / GetTimerBar.
-    -- ScenarioObjectiveTracker: header only. Its blocks, progress bars, and widget
-    -- containers share Blizzard's widget pool with tooltip/AreaPOI widgets — any
-    -- method call on those frames taints the pool (Ellesmere pattern).
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
         if tracker then
@@ -837,6 +794,7 @@ function Plugin:InstallSkinHooks()
                 EnableHeaderClickCollapse(tracker.Header)
             end
 
+            -- ScenarioObjectiveTracker: header only — its frames share Blizzard's widget pool (taints on method call).
             if moduleName ~= "ScenarioObjectiveTracker" then
                 hooksecurefunc(tracker, "AddBlock", OnAddBlock)
 
@@ -857,8 +815,7 @@ function Plugin:InstallSkinHooks()
 
     self._hooksInstalled = true
 
-    -- Hook POI button creation at the mixin level. After AddPOIButton,
-    -- block.poiButton AND block.poiQuestID are both set — safe to skin.
+    -- Hook POI button creation at the mixin level
     if ObjectiveTrackerQuestPOIBlockMixin and ObjectiveTrackerQuestPOIBlockMixin.AddPOIButton then
         hooksecurefunc(ObjectiveTrackerQuestPOIBlockMixin, "AddPOIButton", SkinPOIButton)
     end
@@ -965,12 +922,11 @@ function Plugin:ApplySkins()
     self:ReSkinExistingBlocks()
     self:ReSkinExistingPOIButtons()
     -- Deferred pass: catches blocks Blizzard populates after our immediate call
-    C_Timer.After(0.5, function() self:ReSkinExistingPOIButtons() end)
+    C_Timer.After(C.DEFERRED_RESKIN_DELAY, function() self:ReSkinExistingPOIButtons() end)
 end
 
 -- [ RE-SKIN EXISTING BLOCKS ]------------------------------------------------------------------------
--- Re-applies font sizes to all rendered blocks whenever settings change,
--- and installs/refreshes progress label hooks on all skinned bars.
+-- Re-applies font sizes and progress label hooks to all rendered blocks.
 function Plugin:ReSkinExistingBlocks()
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
@@ -999,9 +955,7 @@ function Plugin:ReSkinExistingBlocks()
 end
 
 -- [ RE-SKIN EXISTING POI BUTTONS ]-------------------------------------------------------------------
--- Re-skin POI buttons on blocks that were already populated before our
--- AddPOIButton hook fired (e.g. on reload).  Also called from
--- SUPER_TRACKING_CHANGED to refresh focus colors.
+-- Re-skin pre-existing POI buttons and refresh focus colors on SUPER_TRACKING_CHANGED.
 function Plugin:ReSkinExistingPOIButtons()
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
@@ -1009,10 +963,7 @@ function Plugin:ReSkinExistingPOIButtons()
             for _, blocks in pairs(tracker.usedBlocks) do
                 for _, block in pairs(blocks) do
                     if block then
-                        -- Install per-instance AddPOIButton hook for blocks that
-                        -- existed before OnAddBlock fired (e.g. on reload / late init).
-                        -- Mixin-level hooks miss these because Mixin() copies method
-                        -- references at block-creation time.
+                        -- Install per-instance hook for blocks that existed before OnAddBlock fired.
                         if not block._orbitPoiHooked then
                             if block.AddPOIButton then
                                 hooksecurefunc(block, "AddPOIButton", SkinPOIButton)
