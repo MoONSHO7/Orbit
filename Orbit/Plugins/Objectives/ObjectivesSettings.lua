@@ -25,16 +25,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     }
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Behaviour", "Colours" }, "Layout")
 
     if currentTab == "Layout" then
-        -- Scale
-        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, {
-            key = "Scale",
-            label = "Scale",
-            default = C.DEFAULT_SCALE,
-        })
-
         -- Width
         table.insert(schema.controls, {
             type = "slider",
@@ -81,32 +74,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "BackgroundOpacity"),
         })
 
-        -- Hover Fade Opacity (100 = disabled; below 100 = fade out when not moused over)
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "Opacity",
-            label = "Hover Fade Opacity",
-            min = C.OPACITY_MIN,
-            max = C.OPACITY_MAX,
-            step = C.OPACITY_STEP,
-            default = C.OPACITY_DEFAULT,
-            formatter = function(v)
-                if v >= 100 then return "Off" end
-                return v .. "%"
-            end,
-            onChange = OnChange(self, systemIndex, "Opacity"),
-        })
-
     elseif currentTab == "Behaviour" then
-        -- Class Color Headers
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ClassColorHeaders",
-            label = "Class Color Headers",
-            default = false,
-            onChange = OnChange(self, systemIndex, "ClassColorHeaders"),
-        })
-
         -- Header Separators
         table.insert(schema.controls, {
             type = "checkbox",
@@ -159,6 +127,69 @@ function Plugin:AddSettings(dialog, systemFrame)
             label = "Collapse in Combat",
             default = false,
             onChange = OnChange(self, systemIndex, "AutoCollapseCombat"),
+        })
+
+    elseif currentTab == "Colours" then
+        -- Class Color Headers (moved from Behaviour)
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ClassColorHeaders",
+            label = "Class Color Headers",
+            default = false,
+            onChange = OnChange(self, systemIndex, "ClassColorHeaders"),
+        })
+
+        -- Title Font Size
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "TitleFontSize",
+            label = "Title Font Size",
+            min = C.TITLE_FONT_SIZE_MIN,
+            max = C.TITLE_FONT_SIZE_MAX,
+            step = C.TITLE_FONT_SIZE_STEP,
+            default = C.TITLE_FONT_SIZE_DEFAULT,
+            formatter = function(v) return v .. "pt" end,
+            onChange = OnChange(self, systemIndex, "TitleFontSize"),
+        })
+
+        -- Objective Font Size
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "ObjectiveFontSize",
+            label = "Objective Font Size",
+            min = C.OBJECTIVE_FONT_SIZE_MIN,
+            max = C.OBJECTIVE_FONT_SIZE_MAX,
+            step = C.OBJECTIVE_FONT_SIZE_STEP,
+            default = C.OBJECTIVE_FONT_SIZE_DEFAULT,
+            formatter = function(v) return v .. "pt" end,
+            onChange = OnChange(self, systemIndex, "ObjectiveFontSize"),
+        })
+
+        -- Quest Title Colour
+        table.insert(schema.controls, {
+            type = "solidcolor",
+            key = "TitleColor",
+            label = "Quest Title Colour",
+            default = C.TITLE_COLOR_DEFAULT,
+            onChange = OnChange(self, systemIndex, "TitleColor"),
+        })
+
+        -- Completed Quest Colour
+        table.insert(schema.controls, {
+            type = "solidcolor",
+            key = "CompletedColor",
+            label = "Completed Quest Colour",
+            default = C.COMPLETED_COLOR_DEFAULT,
+            onChange = OnChange(self, systemIndex, "CompletedColor"),
+        })
+
+        -- Focused Quest Colour
+        table.insert(schema.controls, {
+            type = "solidcolor",
+            key = "FocusColor",
+            label = "Focused Quest Colour",
+            default = C.FOCUS_COLOR_DEFAULT,
+            onChange = OnChange(self, systemIndex, "FocusColor"),
         })
     end
 

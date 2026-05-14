@@ -73,4 +73,5 @@ Plugins\Extras\MinimapButton.lua
 QoL\UserInterface.lua
 QoL\MoveMore.lua
 QoL\Mouse.lua
+QoL\QuestAutomation.lua
 QoL\Spotlight\Spotlight.xml

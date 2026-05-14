@@ -26,6 +26,45 @@ local function GetGlobalFont()
     return fontName and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
 end
 
+-- Super-tracked quest ID (updated by SUPER_TRACKING_CHANGED)
+local _superTrackedQuestID = nil
+
+local function GetTitleFontSize()
+    return Plugin:GetSetting(SYSTEM_ID, "TitleFontSize") or C.TITLE_FONT_SIZE_DEFAULT
+end
+
+local function GetObjectiveFontSize()
+    return Plugin:GetSetting(SYSTEM_ID, "ObjectiveFontSize") or C.OBJECTIVE_FONT_SIZE_DEFAULT
+end
+
+local POI_COLOR_DEFAULT_FALLBACK  = C.TITLE_COLOR_DEFAULT
+local POI_COLOR_COMPLETE_FALLBACK = C.COMPLETED_COLOR_DEFAULT
+
+-- Guard: return c only if it is a valid {r,g,b} colour table.
+-- Protects against SavedVariables that stored colour-curve data {pins=...}
+-- from a previous session where "color" (curve picker) was used instead of "solidcolor".
+local function ValidateColor(c, fallback)
+    if type(c) == "table" and type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then
+        return c
+    end
+    return fallback
+end
+
+local function GetNormalQuestColor()
+    local c = Plugin:GetSetting(SYSTEM_ID, "TitleColor")
+    return ValidateColor(c, POI_COLOR_DEFAULT_FALLBACK)
+end
+
+local function GetCompletedQuestColor()
+    local c = Plugin:GetSetting(SYSTEM_ID, "CompletedColor")
+    return ValidateColor(c, POI_COLOR_COMPLETE_FALLBACK)
+end
+
+local function GetFocusQuestColor()
+    local c = Plugin:GetSetting(SYSTEM_ID, "FocusColor")
+    return ValidateColor(c, C.FOCUS_COLOR_DEFAULT)
+end
+
 local function IsUnderObjectivesTracker(frame)
     local p = frame
     while p do
@@ -237,9 +276,6 @@ local POI_COLORS = {
     [Enum.QuestClassification.Threat]         = { r = 0.85, g = 0.20, b = 0.20 },
     [Enum.QuestClassification.WorldQuest]     = { r = 0.20, g = 0.70, b = 0.55 },
 }
-local POI_COLOR_DEFAULT  = { r = 1.00, g = 0.82, b = 0.00 }
-local POI_COLOR_COMPLETE = { r = 0.90, g = 0.80, b = 0.10 }
-
 -- Quest classification → atlas icon mapping
 local POI_CLASSIFICATION_ATLAS = {
     [Enum.QuestClassification.Campaign]       = "Quest-Campaign-Available",
@@ -303,9 +339,16 @@ local function GetPOIAtlas(block)
 end
 
 local function GetPOIColor(block)
-    if block.poiIsComplete then return POI_COLOR_COMPLETE end
     local questID = block.poiQuestID
-    if not questID then return POI_COLOR_DEFAULT end
+
+    -- Focus colour overrides everything for the super-tracked quest
+    if questID and questID == _superTrackedQuestID then
+        local fc = GetFocusQuestColor()
+        if fc then return fc end
+    end
+
+    if block.poiIsComplete then return GetCompletedQuestColor() end
+    if not questID then return GetNormalQuestColor() end
 
     if C_CampaignInfo and C_CampaignInfo.IsCampaignQuest(questID) then
         return POI_COLORS[Enum.QuestClassification.Campaign]
@@ -332,7 +375,7 @@ local function GetPOIColor(block)
         return POI_COLORS[classification]
     end
 
-    return POI_COLOR_DEFAULT
+    return GetNormalQuestColor()
 end
 
 -- Permanently suppress a POI button by reparenting to a hidden frame.
@@ -397,14 +440,14 @@ local function SkinBlockFonts(block, skinFonts)
 
     -- Header text
     if block.HeaderText then
-        ApplyFont(block.HeaderText)
+        ApplyFont(block.HeaderText, GetTitleFontSize())
     end
 
     -- Objective lines
     if block.usedLines then
         for _, line in pairs(block.usedLines) do
-            if line.Text then ApplyFont(line.Text) end
-            if line.Dash then ApplyFont(line.Dash) end
+            if line.Text then ApplyFont(line.Text, GetObjectiveFontSize()) end
+            if line.Dash then ApplyFont(line.Dash, GetObjectiveFontSize()) end
         end
     end
 end
@@ -505,13 +548,15 @@ local function EnsureProgressLabelHook(bar)
     if not bar or not bar.Label then return end
     if bar._orbitLabelHooked then return end
 
-    hooksecurefunc(bar.Label, "SetText", function(self, text)
+    local function onBlizzardWrite(self, text)
         if bar._orbitUpdating then return end
-        -- Only reformat when Blizzard is writing real content, not clearing
         if text and text ~= "" then
             FormatProgressLabel(bar)
         end
-    end)
+    end
+
+    hooksecurefunc(bar.Label, "SetText", onBlizzardWrite)
+    hooksecurefunc(bar.Label, "SetFormattedText", onBlizzardWrite)
 
     bar._orbitLabelHooked = true
     FormatProgressLabel(bar)
@@ -576,7 +621,7 @@ local function SkinProgressBar(tracker, key)
     end
 
     -- Skin label font
-    if bar.Label then ApplyFont(bar.Label) end
+    if bar.Label then ApplyFont(bar.Label, C.PROGRESS_BAR_FONT_SIZE) end
 
     bar._orbitSkinned = true
     EnsureProgressLabelHook(bar)
@@ -717,6 +762,15 @@ local function SkinWidgetIconTextAndBackground(self)
     if self.Background then self.Background:SetAlpha(0) end
 end
 
+-- [ SUPER TRACKING ]---------------------------------------------------------------------------------
+-- Track which quest is super-tracked so GetPOIColor can apply the focus colour.
+local _superTrackFrame = CreateFrame("Frame")
+_superTrackFrame:RegisterEvent("SUPER_TRACKING_CHANGED")
+_superTrackFrame:SetScript("OnEvent", function()
+    _superTrackedQuestID = C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID() or nil
+    Plugin:ReSkinExistingPOIButtons()
+end)
+
 -- [ INSTALL HOOKS ]----------------------------------------------------------------------------------
 function Plugin:InstallSkinHooks()
     if self._hooksInstalled then return end
@@ -855,7 +909,7 @@ function Plugin:ApplySkins()
         if showCount then
             local counter = EnsureQuestCounter(trackerFrame.Header)
             if counter then
-                ApplyFont(counter, 10)
+                ApplyFont(counter, GetObjectiveFontSize())
                 counter:SetTextColor(0.6, 0.6, 0.6)
                 UpdateQuestCounter(trackerFrame.Header)
                 counter:Show()
@@ -883,18 +937,29 @@ function Plugin:ApplySkins()
 end
 
 -- [ RE-SKIN EXISTING BLOCKS ]------------------------------------------------------------------------
--- Installs progress label hooks on bars that were skinned before ProgressBarMode existed,
--- and forces an immediate re-format when the mode setting changes.
+-- Re-applies font sizes to all rendered blocks whenever settings change,
+-- and installs/refreshes progress label hooks on all skinned bars.
 function Plugin:ReSkinExistingBlocks()
-    if not self:GetSetting(SYSTEM_ID, "SkinProgressBars") then return end
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
-        if tracker and tracker.usedProgressBars then
-            for _, progressBar in pairs(tracker.usedProgressBars) do
-                local bar = progressBar and progressBar.Bar
-                if bar then
-                    EnsureProgressLabelHook(bar)
-                    FormatProgressLabel(bar)
+        if tracker then
+            -- Always re-skin block fonts so font size changes apply live
+            if tracker.usedBlocks then
+                for _, blocks in pairs(tracker.usedBlocks) do
+                    for _, block in pairs(blocks) do
+                        if block then SkinBlockFonts(block, true) end
+                    end
+                end
+            end
+
+            -- Progress bar label hooks (gated on SkinProgressBars)
+            if self:GetSetting(SYSTEM_ID, "SkinProgressBars") and tracker.usedProgressBars then
+                for _, progressBar in pairs(tracker.usedProgressBars) do
+                    local bar = progressBar and progressBar.Bar
+                    if bar then
+                        EnsureProgressLabelHook(bar)
+                        FormatProgressLabel(bar)
+                    end
                 end
             end
         end

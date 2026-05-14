@@ -25,6 +25,29 @@ Orbit.ObjectivesConstants = {
     OPACITY_STEP = 5,
     OPACITY_DEFAULT = 100,
 
+    -- Title font size
+    TITLE_FONT_SIZE_MIN = 8,
+    TITLE_FONT_SIZE_MAX = 18,
+    TITLE_FONT_SIZE_STEP = 1,
+    TITLE_FONT_SIZE_DEFAULT = 12,
+
+    -- Objective line font size
+    OBJECTIVE_FONT_SIZE_MIN = 8,
+    OBJECTIVE_FONT_SIZE_MAX = 16,
+    OBJECTIVE_FONT_SIZE_STEP = 1,
+    OBJECTIVE_FONT_SIZE_DEFAULT = 10,
+
+    -- Decorative top line
+    TOP_LINE_HEIGHT = 1,
+
+    -- Progress bar label font size
+    PROGRESS_BAR_FONT_SIZE = 12,
+
+    -- Default colours for quest titles (RGBA tables)
+    TITLE_COLOR_DEFAULT     = { r = 1.00, g = 0.82, b = 0.00, a = 1 },
+    COMPLETED_COLOR_DEFAULT = { r = 0.90, g = 0.80, b = 0.10, a = 1 },
+    FOCUS_COLOR_DEFAULT     = { r = 1.00, g = 1.00, b = 1.00, a = 1 },
+
     -- All tracker module globals that Blizzard creates
     TRACKER_MODULES = {
         "ScenarioObjectiveTracker",

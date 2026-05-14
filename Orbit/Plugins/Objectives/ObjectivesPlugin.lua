@@ -21,6 +21,12 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
         AutoCollapseCombat = false,
         Opacity = C.OPACITY_DEFAULT,
         ProgressBarMode = "Percent",
+        TitleFontSize = C.TITLE_FONT_SIZE_DEFAULT,
+        ObjectiveFontSize = C.OBJECTIVE_FONT_SIZE_DEFAULT,
+        TitleColor = C.TITLE_COLOR_DEFAULT,
+        CompletedColor = C.COMPLETED_COLOR_DEFAULT,
+        FocusColor = C.FOCUS_COLOR_DEFAULT,
+        -- ShowTopLine: removed (no longer exposed)
     },
 })
 

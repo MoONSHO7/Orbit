@@ -360,8 +360,35 @@ local function BuildSpotlight(body)
     return enabled and expandedHeight or collapsedHeight
 end
 
-local function BuildColors(body)
-    local desc = Layout:CreateDescription(body, L.PLU_COLORS_DESC, A.MUTED)
+local function BuildAutomation(body)
+    -- Auto Accept
+    local acceptCb = Layout:CreateCheckbox(body, L.PLU_AUTO_ACCEPT, nil, GetAccountSetting("AutoAcceptQuests", false), function(checked)
+        SetAccountSetting("AutoAcceptQuests", checked)
+    end)
+    Layout:AddControl(body, acceptCb)
+
+    -- Prevent Multi-Accept (sub-option)
+    local preventCb = Layout:CreateCheckbox(body, L.PLU_AUTO_ACCEPT_PREVENT_MULTI, L.PLU_AUTO_ACCEPT_PREVENT_MULTI_TT, GetAccountSetting("AutoAcceptPreventMulti", true), function(checked)
+        SetAccountSetting("AutoAcceptPreventMulti", checked)
+    end)
+    Layout:AddControl(body, preventCb)
+
+    -- Auto Turn In
+    local turninCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN, nil, GetAccountSetting("AutoTurninQuests", false), function(checked)
+        SetAccountSetting("AutoTurninQuests", checked)
+    end)
+    Layout:AddControl(body, turninCb)
+
+    -- Hold Shift to Skip (sub-option)
+    local shiftCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN_HOLD_SHIFT, L.PLU_AUTO_TURNIN_HOLD_SHIFT_TT, GetAccountSetting("AutoTurninHoldShift", true), function(checked)
+        SetAccountSetting("AutoTurninHoldShift", checked)
+    end)
+    Layout:AddControl(body, shiftCb)
+
+    return Layout:Stack(body, 0, STACK_GAP)
+end
+
+local function BuildColors(body)    local desc = Layout:CreateDescription(body, L.PLU_COLORS_DESC, A.MUTED)
     Layout:AddControl(body, desc)
     desc:SetPoint("TOPLEFT", body, "TOPLEFT", 10, -8)
     desc:SetPoint("TOPRIGHT", body, "TOPRIGHT", -10, -8)
@@ -529,6 +556,7 @@ function Orbit._AC.CreateQoLContent(parent)
         { L.PLU_QOL_SEC_COLORS, BuildColors },
         { L.PLU_QOL_SEC_MOVEMORE, BuildMoveMore },
         { L.PLU_QOL_SEC_MOUSE, BuildMouse },
+        { L.PLU_QOL_SEC_AUTOMATION, BuildAutomation },
         { L.PLU_SPT_SECTION_TITLE, BuildSpotlight },
         { "Keys", nil },
         { "Markers", nil },

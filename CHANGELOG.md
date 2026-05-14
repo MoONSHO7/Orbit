@@ -1,6 +1,8 @@
 [start]
 
 ### Updates
+- Added Objectives Colours tab: font size sliders for quest titles and objectives, custom colour pickers for normal, completed, and focused quests, and a top-line decoration option
+- Added QoL > Automation section: auto-accept quests, auto-turn-in quests (hold Shift to skip), with optional guard against accidentally accepting multiple quests at once
 - Added Raid Panel (Marker Bar) Plugin
 - Added HUD Minimap (toggleable via keybind)
 - Updated Minimap Borders (new Splatter shape + Behaviour settings tab)
