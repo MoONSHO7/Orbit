@@ -766,26 +766,6 @@ local function SkinWidgetIconTextAndBackground(self)
     if self.Background then self.Background:SetAlpha(0) end
 end
 
--- [ SKIN: UI WIDGET SCENARIO HEADER ]----------------------------------------------------------
--- Frame is a texture sized to the atlas; Blizzard sizes the widget to match it (SetWidth/SetHeight
--- from Frame:GetWidth/Height). Because the widget can sit over adjacent tracker content (e.g. the
--- Bonus Objectives header), we keep Frame at alpha 0 so that underlying content shows through.
--- The text repositioning that was here previously was incorrect — we let Blizzard position it.
-local function SkinWidgetScenarioHeader(self)
-    if not IsUnderObjectivesTracker(self) then return end
-    if self.Frame then self.Frame:SetAlpha(0) end
-    if self.DecorationBottomLeft then self.DecorationBottomLeft:SetAlpha(0) end
-    if self.DecorationBottomRight then self.DecorationBottomRight:SetAlpha(0) end
-    if self.HeaderText then ApplyFont(self.HeaderText) end
-end
-
--- [ SKIN: UI WIDGET BUTTON HEADER ]------------------------------------------------------------
--- Same reasoning as SkinWidgetScenarioHeader: Frame texture can overlap adjacent tracker headers.
-local function SkinWidgetButtonHeader(self)
-    if not IsUnderObjectivesTracker(self) then return end
-    if self.Frame then self.Frame:SetAlpha(0) end
-    if self.HeaderText then ApplyFont(self.HeaderText) end
-end
 
 -- [ INSTALL HOOKS ]----------------------------------------------------------------------------------
 function Plugin:InstallSkinHooks()
@@ -849,12 +829,7 @@ function Plugin:InstallSkinHooks()
     if UIWidgetTemplateIconTextAndBackgroundMixin and UIWidgetTemplateIconTextAndBackgroundMixin.Setup then
         hooksecurefunc(UIWidgetTemplateIconTextAndBackgroundMixin, "Setup", SkinWidgetIconTextAndBackground)
     end
-    if UIWidgetBaseScenarioHeaderTemplateMixin and UIWidgetBaseScenarioHeaderTemplateMixin.Setup then
-        hooksecurefunc(UIWidgetBaseScenarioHeaderTemplateMixin, "Setup", SkinWidgetScenarioHeader)
-    end
-    if UIWidgetTemplateButtonHeaderMixin and UIWidgetTemplateButtonHeaderMixin.Setup then
-        hooksecurefunc(UIWidgetTemplateButtonHeaderMixin, "Setup", SkinWidgetButtonHeader)
-    end
+
 end
 
 -- [ FIT WIDTHS ]--------------------------------------------------------------------------------------
