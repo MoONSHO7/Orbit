@@ -19,6 +19,14 @@ local MAX_QUESTS = 35
 -- Retrieve the plugin (registered in ObjectivesPlugin.lua, loaded before this file)
 local Plugin = Orbit:GetPlugin("Objectives")
 
+-- Module-level enabled flag — cheap O(1) guard for hook callbacks that fire
+-- every frame.  Set by Plugin:SetSkinEnabled() from OnLoad / OnDisable / ApplySettings.
+local _enabled = false
+
+function Plugin:SetSkinEnabled(state)
+    _enabled = state
+end
+
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local function GetGlobalFont()
     local gs = Orbit.db and Orbit.db.GlobalSettings
@@ -159,7 +167,9 @@ end
 local function UpdateMinimizeChevron(btn)
     if not btn._orbitChevron then return end
     local header = btn:GetParent()
-    local collapsed = header and header.isCollapsed
+    -- Collapse state lives on the module/tracker, not on the header itself
+    local module = header and header:GetParent()
+    local collapsed = module and module.isCollapsed
     btn._orbitChevron:SetText(collapsed and "+" or "-")
 end
 
@@ -170,13 +180,17 @@ local function SkinMinimizeButton(header)
 
     btn:SetSize(16, 16)
 
-    -- Hide Blizzard atlas textures (SetTexture("") avoids taint on Blizzard-owned textures)
-    local nt = btn:GetNormalTexture()
-    if nt then nt:SetTexture("") end
-    local pt = btn:GetPushedTexture()
-    if pt then pt:SetTexture("") end
-    local hl = btn:GetHighlightTexture()
-    if hl then hl:SetTexture("") end
+    -- Hide Blizzard atlas textures — must be reapplied after every SetCollapsed
+    -- because Blizzard calls SetAtlas on these textures to swap the icon.
+    local function SuppressNativeTextures()
+        local nt = btn:GetNormalTexture()
+        if nt then nt:SetAlpha(0) end
+        local pt = btn:GetPushedTexture()
+        if pt then pt:SetAlpha(0) end
+        local hl = btn:GetHighlightTexture()
+        if hl then hl:SetAlpha(0) end
+    end
+    SuppressNativeTextures()
 
     -- Create chevron FontString
     local chevron = btn:CreateFontString(nil, "OVERLAY")
@@ -187,9 +201,10 @@ local function SkinMinimizeButton(header)
 
     UpdateMinimizeChevron(btn)
 
-    -- Hook SetCollapsed on the header to update the chevron direction
+    -- Hook SetCollapsed on the header to update the chevron and re-suppress native textures
     if header.SetCollapsed then
         hooksecurefunc(header, "SetCollapsed", function()
+            SuppressNativeTextures()
             UpdateMinimizeChevron(btn)
         end)
     end
@@ -387,6 +402,7 @@ end
 -- custom click handling.
 -- Called from the AddPOIButton hook — safe to call repeatedly (idempotent).
 local function SkinPOIButton(block)
+    if not _enabled then return end
     if not block then return end
     local pb = block.poiButton
     local questID = block.poiQuestID
@@ -460,6 +476,7 @@ end
 -- Reapply POI color to a block's HeaderText based on highlight state.
 -- Guard: only act on blocks that have a POI button we've skinned.
 local function ReapplyBlockColor(block)
+    if not _enabled then return end
     if not block.HeaderText then return end
     if not block.poiButton then return end
     local c = GetPOIColor(block)
@@ -471,6 +488,7 @@ local function ReapplyBlockColor(block)
 end
 
 local function OnAddBlock(_, block)
+    if not _enabled then return end
     if not block then return end
     SkinQuestItemButton(block.ItemButton)
     SkinQuestItemButton(block.itemButton)
@@ -510,6 +528,7 @@ local function OnAddBlock(_, block)
 end
 
 local function OnAddObjective(block, key)
+    if not _enabled then return end
     local line = block:GetExistingLine(key)
     if line and line.Icon and not line._orbitNubHooked then
         hooksecurefunc(line.Icon, "SetAtlas", function(icon, atlas)
@@ -554,6 +573,7 @@ local function EnsureProgressLabelHook(bar)
     if bar._orbitLabelHooked then return end
 
     local function onBlizzardWrite(self, text)
+        if not _enabled then return end
         if bar._orbitUpdating then return end
         if text and text ~= "" then
             FormatProgressLabel(bar)
@@ -569,6 +589,7 @@ end
 
 -- [ SKIN: PROGRESS BAR ]-----------------------------------------------------------------------------
 local function SkinProgressBar(tracker, key)
+    if not _enabled then return end
     if not Plugin:GetSetting(SYSTEM_ID, "SkinProgressBars") then return end
     local progressBar = tracker.usedProgressBars and tracker.usedProgressBars[key]
     local bar = progressBar and progressBar.Bar
@@ -634,6 +655,7 @@ end
 
 -- [ SKIN: TIMER BAR ]--------------------------------------------------------------------------------
 local function SkinTimerBar(tracker, key)
+    if not _enabled then return end
     local timerBar = tracker.usedTimerBars and tracker.usedTimerBars[key]
     local bar = timerBar and timerBar.Bar
     if not bar or bar._orbitSkinned then return end
@@ -680,6 +702,7 @@ end
 
 -- [ SKIN: UI WIDGET STATUS BAR ]---------------------------------------------------------------------
 local function SkinWidgetStatusBar(self)
+    if not _enabled then return end
     if not IsUnderObjectivesTracker(self) then return end
 
     local bar = self.Bar
@@ -736,6 +759,7 @@ end
 
 -- [ SKIN: UI WIDGET ICON AND TEXT ]----------------------------------------------------------------
 local function SkinWidgetIconAndText(self)
+    if not _enabled then return end
     if not IsUnderObjectivesTracker(self) then return end
 
     if self.Icon then
@@ -752,6 +776,7 @@ local function SkinWidgetIconAndText(self)
 end
 
 local function SkinWidgetStateIcon(self)
+    if not _enabled then return end
     if not IsUnderObjectivesTracker(self) then return end
     if self.Icon then
         self.Icon:SetTexture(nil)
@@ -760,6 +785,7 @@ local function SkinWidgetStateIcon(self)
 end
 
 local function SkinWidgetIconTextAndBackground(self)
+    if not _enabled then return end
     if not IsUnderObjectivesTracker(self) then return end
     if self.Icon then self.Icon:SetAlpha(0) end
     if self.Glow then self.Glow:SetAlpha(0) end
@@ -772,8 +798,8 @@ end
 local _superTrackFrame = CreateFrame("Frame")
 _superTrackFrame:RegisterEvent("SUPER_TRACKING_CHANGED")
 _superTrackFrame:SetScript("OnEvent", function()
-    local old = _superTrackedQuestID
     _superTrackedQuestID = C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID() or nil
+    if not _enabled then return end
     Plugin:ReSkinExistingPOIButtons()
 end)
 

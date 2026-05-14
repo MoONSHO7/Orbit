@@ -68,6 +68,10 @@ end
 
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    -- When disabled via Plugin Manager (requires reload), skip all initialisation
+    -- so the native Blizzard ObjectiveTrackerFrame remains untouched.
+    if not Orbit:IsPluginEnabled(self.name) then return end
+
     -- Migrate any colour settings that were saved in {pins=...} curve format
     -- (written by the old "color" widget type) to plain {r,g,b,a} tables.
     MigrateColorSettings(self)
@@ -233,6 +237,9 @@ function Plugin:ApplySettings()
         Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end)
         return
     end
+
+    -- Enable skin hooks — they were either disabled by OnDisable or not yet activated
+    self:SetSkinEnabled(true)
 
     self:CaptureTracker()
 
