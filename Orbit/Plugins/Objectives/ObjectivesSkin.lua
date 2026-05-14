@@ -270,6 +270,7 @@ local POI_SIZE = 18
 local _blockIcons     = setmetatable({}, { __mode = "k" })  -- block -> our icon texture
 local _blockClickBtns = setmetatable({}, { __mode = "k" })  -- block -> focus click button
 local _poiSuppressed  = setmetatable({}, { __mode = "k" })  -- poiButton -> true
+local _blockPoiHooked = setmetatable({}, { __mode = "k" })  -- block -> true (per-instance AddPOIButton hook installed)
 
 -- Hidden parent: POI buttons reparented here are invisible and mouse-disabled.
 local _poiHiddenParent = CreateFrame("Frame")
@@ -531,8 +532,10 @@ local function OnAddBlock(_, block)
         check._orbitSkinned = true
     end
 
-    -- Hook per-instance UpdateHighlight and SetHeader to defend POI colors
+    -- Hook per-instance UpdateHighlight and SetHeader to defend POI colors.
+    -- Hook per-instance AddPOIButton so ApplyBlockIcon fires on every re-render.
     -- Mixin methods are shallow-copied to instances, so mixin-level hooks don't fire
+    -- after the first render — per-instance hooks are required for all three.
     if not block._orbitColorHooked then
         if block.UpdateHighlight then
             hooksecurefunc(block, "UpdateHighlight", ReapplyBlockColor)
@@ -541,6 +544,13 @@ local function OnAddBlock(_, block)
             hooksecurefunc(block, "SetHeader", ReapplyBlockColor)
         end
         block._orbitColorHooked = true
+    end
+
+    if not _blockPoiHooked[block] then
+        if block.AddPOIButton then
+            hooksecurefunc(block, "AddPOIButton", ApplyBlockIcon)
+        end
+        _blockPoiHooked[block] = true
     end
 
     -- Apply font override to block text (always on)
