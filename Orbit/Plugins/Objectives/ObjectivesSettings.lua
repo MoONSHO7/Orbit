@@ -84,19 +84,6 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "HeaderSeparators"),
         })
 
-        -- Quest Marker Style
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "QuestMarkerStyle",
-            label = "Quest Marker Style",
-            default = "Simplified",
-            options = {
-                { label = "Simplified", value = "Simplified" },
-                { label = "Icons", value = "Icons" },
-            },
-            onChange = OnChange(self, systemIndex, "QuestMarkerStyle"),
-        })
-
         -- Skin Progress Bars
         table.insert(schema.controls, {
             type = "checkbox",
@@ -130,6 +117,15 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
 
     elseif currentTab == "Colours" then
+        -- Custom Quest Colors (classification / tag colouring)
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "CustomColors",
+            label = "Custom Quest Colors",
+            default = true,
+            onChange = OnChange(self, systemIndex, "CustomColors"),
+        })
+
         -- Class Color Headers (moved from Behaviour)
         table.insert(schema.controls, {
             type = "checkbox",

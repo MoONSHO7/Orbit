@@ -51,7 +51,7 @@ Orbit.ObjectivesConstants = {
 
     -- POI tag-specific title colours (overrides classification when tag matches)
     TAG_COLOR_GROUP   = { r = 0.40, g = 0.70, b = 1.00 },
-    TAG_COLOR_RAID    = { r = 0.90, g = 0.30, b = 0.10 },
+    TAG_COLOR_RAID    = { r = 0.20, g = 0.58, b = 0.30 },
     TAG_COLOR_PVP     = { r = 0.90, g = 0.20, b = 0.20 },
     TAG_COLOR_ACCOUNT = { r = 0.40, g = 0.80, b = 0.95 },
 

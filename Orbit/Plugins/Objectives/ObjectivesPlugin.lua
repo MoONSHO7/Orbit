@@ -26,7 +26,7 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
         TitleColor = C.TITLE_COLOR_DEFAULT,
         CompletedColor = C.COMPLETED_COLOR_DEFAULT,
         FocusColor = C.FOCUS_COLOR_DEFAULT,
-        -- ShowTopLine: removed (no longer exposed)
+        CustomColors = true,
     },
 })
 

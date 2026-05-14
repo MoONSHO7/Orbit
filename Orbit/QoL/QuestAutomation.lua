@@ -28,8 +28,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
     elseif event == "QUEST_COMPLETE" then
         if not GetAccountSetting("AutoTurnInQuests", false) then return end
         if GetAccountSetting("AutoTurnInHoldShift", true) and IsShiftKeyDown() then return end
-        if GetNumQuestChoices() > 1 then return end
-        CompleteQuest()
+        local numChoices = GetNumQuestChoices()
+        if numChoices <= 1 then
+            GetQuestReward(numChoices)
+        end
 
     -- ------------------------------------------------------------------ QUEST_AUTOCOMPLETE
     elseif event == "QUEST_AUTOCOMPLETE" then

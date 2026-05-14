@@ -275,21 +275,27 @@ local POI_CLASSIFICATION_ATLAS = {
 }
 
 -- Quest tag → atlas icon mapping (tag takes priority over classification)
-local POI_TAG_ATLAS = {}
-if Enum.QuestTag then
-    POI_TAG_ATLAS[Enum.QuestTag.Dungeon]  = "questlog-questtypeicon-dungeon"
-    POI_TAG_ATLAS[Enum.QuestTag.Raid]     = "questlog-questtypeicon-raid"
-    POI_TAG_ATLAS[Enum.QuestTag.Group]    = "questlog-questtypeicon-group"
-    POI_TAG_ATLAS[Enum.QuestTag.PvP]      = "questlog-questtypeicon-pvp"
-    POI_TAG_ATLAS[Enum.QuestTag.Heroic]   = "questlog-questtypeicon-heroic"
-    POI_TAG_ATLAS[Enum.QuestTag.Scenario] = "questlog-questtypeicon-scenario"
-    if Enum.QuestTag.Account then
-        POI_TAG_ATLAS[Enum.QuestTag.Account] = "questlog-questtypeicon-account"
-    end
-    if Enum.QuestTag.Delve then
-        POI_TAG_ATLAS[Enum.QuestTag.Delve] = "questlog-questtypeicon-delves"
-    end
-end
+local POI_TAG_ATLAS = {
+    [Enum.QuestTag.Dungeon]  = "questlog-questtypeicon-dungeon",
+    [Enum.QuestTag.Raid]     = "questlog-questtypeicon-raid",
+    [Enum.QuestTag.Group]    = "questlog-questtypeicon-group",
+    [Enum.QuestTag.PvP]      = "questlog-questtypeicon-pvp",
+    [Enum.QuestTag.Heroic]   = "questlog-questtypeicon-heroic",
+    [Enum.QuestTag.Scenario] = "questlog-questtypeicon-scenario",
+    [Enum.QuestTag.Account]  = "questlog-questtypeicon-account",
+    [Enum.QuestTag.Delve]    = "questlog-questtypeicon-delves",
+}
+-- Quest tag → title color mapping (mirrors atlas table for consistency)
+local POI_TAG_COLOR = {
+    [Enum.QuestTag.Dungeon]  = C.TAG_COLOR_GROUP,
+    [Enum.QuestTag.Raid]     = C.TAG_COLOR_RAID,
+    [Enum.QuestTag.Group]    = C.TAG_COLOR_GROUP,
+    [Enum.QuestTag.PvP]      = C.TAG_COLOR_PVP,
+    [Enum.QuestTag.Heroic]   = C.TAG_COLOR_GROUP,
+    [Enum.QuestTag.Scenario] = C.TAG_COLOR_GROUP,
+    [Enum.QuestTag.Account]  = C.TAG_COLOR_ACCOUNT,
+    [Enum.QuestTag.Delve]    = C.TAG_COLOR_GROUP,
+}
 
 local POI_ATLAS_DEFAULT  = "QuestNormal"
 local POI_ATLAS_COMPLETE = "QuestTurnin"
@@ -299,13 +305,13 @@ local function GetPOIAtlas(block)
     local questID = block.poiQuestID
     if not questID then return POI_ATLAS_DEFAULT end
 
-    if C_QuestLog.ReadyForTurnIn and C_QuestLog.ReadyForTurnIn(questID) then
+    if C_QuestLog.ReadyForTurnIn(questID) then
         return POI_ATLAS_COMPLETE
     end
 
     -- Classification checked first — Legendary / Campaign / Important should
     -- take visual priority over generic tags like Raid or Dungeon.
-    if C_CampaignInfo and C_CampaignInfo.IsCampaignQuest(questID) then
+    if C_CampaignInfo.IsCampaignQuest(questID) then
         return POI_CLASSIFICATION_ATLAS[Enum.QuestClassification.Campaign]
     end
 
@@ -314,11 +320,9 @@ local function GetPOIAtlas(block)
         return POI_CLASSIFICATION_ATLAS[classification]
     end
 
-    if C_QuestLog.GetQuestTagInfo then
-        local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
-        if tagInfo and tagInfo.tagID and POI_TAG_ATLAS[tagInfo.tagID] then
-            return POI_TAG_ATLAS[tagInfo.tagID]
-        end
+    local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
+    if tagInfo and tagInfo.tagID and POI_TAG_ATLAS[tagInfo.tagID] then
+        return POI_TAG_ATLAS[tagInfo.tagID]
     end
 
     return POI_ATLAS_DEFAULT
@@ -336,27 +340,30 @@ local function GetPOIColor(block)
     if block.poiIsComplete then return GetCompletedQuestColor() end
     if not questID then return GetNormalQuestColor() end
 
-    if C_CampaignInfo and C_CampaignInfo.IsCampaignQuest(questID) then
+    -- When custom colours are disabled, all non-focus/non-complete quests
+    -- use the plain title colour (Blizzard default behaviour).
+    if not Plugin:GetSetting(SYSTEM_ID, "CustomColors") then
+        return GetNormalQuestColor()
+    end
+
+    -- Legendary classification takes priority over tags — a legendary raid quest
+    -- is still legendary.
+    local classification = C_QuestInfoSystem.GetQuestClassification(questID)
+    if classification == Enum.QuestClassification.Legendary then
+        return POI_COLORS[Enum.QuestClassification.Legendary]
+    end
+
+    -- Tag colour — Raid/Dungeon/PvP/etc. should be distinguishable even when
+    -- the quest is also a campaign or questline quest.
+    local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
+    if tagInfo and tagInfo.tagID and POI_TAG_COLOR[tagInfo.tagID] then
+        return POI_TAG_COLOR[tagInfo.tagID]
+    end
+
+    if C_CampaignInfo.IsCampaignQuest(questID) then
         return POI_COLORS[Enum.QuestClassification.Campaign]
     end
 
-    if C_QuestLog.GetQuestTagInfo then
-        local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
-        if tagInfo then
-            local tagID = tagInfo.tagID
-            if tagID == Enum.QuestTag.Group or tagID == Enum.QuestTag.Dungeon then
-                return C.TAG_COLOR_GROUP
-            elseif tagID == Enum.QuestTag.Raid then
-                return C.TAG_COLOR_RAID
-            elseif tagID == Enum.QuestTag.PvP then
-                return C.TAG_COLOR_PVP
-            elseif tagID == Enum.QuestTag.Account then
-                return C.TAG_COLOR_ACCOUNT
-            end
-        end
-    end
-
-    local classification = C_QuestInfoSystem.GetQuestClassification(questID)
     if classification and classification ~= Enum.QuestClassification.Normal and POI_COLORS[classification] then
         return POI_COLORS[classification]
     end

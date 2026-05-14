@@ -52,18 +52,21 @@ header-only skinning. its content frames share blizzard's widget pool — callin
 
 ## POI icons
 
-each quest block's `poiButton` is stripped of native visuals and overlaid with a classification-based atlas icon. title text colour is derived from quest classification, tag, or focus state:
+each quest block's `poiButton` is stripped of native visuals and overlaid with a classification-based atlas icon. title text colour is derived from quest classification, tag, or focus state. when `CustomColors` is disabled, only focus and completed colours apply — everything else falls through to the plain `TitleColor` setting.
 
 | priority | source | colour |
 |---|---|---|
 | 1 | super-tracked quest | `FocusColor` setting |
 | 2 | completed quest | `CompletedColor` setting |
-| 3 | tag: Group/Dungeon | `TAG_COLOR_GROUP` (blue) |
-| 4 | tag: Raid | `TAG_COLOR_RAID` (red-orange) |
-| 5 | tag: PvP | `TAG_COLOR_PVP` (red) |
-| 6 | tag: Account | `TAG_COLOR_ACCOUNT` (cyan) |
-| 7 | classification (Campaign, Legendary, etc.) | `POI_COLORS` table |
-| 8 | fallback | `TitleColor` setting |
+| 3 | `CustomColors` gate | if off → `TitleColor` (skip 4-8) |
+| 4 | classification: Legendary | `POI_COLORS[Legendary]` (orange) |
+| 5 | tag: Raid | `TAG_COLOR_RAID` (dark green) |
+| 6 | tag: Group/Dungeon | `TAG_COLOR_GROUP` (blue) |
+| 7 | tag: PvP | `TAG_COLOR_PVP` (red) |
+| 8 | tag: Account | `TAG_COLOR_ACCOUNT` (cyan) |
+| 9 | campaign (`C_CampaignInfo`) | `POI_COLORS[Campaign]` |
+| 10 | other classification | `POI_COLORS` table |
+| 11 | fallback | `TitleColor` setting |
 
 atlas icon selection follows the same priority: campaign check via `C_CampaignInfo.IsCampaignQuest`, then classification via `C_QuestInfoSystem.GetQuestClassification`, then tag via `C_QuestLog.GetQuestTagInfo`, falling back to `QuestNormal` or `QuestTurnin`.
 
@@ -127,8 +130,9 @@ on first load, `MigrateColorSettings` converts any legacy colour-curve format (`
 | `TitleColor` | solidcolor | `{1.00, 0.82, 0.00}` | default quest title colour |
 | `CompletedColor` | solidcolor | `{0.90, 0.80, 0.10}` | completed quest title colour |
 | `FocusColor` | solidcolor | `{1.00, 1.00, 1.00}` | super-tracked quest title colour |
+| `CustomColors` | checkbox | true | enable classification/tag quest title colouring |
 
-settings UI is split into three tabs: **Layout** (Width, Height, ShowBorder, BackgroundOpacity), **Behaviour** (HeaderSeparators, QuestMarkerStyle, SkinProgressBars, ProgressBarMode, AutoCollapseCombat), **Colours** (ClassColorHeaders, TitleFontSize, ObjectiveFontSize, TitleColor, CompletedColor, FocusColor).
+settings UI is split into three tabs: **Layout** (Width, Height, ShowBorder, BackgroundOpacity), **Behaviour** (HeaderSeparators, SkinProgressBars, ProgressBarMode, AutoCollapseCombat), **Colours** (CustomColors, ClassColorHeaders, TitleFontSize, ObjectiveFontSize, TitleColor, CompletedColor, FocusColor).
 
 ## events
 
@@ -147,3 +151,5 @@ settings UI is split into three tabs: **Layout** (Width, Height, ShowBorder, Bac
 - `InCombatLockdown()` is checked before `SetParent`, `ClearAllPoints`, `SetPoint`, `Show` on the tracker. deferred via `CombatManager:QueueUpdate`.
 - ScenarioObjectiveTracker is header-only to avoid widget pool taint.
 - user-visible strings go through `Orbit.L`. no localisation keys exist yet for this plugin (settings labels are hardcoded english in `ObjectivesSettings.lua`).
+
+/run local q=29135; local t=C_QuestLog.GetQuestTagInfo(q); local c=C_QuestInfoSystem.GetQuestClassification(q); local g=C_QuestLog.GetSuggestedGroupSize(q); print("Tag:", t and t.tagID, t and t.tagName, "Class:", c, "Group:", g)
