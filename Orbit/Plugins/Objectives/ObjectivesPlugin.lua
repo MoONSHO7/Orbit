@@ -33,8 +33,45 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
 -- Apply NativeBarMixin for mouseOver helpers
 Mixin(Plugin, Orbit.NativeBarMixin)
 
+-- [ COLOUR MIGRATION ]--------------------------------------------------------------------------------
+-- One-time migration from colour-curve {pins=...} format (stored by the old "color" widget type)
+-- to plain {r,g,b,a} tables (used by the current "solidcolor" widget type).
+-- Runs at the start of OnLoad so GetSetting always returns clean data, including for the
+-- settings panel colour swatches.
+local COLOR_KEYS = { "TitleColor", "CompletedColor", "FocusColor" }
+
+local function ExtractPinColor(c)
+    if type(c) ~= "table" then return nil end
+    if type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then
+        return c  -- already plain {r,g,b,a}
+    end
+    if c.pins and c.pins[1] and type(c.pins[1].color) == "table" then
+        local pin = c.pins[1].color
+        if type(pin.r) == "number" and type(pin.g) == "number" and type(pin.b) == "number" then
+            return { r = pin.r, g = pin.g, b = pin.b, a = pin.a or 1 }
+        end
+    end
+    return nil
+end
+
+local function MigrateColorSettings(plugin)
+    for _, key in ipairs(COLOR_KEYS) do
+        local raw = plugin:GetSetting(SYSTEM_ID, key)
+        local clean = ExtractPinColor(raw)
+        -- Only write back if the raw value was in the old format (pins) — avoid
+        -- writing defaults into SavedVariables for users who never touched the picker.
+        if clean and clean ~= raw then
+            plugin:SetSetting(SYSTEM_ID, key, clean)
+        end
+    end
+end
+
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
+    -- Migrate any colour settings that were saved in {pins=...} curve format
+    -- (written by the old "color" widget type) to plain {r,g,b,a} tables.
+    MigrateColorSettings(self)
+
     -- Create container frame that will own the Blizzard ObjectiveTrackerFrame
     self.frame = CreateFrame("Frame", "OrbitObjectivesContainer", UIParent)
     self.frame:SetSize(C.DEFAULT_WIDTH, C.DEFAULT_HEIGHT)

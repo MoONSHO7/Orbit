@@ -41,11 +41,21 @@ local POI_COLOR_DEFAULT_FALLBACK  = C.TITLE_COLOR_DEFAULT
 local POI_COLOR_COMPLETE_FALLBACK = C.COMPLETED_COLOR_DEFAULT
 
 -- Guard: return c only if it is a valid {r,g,b} colour table.
--- Protects against SavedVariables that stored colour-curve data {pins=...}
--- from a previous session where "color" (curve picker) was used instead of "solidcolor".
+-- Also recovers colours that were saved in colour-curve {pins=...} format
+-- by a previous session that used "color" (CreateColorCurvePicker) instead
+-- of "solidcolor" (CreateColorPicker).
 local function ValidateColor(c, fallback)
-    if type(c) == "table" and type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then
+    if type(c) ~= "table" then return fallback end
+    -- Already a plain {r,g,b[,a]} table
+    if type(c.r) == "number" and type(c.g) == "number" and type(c.b) == "number" then
         return c
+    end
+    -- Colour-curve legacy format: extract from pins[1].color
+    if c.pins and c.pins[1] and type(c.pins[1].color) == "table" then
+        local pin = c.pins[1].color
+        if type(pin.r) == "number" and type(pin.g) == "number" and type(pin.b) == "number" then
+            return { r = pin.r, g = pin.g, b = pin.b, a = pin.a or 1 }
+        end
     end
     return fallback
 end
