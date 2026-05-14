@@ -727,10 +727,8 @@ local function SkinScenarioStageBlock(block)
     if block.FinalBG then block.FinalBG:SetAlpha(0) end
     if block.Stage then ApplyFont(block.Stage) end
     if block.Name then ApplyFont(block.Name) end
-    
-    -- Reduce height to compress gap now that backgrounds are gone
-    if block.SetHeight then block:SetHeight(45) end
-    block.height = 45 
+    -- Height is intentionally left at Blizzard's native value. Forcing it to 45 shifted
+    -- MawBuffsBlock up into the module header and left it off-center.
 end
 
 -- [ SKIN: UI WIDGET ICON AND TEXT ]----------------------------------------------------------------
@@ -862,6 +860,11 @@ function Plugin:FitTrackerWidths()
             -- ContentsFrame holds blocks
             if tracker.ContentsFrame then
                 tracker.ContentsFrame:SetWidth(width)
+            end
+            -- MawBuffsBlock is a FixedBlock with hardcoded width 243. Its Container button is
+            -- anchored TOPRIGHT, so if ContentsFrame is wider the button drifts off-center.
+            if tracker.MawBuffsBlock then
+                tracker.MawBuffsBlock:SetWidth(width)
             end
         end
     end
