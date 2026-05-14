@@ -554,6 +554,7 @@ end
 
 -- [ SKIN: PROGRESS BAR ]-----------------------------------------------------------------------------
 local function SkinProgressBar(tracker, key)
+    if not Plugin:GetSetting(SYSTEM_ID, "SkinProgressBars") then return end
     local progressBar = tracker.usedProgressBars and tracker.usedProgressBars[key]
     local bar = progressBar and progressBar.Bar
     if not bar then return end
@@ -918,6 +919,7 @@ end
 -- Installs progress label hooks on bars that were skinned before ProgressBarMode existed,
 -- and forces an immediate re-format when the mode setting changes.
 function Plugin:ReSkinExistingBlocks()
+    if not self:GetSetting(SYSTEM_ID, "SkinProgressBars") then return end
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
         if tracker and tracker.usedProgressBars then
