@@ -232,12 +232,12 @@ local POI_COLORS = {
     [Enum.QuestClassification.Meta]           = { r = 0.68, g = 0.38, b = 0.90 },
     [Enum.QuestClassification.Recurring]      = { r = 0.25, g = 0.50, b = 1.00 },
     [Enum.QuestClassification.Questline]      = { r = 0.85, g = 0.75, b = 0.35 },
-    [Enum.QuestClassification.Normal]         = { r = 0.45, g = 0.45, b = 0.45 },
+    [Enum.QuestClassification.Normal]         = { r = 1.00, g = 0.82, b = 0.00 },
     [Enum.QuestClassification.BonusObjective] = { r = 0.20, g = 0.80, b = 0.30 },
     [Enum.QuestClassification.Threat]         = { r = 0.85, g = 0.20, b = 0.20 },
     [Enum.QuestClassification.WorldQuest]     = { r = 0.20, g = 0.70, b = 0.55 },
 }
-local POI_COLOR_DEFAULT  = { r = 0.45, g = 0.45, b = 0.45 }
+local POI_COLOR_DEFAULT  = { r = 1.00, g = 0.82, b = 0.00 }
 local POI_COLOR_COMPLETE = { r = 0.90, g = 0.80, b = 0.10 }
 
 -- Quest classification → atlas icon mapping
