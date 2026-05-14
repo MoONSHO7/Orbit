@@ -392,20 +392,27 @@ local function GetPOIColor(block)
     return GetNormalQuestColor()
 end
 
--- Permanently suppress a POI button by reparenting to a hidden frame.
--- Hooks SetParent to prevent Blizzard from re-parenting it back.
+-- Suppress a POI button by reparenting to a hidden frame and disabling mouse.
+-- Always re-applies SetParent and EnableMouse so that repeated calls (from
+-- ApplyBlockIcon on every AddPOIButton) counteract any state changes made by
+-- GetPOIButton reuse (SetSelected, UpdateButtonStyle, Show, etc.).
+-- Installs the SetParent hook only once per button instance.
 -- Safe to call with block.poiButton == nil (no-op).
 local function SuppressPOI(block)
     local pb = block and block.poiButton
-    if not pb or _poiSuppressed[pb] then return end
-    _poiSuppressed[pb] = true
+    if not pb then return end
+    -- Re-apply every time: GetPOIButton may call Show/UpdateButtonStyle on a
+    -- reused button without going through SetParent, so we must re-suppress here.
     pb:SetParent(_poiHiddenParent)
     pb:EnableMouse(false)
-    hooksecurefunc(pb, "SetParent", function(self, parent)
-        if parent ~= _poiHiddenParent then
-            self:SetParent(_poiHiddenParent)
-        end
-    end)
+    if not _poiSuppressed[pb] then
+        _poiSuppressed[pb] = true
+        hooksecurefunc(pb, "SetParent", function(self, parent)
+            if parent ~= _poiHiddenParent then
+                self:SetParent(_poiHiddenParent)
+            end
+        end)
+    end
 end
 
 -- Create or update our own icon texture directly on the block.
@@ -1030,6 +1037,16 @@ function Plugin:ReSkinExistingPOIButtons()
             for _, blocks in pairs(tracker.usedBlocks) do
                 for _, block in pairs(blocks) do
                     if block then
+                        -- Install per-instance AddPOIButton hook for blocks that
+                        -- existed before OnAddBlock fired (e.g. on reload / late init).
+                        -- Mixin-level hooks miss these instances because Mixin() copies
+                        -- method references at block-creation time.
+                        if not _blockPoiHooked[block] then
+                            if block.AddPOIButton then
+                                hooksecurefunc(block, "AddPOIButton", ApplyBlockIcon)
+                            end
+                            _blockPoiHooked[block] = true
+                        end
                         SuppressPOI(block)
                         if block.poiQuestID then
                             ApplyBlockIcon(block)
