@@ -30,6 +30,7 @@ local PLUGIN_GROUPS = {
         "Minimap", "Minimap Button", "Datatexts",
         { label = "Experience Bar", plugins = { "Experience Bar" }, triState = true },
         { label = "Honor Bar",      plugins = { "Honor Bar" },      triState = true },
+        "Objectives",
     }},
 }
 

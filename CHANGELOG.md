@@ -1,16 +1,21 @@
 [start]
 
 ### Updates
-- Added "Orbit Rounded" border style with adjustable Corner Roundness and Thickness (Global tab)
-- Rounded borders apply to frames and icons alike
-- Renamed the "Orbit Pixel" border style to "Orbit Squared"
-- Added "Faded Circle" Minimap border option
-- Added a Dispel Icon to Group frames showing the debuff type — positionable in Canvas Mode
-
-### Bugfixes
-- Anchored frames no longer drift off-screen when their anchor target is hidden or disabled
-- Frames now keep their anchored position after switching profiles
-- Action bars now reliably reveal while the Cooldown Manager settings panel is open
+- Added Objectives Colours tab: font size sliders for quest titles and objectives, custom colour pickers for normal, completed, and focused quests, and a top-line decoration option
+- Added QoL > Automation section: auto-accept quests, auto-turn-in quests (hold Shift to skip), with optional guard against accidentally accepting multiple quests at once
+- Added Custom Quest Colors toggle (Objectives > Colours): colour quest titles by type (Legendary, Raid, Dungeon, PvP, Campaign, etc.) — toggle off for default Blizzard colours
+- Fixed auto turn-in not completing quests (reward was never claimed)
+- Fixed raid-tagged quests incorrectly showing legendary orange colour
+- Removed non-functional Quest Marker Style option
+- Added Raid Panel (Marker Bar) Plugin
+- Added HUD Minimap (toggleable via keybind)
+- Updated Minimap Borders (new Splatter shape + Behaviour settings tab)
+- Added Health Bar Coloring for healing abilities on Group frames (Indicators Tab)
+- Added Controller Keybind Graphics to Action Bars
+- Action bars now reveal at full opacity when Spellbook/Talents is open
+- Fixed Minimap clock randomly switching between 12h and 24h format
+- Added Minimap tracking button (fades in on hover)
+- Fixed Minimap compartment flyout closing while a dropdown menu is open
 
 ### Hints
 You can always open this window again by typing `/orbit whatsnew`

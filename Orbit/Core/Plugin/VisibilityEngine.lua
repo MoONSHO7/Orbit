@@ -67,7 +67,7 @@ end
 local BLIZZARD_REGISTRY = {
     -- Insecure (full feature set: opacity, oocFade, hideMounted, mouseOver, showWithTarget)
     { key = "BlizzMinimap",          display = L.PLU_VE_MINIMAP,             blizzardFrame = "MinimapCluster",            ownedBy = "Minimap" },
-    { key = "ObjectiveTracker",      display = L.PLU_VE_OBJECTIVE_TRACKER,   blizzardFrame = "ObjectiveTrackerFrame" },
+    { key = "ObjectiveTracker",      display = L.PLU_VE_OBJECTIVE_TRACKER,   blizzardFrame = "ObjectiveTrackerFrame",     ownedBy = "Objectives" },
     { key = "BuffFrame",             display = L.PLU_VE_BUFF_FRAME,          blizzardFrame = "BuffFrame",                 ownedBy = "Player Buffs" },
     { key = "DebuffFrame",           display = L.PLU_VE_DEBUFF_FRAME,        blizzardFrame = "DebuffFrame",               ownedBy = "Player Debuffs" },
     { key = "ChatFrame",             display = L.PLU_VE_CHAT_FRAME,          blizzardFrame = "ChatFrame1" },
