@@ -1,7 +1,7 @@
 -- [ ORBIT VISIBILITY STATE ]-------------------------------------------------------------------------
--- Wraps RegisterStateDriver for plugin frames. RegisterStateDriver, UnregisterStateDriver, and
--- frame:Show are combat-locked, so the entire ApplyState body is deferred via CombatManager when
--- combat is active to keep the driver cache in sync with the actual secure state.
+-- RegisterStateDriver, UnregisterStateDriver, and frame:Show are combat-locked, so the entire
+-- ApplyState body is deferred via CombatManager when combat is active to keep the driver cache in
+-- sync with the actual secure state.
 
 local _, Orbit = ...
 

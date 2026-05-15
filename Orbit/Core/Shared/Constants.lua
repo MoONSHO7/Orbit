@@ -166,8 +166,8 @@ C.BorderStyle = {
           edgeFile = MASK_PATH .. "Orbit_Rounded_Border",
           sliceMargin = 12 },
     },
-    -- Corner-roundness tiers for Orbit Rounded. `margin` is the SetTextureSliceMargins value
-    -- (= rendered corner pixel size); `mask` is the matching mask asset.
+    -- `margin` is the SetTextureSliceMargins value (= rendered corner pixel size); `mask` is the
+    -- matching mask asset.
     RoundedTiers = {
         [1] = { margin = 6,  mask = MASK_PATH .. "Orbit_Rounded_Mask_1" },
         [2] = { margin = 12, mask = MASK_PATH .. "Orbit_Rounded_Mask_2" },

@@ -45,7 +45,7 @@ function Plugin:OnLoad()
     local frame = Orbit.StatusBarBase:Create(FRAME_NAME, UIParent)
     frame:SetSize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
     frame.systemIndex = SYSTEM_ID
-    frame.editModeName = "Honor Bar"
+    frame.editModeName = L.PLU_HONOR_BAR_NAME
     frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
     frame.orbitWidthSync = true
     frame.orbitHeightSync = true

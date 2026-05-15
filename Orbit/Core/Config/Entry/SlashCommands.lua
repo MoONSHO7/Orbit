@@ -144,30 +144,30 @@ local function PrintFrameInfo(pluginName)
     end
 end
 
--- [ ANCHOR DIAGNOSTIC ]-----------------------------------------------------------------------------
+-- [ ANCHOR DIAGNOSTIC ]------------------------------------------------------------------------------
 local function PrintAnchor(frameName)
     if not frameName or frameName == "" then
-        Orbit:Print("Usage: /orbit anchor <FrameName>  (e.g. /orbit anchor OrbitPlayerPower)")
+        Orbit:Print(L.CMD_ANCHOR_USAGE)
         return
     end
     local f = _G[frameName]
-    if not f then Orbit:Print("No frame named '" .. frameName .. "' in _G"); return end
+    if not f then Orbit:Print(L.CMD_ANCHOR_NO_FRAME_F:format(frameName)); return end
     local A = Orbit.Engine.FrameAnchor
     local G = Orbit.Engine.AnchorGraph
-    if not A or not G then Orbit:Print("FrameAnchor / AnchorGraph not loaded"); return end
+    if not A or not G then Orbit:Print(L.CMD_ANCHOR_GRAPH_MISSING); return end
 
     local phys = A.anchors[f]
     local log = A.logicalAnchors and A.logicalAnchors[f]
-    print("|cFFFFD100" .. frameName .. "|r  skipped=" .. tostring(G:IsSkipped(f)))
+    print(L.CMD_ANCHOR_HEADER_F:format(frameName, tostring(G:IsSkipped(f))))
     if phys and phys.parent then
-        print("  physical: " .. (phys.parent:GetName() or "?") .. " edge=" .. tostring(phys.edge))
+        print(L.CMD_ANCHOR_PHYSICAL_F:format(phys.parent:GetName() or "?", tostring(phys.edge)))
     else
-        print("  physical: |cFFFF0000NONE|r")
+        print(L.CMD_ANCHOR_PHYSICAL_NONE)
         local pt, rel, _, x, y = f:GetPoint(1)
-        if pt then print(string.format("    SetPoint: %s @ %s (%.0f, %.0f)", pt, (rel and rel.GetName and rel:GetName()) or "UIParent", x or 0, y or 0)) end
+        if pt then print(L.CMD_ANCHOR_SETPOINT_F:format(pt, (rel and rel.GetName and rel:GetName()) or "UIParent", x or 0, y or 0)) end
     end
     if log and log.parent then
-        print("  logical:  " .. (log.parent:GetName() or "?") .. " edge=" .. tostring(log.edge))
+        print(L.CMD_ANCHOR_LOGICAL_F:format(log.parent:GetName() or "?", tostring(log.edge)))
     end
 
     local p = f.orbitPlugin
@@ -176,21 +176,21 @@ local function PrintAnchor(frameName)
         local anchor = p:GetSetting(sysIdx, "Anchor")
         local position = p:GetSetting(sysIdx, "Position")
         if anchor then
-            print("  saved Anchor: target=" .. tostring(anchor.target) .. " edge=" .. tostring(anchor.edge))
-            print("    fallback=" .. tostring(anchor.fallback))
+            print(L.CMD_ANCHOR_SAVED_F:format(tostring(anchor.target), tostring(anchor.edge)))
+            print(L.CMD_ANCHOR_FALLBACK_F:format(tostring(anchor.fallback)))
             if anchor.ancestry then
-                print("    ancestry=" .. table.concat(anchor.ancestry, " > "))
+                print(L.CMD_ANCHOR_ANCESTRY_F:format(table.concat(anchor.ancestry, " > ")))
             else
-                print("    ancestry=|cFFFF0000nil|r  (re-drag in edit mode to populate)")
+                print(L.CMD_ANCHOR_ANCESTRY_NIL)
             end
             local function probe(name, label)
                 if not name then return end
                 local cand = _G[name]
-                if not cand then print("    " .. label .. " " .. name .. ": |cFFFF0000not in _G|r"); return end
+                if not cand then print(L.CMD_ANCHOR_PROBE_MISSING_F:format(label, name)); return end
                 local skipped = G:IsSkipped(cand)
                 local hasParent = A.anchors[cand] and A.anchors[cand].parent
-                local parentStr = hasParent and (" (parent=" .. (A.anchors[cand].parent:GetName() or "?") .. ")") or " (no parent)"
-                print(string.format("    %s %s: exists, skipped=%s%s", label, name, tostring(skipped), parentStr))
+                local parentStr = hasParent and L.CMD_ANCHOR_PROBE_PARENT_F:format(A.anchors[cand].parent:GetName() or "?") or L.CMD_ANCHOR_PROBE_NO_PARENT
+                print(L.CMD_ANCHOR_PROBE_F:format(label, name, tostring(skipped), parentStr))
             end
             probe(anchor.target, "target")
             if anchor.ancestry then
@@ -199,9 +199,9 @@ local function PrintAnchor(frameName)
                 probe(anchor.fallback, "fallback")
             end
         elseif position then
-            print("  saved Position: " .. position.point .. " (" .. (position.x or 0) .. ", " .. (position.y or 0) .. ")")
+            print(L.CMD_ANCHOR_POSITION_F:format(position.point, tostring(position.x or 0), tostring(position.y or 0)))
         else
-            print("  no saved Anchor/Position (using defaultPosition)")
+            print(L.CMD_ANCHOR_NO_SAVED)
         end
     end
 end

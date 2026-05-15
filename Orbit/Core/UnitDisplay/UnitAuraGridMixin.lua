@@ -700,8 +700,8 @@ end
 -- Mixin:_updateBlizzardBuffs() lives in UnitAuraGridReparenting.lua
 
 -- [ GRID GROUP BORDER ]------------------------------------------------------------------------------
-local function ClearGridRoundedMask(Frame, activeIcons)
-    local mask = Frame._gridGroupRoundedMask
+local function ClearGridRoundedMask(frame, activeIcons)
+    local mask = frame._gridGroupRoundedMask
     if not mask then return end
     for _, icon in ipairs(activeIcons) do
         for _, tex in ipairs(icon._maskedSurfaces or {}) do

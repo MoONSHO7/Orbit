@@ -153,7 +153,7 @@ function Registry:GetSlotLabel(key)
         end
     end
     if key == RAID_BUFF_KEY and _activeRaidBuffs[1] then
-        return L.CMN_RAID_BUFF or "Raid Buff"
+        return L.CMN_RAID_BUFF
     end
     return key
 end

@@ -332,7 +332,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local container = frame[containerKey]
     if not container then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(cfg.componentKey) then container:Hide(); return end
-    local positions = plugin.GetComponentPositions and plugin:GetComponentPositions(1) or plugin:GetSetting(1, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(1)
     local auraData = positions[cfg.componentKey] or {}
     local overrides = auraData.overrides or {}
     local frameW, frameH = frame:GetWidth(), frame:GetHeight()
@@ -462,8 +462,8 @@ end
 -- Read saved overrides for a component key from plugin settings.
 local function GetComponentOverrides(plugin, iconKey)
     if not plugin or not plugin.GetSetting then return nil end
-    local positions = plugin.GetComponentPositions and plugin:GetComponentPositions(1) or plugin:GetSetting(1, "ComponentPositions")
-    if not positions or not positions[iconKey] then return nil end
+    local positions = plugin:GetComponentPositions(1)
+    if not positions[iconKey] then return nil end
     return positions[iconKey].overrides
 end
 

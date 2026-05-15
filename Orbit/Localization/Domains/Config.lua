@@ -218,7 +218,6 @@ local LOCALE_STRINGS = {
         CFG_ORIENTATION             = "Orientation",
         CFG_ORIENTATION_HORIZONTAL  = "Horizontal",
         CFG_ORIENTATION_VERTICAL    = "Vertical",
-        CFG_GLOW_COLOR_TT           = "Glow Color",
         CFG_VISIBILITY              = "Visibility",
         CFG_VIS_ALWAYS              = "Always Visible",
         CFG_VIS_OUT_OF_COMBAT       = "Out of Combat",

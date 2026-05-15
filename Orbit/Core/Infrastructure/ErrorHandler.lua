@@ -20,7 +20,7 @@ function ErrorHandler:Wrap(func, context)
             Orbit:Print("|cFFFF0000ERROR:|r", contextStr, "-", tostring(result))
             self:LogError(contextStr, "wrapped_call", result)
         end
-        return result
+        return success and result or nil
     end
 end
 

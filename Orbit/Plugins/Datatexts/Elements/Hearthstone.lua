@@ -45,7 +45,7 @@ local HEARTHSTONE_TOYS = {
 }
 
 local function HearthstoneItemName()
-    return (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(HEARTHSTONE_ID)) or "Hearthstone"
+    return (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(HEARTHSTONE_ID)) or L.PLU_DT_HEARTH_TITLE
 end
 
 local function GetAvailableHearthstones()

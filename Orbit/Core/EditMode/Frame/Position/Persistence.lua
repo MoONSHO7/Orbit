@@ -8,7 +8,7 @@ local Engine = Orbit.Engine
 Engine.FramePersistence = {}
 local Persistence = Engine.FramePersistence
 
--- [ ANCESTRY CAPTURE ] -----------------------------------------------------------------------------
+-- [ ANCESTRY CAPTURE ] ------------------------------------------------------------------------------
 local MAX_ANCESTRY_DEPTH = 10
 local function BuildAncestry(targetFrame)
     if not targetFrame or not Engine.FrameAnchor or not Engine.FrameAnchor.GetAnchorParent then return nil end
