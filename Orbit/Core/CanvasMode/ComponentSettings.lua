@@ -76,7 +76,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     if componentKey == "StatusIcons" then
         if not overrideContainer.StatusSubtitle then
             local sub = overrideContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            sub:SetPoint("LEFT", overrideContainer.Title, "RIGHT", 6, 0)
+            sub:SetPoint("LEFT", overrideContainer.Title, "RIGHT", OrbitEngine.Pixel:Multiple(6, overrideContainer:GetEffectiveScale()), 0)
             sub:SetJustifyH("LEFT")
             sub:SetTextColor(1, 1, 1, 0.8)
             overrideContainer.StatusSubtitle = sub
@@ -163,6 +163,10 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
             currentValue = GetValueFromVisual(container, control.key)
         end
 
+        if currentValue == nil and control.key == "CustomColorCurve" then
+            local g = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
+            currentValue = g or { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+        end
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
         local widget
@@ -179,7 +183,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                     end
                 end)
                 if widget then
-                    widget:SetHeight(32)
+                    widget:SetHeight(OrbitEngine.Pixel:Snap(32, widget:GetEffectiveScale()))
                 end
             end
         elseif control.type == "font" then
@@ -194,7 +198,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                     end
                 end)
                 if widget then
-                    widget:SetHeight(32)
+                    widget:SetHeight(OrbitEngine.Pixel:Snap(32, widget:GetEffectiveScale()))
                     widget.singleColorMode = control.singleColor ~= false
                     if self.componentKey == "Timer" and self.systemIndex ~= 3 then
                         widget.singleColorMode = true

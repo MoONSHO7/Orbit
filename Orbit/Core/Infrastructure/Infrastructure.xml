@@ -1,5 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ErrorHandler.lua"/>
     <Script file="HealerAuraRegistry.lua"/>
+    <Script file="StrataEngine.lua"/>
     <Script file="EventBus.lua"/>
     <Script file="Profiler.lua"/>
     <Script file="Async.lua"/>

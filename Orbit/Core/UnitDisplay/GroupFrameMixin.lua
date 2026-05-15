@@ -59,5 +59,5 @@ function Mixin.UpdateInRange(frame)
         frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, oorAlpha))
         Mixin.SetBackgroundAlpha(frame, C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, 0))
     end
-    if frame.ApplyHealthColor then frame:ApplyHealthColor() end
+    frame:ApplyHealthColor()
 end

@@ -289,6 +289,7 @@ function Plugin:OnLoad()
         Frame.StatusBar:SetValue(0)
         Frame.StatusBar:SetStatusBarTexture(LSM:Fetch("statusbar", "Melli"))
         Frame.orbitBar = Frame.StatusBar
+        Orbit.Skin:RegisterMaskedSurface(Frame, Frame.StatusBar:GetStatusBarTexture())
 
         if not Frame.bg then
             Frame.bg = Frame:CreateTexture(nil, "BACKGROUND")
@@ -296,6 +297,7 @@ function Plugin:OnLoad()
             local c = Orbit.Constants.Colors.Background
             Frame.bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.9)
         end
+        Orbit.Skin:RegisterMaskedSurface(Frame, Frame.bg)
 
         OrbitEngine.Pixel:Enforce(Frame)
         OrbitEngine.Pixel:Enforce(Frame.StatusBar)

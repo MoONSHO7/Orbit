@@ -53,6 +53,7 @@ local function EnsureFlashOverlay(icon)
     local tex = flash:CreateTexture(nil, "OVERLAY", nil, 7)
     tex:SetAllPoints(flash)
     tex:SetColorTexture(1, 1, 1, 0.4)
+    Orbit.Skin:RegisterMaskedSurface(icon, tex)
 
     local fadeGroup = flash:CreateAnimationGroup()
     fadeGroup:SetToFinalAlpha(true)
@@ -235,6 +236,7 @@ function CDM:ProcessChildren(anchor)
             skinSettings.buffBarSpacing = self:GetSetting(systemIndex, "Spacing") or 2
         end
         for barIdx, icon in ipairs(activeChildren) do
+            EnsureFlashOverlay(icon)
             if isBuffBar then
                 ApplyBuffBarSkin(icon, skinSettings, barIdx)
             else
@@ -249,6 +251,7 @@ function CDM:ProcessChildren(anchor)
             if not isBuffBar then self:ApplyTextSettings(icon, systemIndex) end
             icon.orbitCDMSystemIndex = systemIndex
             local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
+            local swipeTex = Orbit.Skin:GetRoundedSwipeTexture(true) or Constants.Assets.SwipeCustom
             if cd then
                 local ac, cc = skinSettings.activeSwipeColor, skinSettings.cooldownSwipeColor
                 local isAura = not issecretvalue(icon.wasSetFromAura) and icon.wasSetFromAura == true
@@ -257,21 +260,25 @@ function CDM:ProcessChildren(anchor)
                 ds.activeR, ds.activeG, ds.activeB, ds.activeA = ac.r, ac.g, ac.b, ac.a
                 ds.cooldownR, ds.cooldownG, ds.cooldownB, ds.cooldownA = cc.r, cc.g, cc.b, cc.a
                 ds.r, ds.g, ds.b, ds.a = c.r, c.g, c.b, c.a
+                ds.texture = swipeTex
                 cd.orbitUpdating = true
                 cd:SetSwipeColor(c.r, c.g, c.b, c.a)
+                cd:SetSwipeTexture(swipeTex)
                 cd:SetReverse(isAura)
                 cd.orbitUpdating = false
                 cd:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe)
             end
             local acd = icon.ActiveCooldown
-            if acd then acd:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe) end
+            if acd then
+                acd:SetSwipeTexture(swipeTex)
+                acd:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe)
+            end
             if not InCombatLockdown() and icon.GetSpellID then
                 local sid = icon:GetSpellID()
                 if sid and not issecretvalue(sid) then
                     icon.orbitCachedSpellID = sid
                 end
             end
-            EnsureFlashOverlay(icon)
             if curve then ApplyTimerColor(icon, curve) end
             if inactiveAlpha then ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders) end
         end
@@ -312,6 +319,13 @@ function CDM:ProcessChildren(anchor)
             if rawSpacing == 0 then
                 for _, item in ipairs(activeChildren) do
                     if item.SetBorderHidden then item:SetBorderHidden(true) end
+                    if item.Icon then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.Icon) end
+                    if item.orbitBG then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.orbitBG) end
+                    if item.orbitCDMFlashTex then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.orbitCDMFlashTex) end
+                    if item.Bar and item.Bar.GetStatusBarTexture then
+                        local bt = item.Bar:GetStatusBarTexture()
+                        if bt then Orbit.Skin:RegisterMaskedSurface(anchorFrame, bt) end
+                    end
                 end
                 local borderStyle = Orbit.Skin:GetActiveBorderStyle()
                 if borderStyle then
@@ -371,7 +385,7 @@ function CDM:ProcessChildren(anchor)
             anchorFrame.orbitColumnWidth = iconW
             local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
             if hideBorders then Orbit.Skin:ClearIconGroupBorder(anchorFrame)
-            elseif pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice)
+            elseif pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice, activeChildren)
             else Orbit.Skin:ClearIconGroupBorder(anchorFrame) end
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
@@ -386,7 +400,7 @@ function CDM:ProcessChildren(anchor)
             anchorFrame._isIconContainer = true
             local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
             local pad = tonumber(skinSettings.padding) or 1
-            if pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice)
+            if pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice, activeChildren)
             else Orbit.Skin:ClearIconGroupBorder(anchorFrame) end
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
@@ -633,6 +647,11 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
             b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
         end
         item:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
+        if item.Icon then Orbit.Skin:RegisterMaskedSurface(item, item.Icon) end
+        if item.Bar and item.Bar.GetStatusBarTexture then
+            local bt = item.Bar:GetStatusBarTexture()
+            if bt then Orbit.Skin:RegisterMaskedSurface(item, bt) end
+        end
     end
 
     -- Apply border on parent item (not inner bar)
@@ -642,6 +661,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if not item.orbitBG then
         item.orbitBG = item:CreateTexture(nil, "BACKGROUND")
         item.orbitBG:SetAllPoints(item)
+        Orbit.Skin:RegisterMaskedSurface(item, item.orbitBG)
     end
     local bg = Constants.Colors.Background
     item.orbitBG:SetColorTexture(bg.r, bg.g, bg.b, bg.a)

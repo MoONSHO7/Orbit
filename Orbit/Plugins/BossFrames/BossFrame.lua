@@ -123,7 +123,7 @@ local function CreateBossFrame(bossIndex, plugin)
         frame.HealthDamageTexture:ClearAllPoints()
         frame.HealthDamageTexture = nil
     end
-    frame.editModeName = "Boss Frame " .. bossIndex
+    frame.editModeName = L.PLU_BOSS_FRAME_INDEX_F:format(bossIndex)
     frame.systemIndex, frame.bossIndex = 1, bossIndex
     frame:SetSize(plugin:GetSetting(1, "Width") or 150, plugin:GetSetting(1, "Height") or 40)
     frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
@@ -222,7 +222,7 @@ function Plugin:OnLoad()
     HideNativeBossFrames()
     self.container = CreateFrame("Frame", "OrbitBossContainer", UIParent, "SecureHandlerStateTemplate")
     self.container:SetAttribute("_onstate-visibility", [[ if newstate == "hide" then self:Hide() else self:Show() end ]])
-    self.container.editModeName, self.container.systemIndex = "Boss Frames", 1
+    self.container.editModeName, self.container.systemIndex = L.PLU_BOSS_FRAMES_NAME, 1
     self.container:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.container:SetFrameLevel(Orbit.StrataEngine:GetFrameLevel("Global_HUD", "Orbit_BossFrames") - 1)
     self.container:SetClampedToScreen(true)
@@ -252,7 +252,7 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = { horizontal = false, vertical = false, noAnchor = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
     self.container.orbitCanvasFrame = self.frames[1]
-    self.container.orbitCanvasTitle = "Boss Frame"
+    self.container.orbitCanvasTitle = L.PLU_BOSS_FRAME_NAME
     if OrbitEngine.ComponentDrag and firstFrame then
         if not firstFrame.buffContainer then firstFrame.buffContainer = CreateFrame("Frame", nil, firstFrame); firstFrame.buffContainer:SetSize(DEFAULT_BUFF_ICON_SIZE, DEFAULT_BUFF_ICON_SIZE) end
         OrbitEngine.ComponentDrag:Attach(firstFrame.buffContainer, self.container, { key = "Buffs", isAuraContainer = true, onPositionChange = OrbitEngine.ComponentDrag:MakeAuraPositionCallback(pluginRef, 1, "Buffs") })
@@ -366,7 +366,7 @@ function Plugin:PrepareIconsForCanvasMode()
         if frame.CastBar.Text then
             frame.CastBar.Text:ClearAllPoints()
             frame.CastBar.Text:SetPoint("LEFT", bar, "LEFT", 4, 0)
-            frame.CastBar.Text:SetText("Boss Ability")
+            frame.CastBar.Text:SetText(L.PLU_BOSS_ABILITY)
         end
         if frame.CastBar.Timer then frame.CastBar.Timer:SetText("1.5") end
         frame.CastBar:Show()
@@ -455,6 +455,7 @@ function Plugin:ApplySettings()
     local reactionColour = self:GetSetting(1, "ReactionColour")
     local textSize = 12
     for _, frame in ipairs(self.frames) do
+        Orbit.AuraMixin:InvalidateContainerLayout(frame)
         frame.borderSize = borderSize
         frame:SetSize(width, height)
         frame:SetScale(scale / 100)

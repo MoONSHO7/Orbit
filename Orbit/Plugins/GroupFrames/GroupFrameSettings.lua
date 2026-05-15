@@ -116,7 +116,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             plugin:SaveCurrentTierPosition()
             plugin:SetSetting(1, "_EditTier", val)
             plugin._editTierOverride = val
-            plugin.container.orbitCanvasTitle = "Group Frame: " .. val
+            plugin.container.orbitCanvasTitle = L.PLU_GROUP_FRAME_TITLE_F:format(val)
             plugin:ApplySettings()
             plugin:RestoreTierPosition(val)
             plugin:ShowPreview()
@@ -252,26 +252,29 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
         if not isParty and (plugin:GetTierSetting("SortMode", editTier) or "group") == "group" then
             table.insert(schema.controls, { type = "checkbox", key = "ShowGroupLabels", label = L.PLU_GRP_SHOW_GROUPS, default = true, onChange = TierMOC("ShowGroupLabels") })
         end
-        local colorByAuraRefresh = function()
-            if plugin.UpdateAllColorByAura then plugin:UpdateAllColorByAura() end
+        local specSpells = HealerReg:GetCurrentSpecSpells()
+        if #specSpells > 0 then
+            local colorByAuraRefresh = function()
+                if plugin.UpdateAllColorByAura then plugin:UpdateAllColorByAura() end
+            end
+            local colorByAuraColor = plugin:GetTierSetting("ColorByAuraColor", editTier) or { r = 0.2, g = 0.8, b = 0.2, a = 1 }
+            local colorByAuraOptions = { { text = L.PLU_GRP_COLOR_BY_AURA_NONE, value = 0 } }
+            for _, spell in ipairs(specSpells) do
+                colorByAuraOptions[#colorByAuraOptions + 1] = { text = spell.label, value = spell.spellId }
+            end
+            table.insert(schema.controls, {
+                type = "dropdown", key = "ColorByAuraSpellId", label = L.PLU_GRP_COLOR_BY_AURA, default = 0,
+                options = colorByAuraOptions,
+                valueColor = {
+                    initialValue = colorByAuraColor,
+                    callback = function(c)
+                        plugin:SetTierSetting("ColorByAuraColor", { r = c.r, g = c.g, b = c.b, a = c.a or 1 }, editTier)
+                        colorByAuraRefresh()
+                    end,
+                },
+                onChange = TierMOC("ColorByAuraSpellId", colorByAuraRefresh),
+            })
         end
-        local colorByAuraColor = plugin:GetTierSetting("ColorByAuraColor", editTier) or { r = 0.2, g = 0.8, b = 0.2, a = 1 }
-        local colorByAuraOptions = { { text = L.PLU_GRP_COLOR_BY_AURA_NONE, value = 0 } }
-        for _, spell in ipairs(HealerReg:GetCurrentSpecSpells()) do
-            colorByAuraOptions[#colorByAuraOptions + 1] = { text = spell.label, value = spell.spellId }
-        end
-        table.insert(schema.controls, {
-            type = "dropdown", key = "ColorByAuraSpellId", label = L.PLU_GRP_COLOR_BY_AURA, default = 0,
-            options = colorByAuraOptions,
-            valueColor = {
-                initialValue = colorByAuraColor,
-                callback = function(c)
-                    plugin:SetTierSetting("ColorByAuraColor", { r = c.r, g = c.g, b = c.b, a = c.a or 1 }, editTier)
-                    colorByAuraRefresh()
-                end,
-            },
-            onChange = TierMOC("ColorByAuraSpellId", colorByAuraRefresh),
-        })
 
         local dispelRefresh = function()
             Orbit.DispelIndicatorMixin:InvalidateDispelCurve(plugin)

@@ -1,15 +1,16 @@
 [start]
 
 ### Updates
-- Added Raid Panel (Marker Bar) Plugin
-- Added HUD Minimap (toggleable via keybind)
-- Updated Minimap Borders (new Splatter shape + Behaviour settings tab)
-- Added Health Bar Coloring for healing abilities on Group frames (Indicators Tab)
-- Added Controller Keybind Graphics to Action Bars
-- Action bars now reveal at full opacity when Spellbook/Talents is open
-- Fixed Minimap clock randomly switching between 12h and 24h format
-- Added Minimap tracking button (fades in on hover)
-- Fixed Minimap compartment flyout closing while a dropdown menu is open
+- Added "Orbit Rounded" border style with adjustable Corner Roundness and Thickness (Global tab)
+- Rounded borders apply to frames and icons alike
+- Renamed the "Orbit Pixel" border style to "Orbit Squared"
+- Added "Faded Circle" Minimap border option
+- Added a Dispel Icon to Group frames showing the debuff type — positionable in Canvas Mode
+
+### Bugfixes
+- Anchored frames no longer drift off-screen when their anchor target is hidden or disabled
+- Frames now keep their anchored position after switching profiles
+- Action bars now reliably reveal while the Cooldown Manager settings panel is open
 
 ### Hints
 You can always open this window again by typing `/orbit whatsnew`

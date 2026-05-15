@@ -38,6 +38,8 @@ local function ApplyOrbitFrame(frame)
         local bg = frame:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(frame)
         frame._orbitBg = bg
+        -- Register so SkinBorder's rounded nineslice path clips the backdrop to the corners.
+        Skin:RegisterMaskedSurface(frame, bg)
     end
     local c = Constants.Colors.Background
     frame._orbitBg:SetColorTexture(c.r, c.g, c.b, c.a or 1)

@@ -57,7 +57,22 @@ Plugin.canvasMode = true
 function Plugin:EnsureStore()
     local gs = Orbit.db.GlobalSettings
     if not gs.TrackedContainers then gs.TrackedContainers = {} end
-    if not gs.NextTrackedContainerId then gs.NextTrackedContainerId = SYSTEM_ID_BASE end
+    if Orbit.db.NextTrackedContainerId == nil then
+        local nextId = SYSTEM_ID_BASE
+        local function bump(v) if type(v) == "number" and v >= nextId then nextId = v + 1 end end
+        for _, profile in pairs(Orbit.db.profiles or {}) do
+            local pgs = profile.GlobalSettings
+            if pgs then
+                bump(pgs.NextTrackedContainerId and (pgs.NextTrackedContainerId - 1))
+                if pgs.TrackedContainers then
+                    for id in pairs(pgs.TrackedContainers) do bump(id) end
+                end
+            end
+        end
+        if gs.NextTrackedContainerId then bump(gs.NextTrackedContainerId - 1) end
+        for id in pairs(gs.TrackedContainers) do bump(id) end
+        Orbit.db.NextTrackedContainerId = nextId
+    end
 end
 
 function Plugin:GetStore()
@@ -65,9 +80,8 @@ function Plugin:GetStore()
 end
 
 function Plugin:AllocateId()
-    local gs = Orbit.db.GlobalSettings
-    local id = gs.NextTrackedContainerId
-    gs.NextTrackedContainerId = id + 1
+    local id = Orbit.db.NextTrackedContainerId or SYSTEM_ID_BASE
+    Orbit.db.NextTrackedContainerId = id + 1
     return id
 end
 
@@ -252,7 +266,7 @@ function Plugin:BuildContainer(record)
     frame.defaultPosition = { point = "CENTER", relativeTo = UIParent, relativePoint = "CENTER", x = defX, y = defY }
     self.containers[record.id] = frame
     self:RefreshContainerVirtualState(frame)
-    if self.ApplySettings then self:ApplySettings(frame) end
+    self:ApplySettings(frame)
     return frame
 end
 
@@ -360,8 +374,15 @@ function Plugin:RefreshForCurrentSpec()
     local specID = self:GetCurrentSpecID()
     if not specID then return end
 
-    -- Build frames for any record not yet live (first-load and mid-session discovery).
     for _, record in pairs(self:GetStore()) do
+        local existing = self.containers[record.id]
+        if existing and existing._orbitTrackedMode and existing._orbitTrackedMode ~= record.mode then
+            if Orbit.Engine.FrameAnchor then
+                Orbit.Engine.FrameAnchor:BreakAnchor(existing, true)
+            end
+            existing:Hide()
+            self.containers[record.id] = nil
+        end
         if not self.containers[record.id] then
             self:BuildContainer(record)
         end

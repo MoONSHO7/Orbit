@@ -28,6 +28,8 @@ function Orbit.GroupFrameFactoryMixin:CreatePowerBar(parent, unit)
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:RegisterMaskedSurface(parent, power.bg)
+    Orbit.Skin:RegisterMaskedSurface(parent, power:GetStatusBarTexture())
     return power
 end
 
@@ -81,6 +83,21 @@ function Orbit.GroupFrameFactoryMixin:CreateStatusIcons(frame, isPartyTier)
     frame.MarkerIcon:SetPoint(isPartyTier and "TOP" or "TOPRIGHT", frame, isPartyTier and "TOP" or "TOPRIGHT", isPartyTier and 0 or -1, isPartyTier and -2 or -1)
     frame.MarkerIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     frame.MarkerIcon:Hide()
+
+    frame.DispelIcon = CreateFrame("Frame", nil, frame.StatusOverlay)
+    frame.DispelIcon:SetSize(centerIconSize, centerIconSize)
+    frame.DispelIcon.orbitOriginalWidth, frame.DispelIcon.orbitOriginalHeight = centerIconSize, centerIconSize
+    frame.DispelIcon:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    frame.DispelIcon:SetFrameLevel(frame.StatusOverlay:GetFrameLevel())
+    frame.DispelIcon._typeTextures = {}
+    for _, entry in ipairs(Orbit.DispelTypeOrder) do
+        local sub = frame.DispelIcon:CreateTexture(nil, "OVERLAY")
+        sub:SetAllPoints()
+        sub:SetAtlas(entry.atlas)
+        sub:SetAlpha(0)
+        frame.DispelIcon._typeTextures[entry.name] = sub
+    end
+    frame.DispelIcon:Hide()
 
     -- Defensive and CC single-aura icons (Button frames for skin/border support)
     for _, iconKey in ipairs({ "DefensiveIcon", "CrowdControlIcon" }) do

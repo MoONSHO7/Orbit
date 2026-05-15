@@ -103,11 +103,13 @@ function FrameFactory:CreateWithBar(name, plugin, opts)
     local bar = CreateFrame("StatusBar", "Orbit" .. barName, container)
     bar:SetPoint("TOPLEFT")
     bar:SetPoint("BOTTOMRIGHT")
+    bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(1)
 
     container.Bar = bar
     container.orbitBar = bar
+    Orbit.Skin:RegisterMaskedSurface(container, bar:GetStatusBarTexture())
 
     local bgColor = opts.bgColor or (Orbit.Colors and Orbit.Colors.Background)
     if bgColor then
@@ -115,6 +117,7 @@ function FrameFactory:CreateWithBar(name, plugin, opts)
         bg:SetAllPoints()
         bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.9)
         container.bg = bg
+        Orbit.Skin:RegisterMaskedSurface(container, bg)
     end
 
     return container, bar
@@ -149,7 +152,7 @@ function FrameFactory:AddText(frame, opts)
     local relativePoint = opts.relativePoint or point
 
     local scale = frame:GetEffectiveScale()
-    local ox, oy = Engine.Pixel:Snap(opts.x or 0, scale), Engine.Pixel:Snap(opts.y or 0, scale)
+    local ox, oy = Engine.Pixel:Multiple(opts.x or 0, scale), Engine.Pixel:Multiple(opts.y or 0, scale)
     if opts.useOverlay then
         local overlay = CreateFrame("Frame", nil, frame)
         overlay:SetAllPoints()

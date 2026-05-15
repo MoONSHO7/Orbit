@@ -26,23 +26,36 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         end
     end
 
-    local overlay = frame[storageKey]
+    local mode = blendMode or "BLEND"
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local nineSliceStyle = self:GetActiveBorderStyle()
+    local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
+    if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then nineSliceStyle = nil end
+    local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
 
-    -- Fast path: overlay exists, backdrop unchanged, just update color
-    if overlay and overlay._hlCacheValid and overlay._hlBlendMode == (blendMode or "BLEND") then
-        local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
-        local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
-        if overlay._hlAnchorTarget == anchorTarget then
+    local pathType
+    if nineSliceStyle and nineSliceStyle.sliceMargin then pathType = "modern"
+    elseif nineSliceStyle and nineSliceStyle.edgeFile then pathType = "legacy"
+    else pathType = "pixel" end
+
+    local overlay = frame[storageKey]
+    if overlay and overlay._hlCacheValid
+        and overlay._hlBlendMode == mode
+        and overlay._hlPathType == pathType
+        and overlay._hlAnchorTarget == anchorTarget then
+        if pathType == "modern" then
+            if overlay._sliceTexture then overlay._sliceTexture:SetVertexColor(r, g, b, a) end
+        else
             overlay:SetBackdropBorderColor(r, g, b, a)
-            if anchorTarget then
-                local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
-                overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
-            else
-                overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
-            end
-            overlay:Show()
-            return
         end
+        if anchorTarget then
+            local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
+            overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
+        else
+            overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
+        end
+        overlay:Show()
+        return
     end
 
     if not overlay then
@@ -51,59 +64,61 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         frame[storageKey] = overlay
     end
 
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    local nineSliceStyle = self:GetActiveBorderStyle()
-
-    local gbo = frame._groupBorderActive and (frame._groupBorderRoot or frame)._groupBorderOverlay
-    if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then
-        nineSliceStyle = nil
+    if anchorTarget then
+        local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
+        overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
+    else
+        overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
     end
 
     local ownScale = frame:GetScale() or 1
     if ownScale < 0.01 then ownScale = 1 end
-    local backdrop
-    if nineSliceStyle and nineSliceStyle.edgeFile then
-        local edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
-        backdrop = { edgeFile = nineSliceStyle.edgeFile, edgeSize = edgeSize / ownScale }
-    else
-        local scale = frame:GetEffectiveScale()
-        if not scale or scale < 0.01 then scale = 1 end
-        local borderSize = math.max(1, (gs and gs.BorderSize) or 1)
-        backdrop = { edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = Engine.Pixel:Multiple(borderSize, scale) }
-    end
+    local hlScale = frame:GetEffectiveScale()
+    if not hlScale or hlScale < 0.01 then hlScale = 1 end
+    local borderOffset = (gs and gs.BorderOffset) or 0
 
-    local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
-    if anchorTarget then
-        local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
-        overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
+    if pathType == "modern" then
+        self:_RenderSliceTexture(overlay, nineSliceStyle, { r = r, g = g, b = b, a = a }, mode)
         overlay:ClearAllPoints()
-        overlay:SetAllPoints(anchorTarget)
-    else
-        overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
+        overlay:SetAllPoints(anchorTarget or frame)
+    elseif pathType == "legacy" then
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        local edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
+        local adjEdge = edgeSize / ownScale
         overlay:ClearAllPoints()
-        if nineSliceStyle and nineSliceStyle.edgeFile then
-            local hlScale = frame:GetEffectiveScale()
-            if not hlScale or hlScale < 0.01 then hlScale = 1 end
-            local borderOffset = (gs and gs.BorderOffset) or 0
-            local outset = Engine.Pixel:Snap((backdrop.edgeSize / 2) + (borderOffset / ownScale), hlScale)
+        if anchorTarget then
+            overlay:SetAllPoints(anchorTarget)
+        else
+            local outset = Engine.Pixel:Snap((adjEdge / 2) + (borderOffset / ownScale), hlScale)
             overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
             overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
+        end
+        overlay:SetBackdrop({ edgeFile = nineSliceStyle.edgeFile, edgeSize = adjEdge })
+        overlay:SetBackdropBorderColor(r, g, b, a)
+        for _, region in pairs({ overlay:GetRegions() }) do
+            if region:IsObjectType("Texture") then region:SetBlendMode(mode) end
+        end
+    else
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        local borderSize = math.max(1, (gs and gs.BorderSize) or 1)
+        overlay:ClearAllPoints()
+        if anchorTarget then
+            overlay:SetAllPoints(anchorTarget)
         else
             overlay:SetAllPoints(frame)
         end
-    end
-    overlay:SetBackdrop(backdrop)
-    overlay:SetBackdropBorderColor(r, g, b, a)
-    local mode = blendMode or "BLEND"
-    for _, region in pairs({ overlay:GetRegions() }) do
-        if region:IsObjectType("Texture") then region:SetBlendMode(mode) end
+        overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = Engine.Pixel:Multiple(borderSize, hlScale) })
+        overlay:SetBackdropBorderColor(r, g, b, a)
+        for _, region in pairs({ overlay:GetRegions() }) do
+            if region:IsObjectType("Texture") then region:SetBlendMode(mode) end
+        end
     end
     overlay:Show()
 
-    -- Cache state for fast path
     overlay._hlCacheValid = true
     overlay._hlBlendMode = mode
     overlay._hlAnchorTarget = anchorTarget
+    overlay._hlPathType = pathType
 end
 
 function Skin:ClearHighlightBorder(frame, storageKey)

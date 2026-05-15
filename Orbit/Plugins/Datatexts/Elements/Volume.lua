@@ -16,7 +16,7 @@ function W:Update()
     local vol = tonumber(GetCVar("Sound_MasterVolume")) or 0
     local muted = GetCVarBool("Sound_EnableAllSound") == false
     if muted then
-        self:SetText("|cffff0000Muted|r")
+        self:SetText(L.PLU_DT_VOLUME_MUTED)
     else
         self:SetText(string.format("|cffffffff%d%%|r", vol * 100))
     end
@@ -28,12 +28,12 @@ function W:ShowTooltip()
     GameTooltip:AddLine(L.PLU_DT_VOLUME_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local vol = tonumber(GetCVar("Sound_MasterVolume")) or 0
-    GameTooltip:AddDoubleLine("Master:", string.format("%d%%", vol * 100), 1, 1, 1, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Effects:", string.format("%d%%", (tonumber(GetCVar("Sound_SFXVolume")) or 0) * 100), 1, 1, 1, 0.7, 0.7, 0.7)
-    GameTooltip:AddDoubleLine("Music:", string.format("%d%%", (tonumber(GetCVar("Sound_MusicVolume")) or 0) * 100), 1, 1, 1, 0.7, 0.7, 0.7)
+    GameTooltip:AddDoubleLine(L.PLU_DT_VOLUME_MASTER, string.format("%d%%", vol * 100), 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_VOLUME_EFFECTS, string.format("%d%%", (tonumber(GetCVar("Sound_SFXVolume")) or 0) * 100), 1, 1, 1, 0.7, 0.7, 0.7)
+    GameTooltip:AddDoubleLine(L.PLU_DT_VOLUME_MUSIC, string.format("%d%%", (tonumber(GetCVar("Sound_MusicVolume")) or 0) * 100), 1, 1, 1, 0.7, 0.7, 0.7)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Scroll", "Adjust Volume", 0.7, 0.7, 0.7, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Click", "Toggle Mute", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_VOLUME_SCROLL, L.PLU_DT_VOLUME_ADJUST, 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_VOLUME_TOGGLE_MUTE, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -46,7 +46,7 @@ function W:Init()
         SetCVar("Sound_EnableAllSound", muted and "0" or "1")
         self:Update()
     end)
-    self.leftClickHint = "Toggle Mute"
+    self.leftClickHint = L.PLU_DT_VOLUME_TOGGLE_MUTE
     self.frame:EnableMouseWheel(true)
     self.frame:SetScript("OnMouseWheel", function(_, delta)
         local vol = tonumber(GetCVar("Sound_MasterVolume")) or 0

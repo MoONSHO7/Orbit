@@ -82,8 +82,13 @@ function Dialog:AddToDock(key, sourceComponent)
     if self.dockComponents[key] then return end
 
     local icon = CreateFrame("Button", nil, self.DisabledDock.IconContainer)
+    OrbitEngine.Pixel:Enforce(icon)
     icon:SetSize(C.DOCK_ICON_SIZE, C.DOCK_ICON_SIZE)
     icon.key = key
+
+    local iScale = icon:GetEffectiveScale() or 1
+    local edgePx = OrbitEngine.Pixel:Multiple(1, iScale)
+    local innerSize = OrbitEngine.Pixel:Snap(C.DOCK_ICON_SIZE, iScale) - OrbitEngine.Pixel:Multiple(4, iScale)
 
     icon.bg = icon:CreateTexture(nil, "BACKGROUND")
     icon.bg:SetAllPoints()
@@ -92,10 +97,10 @@ function Dialog:AddToDock(key, sourceComponent)
     for _, edge in ipairs({"TOP", "BOTTOM", "LEFT", "RIGHT"}) do
         local t = icon:CreateTexture(nil, "BORDER")
         t:SetColorTexture(0.15, 0.15, 0.15, 0.4)
-        if edge == "TOP" then t:SetPoint("TOPLEFT"); t:SetPoint("TOPRIGHT"); t:SetHeight(1)
-        elseif edge == "BOTTOM" then t:SetPoint("BOTTOMLEFT"); t:SetPoint("BOTTOMRIGHT"); t:SetHeight(1)
-        elseif edge == "LEFT" then t:SetPoint("TOPLEFT"); t:SetPoint("BOTTOMLEFT"); t:SetWidth(1)
-        else t:SetPoint("TOPRIGHT"); t:SetPoint("BOTTOMRIGHT"); t:SetWidth(1) end
+        if edge == "TOP" then t:SetPoint("TOPLEFT"); t:SetPoint("TOPRIGHT"); t:SetHeight(edgePx)
+        elseif edge == "BOTTOM" then t:SetPoint("BOTTOMLEFT"); t:SetPoint("BOTTOMRIGHT"); t:SetHeight(edgePx)
+        elseif edge == "LEFT" then t:SetPoint("TOPLEFT"); t:SetPoint("BOTTOMLEFT"); t:SetWidth(edgePx)
+        else t:SetPoint("TOPRIGHT"); t:SetPoint("BOTTOMRIGHT"); t:SetWidth(edgePx) end
     end
 
     local isTexture = sourceComponent and sourceComponent.GetTexture
@@ -108,11 +113,11 @@ function Dialog:AddToDock(key, sourceComponent)
         icon.visual:SetText(DisplayName(key))
         icon.visual:SetTextColor(0.9, 0.9, 0.9, 1)
         icon.visual:SetWordWrap(true)
-        icon.visual:SetWidth(C.DOCK_ICON_SIZE - 4)
+        icon.visual:SetWidth(innerSize)
     elseif isTexture and not isFontString then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
-        icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
+        icon.visual:SetSize(innerSize, innerSize)
 
         local atlasName = sourceComponent.GetAtlas and sourceComponent:GetAtlas()
         if atlasName then
@@ -153,7 +158,7 @@ function Dialog:AddToDock(key, sourceComponent)
     elseif isIconFrame then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
-        icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
+        icon.visual:SetSize(innerSize, innerSize)
 
         local iconTex = sourceComponent.Icon
         local texturePath = iconTex and iconTex:GetTexture()
@@ -187,7 +192,7 @@ function Dialog:AddToDock(key, sourceComponent)
     elseif key == "Portrait" then
         icon.visual = icon:CreateTexture(nil, "OVERLAY")
         icon.visual:SetPoint("CENTER")
-        icon.visual:SetSize(C.DOCK_ICON_SIZE - 4, C.DOCK_ICON_SIZE - 4)
+        icon.visual:SetSize(innerSize, innerSize)
         SetPortraitTexture(icon.visual, "player")
         icon.visual:SetDesaturated(true)
         icon.visual:SetAlpha(DOCK_ICON_ALPHA)
@@ -229,7 +234,6 @@ function Dialog:AddToDock(key, sourceComponent)
 
     self:LayoutDockIcons()
 
-    -- The paladin swaps their oath; HealthText and Status can't both be on the field
     if not self._exclusiveSwapping then
         local partner = EXCLUSIVE_PAIRS[key]
         if partner and self.dockComponents[partner] then

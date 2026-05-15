@@ -60,6 +60,7 @@ function Mixin:CreatePowerBarPlugin(config)
         local w, h = self:GetWidth(), self:GetHeight()
 
         local preview = CreateFrame("Frame", nil, parent)
+        OrbitEngine.Pixel:Enforce(preview)
         preview:SetSize(w, h)
         preview.sourceFrame = self
         preview.sourceWidth = w
@@ -71,7 +72,7 @@ function Mixin:CreatePowerBarPlugin(config)
         preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or -8)
         preview.bg:SetAllPoints()
         Orbit.Skin:ApplyGradientBackground(preview, gs.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
-        Orbit.Skin:SkinBorder(preview, preview, borderSize)
+        Orbit.Skin:RegisterMaskedSurface(preview, preview.bg)
 
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetPoint("TOPLEFT", 0, 0)
@@ -80,6 +81,9 @@ function Mixin:CreatePowerBarPlugin(config)
         bar:SetValue(1)
         bar:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
         Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
+        Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
+
+        Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
         local info = Orbit.Constants.Colors.PowerType[0]
         bar:SetStatusBarColor(info and info.r or 0, info and info.g or 0.5, info and info.b or 1)

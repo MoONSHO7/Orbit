@@ -75,7 +75,7 @@ when a parent is skipped, `ReconcileChain` promotes its children to the nearest 
 
 ### rescue check (SetFrameVirtual/SetFrameDisabled park)
 
-`SetFrameVirtual`/`SetFrameDisabled` normally call `ParkFrame` when toggling a frame skipped so it leaves the layout at its `defaultPosition`. but if the frame has already been **rescued** — meaning `RouteAroundSkipped` (synchronous, in `Persistence.RestorePosition`) or `PromoteGrandchild` (async, in `ReconcileChain`) has physically re-anchored it to a non-skipped grandparent while its logical parent stays skipped — re-parking would undo that work and the frame would teleport off-screen the frame after it was correctly placed. the `IsRescued(frame)` helper (in `Anchor.lua`) compares `logicalAnchors[frame].parent` against `anchors[frame].parent`: if they differ, and the logical parent is skipped while the physical parent is not, the park is suppressed. top-level virtualized frames (logical parent == physical parent, or no anchor at all) still get parked as before.
+`SetFrameVirtual`/`SetFrameDisabled` normally call `ParkFrame` when toggling a frame skipped so it leaves the layout at its `defaultPosition`. but if the frame has already been **rescued** — meaning the `ResolveAnchor` candidate-chain walk (synchronous, in `Persistence.RestorePosition`) or `PromoteGrandchild` (async, in `ReconcileChain`) has physically re-anchored it to a non-skipped ancestor while its logical parent stays skipped — re-parking would undo that work and the frame would teleport off-screen after it was correctly placed. the `IsRescued(frame)` helper (in `Anchor.lua`) compares `logicalAnchors[frame].parent` against `anchors[frame].parent`: if they differ, and the logical parent is skipped while the physical parent is not, the park is suppressed. top-level virtualized frames (logical parent == physical parent, or no anchor at all) still get parked as before.
 
 ### logical vs physical graph
 
@@ -88,7 +88,25 @@ the split solves "who owns this child" after a chain of virtualization toggles. 
 
 `CreateAnchor`/`BreakAnchor` accept a `skipLogical` flag (8th and 4th arg respectively). `ReconcileChain` passes `skipLogical=true` for physical repairs so the user-intended parent reference survives across virtual/disabled toggles. plugin code and Edit Mode interactions leave `skipLogical` unset so the logical graph tracks the user's intent.
 
-`RestorePosition` (in `Persistence.lua`) mirrors the same split on the load/reload path. if the saved anchor target is currently skipped when `RestorePosition` runs — the common case during spec changes, where a child bar is restored while its main bar has already been marked virtual — `RouteAroundSkipped` records the logical intent on the saved target via `SetLogicalAnchor` and physically anchors to the nearest non-skipped ancestor via `CreateAnchor` with `skipLogical=true`. this is the synchronous fix for the load-order window: without it, `CreateAnchor` would attach the child to the parked target in the same frame that the scheduled `ReconcileChain` is queued, leaving the child visually trapped at the parked location for one frame (or indefinitely, when the virtualized target is itself the chain root and no explicit `fallback` is saved). if the virtualized target has no non-skipped ancestor at all, `RouteAroundSkipped` returns false and the caller falls through to `Position` / `defaultPosition`, with the logical intent still recorded for the eventual return home.
+`RestorePosition` (in `Persistence.lua`) mirrors the same split on the load/reload path via a unified `ResolveAnchor(anchor)` walk. given a saved anchor, the candidate chain is `[target, ...live ancestors above target, ...saved ancestry]` and the first usable candidate wins. a candidate is "usable" when it exists in `_G`, is not skipped (virtual/disabled), and `CreateAnchor` accepts it (no cycle, edge available).
+
+logical intent is recorded once, before the walk:
+- target exists in `_G` → `SetLogicalAnchor(frame, target)`. `RestoreLogicalChildren` later pulls the child home when target becomes usable.
+- target missing from `_G` (cross-plugin load-order race; or spec-locked plugin whose `OnLoad` was skipped because `IsPluginEnabled` returns false for spec-locked plugins) → `QueuePendingAnchor`. `DrainPendingFor` sets the logical anchor when the real target frame appears.
+
+every `CreateAnchor` in the walk uses `skipLogical=true` because logical intent is already recorded — the logical anchor always points at the user's actual target, not whichever ancestor the walk landed on. this is what makes `RestoreLogicalChildren` correct: when the target later un-skips, the child snaps home from any ancestor it was temporarily sitting on.
+
+the candidate chain in detail:
+
+1. **target itself** — if it exists in `_G` and isn't skipped.
+2. **live graph walk above target** — `GetAnchorParent(target)` repeatedly. most accurate when the graph is populated (spec swap mid-session, where intermediate parents already have their anchors). yields nothing on fresh login when the skipped target's own anchor hasn't been restored yet.
+3. **saved ancestry** — `anchor.ancestry` is an ordered nearest-first list captured at drag-stop by `BuildAncestry` (walks `GetAnchorParent` up the chain, capped at `MAX_ANCESTRY_DEPTH = 10` for cycle/storage safety). reads `_G` directly, so it works without a populated graph. handles multi-level breaks: chain `A → B → C → D → E` with `B` and `C` both disabled lands `E` on `D` (or `A` if `D` is also missing) instead of falling to `defaultPosition`.
+
+`anchor.fallback` is the legacy single-name root captured by older save data; treated as a 1-element ancestry when `anchor.ancestry` is absent. drag-stop writes both for forward/backward compat.
+
+if the entire chain is exhausted, `ResolveAnchor` preserves any anchor that `DrainPendingFor` may have wired during the cross-plugin load-order race (`existing.parent == targetFrame`). otherwise it returns false and `RestorePosition` falls through to `Position` / `defaultPosition`, with the logical intent still recorded for the eventual return home.
+
+`ReconcileChain`'s skipped-root branch uses the same ancestry-then-fallback resolution to promote grandchildren past a skipped root.
 
 ### batch reconciliation
 
@@ -100,13 +118,18 @@ if the flush fires during combat lockdown, it re-queues via `CombatManager:Queue
 
 ## pending anchor queue (load-order seeding)
 
-`Persistence.pendingByTarget` holds anchor intents whose target frame was not yet registered when `RestorePosition` ran. this handles the load-order race where a child plugin loads before its parent: rather than silently dropping the anchor and relying on a later re-apply, the intent is stashed keyed by the target's global name.
+`Persistence.pendingByTarget` holds anchor intents whose target frame was not yet registered when `RestorePosition` ran. this handles two scenarios:
 
-- `QueuePendingAnchor(child, targetName, edge, padding, align)` — called from the `anchor.target` branch of `RestorePosition` when `_G[anchor.target]` is nil.
+- **load-order race**: child plugin loads before its parent.
+- **spec-locked target**: `Orbit:IsPluginEnabled` returns false for spec-locked plugins, so their `OnLoad` is skipped entirely and their frame is never created. on a Holy Priest login a chain like `EC → PR → PP` has no `OrbitPlayerResources` frame in `_G` at all — not just skipped, missing.
+
+rather than silently dropping the anchor and relying on a later re-apply, the intent is stashed keyed by the target's global name. crucially, the saved `anchor.ancestry` / legacy `anchor.fallback` are also consulted in the missing-target branch so the child can physically anchor to a live ancestor (with `skipLogical=true`) while waiting for the real target. `DrainPendingFor` later replaces the temporary anchor and sets the logical anchor properly.
+
+- `QueuePendingAnchor(child, targetName, edge, padding, align)` — called from the `anchor.target` branch of `RestorePosition` when `_G[anchor.target]` is nil. dedups in-place so repeated `RestorePosition` calls (profile switch, spec-locked target staying off) don't accumulate duplicate entries.
 - `DrainPendingFor(targetName)` — called from `AttachSettingsListener` after a frame is wired to its plugin. re-attempts any queued anchors that were waiting on this frame's name.
 - `DrainAllPending()` — safety-net pass fired on `PLAYER_ENTERING_WORLD` so anything still queued gets one last chance before the user sees a half-broken layout.
 
-entries whose target never materializes (profile references a deleted plugin) remain stashed and become no-ops on future drains.
+entries whose target never materializes (profile references a deleted plugin, or spec-locked target the user never visits) remain stashed and become no-ops on future drains. memory cost is bounded by the dedup: one entry per (target, child) pair.
 
 ## per-spec anchor routing
 
@@ -125,6 +148,15 @@ plugins whose `SetSetting`/`GetSetting` already partition per-spec at the record
 `Persistence._attachedFrames` is a weak-keyed registry populated by `AttachSettingsListener`. on `PLAYER_SPECIALIZATION_CHANGED`, `RestoreAffectedBySpecChange` walks the registry (deferred two frames so Tracked's `RefreshForCurrentSpec` and the subsequent `ReconcileChain` flush both settle first) and re-runs `RestorePosition` — but **only** for frames whose plugin is built-in spec-scoped via `IsSpecScopedIndex(systemIndex)`. this is what makes per-spec anchor routing visible to the live `AnchorGraph`: without it, the consumer's previous-spec anchor entry persists and cross-axis sync still works through `PromoteGrandchild`'s ancestor route, but the visual position lands on the ancestor instead of the new spec's intended target.
 
 the `IsSpecScopedIndex` gate is intentional opt-in, not auto-opt-in by mixin presence. `PluginMixin` hands `GetSpecData`/`SetSpecData` to every plugin so per-character per-spec storage is available to anyone who wants it, but walking **every** attached frame on every spec change (which Blizzard fires on role assignment during group joins, instance transitions, and talent loadouts) causes a visible stall once enough plugins are registered. plugins that own their own positioning logic — GroupFrames stores positions per-group-size-tier, for example — simply don't implement `IsSpecScopedIndex` and are skipped.
+
+### profile-change re-restore
+
+`RestoreAffectedByProfileChange` mirrors `RestoreAffectedBySpecChange` but fires on `ORBIT_PROFILE_CHANGED` and walks **every** attached frame, with no `IsSpecScopedIndex` filter. profile switch swaps `Orbit.runtime.Layouts` and `Orbit.db.GlobalSettings` to the new profile's snapshot — but the live `AnchorGraph` entries still hold the previous profile's `(target, edge, padding)`, and any consumer reading via `ReadAnchor` after the swap would normally only refresh if its plugin called `RestorePosition` from inside `ApplySettings`. some do (PlayerPower), most don't.
+
+the walk is unfiltered because `SpecData` is account-scoped — a consumer whose saved anchor lives in `SpecData[char][spec]` (e.g. PlayerPower anchored to a Tracked container with `orbitAnchorTargetPerSpec`) carries the same anchor across profile switches even when the target is hidden/disabled in the new profile. `RestorePosition` re-evaluates and its `ResolveAnchor` walk records logical intent (`SetLogicalAnchor` when the target exists in `_G`, otherwise `QueuePendingAnchor`) then physically attaches to the first usable candidate in the `[target, live ancestors, saved ancestry]` chain, so the chain visually settles on something live instead of hanging on a parked frame.
+
+the two-frame defer matches the spec path — `RefreshForCurrentSpec` (Tracked) fires on the same event and the subsequent `ReconcileChain` flush needs to settle before the re-attach pass walks consumer frames.
+
 
 ## rules
 

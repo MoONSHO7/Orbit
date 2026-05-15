@@ -41,7 +41,6 @@ local FORMAT_MAP = {
 local DEFAULT_FORMAT = { "percent", "short" }
 
 -- [ LOCAL FORMATTERS ]-------------------------------------------------------------------------------
--- The party rolled Investigation and found the health formatter's lair
 
 local function SafeHealthPercent(unit)
     if type(UnitHealthPercent) ~= "function" then
@@ -125,13 +124,13 @@ function TextMixin:UpdateHealthText()
     end
 
     if not UnitIsConnected(self.unit) then
-        self.HealthText:SetText("Offline")
+        self.HealthText:SetText(Orbit.L.CMN_OFFLINE)
         self.HealthText:Show()
         return
     end
 
     if UnitIsDeadOrGhost(self.unit) then
-        self.HealthText:SetText("Dead")
+        self.HealthText:SetText(Orbit.L.CMN_DEAD)
         self.HealthText:Show()
         return
     end
@@ -299,7 +298,6 @@ function TextMixin:ConstrainNameWidth()
     local textWidth = SafeGetValue(function() return self.Name:GetStringWidth() end)
     if not textWidth or textWidth <= available then return end
 
-    -- The rogue shortens long titles when there's no room on the scroll
     if not self._hasNickname then
         local lastWord = string.match(name, "(%S+)$")
         if lastWord and lastWord ~= name then
@@ -310,7 +308,6 @@ function TextMixin:ConstrainNameWidth()
         end
     end
 
-    -- The wizard binary-searches for the perfect truncation rune
     local lo, hi = 1, #name
     self.Name:SetText(TRUNCATION_SUFFIX)
     local suffixWidth = SafeGetValue(function() return self.Name:GetStringWidth() end) or 0
@@ -325,7 +322,6 @@ function TextMixin:ConstrainNameWidth()
 end
 
 -- [ TEXT COLOR ] ------------------------------------------------------------------------------------
--- The wizard cast Chromatic Orb but forgot which color they picked
 
 local function GetComponentOverrides(self, componentKey)
     if not self.orbitPlugin then return nil end
@@ -343,5 +339,4 @@ function TextMixin:ApplyHealthTextColor()
     Engine.OverrideUtils.ApplyTextColor(self.HealthText, GetComponentOverrides(self, "HealthText"), nil, self.unit)
 end
 
--- The scribe adds this mixin to the party's shared spellbook
 UnitButton.TextMixin = TextMixin

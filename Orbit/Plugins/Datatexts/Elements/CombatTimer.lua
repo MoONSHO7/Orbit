@@ -44,7 +44,7 @@ end
 -- [ UPDATE ] ----------------------------------------------------------------------------------------
 function W:Update()
     if not self.inCombat then
-        self:SetText(COLOR_IDLE .. "Idle|r")
+        self:SetText(COLOR_IDLE .. L.PLU_DT_COMBAT_STATUS_IDLE .. "|r")
         return
     end
     self:SetText(COLOR_COMBAT .. FormatDuration(GetTime() - self.startTime) .. "|r")
@@ -71,7 +71,7 @@ function W:OnCombatEnd()
     
     self:SetText(COLOR_DONE .. FormatDuration(duration) .. "|r")
     C_Timer.After(IDLE_TIMEOUT_SEC, function()
-        if not self.inCombat then self:SetText(COLOR_IDLE .. "Idle|r") end
+        if not self.inCombat then self:SetText(COLOR_IDLE .. L.PLU_DT_COMBAT_STATUS_IDLE .. "|r") end
     end)
 end
 
@@ -83,8 +83,8 @@ end
 function W:OnEncounterEnd(_, _, encounterName, _, _, success)
     if self.encounterStart > 0 then
         local duration = GetTime() - self.encounterStart
-        local result = success == 1 and "|cff00ff00Kill" or "|cffff0000Wipe"
-        print(string.format("%s|r: %s - %s", result, encounterName or self.encounterName or "Boss", FormatDuration(duration)))
+        local result = success == 1 and "|cff00ff00" .. L.PLU_DT_COMBAT_KILL or "|cffff0000" .. L.PLU_DT_COMBAT_WIPE
+        print(L.MSG_DT_ENCOUNTER_RESULT_F:format(result, encounterName or self.encounterName or L.PLU_DT_COMBAT_BOSS, FormatDuration(duration)))
         self.encounterName = nil
         self.encounterStart = 0
     end
@@ -96,22 +96,22 @@ function W:ShowTooltip()
     GameTooltip:ClearLines()
     GameTooltip:AddLine(L.PLU_DT_COMBAT_TIMER_TITLE, 1, 0.82, 0)
     if self.inCombat then
-        GameTooltip:AddDoubleLine("Duration:", string.format("%.1fs", GetTime() - self.startTime), 1, 1, 1, 1, 1, 1)
-        if self.encounterName then GameTooltip:AddDoubleLine("Encounter:", self.encounterName, 1, 1, 1, 1, 0.82, 0) end
-        GameTooltip:AddLine("Status: In Combat", 1, 0, 0)
+        GameTooltip:AddDoubleLine(L.PLU_DT_COMBAT_DURATION, string.format("%.1fs", GetTime() - self.startTime), 1, 1, 1, 1, 1, 1)
+        if self.encounterName then GameTooltip:AddDoubleLine(L.PLU_DT_COMBAT_ENCOUNTER, self.encounterName, 1, 1, 1, 1, 0.82, 0) end
+        GameTooltip:AddLine(L.PLU_DT_COMBAT_STATUS_IN_COMBAT, 1, 0, 0)
     else
-        GameTooltip:AddLine("Status: Idle", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(L.PLU_DT_COMBAT_STATUS_LABEL_IDLE, 0.5, 0.5, 0.5)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Session Deaths:", tostring(self.sessionDeaths), 1, 1, 1, 1, 0.3, 0.3)
+    GameTooltip:AddDoubleLine(L.PLU_DT_COMBAT_SESSION_DEATHS, tostring(self.sessionDeaths), 1, 1, 1, 1, 0.3, 0.3)
     local avg = self:GetAverageCombatDuration()
     if avg > 0 then
-        GameTooltip:AddDoubleLine("Avg Combat:", FormatDuration(avg), 1, 1, 1, 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("Recent Fights:", 0.7, 0.7, 0.7)
+        GameTooltip:AddDoubleLine(L.PLU_DT_COMBAT_AVG_COMBAT, FormatDuration(avg), 1, 1, 1, 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_DT_COMBAT_RECENT_FIGHTS, 0.7, 0.7, 0.7)
         local fightNum = 0
         for _, dur in self.combatHistory:Iterate() do
             fightNum = fightNum + 1
-            GameTooltip:AddDoubleLine("  Fight " .. fightNum .. ":", FormatDuration(dur), 1, 1, 1, 1, 1, 1)
+            GameTooltip:AddDoubleLine(L.PLU_DT_COMBAT_FIGHT_LABEL_F:format(fightNum), FormatDuration(dur), 1, 1, 1, 1, 1, 1)
         end
     end
     GameTooltip:AddLine(" ")

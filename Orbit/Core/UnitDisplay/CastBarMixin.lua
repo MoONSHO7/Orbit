@@ -442,14 +442,14 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         -- Engine-driven: let SetTimerDuration animate the bar (direction: 0=fill, 1=drain)
         local direction = isChanneled and 1 or 0
         if targetBar.SetTimerDuration then
-            pcall(targetBar.SetTimerDuration, targetBar, durationObj, 0, direction)
+            targetBar:SetTimerDuration(durationObj, 0, direction)
         end
         -- Protected overlay: secret-value-safe interrupt color via SetAlphaFromBoolean.
         -- notInterruptible is a secret boolean in combat for enemy units (WoW 12.0+).
         local overlay = self.protectedOverlay
         if overlay and notInterruptible ~= nil then
             if overlay.SetTimerDuration then
-                pcall(overlay.SetTimerDuration, overlay, durationObj, 0, direction)
+                overlay:SetTimerDuration(durationObj, 0, direction)
             end
             overlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
         elseif overlay then

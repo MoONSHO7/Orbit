@@ -52,11 +52,13 @@ local ARROW_ATLAS = "bag-arrow"
 
 local function CreateCollapseArrow(frame, plugin)
     local btn = CreateFrame("Button", nil, frame)
-    btn:SetSize(ARROW_SIZE, ARROW_SIZE * 2)
-    btn:SetPoint("LEFT", frame, "TOPRIGHT", 4, -15)
+    local bScale = btn:GetEffectiveScale() or 1
+    local Pixel = OrbitEngine.Pixel
+    btn:SetSize(Pixel:Snap(ARROW_SIZE, bScale), Pixel:Snap(ARROW_SIZE * 2, bScale))
+    btn:SetPoint("LEFT", frame, "TOPRIGHT", Pixel:Multiple(4, bScale), -Pixel:Snap(ARROW_SIZE, bScale))
     btn:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
     btn.tex = btn:CreateTexture(nil, "ARTWORK")
-    btn.tex:SetSize(ARROW_TEX_SIZE.w, ARROW_TEX_SIZE.h)
+    btn.tex:SetSize(Pixel:Snap(ARROW_TEX_SIZE.w, bScale), Pixel:Snap(ARROW_TEX_SIZE.h, bScale))
     btn.tex:SetPoint("CENTER")
     btn.tex:SetAtlas(ARROW_ATLAS)
     btn.tex:SetAlpha(0.7)
@@ -698,9 +700,20 @@ end
 -- Mixin:_updateBlizzardBuffs() lives in UnitAuraGridReparenting.lua
 
 -- [ GRID GROUP BORDER ]------------------------------------------------------------------------------
+local function ClearGridRoundedMask(frame, activeIcons)
+    local mask = frame._gridGroupRoundedMask
+    if not mask then return end
+    for _, icon in ipairs(activeIcons) do
+        for _, tex in ipairs(icon._maskedSurfaces or {}) do
+            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+        end
+    end
+end
+
 function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH)
     if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 or Frame._groupBorderActive then
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
+        ClearGridRoundedMask(Frame, activeIcons)
         return
     end
     local scale = Frame:GetEffectiveScale()
@@ -711,8 +724,8 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
     local maxPerRow = skinSettings._maxPerRow or math.huge
     local cols = math.min(#activeIcons, maxPerRow)
     local rows = math.ceil(#activeIcons / maxPerRow)
-    local gridW = (cols * iconW) + (math.max(0, cols - 1) * spacing)
-    local gridH = (rows * iconH) + (math.max(0, rows - 1) * spacing)
+    local gridW = Orbit.Engine.Pixel:Snap((cols * iconW) + (math.max(0, cols - 1) * spacing), scale)
+    local gridH = Orbit.Engine.Pixel:Snap((rows * iconH) + (math.max(0, rows - 1) * spacing), scale)
     local gx = skinSettings._growthX or "RIGHT"
     local gy = skinSettings._growthY or "DOWN"
     if not Frame._gridGroupBorder then
@@ -729,7 +742,36 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
     local iconAnchor = ((gy == "UP") and "BOTTOM" or "TOP") .. ((gx == "LEFT") and "RIGHT" or "LEFT")
     local outset = 0
     overlay:ClearAllPoints()
-    if iconNineSlice and iconNineSlice.edgeFile then
+    if iconNineSlice and iconNineSlice.sliceMargin then
+        local style = Skin:BuildIconStyle(iconNineSlice)
+        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
+        local c = Skin:ResolveBorderColor(true)
+        Skin:_RenderSliceTexture(overlay, style, c)
+
+        if not Frame._gridGroupRoundedMask then
+            Frame._gridGroupRoundedMask = Frame:CreateMaskTexture(nil, "BACKGROUND")
+            if Orbit.Engine.Pixel then Orbit.Engine.Pixel:Enforce(Frame._gridGroupRoundedMask) end
+        end
+        local mask = Frame._gridGroupRoundedMask
+        local tier = Skin:GetRoundedTier(true)
+        mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
+        mask:ClearAllPoints()
+        mask:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+        mask:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
+        for _, icon in ipairs(activeIcons) do
+            for _, t in ipairs(icon._maskedSurfaces or {}) do
+                if t.RemoveMaskTexture then
+                    if icon._roundedMask then t:RemoveMaskTexture(icon._roundedMask) end
+                    t:RemoveMaskTexture(mask)
+                end
+                if t.AddMaskTexture then t:AddMaskTexture(mask) end
+            end
+        end
+    elseif iconNineSlice and iconNineSlice.edgeFile then
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        ClearGridRoundedMask(Frame, activeIcons)
         local style = Skin:BuildIconStyle(iconNineSlice)
         local edgeSize = style.edgeSize or 16
         local borderOffset = style.borderOffset or 0
@@ -741,6 +783,8 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
         overlay:SetBackdrop({ edgeFile = style.edgeFile, edgeSize = edgeSize })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     else
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        ClearGridRoundedMask(Frame, activeIcons)
         local borderSize = gs and gs.IconBorderSize or 2
         if borderSize <= 0 then overlay:Hide(); return end
         overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))

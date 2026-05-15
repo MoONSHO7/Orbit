@@ -123,7 +123,7 @@ function Plugin:OnLoad()
         end
         -- Re-apply the border ring so it tracks the new container size (Edit Mode drag, slider, etc.).
         if self.ApplyBorderRing then
-            self:ApplyBorderRing(self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR)
+            self:ApplyBorderRing(self:GetResolvedBorderColor())
         end
     end)
 
@@ -151,7 +151,7 @@ function Plugin:OnLoad()
     OrbitEngine.Pixel:Enforce(self.frame.BorderRing)
 
     -- Solid-fill ring (BasicMinimap-style): a SetColorTexture backdrop clipped by the same
-    -- Circle.tga used as the minimap surface mask. Sized to minimap + BorderSize*2 so the
+    -- Orbit_Circle.tga used as the minimap surface mask. Sized to minimap + BorderSize*2 so the
     -- visible "ring" around the masked map matches BorderSize exactly. BACKGROUND of the
     -- container so the captured Minimap surface draws above it.
     self.frame.SolidRing = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -249,6 +249,9 @@ function Plugin:OnLoad()
     self.frame.Clock:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     Orbit.EventBus:On("CALENDAR_UPDATE_PENDING_INVITES", function() self:UpdateCalendarInvites() end, self)
+
+    -- Reapply border/ring tint when the user re-pins their class color (class pin only — flat colors are unaffected).
+    Orbit.EventBus:On("COLORS_CHANGED", function() if self.frame then self:ApplyShape() end end, self)
 
     -- [ Coords component ] — wrapper frame holds the FontString so ComponentDrag can move it
     self.frame.Coords = CreateFrame("Frame", nil, self.frame.Overlay)

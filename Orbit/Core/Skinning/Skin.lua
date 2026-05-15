@@ -83,6 +83,93 @@ function Skin:CreateBackdrop(frame, name)
     return backdrop
 end
 
+-- [ ROUNDED MASK REGISTRY ]--------------------------------------------------------------------------
+function Skin:RegisterMaskedSurface(frame, texture)
+    if not frame or not texture then return end
+    frame._maskedSurfaces = frame._maskedSurfaces or {}
+    for _, t in ipairs(frame._maskedSurfaces) do
+        if t == texture then return end
+    end
+    table.insert(frame._maskedSurfaces, texture)
+end
+
+function Skin:GetRoundedTier(isIcon)
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local roundness = (gs and gs[isIcon and "IconRoundedCorner" or "RoundedCorner"]) or 2
+    return Constants.BorderStyle.RoundedTiers[roundness] or Constants.BorderStyle.RoundedTiers[2]
+end
+
+-- Cooldown swipes are rendered by the C++ widget and cannot take a MaskTexture;
+-- routing the active rounded-mask asset through SetSwipeTexture is the only way
+-- the swipe can inherit the frame's rounded corners.
+function Skin:GetRoundedSwipeTexture(isIcon)
+    local style = isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
+    if style and style.sliceMargin then
+        return self:GetRoundedTier(isIcon).mask
+    end
+    return nil
+end
+
+function Skin:_EnsureRoundedMask(frame, isIcon)
+    local mask = frame._roundedMask
+    if not mask then
+        mask = frame:CreateMaskTexture(nil, "BACKGROUND")
+        frame._roundedMask = mask
+        if Engine.Pixel then Engine.Pixel:Enforce(mask) end
+    end
+    local tier = self:GetRoundedTier(isIcon)
+    mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
+    mask:SetAllPoints(frame)
+    return mask
+end
+
+function Skin:ApplyRoundedMaskToSurfaces(frame, isIcon)
+    if not frame or not frame._maskedSurfaces then return end
+    local mask = self:_EnsureRoundedMask(frame, isIcon)
+    for _, tex in ipairs(frame._maskedSurfaces) do
+        if tex.AddMaskTexture then
+            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+            tex:AddMaskTexture(mask)
+        end
+    end
+end
+
+function Skin:ClearRoundedMaskFromSurfaces(frame)
+    if not frame or not frame._maskedSurfaces or not frame._roundedMask then return end
+    local mask = frame._roundedMask
+    for _, tex in ipairs(frame._maskedSurfaces) do
+        if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+    end
+end
+
+-- For frames built outside the SkinBorder lifecycle (e.g., canvas-mode previews) where the
+-- usual ApplyNineSliceBorder dispatch isn't re-run after surfaces are registered.
+function Skin:UpdateRoundedMask(frame, isIcon)
+    local style = isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
+    if style and style.sliceMargin then
+        self:ApplyRoundedMaskToSurfaces(frame, isIcon)
+    else
+        self:ClearRoundedMaskFromSurfaces(frame)
+    end
+end
+
+function Skin:_RenderSliceTexture(overlay, styleEntry, color, blendMode)
+    overlay:SetBackdrop(nil)
+    if not overlay._sliceTexture then
+        overlay._sliceTexture = overlay:CreateTexture(nil, "OVERLAY")
+        overlay._sliceTexture:SetAllPoints(overlay)
+    end
+    local tex = overlay._sliceTexture
+    local margin = styleEntry.sliceMargin
+    tex:SetTexture(styleEntry.edgeFile, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    tex:SetTextureSliceMargins(margin, margin, margin, margin)
+    tex:SetVertexColor(color.r, color.g, color.b, color.a or 1)
+    if blendMode then tex:SetBlendMode(blendMode) end
+    tex:Show()
+    return tex
+end
+
 -- [ NINESLICE BORDER ]-------------------------------------------------------------------------------
 function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame or not styleEntry then return end
@@ -90,8 +177,18 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame._edgeBorderOverlay then
         frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     end
-    frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + Constants.Levels.Border)
+    local borderLevel = styleEntry.isIcon and Constants.Levels.IconBorder or Constants.Levels.Border
+    frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + borderLevel)
+    if styleEntry.sliceMargin then
+        self:_ApplyModernSliceBorder(frame, styleEntry)
+    else
+        self:_ApplyLegacyEdgeFileBorder(frame, styleEntry)
+    end
+end
+
+function Skin:_ApplyLegacyEdgeFileBorder(frame, styleEntry)
     local overlay = frame._edgeBorderOverlay
+    if overlay._sliceTexture then overlay._sliceTexture:Hide() end
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local edgeSize = styleEntry.edgeSize or (gs and gs.BorderEdgeSize) or 16
     local borderOffset = styleEntry.borderOffset or (gs and gs.BorderOffset) or 0
@@ -111,21 +208,48 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if c then overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
     else overlay:SetBackdropBorderColor(1, 1, 1, 1) end
     overlay:SetShown(not frame._groupBorderActive)
+    self:ClearRoundedMaskFromSurfaces(frame)
+end
+
+function Skin:_ApplyModernSliceBorder(frame, styleEntry)
+    local overlay = frame._edgeBorderOverlay
+    frame.borderPixelSize = 0
+    overlay:ClearAllPoints()
+    overlay:SetAllPoints(frame)
+    local c = styleEntry.color or self:ResolveBorderColor(styleEntry.isIcon)
+    self:_RenderSliceTexture(overlay, styleEntry, c)
+    overlay:SetShown(not frame._groupBorderActive)
+    self:ApplyRoundedMaskToSurfaces(frame, styleEntry.isIcon)
 end
 
 function Skin:ClearNineSliceBorder(frame)
     if not frame then return end
     if frame._edgeBorderOverlay then frame._edgeBorderOverlay:Hide() end
+    self:ClearRoundedMaskFromSurfaces(frame)
 end
 
 -- Highlight border functions → HighlightBorder.lua
 
 -- [ ICON GROUP BORDER ] -----------------------------------------------------------------------------
--- Wraps an icon container in a single NineSlice/edge border when Icon Padding = 0.
-function Skin:ApplyIconGroupBorder(container, styleEntry)
+-- iconsList: optional. Required when icons are not direct children of `container` (e.g.
+-- CooldownManager parents icons to Blizzard's viewer, separate from the Orbit anchor frame).
+function Skin:ApplyIconGroupBorder(container, styleEntry, iconsList)
     if not container then return end
     if container._groupBorderActive then return end
     container._isIconContainer = true
+    if iconsList then
+        for _, icon in ipairs(iconsList) do
+            local tex = icon.Icon or icon.icon
+            if tex and tex.AddMaskTexture then
+                self:RegisterMaskedSurface(container, tex)
+            end
+            if icon._maskedSurfaces then
+                for _, surface in ipairs(icon._maskedSurfaces) do
+                    if surface.AddMaskTexture then self:RegisterMaskedSurface(container, surface) end
+                end
+            end
+        end
+    end
     if styleEntry then
         container._activeBorderMode = "nineslice"
         if container._borderFrame then container._borderFrame:Hide() end
@@ -161,7 +285,20 @@ function Skin:ResolveStyle(settingsKey)
     local styleKey = gs and gs[settingsKey]
     if not styleKey or styleKey == Constants.BorderStyle.Default then return nil end
     local builtIn = Constants.BorderStyle.Lookup[styleKey]
-    if builtIn then return builtIn end
+    if builtIn then
+        if builtIn.sliceMargin then
+            local isIcon = settingsKey == "IconBorderStyle"
+            local thickness = (gs and gs[isIcon and "IconRoundedThickness" or "RoundedThickness"]) or 2
+            local roundness = (gs and gs[isIcon and "IconRoundedCorner" or "RoundedCorner"]) or 2
+            local tier = Constants.BorderStyle.RoundedTiers[roundness] or Constants.BorderStyle.RoundedTiers[2]
+            local style = {}
+            for k, v in pairs(builtIn) do style[k] = v end
+            style.edgeFile = builtIn.edgeFile .. "_" .. roundness .. "_" .. thickness
+            style.sliceMargin = tier.margin
+            return style
+        end
+        return builtIn
+    end
     local lsmName = styleKey:match("^lsm:(.+)$")
     if lsmName then
         local edgeFile = LSM:Fetch("border", lsmName)
@@ -191,6 +328,7 @@ function Skin:BuildIconStyle(baseStyle)
     for k, v in pairs(baseStyle) do style[k] = v end
     style.edgeSize = (gs and gs.IconBorderEdgeSize) or Constants.BorderStyle.EdgeSize
     style.borderOffset = (gs and gs.IconBorderOffset) or 0
+    style.isIcon = true
     return style
 end
 

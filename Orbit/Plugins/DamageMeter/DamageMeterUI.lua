@@ -265,16 +265,21 @@ local function CreateBar(parent)
 
     bar.Icon = bar:CreateTexture(nil, "ARTWORK")
     bar.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    if parent._visibleRect then Orbit.Skin:RegisterMaskedSurface(parent._visibleRect, bar.Icon) end
 
     -- No SetClipsChildren: nine-slice border overlay uses an outset that would be cropped.
     bar.StatusBar = CreateFrame("StatusBar", nil, bar)
     bar.StatusBar:SetStatusBarTexture(GetBarTexture())
     bar.StatusBar:SetMinMaxValues(0, 1)
     bar.StatusBar:SetValue(0)
+    Orbit.Skin:RegisterMaskedSurface(bar.StatusBar, bar.StatusBar:GetStatusBarTexture())
+    if parent._visibleRect then Orbit.Skin:RegisterMaskedSurface(parent._visibleRect, bar.StatusBar:GetStatusBarTexture()) end
 
     bar.bg = bar:CreateTexture(nil, "BACKGROUND")
     bar.bg:SetAllPoints(bar.StatusBar)
     bar.bg:SetColorTexture(0, 0, 0, 0.4)
+    Orbit.Skin:RegisterMaskedSurface(bar.StatusBar, bar.bg)
+    if parent._visibleRect then Orbit.Skin:RegisterMaskedSurface(parent._visibleRect, bar.bg) end
 
     -- TextFrame spans the full row (not the Style-shrunk StatusBar) so canvas drag coords stay stable.
     bar.TextFrame = CreateFrame("Frame", nil, bar)
@@ -820,6 +825,7 @@ local function BuildMeterFrame(id, def)
     frame._backdrop = frame._visibleRect:CreateTexture(nil, "BACKGROUND")
     frame._backdrop:SetAllPoints(frame._visibleRect)
     frame._backdrop:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
+    Orbit.Skin:RegisterMaskedSurface(frame._visibleRect, frame._backdrop)
 
     -- Parented to outer frame so it can render outside _visibleRect bounds; anchors track the rect.
     frame._title = frame:CreateFontString(nil, "OVERLAY")
@@ -964,6 +970,7 @@ local function BuildMeterFrame(id, def)
                 icon:SetPoint("RIGHT", preview, "LEFT", 0, 0)
             end
             ApplyClassIcon(icon, playerClassFile)
+            Orbit.Skin:RegisterMaskedSurface(preview, icon)
         end
 
         local previewFillHeight = Pixel:Snap(currentDef.barHeight * currentDef.style / 100 * scale, effScale)
@@ -975,10 +982,12 @@ local function BuildMeterFrame(id, def)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.7)
         bar:GetStatusBarTexture():SetVertexColor(ResolveBarColor(playerClassFile))
+        Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
 
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(bar)
         bg:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
+        Orbit.Skin:RegisterMaskedSurface(preview, bg)
 
         local rank = preview:CreateFontString(nil, "OVERLAY")
         rank:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
@@ -1027,6 +1036,7 @@ local function BuildMeterFrame(id, def)
         if dpsComp        then dpsComp:SetFrameLevel(fl);        preview.components.DPS        = dpsComp;        dps:Hide()        end
         if damageDoneComp then damageDoneComp:SetFrameLevel(fl); preview.components.DamageDone = damageDoneComp; damageDone:Hide() end
 
+        Orbit.Skin:UpdateRoundedMask(preview, false)
         return preview
     end
 

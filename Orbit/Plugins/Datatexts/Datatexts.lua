@@ -23,7 +23,19 @@ function Plugin:OnLoad()
     C_Timer.After(POSITION_RESTORE_DELAY, function() DT.DatatextManager:RestorePositions() end)
 end
 
+function Plugin:OnDisable()
+    local DT = Orbit.Datatexts
+    DT.DrawerUI:Suspend()
+    DT.DatatextManager:DisableAll()
+    self.suspended = true
+end
+
 function Plugin:ApplySettings()
     local DT = Orbit.Datatexts
+    if self.suspended then
+        self.suspended = false
+        DT.DrawerUI:Resume()
+        DT.DatatextManager:RestorePositions()
+    end
     DT.DatatextManager:UpdateAllDatatexts()
 end

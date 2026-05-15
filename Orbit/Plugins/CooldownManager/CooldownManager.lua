@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 
@@ -114,10 +115,10 @@ function Plugin:SetupCanvasPreview() end
 
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
-    self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, "Essential Cooldowns")
-    self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, "Utility Cooldowns")
-    self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, "Buff Icons")
-    self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, "Buff Bars",
+    self.essentialAnchor = self:CreateAnchor("OrbitEssentialCooldowns", ESSENTIAL_INDEX, L.PLU_COOLDOWN_ESSENTIAL)
+    self.utilityAnchor = self:CreateAnchor("OrbitUtilityCooldowns", UTILITY_INDEX, L.PLU_COOLDOWN_UTILITY)
+    self.buffIconAnchor = self:CreateAnchor("OrbitBuffIconCooldowns", BUFFICON_INDEX, L.PLU_COOLDOWN_BUFFICON)
+    self.buffBarAnchor = self:CreateAnchor("OrbitBuffBarCooldowns", BUFFBAR_INDEX, L.PLU_COOLDOWN_BUFFBAR,
         { horizontal = false, vertical = true, mergeBorders = true })
     self.buffBarAnchor.orbitWidthSync = true
     self.buffBarAnchor.orbitNoGroupSelect = true
@@ -161,14 +162,14 @@ function Plugin:OnLoad()
         local iconTex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(21562) or "Interface\\Icons\\Spell_Holy_WordFortitude"
         icon:SetTexture(iconTex)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        Orbit.Skin:RegisterMaskedSurface(preview, icon)
 
-        -- Bar background
         local bg = preview:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
         local bgColor = Orbit.Constants.Colors.Background
         bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+        Orbit.Skin:RegisterMaskedSurface(preview, bg)
 
-        -- Bar fill (partial width to simulate remaining duration)
         local fill = preview:CreateTexture(nil, "ARTWORK")
         fill:SetPoint("TOPLEFT", preview, "TOPLEFT", 0, 0)
         fill:SetPoint("BOTTOM", preview, "BOTTOM", 0, 0)
@@ -177,8 +178,8 @@ function Plugin:OnLoad()
         local texturePath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Blizzard") or ""
         fill:SetTexture(texturePath)
         fill:SetVertexColor(0.3, 0.7, 1, 1)
+        Orbit.Skin:RegisterMaskedSurface(preview, fill)
 
-        -- Border
         local borderSize = Orbit.db.GlobalSettings.BorderSize or 1
         Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
@@ -188,7 +189,7 @@ function Plugin:OnLoad()
         local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
         name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
         name:SetPoint("LEFT", preview, "LEFT", 5, 0)
-        name:SetText("Preview Buff")
+        name:SetText(L.PLU_COOLDOWN_PREVIEW_BUFF)
         name:SetTextColor(1, 1, 1, 1)
 
         local timer = preview:CreateFontString(nil, "OVERLAY", nil, 7)

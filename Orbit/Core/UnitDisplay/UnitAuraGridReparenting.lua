@@ -6,6 +6,10 @@
 -- Extracted from UnitAuraGridMixin.lua. Reaches file-local helpers (ResolveGrowthDirection,
 -- UpdateCollapseArrow, CropIconTexture) through Mixin._Internal and the expiration pulse through
 -- Mixin._RegisterExpirationPulse.
+--
+-- Module-level scratch contexts (`_durCtx`, `_playerCtx`, `_showCtx`) are deliberate: WoW's
+-- AuraUtil.ForEachAura callbacks fire synchronously per call site, so reusing one context per
+-- closure type avoids per-frame table allocation. Safe under single-threaded Lua.
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine

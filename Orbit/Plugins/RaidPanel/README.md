@@ -14,7 +14,7 @@ Plugins/RaidPanel/
   RaidPanelLayout.lua        pure arc-wrap and edge-fade math (mirrors PortalLayout)
   RaidPanelVisibility.lua    ShouldShow() — in-group AND (leader or assist)
   RaidPanelMenus.lua         MenuUtil dropdowns: Difficulty (dungeon/raid) + Ping Restriction
-  RaidPanelIcon.lua          circular icon factory; PostClick opens menus, secure attrs bind macros
+  RaidPanelIcon.lua          circular icon factory; PostClick opens menus / runs actions, secure attrs bind raidtarget & worldmarker dispatch
   RaidPanel.lua              plugin root: registration, dock frame, layout integration, events, lifecycle
   RaidPanel.xml              load-order bundle
 ```
@@ -24,17 +24,19 @@ Plugins/RaidPanel/
 | # | slot | left click | shift+left |
 |---|---|---|---|
 | 1 | Difficulty   | open menu (Normal/Heroic/Mythic, +LFR in raid) | — |
-| 2 | Ready Check  | `/readycheck` | — |
-| 3 | Role Poll    | `/rolepoll` | — |
-| 4-11 | Markers 1..8 | `/tm N` (target marker) | `/wm N` (place world marker) |
-| 12 | Clear Markers | `/clearworldmarker all` (secure slash → `ClearRaidMarker(nil)`) + `/click OrbitRaidPanelClearTargets` (chains to a hidden `SecureActionButton` with `type=raidtarget action=clear-all` → `RemoveRaidTargets()`) | — |
+| 2 | Ready Check  | `DoReadyCheck()` (via `PostClick`) | — |
+| 3 | Role Poll    | `InitiateRolePoll()` (via `PostClick`) | — |
+| 4-11 | Markers 1..8 | toggle target-marker N on your target (`raidtarget` secure action) | toggle world marker N (`worldmarker` secure action) |
+| 12 | Clear Markers | `worldmarker action=clear` with no `marker` → `ClearRaidMarker(nil)` clears all world markers; `PostClick` also calls `RemoveRaidTargets()` to wipe all target icons | — |
 | 13 | Restrict Pings | open menu (None / Leader / Tanks+Healers) | — |
 
 ## click handling
 
-- **macro / marker slots** are `SecureActionButtonTemplate` buttons with `type1 + macrotext1` (left click) and `shift-type1 + shift-macrotext1` (shift+left). both type and macrotext are set explicitly for the shift modifier — relying on `shift-type` falling back to `type` is unreliable across patches.
-- **menu slots** have no `type` attribute. the secure dispatch is a no-op, then `PostClick` fires and opens the menu via `MenuUtil.CreateContextMenu`. do **not** override `OnClick` on these — it replaces the template's secure dispatch and breaks the macro slots that share the factory.
-- **`/run` inside a secure macrotext is NOT secure.** `ClearRaidMarker`, `SetRaidTarget`, `PlaceRaidMarker`, and `RemoveRaidTargets` are flagged `HasRestrictions = true` (see `Blizzard_APIDocumentationGenerated/RaidMarkersDocumentation.lua`) — they require a secure call site. `/run` is registered via `CheckAddSlashCommand` (non-secure) so calls to these functions from `/run` silently no-op. The Clear Markers slot routes through (a) `/clearworldmarker all`, which IS a `CheckAddSecureSlashCommand`, and (b) `/click OrbitRaidPanelClearTargets`, a hidden `SecureActionButton` whose built-in `raidtarget` action handler (see `Blizzard_FrameXML/SecureTemplates.lua`) calls `RemoveRaidTargets()` natively. Both paths stay inside the secure dispatcher.
+- **marker slots** are `SecureActionButtonTemplate` buttons that use Blizzard's built-in `raidtarget` action (`type1`, left click) and `worldmarker` action (`shift-type1`, shift+left), with a shared `marker` attribute holding the 1..8 index. No `action` attribute is set, so both default to `toggle` — left click toggles the target-marker on your current target, shift+left toggles world marker N on/off. The built-in `SECURE_ACTIONS.raidtarget` / `SECURE_ACTIONS.worldmarker` handlers (`Blizzard_FrameXML/SecureTemplates.lua`) call `SetRaidTarget` / `PlaceRaidMarker` / `ClearRaidMarker` natively inside the secure dispatcher.
+- **Clear Markers** is a `SecureActionButtonTemplate` button with `type1 = worldmarker` + `action1 = clear` and **no** `marker` attribute — the built-in handler then calls `ClearRaidMarker(nil)`, which clears every world marker. Its shared `PostClick` additionally calls `RemoveRaidTargets()` to clear all target icons; `RemoveRaidTargets` is callable from insecure code during a hardware event, so the `PostClick` path is valid (this is the same split Cell uses).
+- **action slots** (Ready Check, Role Poll) carry no `type` attribute — the secure dispatch is a no-op and `PostClick` runs the slot's `action` function (`DoReadyCheck` / `InitiateRolePoll`). Both are unrestricted and callable from insecure code on a hardware-event click, so no macro or secure slash is needed. Clear Markers reuses the same `action` field (`RemoveRaidTargets`) on top of its secure `worldmarker` dispatch.
+- **menu slots** have no `type` attribute. the secure dispatch is a no-op, then `PostClick` fires and opens the menu via `MenuUtil.CreateContextMenu`. do **not** override `OnClick` on any slot — it replaces the template's secure dispatch and breaks the marker / Clear Markers slots that share the factory.
+- **do not hardcode slash tokens (`/tm`, `/wm`, `/clearworldmarker`, `/readycheck`, ...) in a macrotext.** Slash tokens are localized — `SLASH_TARGET_MARKER1` / `SLASH_WORLD_MARKER1` / `SLASH_CLEAR_WORLD_MARKER1` come from per-locale `GlobalStrings`, and the `all` keyword that `/clearworldmarker` parses is the localized `ALL` global. A hardcoded `/tm N` or `/clearworldmarker all` macro works on an enUS client but silently does nothing where those strings are translated. Prefer either (a) the internal `SECURE_ACTIONS` types — `raidtarget` / `worldmarker` action strings and the `type` / `marker` / `action` attribute names are C identifiers identical on every locale (`Blizzard_FrameXML/SecureTemplates.lua`); or (b) a direct `PostClick` call to the underlying function. `SetRaidTarget` / `RemoveRaidTargets` / `DoReadyCheck` / `InitiateRolePoll` are callable from insecure code on a hardware event, but `PlaceRaidMarker` / `ClearRaidMarker` require a secure call site; the built-in action types satisfy both. (Verified against Cell's marks bar, which uses the same built-in types on a 12.0.5 client.)
 
 ## icon textures
 

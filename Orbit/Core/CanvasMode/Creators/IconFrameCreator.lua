@@ -68,7 +68,7 @@ local function Create(container, preview, key, source, data)
 
         local zoomOutTex = container:CreateTexture(nil, "ARTWORK")
         zoomOutTex:SetSize(OrbitEngine.Pixel:Snap(outW, cScale), OrbitEngine.Pixel:Snap(outH, cScale))
-        zoomOutTex:SetPoint("TOP", zoomInTex, "BOTTOM", 0, -ZOOM_BUTTON_GAP)
+        zoomOutTex:SetPoint("TOP", zoomInTex, "BOTTOM", 0, -OrbitEngine.Pixel:Multiple(ZOOM_BUTTON_GAP, cScale))
         zoomOutTex:SetAtlas("ui-hud-minimap-zoom-out", false)
 
         container.UpdateZoomSize = function(self, newSize)
@@ -78,7 +78,7 @@ local function Create(container, preview, key, source, data)
             local hin = OrbitEngine.Pixel:Snap(ZOOM_IN_H * s, uScale)
             local wout = OrbitEngine.Pixel:Snap(ZOOM_OUT_W * s, uScale)
             local hout = OrbitEngine.Pixel:Snap(ZOOM_OUT_H * s, uScale)
-            self:SetSize(w, OrbitEngine.Pixel:Snap(hin + ZOOM_BUTTON_GAP + hout, uScale))
+            self:SetSize(w, hin + hout + OrbitEngine.Pixel:Multiple(ZOOM_BUTTON_GAP, uScale))
             zoomInTex:SetSize(w, hin)
             zoomOutTex:SetSize(wout, hout)
         end
@@ -154,7 +154,7 @@ local function Create(container, preview, key, source, data)
         local labelAnchor = skullTexture or container.iconVisual  -- placeholder "25" beneath skull
         local previewLabel = container.iconVisual:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         previewLabel:SetText("25")
-        previewLabel:SetPoint("TOP", labelAnchor, "BOTTOM", 0, 2)
+        previewLabel:SetPoint("TOP", labelAnchor, "BOTTOM", 0, OrbitEngine.Pixel:Multiple(2, container.iconVisual:GetEffectiveScale()))
 
         local function UpdateDifficultySize(self, size)
             local targetWidth = (size and size > 0) and size or baseWidth

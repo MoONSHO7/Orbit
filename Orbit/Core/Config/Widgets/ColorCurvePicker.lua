@@ -9,6 +9,7 @@ local Layout = Engine.Layout
 
 local WIDGET_HEIGHT = 32
 local GRADIENT_BAR_HEIGHT = 20
+local CHECKERBOARD = "Interface\\AddOns\\Orbit\\Core\\assets\\Other\\Orbit_Checkerboard.tga"
 
 function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback, valueCheckboxCfg)
     -- Pool retrieval
@@ -30,9 +31,15 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
             edgeSize = 1,
         })
         frame.GradientBar:SetBackdropBorderColor(0, 0, 0, 1)
-        frame.GradientBar:SetBackdropColor(0.2, 0.2, 0.2, 1)
+        frame.GradientBar:SetBackdropColor(0, 0, 0, 0)
 
-        -- Gradient texture (for simple preview)
+        frame.Checkerboard = frame.GradientBar:CreateTexture(nil, "BACKGROUND")
+        frame.Checkerboard:SetPoint("TOPLEFT", 1, -1)
+        frame.Checkerboard:SetPoint("BOTTOMRIGHT", -1, 1)
+        frame.Checkerboard:SetTexture(CHECKERBOARD, "REPEAT", "REPEAT")
+        frame.Checkerboard:SetHorizTile(true)
+        frame.Checkerboard:SetVertTile(true)
+
         frame.GradientTexture = frame.GradientBar:CreateTexture(nil, "ARTWORK")
         frame.GradientTexture:SetPoint("TOPLEFT", 1, -1)
         frame.GradientTexture:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -84,13 +91,21 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
     -- Update preview based on curve data (only assign once, not on pooled reuse)
     if not frame.UpdatePreview then
         frame.UpdatePreview = function(self)
-            local pins = self.curveData and self.curveData.pins
+            local data = self.curveData
+            local pins = data and data.pins
+            self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
             if not pins or #pins == 0 then
-                self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
-                self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(0.5, 0.5, 0.5, 1), CreateColor(0.5, 0.5, 0.5, 1))
+                -- Legacy single-color shape { r, g, b, a } — render as solid color so the
+                -- swatch reflects SavedVariables on first paint instead of grey-until-clicked.
+                if data and data.r then
+                    local c = CreateColor(data.r, data.g, data.b, data.a or 1)
+                    self.GradientTexture:SetGradient("HORIZONTAL", c, c)
+                else
+                    local grey = CreateColor(0.5, 0.5, 0.5, 1)
+                    self.GradientTexture:SetGradient("HORIZONTAL", grey, grey)
+                end
                 return
             end
-            -- Resolve class color pins dynamically
             local function ResolvePin(pin)
                 if pin.type == "class" then
                     local _, classFile = UnitClass("player")
@@ -99,14 +114,11 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 end
                 return pin.color
             end
-            -- Sort pins by position (use copy to avoid mutating original)
             local sortedPins = {}
             for i, p in ipairs(pins) do sortedPins[i] = p end
             table.sort(sortedPins, function(a, b) return a.position < b.position end)
             local first = ResolvePin(sortedPins[1])
             local last = ResolvePin(sortedPins[#sortedPins])
-            -- Always use SetTexture + SetGradient for consistent state reset
-            self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
             self.GradientTexture:SetGradient("HORIZONTAL", CreateColor(first.r, first.g, first.b, first.a or 1), CreateColor(last.r, last.g, last.b, last.a or 1))
         end
     end

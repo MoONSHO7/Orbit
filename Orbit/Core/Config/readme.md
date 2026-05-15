@@ -29,7 +29,7 @@ Config/
 | Panels/OrbitOptionsPanel.lua | dialog shell only: tab registry, open/hide/toggle/refresh lifecycle, and `Panel._helpers` (shared `CreateGlobalSettingsPlugin` / `RefreshAllPreviews` used by tab files). |
 | Panels/OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
 | Panels/OrbitAdvancedSettings.lua | orchestrator: tab bar, panel shell, settings registration for the addon settings panel. |
-| Panels/Tabs/GlobalTab.lua | Global tab schema: font, border (size, style, edge size, offset), `IconBorderStyle`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Pixel". |
+| Panels/Tabs/GlobalTab.lua | Global tab schema: font, border (size, style, edge size, offset), `IconBorderStyle`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Squared" (the legacy `value="flat"` style). |
 | Panels/Tabs/ColorsTab.lua | Colors tab schema: textures, color curves (font/bar/backdrop), `BorderColor`, `IconBorderColor`. |
 | Panels/Tabs/EditModeTab.lua | Edit Mode tab schema: show/hide blizzard frames, anchoring, edit mode color curve. |
 | Panels/Tabs/ProfilesTab.lua | Profiles tab schema + sub-views (export/import/clone/delete/reset). owns widget registrations only used here (`profileactive`, `profileselect`, `collapseheader`, `checkheader`, `statusmessage`). |

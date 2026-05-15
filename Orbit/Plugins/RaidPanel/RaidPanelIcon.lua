@@ -135,8 +135,12 @@ function Icon.Create(plugin, dockFrame, ctx)
         PlaySound(CLICK_SOUND_KIT)
         if button == "LeftButton" then
             local data = self.slotData
-            if data and data.kind == "menu" then
-                Menus.Open(data.menuKey, self, ctx)
+            if data then
+                if data.kind == "menu" then
+                    Menus.Open(data.menuKey, self, ctx)
+                elseif data.action then
+                    data.action()
+                end
             end
         end
     end)
@@ -284,28 +288,25 @@ function Icon.ApplySecureAttributes(icon, slotData, isEditMode)
     if isEditMode then
         icon:SetAttribute("type1", nil)
         icon:SetAttribute("shift-type1", nil)
-        icon:SetAttribute("macrotext1", nil)
-        icon:SetAttribute("shift-macrotext1", nil)
         icon:EnableMouse(false)
         return
     end
     icon:EnableMouse(true)
 
     if slotData.kind == "marker" then
-        local i = slotData.markerIndex
-        icon:SetAttribute("type1", "macro")
-        icon:SetAttribute("macrotext1", "/tm " .. i)
-        icon:SetAttribute("shift-type1", "macro")
-        icon:SetAttribute("shift-macrotext1", "/wm " .. i)
-    elseif slotData.kind == "macro" then
-        icon:SetAttribute("type1", "macro")
-        icon:SetAttribute("macrotext1", slotData.macro)
+        icon:SetAttribute("type1", "raidtarget")
+        icon:SetAttribute("shift-type1", "worldmarker")
+        icon:SetAttribute("marker", slotData.markerIndex)
+        icon:SetAttribute("action1", nil)
+    elseif slotData.kind == "clearmarkers" then
+        icon:SetAttribute("type1", "worldmarker")
         icon:SetAttribute("shift-type1", nil)
-        icon:SetAttribute("shift-macrotext1", nil)
+        icon:SetAttribute("marker", nil)
+        icon:SetAttribute("action1", "clear")
     else
         icon:SetAttribute("type1", nil)
         icon:SetAttribute("shift-type1", nil)
-        icon:SetAttribute("macrotext1", nil)
-        icon:SetAttribute("shift-macrotext1", nil)
+        icon:SetAttribute("marker", nil)
+        icon:SetAttribute("action1", nil)
     end
 end
