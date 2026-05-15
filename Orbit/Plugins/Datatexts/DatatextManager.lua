@@ -298,6 +298,10 @@ end
 
 -- [ TEARDOWN ] --------------------------------------------------------------------------------------
 function DatatextManager:DisableAll()
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function() self:DisableAll() end)
+        return
+    end
     for _, datatext in pairs(datatexts) do
         self:DisableDatatext(datatext.id)
         if datatext.frame then datatext.frame:Hide() end

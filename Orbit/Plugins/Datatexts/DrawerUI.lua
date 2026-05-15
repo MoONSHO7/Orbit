@@ -51,11 +51,6 @@ function DrawerUI:CreateCornerTriggers()
     end
 end
 
-function DrawerUI:DestroyCornerTriggers()
-    for _, btn in ipairs(cornerButtons) do btn:Hide(); btn:SetParent(nil) end
-    cornerButtons = {}
-end
-
 -- [ PANEL CREATION ] --------------------------------------------------------------------------------
 function DrawerUI:CreatePanel()
     if drawerPanel then return end
@@ -323,11 +318,14 @@ function DrawerUI:OnDatatextDragUpdate(datatextId)
     end
 end
 
--- [ TEARDOWN ] --------------------------------------------------------------------------------------
-function DrawerUI:Destroy()
-    self:DestroyCornerTriggers()
-    if drawerPanel then drawerPanel:Hide(); drawerPanel = nil end
-    isOpen = false
+-- [ SUSPEND / RESUME ] ------------------------------------------------------------------------------
+function DrawerUI:Suspend()
+    self:Close()
+    for _, btn in ipairs(cornerButtons) do btn:Hide() end
+end
+
+function DrawerUI:Resume()
+    for _, btn in ipairs(cornerButtons) do btn:Show() end
 end
 
 local combatGuard = CreateFrame("Frame")

@@ -65,7 +65,9 @@ function Plugin:ApplyShape()
         Orbit.Skin:ClearNineSliceBorder(frame)
         Orbit.Skin:SkinBorder(frame, frame, 0, bc, false, true)
     else
-        Orbit.Skin:SkinBorder(frame, frame, borderSize, bc)
+        -- Square shape keeps a square border even under a rounded global Border Style: the
+        -- Minimap render surface can't be given matching rounded corners (SetMaskTexture stretches).
+        Orbit.Skin:SkinBorder(frame, frame, borderSize, bc, false, true)
     end
     self:ApplyBorderRing(bc)
 end

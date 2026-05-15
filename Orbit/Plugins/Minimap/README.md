@@ -8,7 +8,7 @@ orbit's minimap plugin. reparents blizzard's `Minimap` into a clean, borderless 
 - reparents the actual `Minimap` render surface into an orbit-managed frame
 - reparents blizzard's instance difficulty, expansion landing page, mail, and crafting order indicators into the overlay
 - creates custom zoom in/out buttons with hover-reveal behaviour
-- applies orbit's border system (`Orbit.Skin:SkinBorder`) and backdrop
+- applies orbit's border system (`Orbit.Skin:SkinBorder`) and backdrop. the square shape always uses a square border (`forcePixel`) even under a rounded global Border Style — `Minimap:SetMaskTexture` stretches a flat mask, so the render surface can't be given rounded corners that match a nineslice border
 - integrates with edit mode for drag/position/anchor
 - supports visibility in pet battles / vehicles via `RegisterVisibilityEvents`
 - live-toggle support — can be disabled/enabled without a reload

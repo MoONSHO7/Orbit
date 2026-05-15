@@ -53,6 +53,7 @@ local function EnsureFlashOverlay(icon)
     local tex = flash:CreateTexture(nil, "OVERLAY", nil, 7)
     tex:SetAllPoints(flash)
     tex:SetColorTexture(1, 1, 1, 0.4)
+    Orbit.Skin:RegisterMaskedSurface(icon, tex)
 
     local fadeGroup = flash:CreateAnimationGroup()
     fadeGroup:SetToFinalAlpha(true)
@@ -235,6 +236,7 @@ function CDM:ProcessChildren(anchor)
             skinSettings.buffBarSpacing = self:GetSetting(systemIndex, "Spacing") or 2
         end
         for barIdx, icon in ipairs(activeChildren) do
+            EnsureFlashOverlay(icon)
             if isBuffBar then
                 ApplyBuffBarSkin(icon, skinSettings, barIdx)
             else
@@ -249,6 +251,7 @@ function CDM:ProcessChildren(anchor)
             if not isBuffBar then self:ApplyTextSettings(icon, systemIndex) end
             icon.orbitCDMSystemIndex = systemIndex
             local cd = icon.Cooldown or (icon.GetCooldownFrame and icon:GetCooldownFrame())
+            local swipeTex = Orbit.Skin:GetRoundedSwipeTexture(true) or Constants.Assets.SwipeCustom
             if cd then
                 local ac, cc = skinSettings.activeSwipeColor, skinSettings.cooldownSwipeColor
                 local isAura = not issecretvalue(icon.wasSetFromAura) and icon.wasSetFromAura == true
@@ -257,21 +260,25 @@ function CDM:ProcessChildren(anchor)
                 ds.activeR, ds.activeG, ds.activeB, ds.activeA = ac.r, ac.g, ac.b, ac.a
                 ds.cooldownR, ds.cooldownG, ds.cooldownB, ds.cooldownA = cc.r, cc.g, cc.b, cc.a
                 ds.r, ds.g, ds.b, ds.a = c.r, c.g, c.b, c.a
+                ds.texture = swipeTex
                 cd.orbitUpdating = true
                 cd:SetSwipeColor(c.r, c.g, c.b, c.a)
+                cd:SetSwipeTexture(swipeTex)
                 cd:SetReverse(isAura)
                 cd.orbitUpdating = false
                 cd:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe)
             end
             local acd = icon.ActiveCooldown
-            if acd then acd:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe) end
+            if acd then
+                acd:SetSwipeTexture(swipeTex)
+                acd:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe)
+            end
             if not InCombatLockdown() and icon.GetSpellID then
                 local sid = icon:GetSpellID()
                 if sid and not issecretvalue(sid) then
                     icon.orbitCachedSpellID = sid
                 end
             end
-            EnsureFlashOverlay(icon)
             if curve then ApplyTimerColor(icon, curve) end
             if inactiveAlpha then ApplyBuffIconDesaturation(icon, inactiveAlpha, hideBorders) end
         end
@@ -314,6 +321,7 @@ function CDM:ProcessChildren(anchor)
                     if item.SetBorderHidden then item:SetBorderHidden(true) end
                     if item.Icon then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.Icon) end
                     if item.orbitBG then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.orbitBG) end
+                    if item.orbitCDMFlashTex then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.orbitCDMFlashTex) end
                     if item.Bar and item.Bar.GetStatusBarTexture then
                         local bt = item.Bar:GetStatusBarTexture()
                         if bt then Orbit.Skin:RegisterMaskedSurface(anchorFrame, bt) end

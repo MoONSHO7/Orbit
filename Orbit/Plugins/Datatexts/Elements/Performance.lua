@@ -227,6 +227,14 @@ function W:HandleClick(button)
 end
 
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
+function W:OnEnable()
+    DT.DatatextManager:RegisterForScheduler(self.name .. "_mem", "SLOW", function() self:UpdateMemory() end)
+end
+
+function W:OnDisable()
+    DT.DatatextManager:UnregisterFromScheduler(self.name .. "_mem", "SLOW")
+end
+
 function W:Init()
     self:CreateFrame(FRAME_WIDTH, FRAME_HEIGHT)
     self:SetUpdateFunc(function() self:Update() end)
@@ -237,7 +245,6 @@ function W:Init()
     self.rightClickHint = L.PLU_DT_PERF_PIN_TOOLTIP
     self:SetCategory("SYSTEM")
     self:Register()
-    DT.DatatextManager:RegisterForScheduler(self.name .. "_mem", "SLOW", function() self:UpdateMemory() end)
 end
 
 W:Init()

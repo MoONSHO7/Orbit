@@ -99,6 +99,17 @@ function Skin:GetRoundedTier(isIcon)
     return Constants.BorderStyle.RoundedTiers[roundness] or Constants.BorderStyle.RoundedTiers[2]
 end
 
+-- Cooldown swipes are rendered by the C++ widget and cannot take a MaskTexture;
+-- routing the active rounded-mask asset through SetSwipeTexture is the only way
+-- the swipe can inherit the frame's rounded corners.
+function Skin:GetRoundedSwipeTexture(isIcon)
+    local style = isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
+    if style and style.sliceMargin then
+        return self:GetRoundedTier(isIcon).mask
+    end
+    return nil
+end
+
 function Skin:_EnsureRoundedMask(frame, isIcon)
     local mask = frame._roundedMask
     if not mask then
@@ -231,6 +242,11 @@ function Skin:ApplyIconGroupBorder(container, styleEntry, iconsList)
             local tex = icon.Icon or icon.icon
             if tex and tex.AddMaskTexture then
                 self:RegisterMaskedSurface(container, tex)
+            end
+            if icon._maskedSurfaces then
+                for _, surface in ipairs(icon._maskedSurfaces) do
+                    if surface.AddMaskTexture then self:RegisterMaskedSurface(container, surface) end
+                end
             end
         end
     end

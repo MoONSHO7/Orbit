@@ -62,7 +62,8 @@ function BaseDatatext:CreateFrame(width, height)
     f:EnableMouse(true)
     f:SetScript("OnEnter", function() self:OnEnter() end)
     f:SetScript("OnLeave", function() self:OnLeave() end)
-    
+    f:SetScript("OnHide", function() if self.isHovered then self:OnLeave() end end)
+
     if self.isSecure then
         f:RegisterForClicks("AnyUp", "AnyDown")
         f:SetScript("PostClick", function(_, button) self:OnClick(button) end)
@@ -92,6 +93,11 @@ function BaseDatatext:CreateFrame(width, height)
             DT.DatatextManager:UnplaceDatatext(self.name)
         end
     end)
+    f.overlay:SetScript("OnHide", function()
+        if self.dragTicker then self.dragTicker:Cancel(); self.dragTicker = nil end
+        self.isDragging = false
+        if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = false end
+    end)
     f.overlay:Hide()
     
     f.resizeHandle = CreateFrame("Button", nil, f)
@@ -102,7 +108,10 @@ function BaseDatatext:CreateFrame(width, height)
     f.resizeHandle:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
     f.resizeHandle:SetFrameLevel(f.overlay:GetFrameLevel() + 5)
     f.resizeHandle:Hide()
-    
+    f.resizeHandle:SetScript("OnHide", function(rh)
+        if rh.ticker then rh.ticker:Cancel(); rh.ticker = nil end
+    end)
+
     f.resizeHandle:SetScript("OnMouseDown", function()
         if InCombatLockdown() then return end
         -- Force center anchor to ensure scale radiates evenly and prevents position drift
@@ -123,6 +132,7 @@ function BaseDatatext:CreateFrame(width, height)
         f.resizeHandle.anchorX = ox or 0
         f.resizeHandle.anchorY = oy or 0
         
+        if f.resizeHandle.ticker then f.resizeHandle.ticker:Cancel() end
         f.resizeHandle.ticker = C_Timer.NewTicker(0.02, function()
             if InCombatLockdown() then return end
             local curX, _ = GetCursorPosition()
@@ -214,7 +224,6 @@ function BaseDatatext:SetCombatSafeTooltip(isSafe) self.combatSafeTooltip = isSa
 
 function BaseDatatext:SetUpdateTier(tier)
     self.updateTier = tier
-    DT.DatatextManager:RegisterForScheduler(self.name, tier, self.updateFunc)
 end
 
 -- [ ICON ] ------------------------------------------------------------------------------------------

@@ -510,7 +510,7 @@ local function HealerCurveOnUpdate(icon)
         local r, g, b, a = CCE:SampleColorCurveUnpacked(d.swipeCurve, remainingPercent)
         if r then
             local cd = icon.Cooldown
-            local swipeTex = Orbit.Constants.Assets.SwipeCustom
+            local swipeTex = Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom
             cd.orbitUpdating = true
             cd:SetSwipeTexture(swipeTex)
             cd:SetSwipeColor(r, g, b, a or 0.8)
@@ -618,7 +618,7 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
                 if c then
                     local cd = icon.Cooldown
                     cd.orbitUpdating = true
-                    cd:SetSwipeTexture(Orbit.Constants.Assets.SwipeCustom)
+                    cd:SetSwipeTexture(Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom)
                     cd:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8)
                     cd.orbitUpdating = false
                 end
