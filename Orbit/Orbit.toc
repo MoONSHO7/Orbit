@@ -63,7 +63,6 @@ Plugins\DamageMeter\DamageMeter.xml
 Plugins\StatusBars\StatusBars.xml
 Plugins\RaidPanel\RaidPanel.xml
 Plugins\Objectives\Objectives.xml
-Plugins\RaidPanel\RaidPanel.xml
 Plugins\Extras\TalkingHead.lua
 Plugins\Extras\MinimapButton.lua
 

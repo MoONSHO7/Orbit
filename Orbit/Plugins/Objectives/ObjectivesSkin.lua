@@ -62,7 +62,9 @@ local function IsUnderObjectivesTracker(frame)
         if p == ObjectiveTrackerFrame or (ObjectiveTrackerManager and (ObjectiveTrackerManager.containers[p] or ObjectiveTrackerManager.moduleToContainerMap[p])) then
             return true
         end
-        p = p:GetParent()
+        local ok, parent = pcall(p.GetParent, p)
+        if not ok then return false end
+        p = parent
     end
     return false
 end
