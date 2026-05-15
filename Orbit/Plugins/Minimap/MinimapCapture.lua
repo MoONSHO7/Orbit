@@ -353,6 +353,66 @@ function Plugin:RestoreBlizzardComponents()
     end
 end
 
+-- [ FULL RESTORE ]-----------------------------------------------------------------------------------
+-- Reverses CaptureBlizzardMinimap + StripBlizzardArt + ReparentBlizzardComponents so the Minimap
+-- plugin can be disabled at runtime without leaving orphaned Blizzard elements.
+function Plugin:RestoreBlizzardState()
+    if not self._captured then return end
+
+    local minimap = GetBlizzardMinimap()
+    local cluster = GetBlizzardCluster()
+
+    -- Suspend FrameGuard so it doesn't snap the surface back during restoration.
+    if minimap then
+        OrbitEngine.FrameGuard:Suspend(minimap)
+        minimap._orbitGuardEnforceShow = nil
+    end
+
+    -- Release collected addon buttons (restores original parent, points, methods).
+    if self.ReleaseCollectedButtons then self:ReleaseCollectedButtons() end
+    if self.HideCompartmentFlyout then self:HideCompartmentFlyout() end
+
+    -- Restore reparented Blizzard components (Difficulty, Missions, Mail, CraftingOrder).
+    self:RestoreBlizzardComponents()
+
+    -- Reparent Minimap surface back to MinimapCluster.
+    if minimap and cluster then
+        minimap:SetParent(cluster)
+        minimap:ClearAllPoints()
+        minimap:SetPoint("CENTER", cluster, "CENTER", 0, 0)
+        minimap:SetMaskTexture(C.MASK_SQUARE)
+        minimap:SetArchBlobRingScalar(1)
+        minimap:SetQuestBlobRingScalar(1)
+    end
+
+    -- Restore MinimapCluster via NativeFrame (unhide, reparent to UIParent, restore scripts).
+    if cluster then
+        OrbitEngine.NativeFrame:Restore(cluster)
+    end
+
+    -- Restore MinimapBackdrop and MinimapCompassTexture from the hidden holder.
+    if MinimapBackdrop and cluster then MinimapBackdrop:SetParent(cluster) end
+    if MinimapCompassTexture and minimap then MinimapCompassTexture:SetParent(minimap) end
+
+    -- Remove the OnShow→Hide hooks on Blizzard zoom buttons.
+    if minimap then
+        if minimap.ZoomIn then minimap.ZoomIn:SetScript("OnShow", nil); minimap.ZoomIn:Show() end
+        if minimap.ZoomOut then minimap.ZoomOut:SetScript("OnShow", nil); minimap.ZoomOut:Show() end
+        if minimap.ZoomHitArea then minimap.ZoomHitArea:Show(); minimap.ZoomHitArea:EnableMouse(true) end
+    end
+
+    -- Restore MinimapCluster.Selection (edit mode overlay).
+    if cluster and cluster.Selection then
+        cluster.Selection:SetAlpha(1)
+        cluster.Selection:EnableMouse(true)
+    end
+
+    -- Restore native CraftingOrder icon alpha.
+    if MiniMapCraftingOrderIcon then MiniMapCraftingOrderIcon:SetAlpha(1) end
+
+    self._captured = nil
+end
+
 -- [ CAPTURE ]----------------------------------------------------------------------------------------
 function Plugin:CaptureBlizzardMinimap()
     local minimap = GetBlizzardMinimap()

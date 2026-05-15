@@ -434,41 +434,46 @@ function Plugin:LayoutButtonsInFlyout()
     local unconstrainedH = (unconstrainedRows * cellSize) + paddingTotal
 
     local mmFrame = self.frame
-    local scale = mmFrame:GetEffectiveScale()
+    local anchorFrame = self._compartmentButton or mmFrame
+    local anchorToCursor = not anchorFrame:IsShown()
+    local scale = anchorFrame:GetEffectiveScale()
     local uiScale = UIParent:GetEffectiveScale()
     local screenW = GetScreenWidth() * uiScale
     local screenH = GetScreenHeight() * uiScale
-    local mmLeft = (mmFrame:GetLeft() or 0) * scale
-    local mmRight = (mmFrame:GetRight() or screenW) * scale
-    local mmTop = (mmFrame:GetTop() or screenH) * scale
-    local mmBottom = (mmFrame:GetBottom() or 0) * scale
-    local spaceLeft = mmLeft
-    local spaceRight = screenW - mmRight
-    local spaceAbove = screenH - mmTop
-    local spaceBelow = mmBottom
+
+    local spaceLeft, spaceRight, spaceAbove, spaceBelow
+    if anchorToCursor then
+        local cx, cy = GetCursorPosition()
+        spaceLeft = cx
+        spaceRight = screenW - cx
+        spaceAbove = screenH - cy
+        spaceBelow = cy
+    else
+        local btnLeft = (anchorFrame:GetLeft() or 0) * scale
+        local btnRight = (anchorFrame:GetRight() or screenW) * scale
+        local btnTop = (anchorFrame:GetTop() or screenH) * scale
+        local btnBottom = (anchorFrame:GetBottom() or 0) * scale
+        spaceLeft = btnLeft
+        spaceRight = screenW - btnRight
+        spaceAbove = screenH - btnTop
+        spaceBelow = btnBottom
+    end
 
     local anchor  -- "below" | "above" | "left" | "right"
-    if spaceBelow >= unconstrainedH * scale + FLYOUT_GAP then anchor = "below"
+    local dirSetting = self:GetSetting(SYSTEM_ID, "FlyoutDirection") or "auto"
+    if dirSetting ~= "auto" then
+        anchor = dirSetting
+    elseif spaceBelow >= unconstrainedH * scale + FLYOUT_GAP then anchor = "below"
     elseif spaceAbove >= unconstrainedH * scale + FLYOUT_GAP then anchor = "above"
     elseif spaceLeft >= unconstrainedW * scale + FLYOUT_GAP then anchor = "left"
     elseif spaceRight >= unconstrainedW * scale + FLYOUT_GAP then anchor = "right"
     else anchor = "below" end
 
-    -- Match minimap dimension on the stacked axis so the drawer visually spans the minimap.
-    local mmWidth = mmFrame:GetWidth()
-    local mmHeight = mmFrame:GetHeight()
-    local flyoutWidth, flyoutHeight, cols, rows
-    if anchor == "below" or anchor == "above" then
-        flyoutWidth = math.max(mmWidth, cellSize + paddingTotal)
-        cols = math.max(1, math.floor((flyoutWidth - paddingTotal) / cellSize))
-        rows = math.ceil(n / cols)
-        flyoutHeight = (rows * cellSize) + paddingTotal
-    else
-        flyoutHeight = math.max(mmHeight, cellSize + paddingTotal)
-        rows = math.max(1, math.floor((flyoutHeight - paddingTotal) / cellSize))
-        cols = math.ceil(n / rows)
-        flyoutWidth = (cols * cellSize) + paddingTotal
-    end
+    -- Size the flyout grid based on button count — same compact grid for all directions.
+    local cols = math.min(FLYOUT_COLUMNS, n)
+    local rows = math.ceil(n / cols)
+    local flyoutWidth = (cols * cellSize) + paddingTotal
+    local flyoutHeight = (rows * cellSize) + paddingTotal
     local flyoutScale = flyout:GetEffectiveScale()
     flyout:SetSize(Orbit.Engine.Pixel:Snap(flyoutWidth, flyoutScale), Orbit.Engine.Pixel:Snap(flyoutHeight, flyoutScale))
 
@@ -491,14 +496,28 @@ function Plugin:LayoutButtonsInFlyout()
     end
 
     flyout:ClearAllPoints()
-    if anchor == "below" then
-        flyout:SetPoint("TOPRIGHT", mmFrame, "BOTTOMRIGHT", 0, -FLYOUT_GAP)
-    elseif anchor == "above" then
-        flyout:SetPoint("BOTTOMRIGHT", mmFrame, "TOPRIGHT", 0, FLYOUT_GAP)
-    elseif anchor == "left" then
-        flyout:SetPoint("TOPRIGHT", mmFrame, "TOPLEFT", -FLYOUT_GAP, 0)
+    if anchorToCursor then
+        local cx, cy = GetCursorPosition()
+        local ux, uy = cx / uiScale, cy / uiScale
+        if anchor == "below" then
+            flyout:SetPoint("TOP", UIParent, "BOTTOMLEFT", ux, uy)
+        elseif anchor == "above" then
+            flyout:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", ux, uy)
+        elseif anchor == "left" then
+            flyout:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", ux, uy)
+        else
+            flyout:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ux, uy)
+        end
     else
-        flyout:SetPoint("TOPLEFT", mmFrame, "TOPRIGHT", FLYOUT_GAP, 0)
+        if anchor == "below" then
+            flyout:SetPoint("TOP", anchorFrame, "BOTTOM", 0, -FLYOUT_GAP)
+        elseif anchor == "above" then
+            flyout:SetPoint("BOTTOM", anchorFrame, "TOP", 0, FLYOUT_GAP)
+        elseif anchor == "left" then
+            flyout:SetPoint("TOPRIGHT", anchorFrame, "TOPLEFT", -FLYOUT_GAP, 0)
+        else
+            flyout:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", FLYOUT_GAP, 0)
+        end
     end
 end
 

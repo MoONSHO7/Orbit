@@ -28,6 +28,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         MiddleClickAction = "none",
         RightClickAction = "tracking",
         AutoZoomOut = true,
+        FlyoutDirection = "auto",
         ZoneTextColoring = true,
         DifficultyShowBackground = false,
         DisabledComponents = { "Status" },
@@ -955,6 +956,13 @@ end
 
 -- [ TEARDOWN ]---------------------------------------------------------------------------------------
 function Plugin:OnDisable()
-    -- Toggling the Minimap plugin requires a UI reload (Blizzard hooks cannot be cleanly undone).
-    -- The reload button in the Plugin Manager handles this; nothing to do at runtime.
+    -- Reverse the Blizzard capture so MinimapCluster, Minimap surface, and all reparented
+    -- components return to their native state. Permanent hooks are neutralised via FrameGuard:Suspend.
+    if InCombatLockdown() then
+        if Orbit.CombatManager then
+            Orbit.CombatManager:QueueUpdate(function() self:RestoreBlizzardState() end)
+        end
+        return
+    end
+    self:RestoreBlizzardState()
 end
