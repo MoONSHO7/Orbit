@@ -261,6 +261,7 @@ function Plugin:OnLoad()
 
         local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture") or Orbit.db.GlobalSettings.Texture
         bar:SetStatusBarTexture(LSM:Fetch("statusbar", textureName))
+        Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
 
         -- Color (use per-power-type curve for preview)
         local powerType = UnitPowerType("player")
@@ -272,6 +273,7 @@ function Plugin:OnLoad()
         end
 
         preview.PowerBar = bar
+        Orbit.Skin:UpdateRoundedMask(preview, false)
         return preview
     end
 

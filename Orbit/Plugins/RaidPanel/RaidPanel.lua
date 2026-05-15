@@ -210,21 +210,11 @@ local function CreateDock()
     return dock
 end
 
--- [ HIDDEN CHAIN BUTTON ] ---------------------------------------------------------------------------
-local function CreateClearTargetsChainButton()
-    local btn = CreateFrame("Button", "OrbitRaidPanelClearTargets", UIParent, "SecureActionButtonTemplate")
-    btn:Hide()
-    btn:SetAttribute("type", "raidtarget")
-    btn:SetAttribute("action", "clear-all")
-    return btn
-end
-
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     ctx.isEditModeActive = Orbit:IsEditMode() or false
     dock = CreateDock()
     self.frame = dock
-    self.clearTargetsBtn = CreateClearTargetsChainButton()
 
     OrbitEngine.NativeFrame:Park(CompactRaidFrameManager)
 

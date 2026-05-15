@@ -9,7 +9,10 @@ local Constants = Orbit.Constants
 
 
 -- [ GROUP BORDER ] ----------------------------------------------------------------------------------
--- Creates a single wrapper border around all merged frames in an anchor chain.
+-- Snapshot lets RefreshAllGroupBorders Phase 4 reach ex-members whose anchors moved out of the
+-- merge chain — Phase 1's walk only sees frames still anchored, so without this they'd retain
+-- _groupBorderActive=true and a stale group mask attached to their surfaces.
+Skin._groupMembers = setmetatable({}, { __mode = "k" })
 
 function Skin:UpdateGroupBorder(rootFrame)
     if not rootFrame then return end
@@ -64,6 +67,7 @@ function Skin:UpdateGroupBorder(rootFrame)
     for _, frame in ipairs(allFrames) do
         frame._groupBorderActive = true
         frame._groupBorderRoot = rootFrame
+        Skin._groupMembers[frame] = rootFrame
         if frame._edgeBorderOverlay and frame._edgeBorderOverlay:IsShown() then
             frame._edgeBorderOverlay:Hide()
             frame._groupBorderHiddenNineSlice = true
@@ -178,9 +182,16 @@ function Skin:UpdateGroupBorder(rootFrame)
 
 
 
+    local hasModernSlice = (not isPixelMode) and styleEntry and styleEntry.sliceMargin
+
     if isPixelMode then
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (gs and gs.BorderSize or Constants.Settings.BorderSize.Default)
-        if borderSize <= 0 then overlay:Hide(); return end
+        if borderSize <= 0 then
+            overlay:Hide()
+            return
+        end
         local pixelSize = Engine.Pixel:Multiple(borderSize, rootScale)
         overlay:ClearAllPoints()
 
@@ -191,7 +202,7 @@ function Skin:UpdateGroupBorder(rootFrame)
             overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
             overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
         end
-        
+
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
         local colorKey = isIconStyle and "IconBorderColor" or "BorderColor"
         local raw = gs and gs[colorKey]
@@ -203,8 +214,22 @@ function Skin:UpdateGroupBorder(rootFrame)
             c = (Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw) or { r = 0, g = 0, b = 0, a = 1 }
         end
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
+    elseif hasModernSlice then
+        overlay:ClearAllPoints()
+        if canNativeAnchor then
+            overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
+            overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
+        else
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
+            overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
+        end
+
+        local c = self:ResolveBorderColor(isIconStyle)
+        self:_RenderSliceTexture(overlay, styleEntry, c)
+        self:_ApplyGroupRoundedMask(rootFrame, allFrames, isIconStyle, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
     else
-        -- NineSlice-style group overlay
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local edgeSize, borderOffset
         if isIconStyle then
             local iconStyle = self:BuildIconStyle(styleEntry)
@@ -229,7 +254,7 @@ function Skin:UpdateGroupBorder(rootFrame)
             overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-outset - offsetX, rootScale), Engine.Pixel:Snap(outset + offsetY, rootScale))
             overlay:SetSize(Engine.Pixel:Snap(totalW + 2 * outset, rootScale), Engine.Pixel:Snap(totalH + 2 * outset, rootScale))
         end
-        
+
         overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     end
@@ -250,9 +275,49 @@ function Skin:UpdateGroupBorder(rootFrame)
     end
 end
 
+function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, isIconStyle, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
+    if not rootFrame._groupRoundedMask then
+        rootFrame._groupRoundedMask = rootFrame:CreateMaskTexture(nil, "BACKGROUND")
+        if Engine.Pixel then Engine.Pixel:Enforce(rootFrame._groupRoundedMask) end
+    end
+    local mask = rootFrame._groupRoundedMask
+    local tier = self:GetRoundedTier(isIconStyle)
+    mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
+    mask:ClearAllPoints()
+    if canNativeAnchor then
+        mask:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
+        mask:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
+    else
+        mask:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
+        mask:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
+    end
+    for _, frame in ipairs(allFrames) do
+        for _, tex in ipairs(frame._maskedSurfaces or {}) do
+            if tex.RemoveMaskTexture then
+                if frame._roundedMask then tex:RemoveMaskTexture(frame._roundedMask) end
+                tex:RemoveMaskTexture(mask)
+            end
+            if tex.AddMaskTexture then tex:AddMaskTexture(mask) end
+        end
+    end
+end
+
+function Skin:_ClearGroupRoundedMask(rootFrame, frames)
+    local mask = rootFrame._groupRoundedMask
+    if not mask or not frames then return end
+    for _, frame in ipairs(frames) do
+        for _, tex in ipairs(frame._maskedSurfaces or {}) do
+            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+        end
+    end
+end
+
 function Skin:ClearGroupBorder(rootFrame)
     if not rootFrame then return end
+    local walked = {}
     local function restoreFrame(frame)
+        walked[#walked + 1] = frame
         local wasActive = frame._groupBorderActive
         frame._groupBorderActive = nil
         frame._groupBorderRoot = nil
@@ -264,17 +329,52 @@ function Skin:ClearGroupBorder(rootFrame)
     restoreFrame(rootFrame)
     local FrameAnchor = Orbit.Engine.FrameAnchor
     local function walk(frame)
-        restoreFrame(frame)
         local children = FrameAnchor.childrenOf[frame]
         if not children then return end
-        for child in pairs(children) do walk(child) end
+        for child in pairs(children) do
+            restoreFrame(child)
+            walk(child)
+        end
     end
     walk(rootFrame)
+    self:_ClearGroupRoundedMask(rootFrame, walked)
+    local activeStyle = self:GetActiveBorderStyle()
+    local activeIconStyle = self:GetActiveIconBorderStyle()
+    for _, frame in ipairs(walked) do
+        local style = frame._isIconContainer and activeIconStyle or activeStyle
+        if style and style.sliceMargin then
+            self:ApplyRoundedMaskToSurfaces(frame, frame._isIconContainer)
+        end
+    end
+end
+
+function Skin:_RestoreExMergeMember(frame, oldRoot)
+    if not frame then return end
+    if oldRoot and oldRoot._groupRoundedMask then
+        local mask = oldRoot._groupRoundedMask
+        for _, tex in ipairs(frame._maskedSurfaces or {}) do
+            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+        end
+    end
+    frame._groupBorderActive = nil
+    frame._groupBorderRoot = nil
+    frame._groupBorderHiddenNineSlice = nil
+    frame._groupBorderHiddenPixels = nil
+    if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
+    if frame.SetBorderHidden then frame:SetBorderHidden(false) end
+    local activeStyle = frame._isIconContainer and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
+    if activeStyle and activeStyle.sliceMargin then
+        self:ApplyRoundedMaskToSurfaces(frame, frame._isIconContainer)
+    end
 end
 
 function Skin:RefreshAllGroupBorders()
     local FrameAnchor = Orbit.Engine.FrameAnchor
     if not FrameAnchor or not FrameAnchor.anchors then return end
+
+    local previousMembers = {}
+    for frame, root in pairs(self._groupMembers) do previousMembers[frame] = root end
+    wipe(self._groupMembers)
 
     -- Phase 1: Collect all current merge roots (including non-anchored parents)
     local visited = {}
@@ -310,6 +410,13 @@ function Skin:RefreshAllGroupBorders()
     -- Phase 3: Re-evaluate all merges from clean state
     for _, root in ipairs(mergeRoots) do
         self:UpdateGroupBorder(root)
+    end
+
+    -- Phase 4: Restore ex-members (frames that were merged last refresh but aren't anymore).
+    for frame, oldRoot in pairs(previousMembers) do
+        if not self._groupMembers[frame] then
+            self:_RestoreExMergeMember(frame, oldRoot)
+        end
     end
 end
 

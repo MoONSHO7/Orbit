@@ -25,6 +25,7 @@ function CastBar:Create(parent)
 
     local bar = CreateFrame("StatusBar", nil, parent)
     bar:SetAllPoints(parent) -- Repositioned by UpdateBarInsets
+    bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
     bar:SetIgnoreParentAlpha(true)
@@ -34,6 +35,8 @@ function CastBar:Create(parent)
     parent.bg:SetAllPoints()
     local bg = Constants.Colors.Background
     parent.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+    Skin:RegisterMaskedSurface(parent, parent.bg)
+    Skin:RegisterMaskedSurface(parent, bar:GetStatusBarTexture())
 
     bar.TextFrame = CreateFrame("Frame", nil, parent)
     bar.TextFrame:SetAllPoints(bar)
@@ -50,22 +53,26 @@ function CastBar:Create(parent)
     bar.Spark:SetAtlas("ui-castingbar-pip")
     bar.Spark:SetSize(Pixel:Snap(SPARK_WIDTH, barScale), Pixel:Snap(SPARK_HEIGHT, barScale))
     bar.Spark:SetAlpha(0)
+    Skin:RegisterMaskedSurface(parent, bar.Spark)
 
     bar.SparkGlow = bar:CreateTexture(nil, "OVERLAY", nil, 1)
     bar.SparkGlow:SetAtlas("cast_standard_pipglow")
     bar.SparkGlow:SetBlendMode("ADD")
     bar.SparkGlow:SetAlpha(SPARK_GLOW_ALPHA)
     bar.SparkGlow:SetPoint("RIGHT", bar.Spark, "CENTER", 0, 0)
+    Skin:RegisterMaskedSurface(parent, bar.SparkGlow)
 
     bar.Latency = bar:CreateTexture(nil, "ARTWORK")
     bar.Latency:SetColorTexture(1, 0, 0, LATENCY_ALPHA)
     bar.Latency:Hide()
+    Skin:RegisterMaskedSurface(parent, bar.Latency)
 
     bar.InterruptOverlay = bar:CreateTexture(nil, "OVERLAY")
     bar.InterruptOverlay:SetAllPoints()
     bar.InterruptOverlay:SetColorTexture(1, 1, 1, INTERRUPT_FLASH_ALPHA)
     bar.InterruptOverlay:SetBlendMode("ADD")
     bar.InterruptOverlay:SetAlpha(0)
+    Skin:RegisterMaskedSurface(parent, bar.InterruptOverlay)
 
     local animGroup = bar.InterruptOverlay:CreateAnimationGroup()
     local alpha = animGroup:CreateAnimation("Alpha")
@@ -80,6 +87,7 @@ function CastBar:Create(parent)
     bar.Icon:SetSize(Pixel:Snap(ICON_DEFAULT_SIZE, barScale), Pixel:Snap(ICON_DEFAULT_SIZE, barScale))
     bar.Icon:SetPoint("LEFT", parent, "LEFT", 0, 0)
     bar.Icon:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+    Skin:RegisterMaskedSurface(parent, bar.Icon)
 
     bar.stageMarkers = {}
     for i = 1, 4 do

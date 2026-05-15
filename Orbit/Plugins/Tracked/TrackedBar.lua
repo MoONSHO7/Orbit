@@ -166,17 +166,22 @@ function Bar:Build(plugin, record)
 
     frame.IconBg = frame:CreateTexture(nil, "BACKGROUND")
     frame.IconBg:SetColorTexture(0, 0, 0, 0.5)
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.IconBg)
 
     frame.Icon = frame:CreateTexture(nil, "ARTWORK")
     frame.Icon:SetTexCoord(ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX, ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX)
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.Icon)
 
     frame.StatusBar = CreateFrame("StatusBar", nil, frame)
+    frame.StatusBar:SetStatusBarTexture(WHITE_TEXTURE)
     frame.StatusBar:SetMinMaxValues(0, 1)
     frame.StatusBar:SetValue(0)
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.StatusBar:GetStatusBarTexture())
 
     frame.BarBg = frame.StatusBar:CreateTexture(nil, "BACKGROUND")
     frame.BarBg:SetAllPoints(frame.StatusBar)
     frame.BarBg:SetColorTexture(0, 0, 0, 0.5)
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.BarBg)
 
     -- Invisible positioner whose fill edge tracks currentCharges; RechargeSegment anchors to it.
     frame.RechargePositioner = CreateFrame("StatusBar", nil, frame)
@@ -187,9 +192,11 @@ function Bar:Build(plugin, record)
 
     -- Visible segment filling as a charge recharges; sized to one charge-width.
     frame.RechargeSegment = CreateFrame("StatusBar", nil, frame)
+    frame.RechargeSegment:SetStatusBarTexture(WHITE_TEXTURE)
     frame.RechargeSegment:SetMinMaxValues(0, 1)
     frame.RechargeSegment:SetValue(0)
     frame.RechargeSegment:Hide()
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.RechargeSegment:GetStatusBarTexture())
 
     -- Charges-mode segment separators; pre-allocated, only first (maxCharges - 1) shown.
     frame.Dividers = {}
@@ -198,6 +205,7 @@ function Bar:Build(plugin, record)
         div:SetColorTexture(0, 0, 0, 1)
         div:Hide()
         frame.Dividers[i] = div
+        Orbit.Skin:RegisterMaskedSurface(frame, div)
     end
 
     -- TickMixin: re-anchored to recharge positioner in charges mode, main StatusBar otherwise.
@@ -275,17 +283,21 @@ function Bar:Build(plugin, record)
             iconTex:SetTexCoord(ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX, ICON_TEXCOORD_MIN, ICON_TEXCOORD_MAX)
             local liveTex = self.Icon and self.Icon:GetTexture()
             if liveTex then iconTex:SetTexture(liveTex) end
+            Orbit.Skin:RegisterMaskedSurface(preview, iconTex)
         end
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetAllPoints()
+        bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
         bar:SetOrientation(isVertical and "VERTICAL" or "HORIZONTAL")
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.6)
+        Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
         local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
         local texPath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Solid")
         if texPath then bar:SetStatusBarTexture(texPath) end
         bar:SetStatusBarColor(frame._barColorR or DEFAULT_BAR_COLOR_R, frame._barColorG or DEFAULT_BAR_COLOR_G, frame._barColorB or DEFAULT_BAR_COLOR_B)
         preview.StatusBar = bar
+        Orbit.Skin:UpdateRoundedMask(preview, false)
         return preview
     end
 
@@ -297,8 +309,10 @@ function Bar:Build(plugin, record)
 
     frame.DropHintBackdrop = frame.DropHintFrame:CreateTexture(nil, "BACKGROUND", nil, -1)
     frame.DropHintBackdrop:SetAtlas(DROP_ZONE_BACKDROP_ATLAS)
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.DropHintBackdrop)
     frame.DropHintBg = frame.DropHintFrame:CreateTexture(nil, "BACKGROUND")
     frame.DropHintBg:SetAtlas(DROP_ZONE_BG_ATLAS)
+    Orbit.Skin:RegisterMaskedSurface(frame, frame.DropHintBg)
     frame.DropHintPlus = frame.DropHintFrame:CreateTexture(nil, "OVERLAY")
     frame.DropHintPlus:SetAtlas(DROP_ZONE_PLUS_ATLAS)
     -- Desaturate then vertex-tint to recolor natively-green atlas golden yellow.

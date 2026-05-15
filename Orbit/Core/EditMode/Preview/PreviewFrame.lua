@@ -29,7 +29,7 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     local globalBorder = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderSize or 0
     local borderInset = Engine.Pixel:Multiple(globalBorder, effScale)
 
-    local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    local preview = CreateFrame("Frame", nil, parent)
     local previewScale = preview:GetEffectiveScale()
     preview:SetSize(Engine.Pixel:Snap(sourceWidth * scale, previewScale), Engine.Pixel:Snap(sourceHeight * scale, previewScale))
 
@@ -41,11 +41,11 @@ function PreviewFrame:CreateBasePreview(sourceFrame, scale, parent, borderSize)
     preview.components = {}
 
     local bgColor = Orbit.Constants and Orbit.Constants.Colors and Orbit.Constants.Colors.Background or { r = 0.1, g = 0.1, b = 0.1, a = 0.95 }
-    local backdrop = { bgFile = "Interface\\BUTTONS\\WHITE8x8", insets = { left = 0, right = 0, top = 0, bottom = 0 } }
-    preview:SetBackdrop(backdrop)
-    preview:SetBackdropColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.95)
+    preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers and Orbit.Constants.Layers.BackdropDeep or -8)
+    preview.bg:SetAllPoints()
+    preview.bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.95)
+    Orbit.Skin:RegisterMaskedSurface(preview, preview.bg)
 
-    -- Use Orbit's overlay-based border (matches live frame rendering)
     Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
     return preview

@@ -312,6 +312,12 @@ function CDM:ProcessChildren(anchor)
             if rawSpacing == 0 then
                 for _, item in ipairs(activeChildren) do
                     if item.SetBorderHidden then item:SetBorderHidden(true) end
+                    if item.Icon then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.Icon) end
+                    if item.orbitBG then Orbit.Skin:RegisterMaskedSurface(anchorFrame, item.orbitBG) end
+                    if item.Bar and item.Bar.GetStatusBarTexture then
+                        local bt = item.Bar:GetStatusBarTexture()
+                        if bt then Orbit.Skin:RegisterMaskedSurface(anchorFrame, bt) end
+                    end
                 end
                 local borderStyle = Orbit.Skin:GetActiveBorderStyle()
                 if borderStyle then
@@ -371,7 +377,7 @@ function CDM:ProcessChildren(anchor)
             anchorFrame.orbitColumnWidth = iconW
             local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
             if hideBorders then Orbit.Skin:ClearIconGroupBorder(anchorFrame)
-            elseif pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice)
+            elseif pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice, activeChildren)
             else Orbit.Skin:ClearIconGroupBorder(anchorFrame) end
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
@@ -386,7 +392,7 @@ function CDM:ProcessChildren(anchor)
             anchorFrame._isIconContainer = true
             local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
             local pad = tonumber(skinSettings.padding) or 1
-            if pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice)
+            if pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice, activeChildren)
             else Orbit.Skin:ClearIconGroupBorder(anchorFrame) end
             Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
         end
@@ -633,6 +639,11 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
             b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
         end
         item:HookScript("OnSizeChanged", function(self) self:UpdateBarInsets() end)
+        if item.Icon then Orbit.Skin:RegisterMaskedSurface(item, item.Icon) end
+        if item.Bar and item.Bar.GetStatusBarTexture then
+            local bt = item.Bar:GetStatusBarTexture()
+            if bt then Orbit.Skin:RegisterMaskedSurface(item, bt) end
+        end
     end
 
     -- Apply border on parent item (not inner bar)
@@ -642,6 +653,7 @@ ApplyBuffBarSkin = function(item, skinSettings, barIndex)
     if not item.orbitBG then
         item.orbitBG = item:CreateTexture(nil, "BACKGROUND")
         item.orbitBG:SetAllPoints(item)
+        Orbit.Skin:RegisterMaskedSurface(item, item.orbitBG)
     end
     local bg = Constants.Colors.Background
     item.orbitBG:SetColorTexture(bg.r, bg.g, bg.b, bg.a)

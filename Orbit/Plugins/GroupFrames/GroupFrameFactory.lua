@@ -28,6 +28,8 @@ function Orbit.GroupFrameFactoryMixin:CreatePowerBar(parent, unit)
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
+    Orbit.Skin:RegisterMaskedSurface(parent, power.bg)
+    Orbit.Skin:RegisterMaskedSurface(parent, power:GetStatusBarTexture())
     return power
 end
 

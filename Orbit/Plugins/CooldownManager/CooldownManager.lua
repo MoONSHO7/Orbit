@@ -162,14 +162,14 @@ function Plugin:OnLoad()
         local iconTex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(21562) or "Interface\\Icons\\Spell_Holy_WordFortitude"
         icon:SetTexture(iconTex)
         icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        Orbit.Skin:RegisterMaskedSurface(preview, icon)
 
-        -- Bar background
         local bg = preview:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
         local bgColor = Orbit.Constants.Colors.Background
         bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+        Orbit.Skin:RegisterMaskedSurface(preview, bg)
 
-        -- Bar fill (partial width to simulate remaining duration)
         local fill = preview:CreateTexture(nil, "ARTWORK")
         fill:SetPoint("TOPLEFT", preview, "TOPLEFT", 0, 0)
         fill:SetPoint("BOTTOM", preview, "BOTTOM", 0, 0)
@@ -178,8 +178,8 @@ function Plugin:OnLoad()
         local texturePath = LSM and LSM:Fetch("statusbar", Orbit.db.GlobalSettings.Texture or "Blizzard") or ""
         fill:SetTexture(texturePath)
         fill:SetVertexColor(0.3, 0.7, 1, 1)
+        Orbit.Skin:RegisterMaskedSurface(preview, fill)
 
-        -- Border
         local borderSize = Orbit.db.GlobalSettings.BorderSize or 1
         Orbit.Skin:SkinBorder(preview, preview, borderSize)
 

@@ -94,6 +94,9 @@ function Icons:ApplyCustom(icon, settings)
     local r = self:FindRegions(icon)
     local tex = r.icon
     if tex then
+        Skin:RegisterMaskedSurface(icon, tex)
+        local container = icon:GetParent()
+        if container then Skin:RegisterMaskedSurface(container, tex) end
         local newWidth, newHeight, rw, rh = IL:CalculateGeometry(icon, settings)
         local scale = icon:GetEffectiveScale()
         newWidth = Pixel:Snap(newWidth, scale)

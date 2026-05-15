@@ -46,7 +46,7 @@ function Plugin:OnLoad()
     frame:SetSize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
     frame.systemIndex = SYSTEM_ID
     frame.editModeName = "Honor Bar"
-    frame.anchorOptions = { horizontal = true, vertical = true }
+    frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
     frame.orbitWidthSync = true
     frame.orbitHeightSync = true
     frame.orbitResizeBounds = { minW = 100, maxW = 1200, minH = 4, maxH = 40 }

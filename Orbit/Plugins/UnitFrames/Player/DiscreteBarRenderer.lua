@@ -174,6 +174,7 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
                 btn.Overlay:SetAllPoints()
                 btn.Overlay:SetTexture(OVERLAY_TEXTURE)
                 btn.Overlay:SetVertexColor(1, 1, 1, OVERLAY_BLEND_ALPHA)
+                Orbit.Skin:RegisterMaskedSurface(btn, btn.Overlay)
             end
             if btn.Overlay then
                 btn.Overlay:SetTexCoord((i - 1) / max, i / max, 0, 1)
@@ -191,6 +192,9 @@ function Renderer:ApplyButtonVisuals(plugin, frame, systemIndex)
                 if texturePath then btn.progressBar:SetStatusBarTexture(texturePath) end
                 local barColor = { r = r * INACTIVE_DIM_FACTOR, g = g * INACTIVE_DIM_FACTOR, b = b * INACTIVE_DIM_FACTOR }
                 Orbit.Skin:SkinStatusBar(btn.progressBar, texture, barColor)
+                if btn.progressBar:GetStatusBarTexture() then
+                    Orbit.Skin:RegisterMaskedSurface(btn, btn.progressBar:GetStatusBarTexture())
+                end
             end
         end
     end

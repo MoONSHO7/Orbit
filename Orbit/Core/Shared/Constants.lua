@@ -155,12 +155,23 @@ C.Settings = {
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
+local MASK_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Masks\\"
 C.BorderStyle = {
     Default = "flat",
     Offset = 6,
     EdgeSize = 16,
     Styles = {
-        { label = "Orbit Pixel", value = "flat" },
+        { label = "Orbit Squared", value = "flat" },
+        { label = "Orbit Rounded", value = "rounded",
+          edgeFile = MASK_PATH .. "Orbit_Rounded_Border",
+          sliceMargin = 12 },
+    },
+    -- Corner-roundness tiers for Orbit Rounded. `margin` is the SetTextureSliceMargins value
+    -- (= rendered corner pixel size); `mask` is the matching mask asset.
+    RoundedTiers = {
+        [1] = { margin = 6,  mask = MASK_PATH .. "Orbit_Rounded_Mask_1" },
+        [2] = { margin = 12, mask = MASK_PATH .. "Orbit_Rounded_Mask_2" },
+        [3] = { margin = 20, mask = MASK_PATH .. "Orbit_Rounded_Mask_3" },
     },
 }
 

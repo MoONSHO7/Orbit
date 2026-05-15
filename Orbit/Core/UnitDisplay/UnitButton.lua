@@ -81,6 +81,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.bg:SetAllPoints()
     local bg = Orbit.Constants.Colors.Background
     f.bg:SetColorTexture(bg.r, bg.g, bg.b, bg.a)
+    Orbit.Skin:RegisterMaskedSurface(f, f.bg)
 
     f.HealthDamageBar = CreateFrame("StatusBar", nil, f)
     f.HealthDamageBar:SetPoint("TOPLEFT", 0, 0)
@@ -90,6 +91,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealthDamageBar:SetStatusBarTexture(WHITE_TEXTURE)
     f.HealthDamageBar:SetStatusBarColor(0, 0, 0, 0)
     f.HealthDamageBar:SetFrameLevel(f:GetFrameLevel() + Constants.Levels.StatusBar)
+    Orbit.Skin:RegisterMaskedSurface(f, f.HealthDamageBar:GetStatusBarTexture())
 
     f.Health = CreateFrame("StatusBar", nil, f)
     f.Health:SetPoint("TOPLEFT", 0, 0)
@@ -100,6 +102,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.Health:SetStatusBarColor(0, 1, 0)
     f.Health:SetClipsChildren(true)
     f.Health:SetFrameLevel(f:GetFrameLevel() + Constants.Levels.StatusBar)
+    Orbit.Skin:RegisterMaskedSurface(f, f.Health:GetStatusBarTexture())
 
     f.HealthDamageTexture = f.Health:CreateTexture(nil, "BACKGROUND")
     f.HealthDamageTexture:SetColorTexture(DAMAGE_COLOR.r, DAMAGE_COLOR.g, DAMAGE_COLOR.b, DAMAGE_COLOR.a)
@@ -107,11 +110,15 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealthDamageTexture:SetPoint("BOTTOMLEFT", f.Health:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
     f.HealthDamageTexture:SetPoint("TOPRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
     f.HealthDamageTexture:SetPoint("BOTTOMRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
+    Orbit.Skin:RegisterMaskedSurface(f, f.HealthDamageTexture)
 
     Orbit.Skin:AddOverlay(f.Health, OVERLAY_PATH, "BLEND", OVERLAY_ALPHA)
+    if f.Health.Overlay then Orbit.Skin:RegisterMaskedSurface(f, f.Health.Overlay) end
 
     f.MyIncomingHealBar = CreatePredictionBar(f, f.Health, MY_HEAL_COLOR)
     f.OtherIncomingHealBar = CreatePredictionBar(f, f.Health, OTHER_HEAL_COLOR)
+    Orbit.Skin:RegisterMaskedSurface(f, f.MyIncomingHealBar:GetStatusBarTexture())
+    Orbit.Skin:RegisterMaskedSurface(f, f.OtherIncomingHealBar:GetStatusBarTexture())
 
     f.TotalAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
     local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
@@ -121,6 +128,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.TotalAbsorbBar:SetValue(0)
     f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + 1)
     f.TotalAbsorbBar:Hide()
+    Orbit.Skin:RegisterMaskedSurface(f, f.TotalAbsorbBar:GetStatusBarTexture())
 
     f.HealAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
     f.HealAbsorbBar:SetReverseFill(true)
@@ -133,6 +141,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealAbsorbBar:SetValue(0)
     f.HealAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + Constants.Levels.StatusBar)
     f.HealAbsorbBar:Hide()
+    Orbit.Skin:RegisterMaskedSurface(f, f.HealAbsorbBar:GetStatusBarTexture())
 
     f.HealAbsorbMask = CreateFrame("Frame", nil, f.HealAbsorbBar)
     f.HealAbsorbMask:SetClipsChildren(true)

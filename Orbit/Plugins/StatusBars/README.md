@@ -79,6 +79,7 @@ both also inherit `RegisterStandardEvents` (apply on `PLAYER_ENTERING_WORLD`, co
 ## edit-mode integration & taint
 
 - both plugins register via `OrbitEngine.Frame:AttachSettingsListener` / `RestorePosition`; they're independently draggable with their own edit-mode handles. `orbitWidthSync` / `orbitHeightSync` = true so chained bars inherit dimension changes.
+- `anchorOptions` sets `mergeBorders = true` — when the two bars are snapped edge-to-edge at padding 0, their adjacent borders collapse into a single group border (`Orbit.Skin:UpdateGroupBorder`). `StatusBarBase:ApplyTheme`'s `SkinBorder` call installs the `SetBorderHidden` hook the merge mechanism needs.
 - `ApplySettings` does its non-secret work synchronously (size / theme / overrides / position) and defers `UpdateBar` via `C_Timer.After(0, …)` — secret reads then happen outside blizzard's synchronous edit-mode-exit callback (see `Core/Plugin/PluginMixin.lua`: Exit is non-debounced).
 - `StatusBarBase:SetFill` / `SetOverlayFill` guard with `issecretvalue()` so the StatusBar widget never stores secret internal state.
 - `orbitResizeBounds = { minW=100, maxW=1200, minH=4, maxH=40 }` clamps drag-resize to the same range as the layout sliders.

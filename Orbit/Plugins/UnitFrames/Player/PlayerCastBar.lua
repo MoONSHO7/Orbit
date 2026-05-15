@@ -347,11 +347,14 @@ function Plugin:OnLoad()
             else icon:SetPoint("RIGHT", preview, "LEFT", 0, 0) end
             icon:SetTexture(PREVIEW_ICON_ID)
             icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            Orbit.Skin:RegisterMaskedSurface(preview, icon)
         end
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetAllPoints()
+        bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
         bar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
         bar:SetValue(PREVIEW_CAST_PROGRESS)
+        Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
         local textureName = Plugin:GetSetting(1, "Texture")
         local texturePath = textureName and LSM:Fetch("statusbar", textureName)
         if texturePath then bar:SetStatusBarTexture(texturePath) end
@@ -361,6 +364,7 @@ function Plugin:OnLoad()
             if c then bar:SetStatusBarColor(c.r, c.g, c.b) end
         end
         preview.CastBar = bar
+        Orbit.Skin:UpdateRoundedMask(preview, false)
         return preview
     end
 

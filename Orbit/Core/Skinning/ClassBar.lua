@@ -17,6 +17,8 @@ function ClassBar:SkinButton(btn, settings)
         btn.orbitBg:SetAllPoints(btn)
         btn.orbitBar = btn:CreateTexture(nil, "BORDER")
         btn.orbitBar:SetAllPoints(btn)
+        Skin:RegisterMaskedSurface(btn, btn.orbitBg)
+        Skin:RegisterMaskedSurface(btn, btn.orbitBar)
     end
 
     if btn.orbitBackdrop then btn.orbitBackdrop:Hide() end
@@ -70,6 +72,11 @@ function ClassBar:SkinStatusBar(container, bar, settings)
         if not container.orbitBg then
             container.orbitBg = container:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers.BackdropDeep)
             container.orbitBg:SetAllPoints(container)
+        end
+        Skin:RegisterMaskedSurface(container, container.orbitBg)
+        if bar.GetStatusBarTexture then
+            local tex = bar:GetStatusBarTexture()
+            if tex then Skin:RegisterMaskedSurface(container, tex) end
         end
     end
 

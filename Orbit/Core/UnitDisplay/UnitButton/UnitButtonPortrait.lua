@@ -33,9 +33,11 @@ function PortraitMixin:CreatePortrait()
     container.StaticTexture:SetAllPoints()
     container.orbitOriginalWidth = PORTRAIT_DEFAULT_SIZE
     container.orbitOriginalHeight = PORTRAIT_DEFAULT_SIZE
+    Orbit.Skin:RegisterMaskedSurface(container, container.StaticTexture)
 
     container.bg = container:CreateTexture(nil, "BACKGROUND")
     container.bg:SetAllPoints()
+    Orbit.Skin:RegisterMaskedSurface(container, container.bg)
 
     local initialOS = Engine.Pixel:Multiple(PORTRAIT_RING_OVERSHOOT, cScale)
     container.Ring = container:CreateTexture(nil, "OVERLAY")
