@@ -77,8 +77,8 @@ function Plugin:AddSettings(dialog, systemFrame)
         if self:GetSyncSource(FOCUS_FRAME_INDEX) == FOCUS_FRAME_INDEX then
             local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
             local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
-            local widthParams = { key = "Width", label = "Width", min = 50, max = 400, default = 160 }
-            local heightParams = { key = "Height", label = "Height", min = 20, max = 100, default = 40 }
+            local widthParams = { key = "Width", label = L.CMN_WIDTH, min = 50, max = 400, default = 160 }
+            local heightParams = { key = "Height", label = L.CMN_HEIGHT, min = 20, max = 100, default = 40 }
             if isAnchored and anchorAxis == "y" then
                 widthParams, heightParams = nil, nil
             end

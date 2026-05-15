@@ -90,10 +90,10 @@ function W:ShowTooltip()
             if sender2 then GameTooltip:AddLine("- " .. sender2, 1, 1, 1) end
             if sender3 then GameTooltip:AddLine("- " .. sender3, 1, 1, 1) end
         else
-            GameTooltip:AddLine("You have unread mail!", 1, 0.7, 0)
+            GameTooltip:AddLine(L.PLU_DT_MAIL_UNREAD, 1, 0.7, 0)
         end
     else
-        GameTooltip:AddLine("No new mail.", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(L.PLU_DT_MAIL_NONE, 0.5, 0.5, 0.5)
     end
     GameTooltip:Show()
 end

@@ -81,6 +81,9 @@ function ABS:Apply(button, settings)
     local bgColor = settings.backdropColor or Constants.Colors.Background
     button.orbitBackdrop:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
     button.orbitBackdrop:Show()
+    Skin:RegisterMaskedSurface(button, button.orbitBackdrop)
+    local container = button:GetParent()
+    if container then Skin:RegisterMaskedSurface(container, button.orbitBackdrop) end
 
     local icon = button.icon or button.Icon
     if icon then icon:ClearAllPoints(); icon:SetAllPoints(button) end
@@ -92,6 +95,9 @@ function ABS:Apply(button, settings)
         button.SpellHighlightTexture:ClearAllPoints()
         button.SpellHighlightTexture:SetAllPoints(button)
         button.SpellHighlightTexture:SetColorTexture(1, 1, 1, SPELL_HIGHLIGHT_ALPHA)
+        Skin:RegisterMaskedSurface(button, button.SpellHighlightTexture)
+        local shParent = button:GetParent()
+        if shParent then Skin:RegisterMaskedSurface(shParent, button.SpellHighlightTexture) end
     end
 
     if button.QuickKeybindHighlightTexture then
@@ -104,12 +110,18 @@ function ABS:Apply(button, settings)
         button.NewActionTexture:ClearAllPoints()
         button.NewActionTexture:SetAllPoints(button)
         button.NewActionTexture:SetColorTexture(1, 1, 1, 1)
+        Skin:RegisterMaskedSurface(button, button.NewActionTexture)
+        local naParent = button:GetParent()
+        if naParent then Skin:RegisterMaskedSurface(naParent, button.NewActionTexture) end
     end
 
     if button.Flash then
         button.Flash:ClearAllPoints()
         button.Flash:SetAllPoints(button)
         button.Flash:SetColorTexture(FLASH_COLOR.r, FLASH_COLOR.g, FLASH_COLOR.b, FLASH_COLOR.a)
+        Skin:RegisterMaskedSurface(button, button.Flash)
+        local flParent = button:GetParent()
+        if flParent then Skin:RegisterMaskedSurface(flParent, button.Flash) end
     end
 
     local autoCast = button.AutoCastOverlay or button.AutoCastFrame or button.Shine
@@ -195,6 +207,9 @@ function ABS:Apply(button, settings)
         button.orbitHighlight:Hide()
         button:HookScript("OnEnter", function(self) if self.orbitHighlight then self.orbitHighlight:Show() end end)
         button:HookScript("OnLeave", function(self) if self.orbitHighlight then self.orbitHighlight:Hide() end end)
+        Skin:RegisterMaskedSurface(button, button.orbitHighlight)
+        local hlParent = button:GetParent()
+        if hlParent then Skin:RegisterMaskedSurface(hlParent, button.orbitHighlight) end
     end
 
     -- [ KEYPRESS FLASH ]--------------------------------------------------------------------------------
@@ -211,6 +226,9 @@ function ABS:Apply(button, settings)
         flash:SetColorTexture(kpColor.r, kpColor.g, kpColor.b, kpColor.a)
         button.orbitKeypressFlash = flashFrame
         button.orbitKeypressTexture = flash
+        Skin:RegisterMaskedSurface(button, flash)
+        local kpParent = button:GetParent()
+        if kpParent then Skin:RegisterMaskedSurface(kpParent, flash) end
         local fadeGroup = flashFrame:CreateAnimationGroup()
         fadeGroup:SetToFinalAlpha(true)
         local fadeOut = fadeGroup:CreateAnimation("Alpha")

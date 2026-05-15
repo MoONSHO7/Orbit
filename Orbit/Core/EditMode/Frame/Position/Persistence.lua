@@ -8,6 +8,27 @@ local Engine = Orbit.Engine
 Engine.FramePersistence = {}
 local Persistence = Engine.FramePersistence
 
+-- [ ANCESTRY CAPTURE ] ------------------------------------------------------------------------------
+local MAX_ANCESTRY_DEPTH = 10
+local function BuildAncestry(targetFrame)
+    if not targetFrame or not Engine.FrameAnchor or not Engine.FrameAnchor.GetAnchorParent then return nil end
+    local list
+    local seen
+    local cur = Engine.FrameAnchor:GetAnchorParent(targetFrame)
+    local count = 0
+    while cur and count < MAX_ANCESTRY_DEPTH do
+        local name = cur.GetName and cur:GetName()
+        if not name then break end
+        if seen and seen[cur] then break end
+        if not list then list = {}; seen = {} end
+        list[#list + 1] = name
+        seen[cur] = true
+        cur = Engine.FrameAnchor:GetAnchorParent(cur)
+        count = count + 1
+    end
+    return list
+end
+
 -- [ PENDING ANCHOR QUEUE ] --------------------------------------------------------------------------
 -- Stash anchors whose target doesn't exist yet; drained when the target registers via AttachSettingsListener.
 Persistence.pendingByTarget = Persistence.pendingByTarget or {}
@@ -18,6 +39,15 @@ function Persistence:QueuePendingAnchor(childFrame, targetName, edge, padding, a
     if not bucket then
         bucket = {}
         self.pendingByTarget[targetName] = bucket
+    end
+    for i = 1, #bucket do
+        local entry = bucket[i]
+        if entry.child == childFrame then
+            entry.edge = edge
+            entry.padding = padding or 0
+            entry.align = align
+            return
+        end
     end
     bucket[#bucket + 1] = {
         child = childFrame,
@@ -149,42 +179,59 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
 
     systemIndex = systemIndex or 1
 
-    -- If the saved anchor target is currently virtualized/disabled, physically
-    -- route through the nearest non-skipped ancestor so the child appears at
-    -- the ancestor's edge instead of following the parked target off-screen.
-    -- Logical intent is preserved on `targetFrame` so RestoreLogicalChildren
-    -- pulls the child home when the target becomes visible again. Returns
-    -- true only if CreateAnchor actually succeeds — if no non-skipped ancestor
-    -- exists, or if IsEdgeOccupied/cycle check blocks the attach, returns
-    -- false so the caller falls through to Position/defaultPosition. Logical
-    -- intent is set unconditionally so the child returns home later.
-    local function RouteAroundSkipped(targetFrame, edge, padding, align)
-        Engine.FrameAnchor:SetLogicalAnchor(frame, targetFrame, edge, padding, nil, align)
-        local ancestor = Engine.FrameAnchor:GetAnchorParent(targetFrame)
-        while ancestor and Engine.AnchorGraph:IsSkipped(ancestor) do
-            ancestor = Engine.FrameAnchor:GetAnchorParent(ancestor)
-        end
-        if not ancestor then return false end
-        return Engine.FrameAnchor:CreateAnchor(frame, ancestor, edge, padding, nil, align, true, true)
-    end
+    local function ResolveAnchor(anchor)
+        if not anchor or not anchor.target then return false end
+        local targetFrame = _G[anchor.target]
+        local padding = anchor.padding or 0
+        local edge, align = anchor.edge, anchor.align
 
-    -- Try to restore ephemeral state first (Edit Mode Dirty State)
-    if Engine.PositionManager then
-        local anchor = Engine.PositionManager:GetAnchor(frame)
-        if anchor and anchor.target then
-            local targetFrame = _G[anchor.target]
-            if targetFrame then
-                local padding = anchor.padding or 0
-                if Engine.AnchorGraph:IsSkipped(targetFrame) then
-                    if RouteAroundSkipped(targetFrame, anchor.edge, padding, anchor.align) then
-                        return true
-                    end
-                else
-                    Engine.FrameAnchor:CreateAnchor(frame, targetFrame, anchor.edge, padding, nil, anchor.align, true)
+        if targetFrame then
+            Engine.FrameAnchor:SetLogicalAnchor(frame, targetFrame, edge, padding, nil, align)
+        else
+            Persistence:QueuePendingAnchor(frame, anchor.target, edge, padding, align)
+        end
+
+        if targetFrame and not Engine.AnchorGraph:IsSkipped(targetFrame)
+            and Engine.FrameAnchor:CreateAnchor(frame, targetFrame, edge, padding, nil, align, true, true) then
+            return true
+        end
+
+        if targetFrame then
+            local cur = Engine.FrameAnchor:GetAnchorParent(targetFrame)
+            while cur do
+                if not Engine.AnchorGraph:IsSkipped(cur)
+                    and Engine.FrameAnchor:CreateAnchor(frame, cur, edge, padding, nil, align, true, true) then
+                    return true
+                end
+                cur = Engine.FrameAnchor:GetAnchorParent(cur)
+            end
+        end
+
+        local list = anchor.ancestry
+        if list then
+            for i = 1, #list do
+                local cand = _G[list[i]]
+                if cand and not Engine.AnchorGraph:IsSkipped(cand)
+                    and Engine.FrameAnchor:CreateAnchor(frame, cand, edge, padding, nil, align, true, true) then
                     return true
                 end
             end
+        elseif anchor.fallback then
+            local cand = _G[anchor.fallback]
+            if cand and not Engine.AnchorGraph:IsSkipped(cand)
+                and Engine.FrameAnchor:CreateAnchor(frame, cand, edge, padding, nil, align, true, true) then
+                return true
+            end
         end
+
+        local existing = Engine.FrameAnchor.anchors[frame]
+        if existing and existing.parent == targetFrame then return true end
+
+        return false
+    end
+
+    if Engine.PositionManager then
+        if ResolveAnchor(Engine.PositionManager:GetAnchor(frame)) then return true end
 
         local pos = Engine.PositionManager:GetPosition(frame)
         if pos and pos.point then
@@ -198,39 +245,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
         end
     end
 
-    -- Try to restore SavedVariables Anchor first. ReadAnchor checks the
-    -- current spec's per-spec store before falling back to the global plugin
-    -- setting, so plugins whose target is per-spec (Tracked containers) load
-    -- the right anchor for the current spec.
-    local anchor = self:ReadAnchor(plugin, systemIndex)
-    if anchor and anchor.target then
-        local targetFrame = _G[anchor.target]
-        if targetFrame then
-            local padding = anchor.padding or 0
-            if Engine.AnchorGraph:IsSkipped(targetFrame) then
-                if RouteAroundSkipped(targetFrame, anchor.edge, padding, anchor.align) then
-                    return true
-                end
-                -- RouteAroundSkipped set logical anchor but couldn't create physical
-                -- anchor (no non-skipped ancestor). If DrainPendingFor already wired a
-                -- valid physical anchor to this target, preserve it — falling through
-                -- to Position/defaultPosition would break the anchor that DrainPending
-                -- established during the cross-plugin load-order race.
-                local existingAnchor = Engine.FrameAnchor.anchors[frame]
-                if existingAnchor and existingAnchor.parent == targetFrame then
-                    return true
-                end
-                -- Fall through: no non-skipped ancestor and no existing anchor
-            else
-                Engine.FrameAnchor:CreateAnchor(frame, targetFrame, anchor.edge, padding, nil, anchor.align, true)
-                return true
-            end
-        else
-            -- Target plugin hasn't loaded yet. Stash the intent so DrainPendingFor
-            -- can wire it up the moment the target frame registers.
-            self:QueuePendingAnchor(frame, anchor.target, anchor.edge, anchor.padding or 0, anchor.align)
-        end
-    end
+    if ResolveAnchor(self:ReadAnchor(plugin, systemIndex)) then return true end
 
     -- Restore Position (also spec-data-aware via ReadPosition)
     local pos = self:ReadPosition(plugin, systemIndex)
@@ -336,6 +351,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                 local padding = 0
                 local align = nil
                 local fallback = nil
+                local ancestry = nil
                 if Engine.FrameAnchor then
                     if Engine.FrameAnchor.anchors[f] then
                         padding = Engine.FrameAnchor.anchors[f].padding or 0
@@ -343,6 +359,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                     end
                     local targetFrame = type(x) == "table" and x or _G[x]
                     if targetFrame then
+                        ancestry = BuildAncestry(targetFrame)
                         local rootParent = targetFrame
                         if Engine.FrameAnchor.GetRootParent then
                             rootParent = Engine.FrameAnchor:GetRootParent(targetFrame)
@@ -352,7 +369,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                         end
                     end
                 end
-                Engine.PositionManager:SetAnchor(f, x, y, padding, align, fallback)
+                Engine.PositionManager:SetAnchor(f, x, y, padding, align, fallback, ancestry)
             else
                 Engine.PositionManager:SetPosition(f, point, x, y)
             end
@@ -421,6 +438,13 @@ function Persistence:RestoreAffectedBySpecChange()
     end
 end
 
+-- [ PROFILE-CHANGE RE-RESTORE ] ---------------------------------------------------------------------
+function Persistence:RestoreAffectedByProfileChange()
+    for frame, info in pairs(self._attachedFrames) do
+        self:RestorePosition(frame, info.plugin, info.systemIndex)
+    end
+end
+
 -- Safety net: drain all pending anchors after PLAYER_ENTERING_WORLD.
 if Orbit.EventBus then
     Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
@@ -432,6 +456,14 @@ if Orbit.EventBus then
         C_Timer.After(0, function()
             C_Timer.After(0, function()
                 Persistence:RestoreAffectedBySpecChange()
+            end)
+        end)
+    end)
+
+    Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
+        C_Timer.After(0, function()
+            C_Timer.After(0, function()
+                Persistence:RestoreAffectedByProfileChange()
             end)
         end)
     end)

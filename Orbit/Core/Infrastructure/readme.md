@@ -18,6 +18,8 @@ provides foundational services: event dispatch, pixel-perfect math, combat state
 | KeybindSystem.lua | keybind resolution for action bar buttons and tracked abilities. |
 | TickMixin.lua | tick mark overlay for status bars (recharge segments). |
 | HealerAuraRegistry.lua | healer-specific spell and raid buff registry. maps aura slots by class/spec. |
+| ErrorHandler.lua | trust-boundary error catcher. `Wrap` guards plugin lifecycle / event callbacks so a single misbehaving module can't take down the addon; failures print to chat and ring-buffer (max 50) in `Orbit.db.ErrorLog`. |
+| StrataEngine.lua | dynamic Z-index management for root-level containers. persists entity ordering to the active profile. provides `GetFrameLevel()` for plugin containers and `BumpUp/BumpDown/BumpAbove` for edit-mode layering controls. fires `STRATA_UPDATED`. |
 
 ## adding a new system
 

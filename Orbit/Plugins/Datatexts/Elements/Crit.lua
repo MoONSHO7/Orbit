@@ -16,11 +16,11 @@ function W:Update()
     if pct == self._lastPct and rating == self._lastRating and self.showPercentage == self._lastShowPct then return end
     self._lastPct, self._lastRating, self._lastShowPct = pct, rating, self.showPercentage
     if self.showPercentage then
-        if pct then self:SetText(string.format("Crit: |cffffffff%.2f%%|r", pct))
-        else self:SetText("Crit: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
+        if pct then self:SetText(L.PLU_DT_STAT_CRIT_LABEL .. string.format("|cffffffff%.2f%%|r", pct))
+        else self:SetText(L.PLU_DT_STAT_CRIT_LABEL .. "|cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
     else
-        if rating then self:SetText(string.format("Crit: |cffffffff%d|r", rating))
-        else self:SetText("Crit: |cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
+        if rating then self:SetText(L.PLU_DT_STAT_CRIT_LABEL .. string.format("|cffffffff%d|r", rating))
+        else self:SetText(L.PLU_DT_STAT_CRIT_LABEL .. "|cffffffff" .. L.CMN_HIDDEN_VALUE .. "|r") end
     end
 end
 
@@ -31,8 +31,8 @@ function W:ShowTooltip()
 
     local pct = NumericOrNil(GetCritChance and GetCritChance()) or NumericOrNil(GetMeleeCritChance and GetMeleeCritChance())
     local rating = NumericOrNil(GetCombatRating(CR_CRIT_MELEE))
-    GameTooltip:AddDoubleLine("Rating:", rating and string.format("%d", rating) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Percentage:", pct and string.format("%.2f%%", pct) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_STAT_RATING, rating and string.format("%d", rating) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_STAT_PERCENT, pct and string.format("%.2f%%", pct) or L.CMN_HIDDEN_VALUE, 1, 1, 1, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -53,7 +53,7 @@ function W:Init()
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetCategory("CHARACTER")
-    self.leftClickHint = "Toggle Percentage/Rating"
+    self.leftClickHint = L.PLU_DT_STAT_TOGGLE
     self:Register()
     self:Update()
 end

@@ -186,16 +186,16 @@ if EventRegistry then
     EventRegistry:RegisterCallback("EditMode.Exit",  function() C_Timer.After(0.1, UpdateAllFrames) end, Mixin)
 end
 
--- Hook CooldownViewerSettings show/hide (delayed for load order)
-C_Timer.After(2, function()
-    if CooldownViewerSettings then
-        CooldownViewerSettings:HookScript("OnShow", function() C_Timer.After(0.1, UpdateAllFrames) end)
-        CooldownViewerSettings:HookScript("OnHide", function() C_Timer.After(0.1, UpdateAllFrames) end)
+-- Hook CooldownViewerSettings + PlayerSpellsFrame show/hide. Both frames are load-on-demand
+-- (Blizzard_CooldownViewer, Blizzard_PlayerSpells), so hook via ADDON_LOADED.
+local function HookCooldownViewer()
+    local cvs = CooldownViewerSettings
+    if cvs and not cvs._orbitOOCHooked then
+        cvs:HookScript("OnShow", function() C_Timer.After(0.1, UpdateAllFrames) end)
+        cvs:HookScript("OnHide", function() C_Timer.After(0.1, UpdateAllFrames) end)
+        cvs._orbitOOCHooked = true
     end
-end)
-
--- Hook PlayerSpellsFrame (spellbook / talents) show/hide for action bar reveal.
--- The frame is load-on-demand (Blizzard_PlayerSpells), so hook via ADDON_LOADED.
+end
 local function HookSpellUI()
     local psf = PlayerSpellsFrame
     if psf and not psf._orbitOOCHooked then
@@ -204,13 +204,16 @@ local function HookSpellUI()
         psf._orbitOOCHooked = true
     end
 end
+HookCooldownViewer()
 HookSpellUI()
-local spellUILoader = CreateFrame("Frame")
-spellUILoader:RegisterEvent("ADDON_LOADED")
-spellUILoader:SetScript("OnEvent", function(_, _, addon)
-    if addon == "Blizzard_PlayerSpells" then
-        HookSpellUI()
-        spellUILoader:UnregisterAllEvents()
+local addonLoader = CreateFrame("Frame")
+addonLoader:RegisterEvent("ADDON_LOADED")
+addonLoader:SetScript("OnEvent", function(self, _, addon)
+    if addon == "Blizzard_CooldownViewer" then HookCooldownViewer() end
+    if addon == "Blizzard_PlayerSpells" then HookSpellUI() end
+    if CooldownViewerSettings and CooldownViewerSettings._orbitOOCHooked
+       and PlayerSpellsFrame and PlayerSpellsFrame._orbitOOCHooked then
+        self:UnregisterAllEvents()
     end
 end)
 

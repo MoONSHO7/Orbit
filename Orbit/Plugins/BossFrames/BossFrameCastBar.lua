@@ -192,19 +192,19 @@ function CB:SetupHooks(castBar, unit)
         local direction = isChanneled and 1 or 0
         local bar = castBar.Bar
         if bar and bar.SetTimerDuration then
-            pcall(bar.SetTimerDuration, bar, durationObj, 0, direction)
+            bar:SetTimerDuration(durationObj, 0, direction)
         end
         -- Protected overlay for non-interruptible casts
         local overlay = castBar.protectedOverlay
         if overlay then
             if overlay.SetTimerDuration then
-                pcall(overlay.SetTimerDuration, overlay, durationObj, 0, direction)
+                overlay:SetTimerDuration(durationObj, 0, direction)
             end
             if name then
                 if type(overlay.SetAlphaFromBoolean) == "function" then
                     overlay:SetAlphaFromBoolean(notInterruptible, 1, 0)
                 else
-                    pcall(overlay.SetAlpha, overlay, 1)
+                    overlay:SetAlpha(1)
                 end
             else
                 overlay:SetAlpha(0)
@@ -223,10 +223,10 @@ function CB:SetupHooks(castBar, unit)
         end
         ApplyIconLayout(castBar, plugin)
         if castBar.Icon and castBar.Icon:IsShown() then
-            pcall(function() castBar.Icon:SetTexture(texture or 136116) end)
+            castBar.Icon:SetTexture(texture or 136116)
         end
         if castBar.Text and castBar.Text:IsShown() then
-            pcall(function() castBar.Text:SetText(name) end)
+            castBar.Text:SetText(name)
         end
         castBar:Show()
     end
@@ -294,7 +294,7 @@ function CB:SetupHooks(castBar, unit)
                 if n and type(castBar.protectedOverlay.SetAlphaFromBoolean) == "function" then
                     castBar.protectedOverlay:SetAlphaFromBoolean(ni, 1, 0)
                 elseif n then
-                    pcall(castBar.protectedOverlay.SetAlpha, castBar.protectedOverlay, 1)
+                    castBar.protectedOverlay:SetAlpha(1)
                 end
             end
         end,

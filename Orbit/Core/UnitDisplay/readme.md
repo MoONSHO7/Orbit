@@ -22,7 +22,7 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | UnitPowerBarMixin.lua | power bar (mana/energy/rage) shared across player, target, focus. |
 | ResourceBarMixin.lua | class resource bars (combo points, holy power, essence, etc.). |
 | CastBarMixin.lua | cast bar update logic (channeling, empowering, interrupt detection). |
-| AuraMixin.lua | aura (buff/debuff) display and filtering. |
+| AuraMixin.lua | aura (buff/debuff) display and filtering. caches per-container layout via `_auraFingerprint` keyed by aura instance IDs to skip unchanged rebuilds; settings-changing call sites (e.g. plugin `ApplySettings`) must call `Mixin:InvalidateContainerLayout(frame)` before the next update or the container will keep its old layout. reads `ComponentPositions` via `plugin:GetComponentPositions` (transaction-aware) — never via raw `GetSetting`. |
 | AuraLayout.lua | aura icon grid layout math. |
 | AuraPreview.lua | aura preview generation for canvas mode. |
 | GroupAuraFilters.lua | aura filter rules for party/raid (dispellable, defensive, etc.). |
@@ -32,7 +32,7 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | GroupCanvasRegistration.lua | shared canvas mode component registration and icon position application. |
 | StatusIconMixin.lua | status indicators (defensive, crowd control, movement speed), selection/aggro highlight borders via `Skin:ApplyHighlightBorder`. |
 | AggroIndicatorMixin.lua | threat/aggro border coloring via `Skin:ApplyHighlightBorder`. |
-| DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. caches the dispel color curve on plugin (`_dispelCurveCache`), invalidated via `InvalidateDispelCurve`. accepts pre-fetched harmful auras from snapshot. |
+| DispelIndicatorMixin.lua | dispellable debuff type indication with `DispelOnlyByMe` filter support. drives both the dispel glow (via `GlowController`) and the optional `frame.DispelIcon` container (a Frame holding one sub-texture per dispel type — `aura.dispelName` is secret in encounters, so per-type alpha is driven via `GetAuraDispelTypeColor` with per-type alpha curves; `SetAlpha` accepts secret values, so the matching texture wins via C++ sink). caches the dispel color curve on plugin (`_dispelCurveCache`), invalidated via `InvalidateDispelCurve`. accepts pre-fetched harmful auras from snapshot. |
 | PandemicGlow.lua | thin adapter for pandemic glow on UnitDisplay aura icons. evaluates pandemic curves and delegates rendering to `GlowController`. |
 | UnitAuraGridMixin.lua | grid-based aura display with size categories (big/small). owns the mixin surface and the file-local helpers (`ResolveGrowthDirection`, `UpdateCollapseArrow`, `CropIconTexture`) which are re-exposed on `Mixin._Internal` for the split files below. |
 | UnitAuraGridExpirationPulse.lua | shared expiration pulse ticker. attaches `Mixin._RegisterExpirationPulse(icon, durObj)`. owns the pulse list and lazy `C_Timer.NewTicker` that cancels when the list drains. lives outside the mixin file because mixins must be stateless. |

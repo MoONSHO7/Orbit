@@ -45,8 +45,8 @@ function Plugin:OnLoad()
     local frame = Orbit.StatusBarBase:Create(FRAME_NAME, UIParent)
     frame:SetSize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
     frame.systemIndex = SYSTEM_ID
-    frame.editModeName = "Honor Bar"
-    frame.anchorOptions = { horizontal = true, vertical = true }
+    frame.editModeName = L.PLU_HONOR_BAR_NAME
+    frame.anchorOptions = { horizontal = true, vertical = true, mergeBorders = true }
     frame.orbitWidthSync = true
     frame.orbitHeightSync = true
     frame.orbitResizeBounds = { minW = 100, maxW = 1200, minH = 4, maxH = 40 }
@@ -119,10 +119,10 @@ function Plugin:UpdateBar()
     local ctx = {
         cur = (not issecretvalue(current)) and current or nil,
         max = (not issecretvalue(max)) and max or nil,
-        level = level, name = "Honor",
+        level = level, name = L.PLU_HONOR_NAME,
         perhour = rate, session = gained, eta = eta,
     }
-    Orbit.StatusBarBase:SetComponentText(frame.Name, "Honor")
+    Orbit.StatusBarBase:SetComponentText(frame.Name, L.PLU_HONOR_NAME)
     Orbit.StatusBarBase:SetComponentText(frame.Level, tostring(level))
     Orbit.StatusBarBase:SetComponentText(frame.Value, Orbit.StatusBarTextTemplate:Render(Orbit.StatusBarBase:ResolveTemplate(self, SYSTEM_ID), ctx))
     Orbit.StatusBarBase:SyncPreviewText(self, frame)
@@ -168,7 +168,7 @@ function Plugin:OnShiftClick()
     if not editBox and ChatFrame_OpenChat then ChatFrame_OpenChat("") end
     editBox = ChatEdit_GetActiveWindow()
     if not editBox then return end
-    editBox:Insert(string.format("[Honor: Level %d — %d/%d (%.1f%%)]",
+    editBox:Insert(L.PLU_HONOR_CHAT_LINK_F:format(
         UnitHonorLevel("player") or 0, cur, max, (cur / max) * 100))
 end
 

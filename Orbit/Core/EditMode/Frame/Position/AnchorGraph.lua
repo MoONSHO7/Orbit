@@ -183,18 +183,25 @@ function Graph:ReconcileChain(root, anchorModule)
         visited[root] = true
         local children = anchorModule:GetAnchoredChildren(root)
         for _, gc in ipairs(children) do
-            local fallback = nil
-            if Orbit.Engine.PositionManager then
-                local saved = Orbit.Engine.PositionManager:GetAnchor(gc)
-                if saved and saved.fallback then fallback = _G[saved.fallback] end
+            local target
+            local ephem = Orbit.Engine.PositionManager and Orbit.Engine.PositionManager:GetAnchor(gc)
+            local conf = (not ephem) and gc.orbitPlugin and gc.systemIndex
+                and gc.orbitPlugin:GetSetting(gc.systemIndex, "Anchor") or nil
+            local source = ephem or conf
+            if source then
+                if source.ancestry then
+                    for i = 1, #source.ancestry do
+                        local f = _G[source.ancestry[i]]
+                        if f and not self:IsSkipped(f) then target = f; break end
+                    end
+                elseif source.fallback then
+                    local f = _G[source.fallback]
+                    if f and not self:IsSkipped(f) then target = f end
+                end
             end
-            if not fallback and gc.orbitPlugin and gc.systemIndex then
-                local conf = gc.orbitPlugin:GetSetting(gc.systemIndex, "Anchor")
-                if conf and conf.fallback then fallback = _G[conf.fallback] end
-            end
-            if fallback then
-                if PromoteGrandchild(gc, fallback) then
-                    self:ReconcileChain(fallback, anchorModule)
+            if target then
+                if PromoteGrandchild(gc, target) then
+                    self:ReconcileChain(target, anchorModule)
                 end
             else
                 Reconcile(gc)

@@ -21,10 +21,10 @@ local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 -- [ SHAPE ] -----------------------------------------------------------------------------------------
 -- The active BorderRing option can override the round mask with its own shipped texture file —
--- e.g. Blizzard uses minimap.tga which has cardinal spike protrusions matching the ring atlas.
--- Other options fall back to Circle.tga (MASK_ROUND).
+-- e.g. Blizzard uses Orbit_BlizzMinimap.tga which has cardinal spike protrusions matching the ring atlas.
+-- Other options fall back to Orbit_Circle.tga (MASK_ROUND).
 function Plugin:GetRoundMaskSource()
-    -- HUD view and the Splatter shape both render through the splatter.tga mask.
+    -- HUD view and the Splatter shape both render through the Orbit_Splatter.tga mask.
     if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then return C.MASK_HUD end
     if (self:GetSetting(SYSTEM_ID, "Shape") or "square") == "splatter" then return C.MASK_HUD end
     local opt = BORDER_RING_OPTIONS[self:GetSetting(SYSTEM_ID, "BorderRing") or "none"]
@@ -60,15 +60,28 @@ function Plugin:ApplyShape()
     end
 
     local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
-    local bc = self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR
+    local bc = self:GetResolvedBorderColor()
     if isMasked then
         Orbit.Skin:ClearNineSliceBorder(frame)
         Orbit.Skin:SkinBorder(frame, frame, 0, bc, false, true)
-        self:ApplyBorderRing(bc)
     else
-        Orbit.Skin:SkinBorder(frame, frame, borderSize, bc)
-        if frame.BorderRing then frame.BorderRing:Hide() end
+        -- Square shape keeps a square border even under a rounded global Border Style: the
+        -- Minimap render surface can't be given matching rounded corners (SetMaskTexture stretches).
+        Orbit.Skin:SkinBorder(frame, frame, borderSize, bc, false, true)
     end
+    self:ApplyBorderRing(bc)
+end
+
+-- [ BORDER COLOR ] ----------------------------------------------------------------------------------
+-- Resolves the stored BorderColor (which may be a class-pin sentinel { type = "class", a = ... })
+-- to a flat {r,g,b,a} suitable for SkinBorder / SetVertexColor / SetColorTexture.
+function Plugin:GetResolvedBorderColor()
+    local raw = self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR
+    if raw.type == "class" and OrbitEngine.ClassColor then
+        local cc = OrbitEngine.ClassColor:GetCurrentClassColor()
+        return { r = cc.r, g = cc.g, b = cc.b, a = raw.a or 1 }
+    end
+    return raw
 end
 
 -- [ BORDER RING ] -----------------------------------------------------------------------------------
@@ -76,7 +89,7 @@ end
 function Plugin:GetEffectiveRingChoice()
     local view = self:GetSetting(SYSTEM_ID, "View") or "minimap"
     local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
-    if view == "hud" or shape == "splatter" then return "none" end
+    if view == "hud" or shape ~= "round" then return "none" end
     return self:GetSetting(SYSTEM_ID, "BorderRing") or "none"
 end
 
@@ -85,6 +98,9 @@ function Plugin:ApplyBorderRing(color)
     local solid = self.frame and self.frame.SolidRing
     if not ring or not solid then return end
     local opt = BORDER_RING_OPTIONS[self:GetEffectiveRingChoice()]
+    -- Cache for the OnUpdate driver so it doesn't resolve settings 60×/sec.
+    self._cachedRingOpt = opt
+    self._cachedRotateMinimap = self:GetSetting(SYSTEM_ID, "RotateMinimap") and true or false
     if not opt then ring:Hide(); solid:Hide(); return end
 
     -- Pixel-snapped offsets (SetPoint isn't covered by Pixel:Enforce — it only hooks size methods).
@@ -92,7 +108,7 @@ function Plugin:ApplyBorderRing(color)
     local ox = OrbitEngine.Pixel:Snap(opt.offsetX or 0, scale)
     local oy = OrbitEngine.Pixel:Snap(opt.offsetY or 0, scale)
 
-    -- Solid colored ring (BorderSize-controlled backdrop clipped by Circle.tga).
+    -- Solid colored ring (BorderSize-controlled backdrop clipped by Orbit_Circle.tga).
     if opt.fill then
         local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
         local size = self.frame:GetWidth() + borderSize * 2
@@ -149,10 +165,10 @@ function Plugin:EnsureBorderRingDriver()
     self._ringRotationDriver:SetScript("OnUpdate", function()
         local ring = plugin.frame and plugin.frame.BorderRing
         if not ring or not ring:IsShown() then return end
-        local opt = BORDER_RING_OPTIONS[plugin:GetEffectiveRingChoice()]
+        local opt = plugin._cachedRingOpt
         if not opt then return end
 
-        if opt.rotatable and plugin:GetSetting(SYSTEM_ID, "RotateMinimap") then
+        if opt.rotatable and plugin._cachedRotateMinimap then
             local facing = GetPlayerFacing()
             if facing then ring:SetRotation(-facing) end
         elseif opt.spinSeconds then
@@ -453,7 +469,7 @@ function Plugin:StartAutoZoomOut()
     end)
 end
 
--- [ TRACKING BUTTON ]-------------------------------------------------------------------------------
+-- [ TRACKING BUTTON ]--------------------------------------------------------------------------------
 
 local TRACKING_BUTTON_SIZE = 24
 local TRACKING_FADE_IN = 0.15
@@ -541,7 +557,7 @@ function Plugin:ApplyTrackingButton()
     end
 end
 
--- [ CALENDAR PENDING INVITES ]----------------------------------------------------------------------
+-- [ CALENDAR PENDING INVITES ]-----------------------------------------------------------------------
 
 function Plugin:UpdateCalendarInvites()
     local glow = self.frame.Clock.InviteGlow

@@ -180,6 +180,7 @@ function Plugin:CreateCompartmentFlyout()
     -- Backdrop texture — colour applied via ApplyCompartmentFlyoutSkin (called on every show).
     flyout.bg = flyout:CreateTexture(nil, "BACKGROUND")
     flyout.bg:SetAllPoints(flyout)
+    Orbit.Skin:RegisterMaskedSurface(flyout, flyout.bg)
     self:ApplyCompartmentFlyoutSkin(flyout)
 
     -- Auto-close via OnUpdate polling when mouse leaves the flyout + minimap area.

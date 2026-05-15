@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -68,9 +69,9 @@ function Plugin:AddSettings(dialog, systemFrame)
     local isAnchored = OrbitEngine.Frame:GetAnchorParent(self.frame) ~= nil
     local anchorAxis = isAnchored and OrbitEngine.Frame:GetAnchorAxis(self.frame) or nil
     local sizeOnChange = function(key) return function(val) self:SetSetting(PLAYER_FRAME_INDEX, key, val); self:UpdateLayout(self.frame) end end
-    table.insert(schema.controls, { type = "slider", key = "Width", label = "Width", min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
+    table.insert(schema.controls, { type = "slider", key = "Width", label = L.CMN_WIDTH, min = 50, max = 400, step = 1, default = 160, onChange = sizeOnChange("Width") })
     if not isAnchored or anchorAxis ~= "y" then
-        table.insert(schema.controls, { type = "slider", key = "Height", label = "Height", min = 20, max = 100, step = 1, default = 30, onChange = sizeOnChange("Height") })
+        table.insert(schema.controls, { type = "slider", key = "Height", label = L.CMN_HEIGHT, min = 20, max = 100, step = 1, default = 30, onChange = sizeOnChange("Height") })
     end
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)

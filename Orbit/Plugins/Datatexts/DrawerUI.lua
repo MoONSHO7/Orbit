@@ -35,7 +35,7 @@ DT.DrawerUI = DrawerUI
 function DrawerUI:CreateCornerTriggers()
     local anchors = { "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
     for _, anchor in ipairs(anchors) do
-        local btn = CreateFrame("Button", "OrbitdatatextCorner" .. anchor, UIParent)
+        local btn = CreateFrame("Button", "OrbitDatatextCorner" .. anchor, UIParent)
         btn:SetSize(CORNER_SIZE, CORNER_SIZE)
         btn:SetPoint(anchor, UIParent, anchor)
         btn:SetFrameStrata(CORNER_STRATA)
@@ -49,11 +49,6 @@ function DrawerUI:CreateCornerTriggers()
         btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
         cornerButtons[#cornerButtons + 1] = btn
     end
-end
-
-function DrawerUI:DestroyCornerTriggers()
-    for _, btn in ipairs(cornerButtons) do btn:Hide(); btn:SetParent(nil) end
-    cornerButtons = {}
 end
 
 -- [ PANEL CREATION ] --------------------------------------------------------------------------------
@@ -112,7 +107,7 @@ function DrawerUI:CreatePanel()
         hideResetButton = true,
         extraButtons = {
             {
-                text = "Reset to Defaults",
+                text = L.PLU_DT_DRAWER_RESET,
                 callback = function()
                     DT.DatatextManager:ResetToDefaults()
                 end
@@ -184,7 +179,7 @@ function DrawerUI:LayoutDrawer()
                 f.bg:SetColorTexture(HIGHLIGHT_R, HIGHLIGHT_G, HIGHLIGHT_B, HIGHLIGHT_A)
                 GameTooltip:SetOwner(f, "ANCHOR_TOP")
                 GameTooltip:AddLine(datatext.name, 1, 1, 1)
-                GameTooltip:AddLine("Drag to place on screen", 0.7, 0.7, 0.7)
+                GameTooltip:AddLine(L.PLU_DT_DRAWER_DRAG_HINT, 0.7, 0.7, 0.7)
                 GameTooltip:Show()
             end)
             cell:SetScript("OnLeave", function(f) f.bg:SetColorTexture(1, 1, 1, 0.05); GameTooltip:Hide() end)
@@ -276,7 +271,7 @@ end
 
 function DrawerUI:Open(anchor)
     if InCombatLockdown() then
-        UIErrorsFrame:AddMessage("Datatexts cannot be opened in combat.", 1, 0, 0)
+        UIErrorsFrame:AddMessage(L.PLU_DT_DRAWER_COMBAT_BLOCK, 1, 0, 0)
         return
     end
     if isOpen then return end
@@ -323,11 +318,14 @@ function DrawerUI:OnDatatextDragUpdate(datatextId)
     end
 end
 
--- [ TEARDOWN ] --------------------------------------------------------------------------------------
-function DrawerUI:Destroy()
-    self:DestroyCornerTriggers()
-    if drawerPanel then drawerPanel:Hide(); drawerPanel = nil end
-    isOpen = false
+-- [ SUSPEND / RESUME ] ------------------------------------------------------------------------------
+function DrawerUI:Suspend()
+    self:Close()
+    for _, btn in ipairs(cornerButtons) do btn:Hide() end
+end
+
+function DrawerUI:Resume()
+    for _, btn in ipairs(cornerButtons) do btn:Show() end
 end
 
 local combatGuard = CreateFrame("Frame")
@@ -335,6 +333,6 @@ combatGuard:RegisterEvent("PLAYER_REGEN_DISABLED")
 combatGuard:SetScript("OnEvent", function()
     if isOpen then
         DrawerUI:Close()
-        UIErrorsFrame:AddMessage("Datatexts closed due to combat.", 1, 1, 0)
+        UIErrorsFrame:AddMessage(L.PLU_DT_DRAWER_COMBAT_CLOSE, 1, 1, 0)
     end
 end)

@@ -129,10 +129,10 @@ function W:PopulateTooltip(tip)
     local fps = GetFramerate()
     local _, _, home, world = GetNetStats()
     local mem = collectgarbage("count") / KB_PER_MB
-    tip:AddDoubleLine("FPS:", string.format("%.1f", fps), 1, 1, 1, 1, 1, 1)
-    tip:AddDoubleLine("Home Latency:", string.format("%dms", home), 1, 1, 1, 1, 1, 1)
-    tip:AddDoubleLine("World Latency:", string.format("%dms", world), 1, 1, 1, 1, 1, 1)
-    tip:AddDoubleLine("Memory:", string.format("%.2f MB %s", mem, MemoryTrend(self.history.memory)), 1, 1, 1, 1, 1, 1)
+    tip:AddDoubleLine(L.PLU_DT_PERF_FPS, string.format("%.1f", fps), 1, 1, 1, 1, 1, 1)
+    tip:AddDoubleLine(L.PLU_DT_PERF_HOME_LATENCY, string.format("%dms", home), 1, 1, 1, 1, 1, 1)
+    tip:AddDoubleLine(L.PLU_DT_PERF_WORLD_LATENCY, string.format("%dms", world), 1, 1, 1, 1, 1, 1)
+    tip:AddDoubleLine(L.PLU_DT_PERF_MEMORY, string.format("%.2f MB %s", mem, MemoryTrend(self.history.memory)), 1, 1, 1, 1, 1, 1)
     if C_AddOnProfiler and C_AddOnProfiler.IsEnabled() then
         local M = Enum.AddOnProfilerMetric
         local recent = C_AddOnProfiler.GetApplicationMetric(M.RecentAverageTime)
@@ -141,26 +141,26 @@ function W:PopulateTooltip(tip)
         local orbitPeak = C_AddOnProfiler.GetAddOnMetric(ORBIT_ADDON, M.PeakTime)
         local pctAvg = recent > 0 and (orbitRecent / recent * 100) or 0
         local pctPeak = peak > 0 and (orbitPeak / peak * 100) or 0
-        tip:AddDoubleLine("Orbit CPU (avg):", string.format("%.1f%%", pctAvg), 1, 1, 1, 1, 1, 1)
-        tip:AddDoubleLine("Orbit CPU (peak):", string.format("%.1f%%", pctPeak), 1, 1, 1, 1, 1, 1)
+        tip:AddDoubleLine(L.PLU_DT_PERF_ORBIT_CPU_AVG, string.format("%.1f%%", pctAvg), 1, 1, 1, 1, 1, 1)
+        tip:AddDoubleLine(L.PLU_DT_PERF_ORBIT_CPU_PEAK, string.format("%.1f%%", pctPeak), 1, 1, 1, 1, 1, 1)
     else
-        tip:AddDoubleLine("Orbit CPU:", "|cff888888" .. L.PLU_DT_PERF_PROFILER_DISABLED .. "|r", 1, 1, 1, 0.7, 0.7, 0.7)
+        tip:AddDoubleLine(L.PLU_DT_PERF_ORBIT_CPU, "|cff888888" .. L.PLU_DT_PERF_PROFILER_DISABLED .. "|r", 1, 1, 1, 0.7, 0.7, 0.7)
     end
     local shiftHeld = IsShiftKeyDown() or self.isPinned
     if shiftHeld then
         tip:AddLine(" ")
         tip:AddLine(L.PLU_DT_PERF_EXTENDED, 0.7, 0.7, 0.7)
         local fMin, fMax, fAvg = HistoryStats(self.history.fps)
-        tip:AddDoubleLine("FPS Min/Avg/Max:", string.format("%.0f / %.0f / %.0f", fMin, fAvg, fMax), 1, 1, 1, 0.7, 0.7, 0.7)
+        tip:AddDoubleLine(L.PLU_DT_PERF_FPS_MIN_AVG_MAX, string.format("%.0f / %.0f / %.0f", fMin, fAvg, fMax), 1, 1, 1, 0.7, 0.7, 0.7)
         local _, peakMem = HistoryStats(self.history.memory)
-        tip:AddDoubleLine("Peak Memory:", string.format("%.2f MB", peakMem), 1, 1, 1, 0.7, 0.7, 0.7)
+        tip:AddDoubleLine(L.PLU_DT_PERF_PEAK_MEMORY, string.format("%.2f MB", peakMem), 1, 1, 1, 0.7, 0.7, 0.7)
         local _, _, _, jitter = HistoryStats(self.history.latency)
         local jitterColor = jitter > JITTER_THRESHOLD_MS and "|cffff0000" or "|cff00ff00"
-        tip:AddDoubleLine("Network Jitter:", string.format("%s%.1fms|r stddev", jitterColor, jitter), 1, 1, 1, 0.7, 0.7, 0.7)
+        tip:AddDoubleLine(L.PLU_DT_PERF_NETWORK_JITTER, string.format("%s%.1fms|r %s", jitterColor, jitter, L.PLU_DT_PERF_STDDEV), 1, 1, 1, 0.7, 0.7, 0.7)
     end
     tip:AddLine(" ")
     local addonCount = shiftHeld and TOP_ADDON_SHIFT or TOP_ADDON_DEFAULT
-    tip:AddLine(string.format("Top %d Addons (Memory):", addonCount), 0.7, 0.7, 0.7)
+    tip:AddLine(L.PLU_DT_PERF_TOP_ADDONS_F:format(addonCount), 0.7, 0.7, 0.7)
     if not self.addonCache or GetTime() - self.addonCacheTime > ADDON_CACHE_TTL then self:RefreshAddonCache() end
     local addons = self.addonCache or {}
     for i = 1, math.min(addonCount, #addons) do
@@ -168,9 +168,9 @@ function W:PopulateTooltip(tip)
     end
     if not self.isPinned then
         tip:AddLine(" ")
-        tip:AddDoubleLine("Left Click", "Collect Garbage", 0.7, 0.7, 0.7, 1, 1, 1)
-        tip:AddDoubleLine("Right Click", "Pin Tooltip", 0.7, 0.7, 0.7, 1, 1, 1)
-        if not shiftHeld then tip:AddDoubleLine("Shift+Hover", L.PLU_DT_PERF_EXTENDED, 0.7, 0.7, 0.7, 1, 1, 1) end
+        tip:AddDoubleLine(L.CMN_LEFT_CLICK, L.PLU_DT_PERF_COLLECT_GARBAGE, 0.7, 0.7, 0.7, 1, 1, 1)
+        tip:AddDoubleLine(L.CMN_RIGHT_CLICK, L.PLU_DT_PERF_PIN_TOOLTIP, 0.7, 0.7, 0.7, 1, 1, 1)
+        if not shiftHeld then tip:AddDoubleLine(L.PLU_DT_PERF_SHIFT_HOVER, L.PLU_DT_PERF_EXTENDED, 0.7, 0.7, 0.7, 1, 1, 1) end
     end
     tip:Show()
     if not self.graphFrame then
@@ -223,21 +223,28 @@ end
 
 function W:HandleClick(button)
     if button == "RightButton" then self:TogglePin(); return end
-    collectgarbage("collect"); self:RefreshAddonCache(); print("|cff00ff00Memory Garbage Collected|r"); self:Update()
+    collectgarbage("collect"); self:RefreshAddonCache(); print("|cff00ff00" .. L.PLU_DT_PERF_GC_DONE .. "|r"); self:Update()
 end
 
 -- [ LIFECYCLE ] -------------------------------------------------------------------------------------
+function W:OnEnable()
+    DT.DatatextManager:RegisterForScheduler(self.name .. "_mem", "SLOW", function() self:UpdateMemory() end)
+end
+
+function W:OnDisable()
+    DT.DatatextManager:UnregisterFromScheduler(self.name .. "_mem", "SLOW")
+end
+
 function W:Init()
     self:CreateFrame(FRAME_WIDTH, FRAME_HEIGHT)
     self:SetUpdateFunc(function() self:Update() end)
     self:SetUpdateTier("NORMAL")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function(_, button) self:HandleClick(button) end)
-    self.leftClickHint = "Collect Garbage"
-    self.rightClickHint = "Pin Tooltip"
+    self.leftClickHint = L.PLU_DT_PERF_COLLECT_GARBAGE
+    self.rightClickHint = L.PLU_DT_PERF_PIN_TOOLTIP
     self:SetCategory("SYSTEM")
     self:Register()
-    DT.DatatextManager:RegisterForScheduler(self.name .. "_mem", "SLOW", function() self:UpdateMemory() end)
 end
 
 W:Init()

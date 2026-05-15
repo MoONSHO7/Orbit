@@ -264,7 +264,7 @@ function Orbit.Profile:SetActiveProfile(name)
         end
         C_Timer.After(DELAYED_REFRESH, function()
             for _, plugin in ipairs(Orbit.Engine.systems) do
-                if plugin.ApplySettings then pcall(function() plugin:ApplySettings(nil) end) end
+                if plugin.ApplySettings then SafeApplyPlugin(plugin) end
             end
             -- Batched so duplicate "reconcile everything" requests from other
             -- systems reacting to the same profile switch coalesce into one pass.

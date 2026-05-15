@@ -144,6 +144,68 @@ local function PrintFrameInfo(pluginName)
     end
 end
 
+-- [ ANCHOR DIAGNOSTIC ]------------------------------------------------------------------------------
+local function PrintAnchor(frameName)
+    if not frameName or frameName == "" then
+        Orbit:Print(L.CMD_ANCHOR_USAGE)
+        return
+    end
+    local f = _G[frameName]
+    if not f then Orbit:Print(L.CMD_ANCHOR_NO_FRAME_F:format(frameName)); return end
+    local A = Orbit.Engine.FrameAnchor
+    local G = Orbit.Engine.AnchorGraph
+    if not A or not G then Orbit:Print(L.CMD_ANCHOR_GRAPH_MISSING); return end
+
+    local phys = A.anchors[f]
+    local log = A.logicalAnchors and A.logicalAnchors[f]
+    print(L.CMD_ANCHOR_HEADER_F:format(frameName, tostring(G:IsSkipped(f))))
+    if phys and phys.parent then
+        print(L.CMD_ANCHOR_PHYSICAL_F:format(phys.parent:GetName() or "?", tostring(phys.edge)))
+    else
+        print(L.CMD_ANCHOR_PHYSICAL_NONE)
+        local pt, rel, _, x, y = f:GetPoint(1)
+        if pt then print(L.CMD_ANCHOR_SETPOINT_F:format(pt, (rel and rel.GetName and rel:GetName()) or "UIParent", x or 0, y or 0)) end
+    end
+    if log and log.parent then
+        print(L.CMD_ANCHOR_LOGICAL_F:format(log.parent:GetName() or "?", tostring(log.edge)))
+    end
+
+    local p = f.orbitPlugin
+    local sysIdx = f.systemIndex
+    if p and sysIdx and p.GetSetting then
+        local anchor = p:GetSetting(sysIdx, "Anchor")
+        local position = p:GetSetting(sysIdx, "Position")
+        if anchor then
+            print(L.CMD_ANCHOR_SAVED_F:format(tostring(anchor.target), tostring(anchor.edge)))
+            print(L.CMD_ANCHOR_FALLBACK_F:format(tostring(anchor.fallback)))
+            if anchor.ancestry then
+                print(L.CMD_ANCHOR_ANCESTRY_F:format(table.concat(anchor.ancestry, " > ")))
+            else
+                print(L.CMD_ANCHOR_ANCESTRY_NIL)
+            end
+            local function probe(name, label)
+                if not name then return end
+                local cand = _G[name]
+                if not cand then print(L.CMD_ANCHOR_PROBE_MISSING_F:format(label, name)); return end
+                local skipped = G:IsSkipped(cand)
+                local hasParent = A.anchors[cand] and A.anchors[cand].parent
+                local parentStr = hasParent and L.CMD_ANCHOR_PROBE_PARENT_F:format(A.anchors[cand].parent:GetName() or "?") or L.CMD_ANCHOR_PROBE_NO_PARENT
+                print(L.CMD_ANCHOR_PROBE_F:format(label, name, tostring(skipped), parentStr))
+            end
+            probe(anchor.target, "target")
+            if anchor.ancestry then
+                for i = 1, #anchor.ancestry do probe(anchor.ancestry[i], "  ancestry[" .. i .. "]") end
+            elseif anchor.fallback then
+                probe(anchor.fallback, "fallback")
+            end
+        elseif position then
+            print(L.CMD_ANCHOR_POSITION_F:format(position.point, tostring(position.x or 0), tostring(position.y or 0)))
+        else
+            print(L.CMD_ANCHOR_NO_SAVED)
+        end
+    end
+end
+
 local function PrintInspect(pluginName)
     if not pluginName or pluginName == "" then
         Orbit:Print(L.CMD_INSPECT_USAGE)
@@ -244,6 +306,8 @@ SlashCmdList["ORBIT"] = function(msg)
         PrintFrameInfo(RestArgs())
     elseif cmd == "inspect" then
         PrintInspect(RestArgs())
+    elseif cmd == "anchor" then
+        PrintAnchor(RestArgs())
     elseif cmd == "reset" then
         local target = RestArgs() or ""
         if target == "" then

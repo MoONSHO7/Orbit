@@ -148,15 +148,15 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback, v
             local lib = LibStub and LibStub("LibOrbitColorPicker-1.0", true)
             if not lib then return end
             
-            if Orbit.db and not Orbit.db.RecentColors then
-                Orbit.db.RecentColors = {}
+            if Orbit.db and Orbit.db.AccountSettings and not Orbit.db.AccountSettings.RecentColors then
+                Orbit.db.AccountSettings.RecentColors = {}
             end
 
             lib:Open({
                 initialData = { r = swatch.r, g = swatch.g, b = swatch.b, a = swatch.a },
                 hasOpacity = true,
                 forceSingleColor = true,
-                recentColorsDb = Orbit.db and Orbit.db.RecentColors,
+                recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,
                 callback = function(result, wasCancelled)
                     if wasCancelled or not result then return end
                     local pin = result.pins and result.pins[1]

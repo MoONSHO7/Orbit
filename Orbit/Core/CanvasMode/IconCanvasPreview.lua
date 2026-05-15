@@ -15,8 +15,9 @@ OrbitEngine.IconCanvasPreview = IconCanvasPreview
 -- sourceFrame=anchor, parent=viewport parent, width/height=raw icon dimensions, iconTexture=texture path
 function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTexture)
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    OrbitEngine.Pixel:Enforce(preview)
     local pScale = preview:GetEffectiveScale()
-    preview:SetSize(OrbitEngine.Pixel:Snap(width, pScale), OrbitEngine.Pixel:Snap(height, pScale))
+    preview:SetSize(width, height)
     preview.sourceFrame = sourceFrame
 
     local borderSize = Orbit.db.GlobalSettings.BorderSize

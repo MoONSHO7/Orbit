@@ -73,7 +73,7 @@ function Icons:FindRegions(icon)
     end
     if not regions.icon then
         for _, region in ipairs(kids) do
-            if region:IsObjectType("Texture") and region ~= regions.border and region ~= regions.procs then
+            if region:IsObjectType("Texture") and region ~= regions.border and region ~= regions.proc then
                 local layer = region:GetDrawLayer()
                 if layer == "BACKGROUND" or layer == "BORDER" or layer == "ARTWORK" then regions.icon = region; break end
             end
@@ -94,6 +94,9 @@ function Icons:ApplyCustom(icon, settings)
     local r = self:FindRegions(icon)
     local tex = r.icon
     if tex then
+        Skin:RegisterMaskedSurface(icon, tex)
+        local container = icon:GetParent()
+        if container then Skin:RegisterMaskedSurface(container, tex) end
         local newWidth, newHeight, rw, rh = IL:CalculateGeometry(icon, settings)
         local scale = icon:GetEffectiveScale()
         newWidth = Pixel:Snap(newWidth, scale)
@@ -134,7 +137,7 @@ function Icons:ApplyCustom(icon, settings)
         if r.cooldown then
             r.cooldown:ClearAllPoints()
             r.cooldown:SetAllPoints(icon)
-            local desiredTexture = Constants.Assets.SwipeCustom
+            local desiredTexture = Skin:GetRoundedSwipeTexture(true) or Constants.Assets.SwipeCustom
             local desiredColor = settings.cooldownSwipeColor or settings.swipeColor or { r = 0, g = 0, b = 0, a = 0.8 }
             r.cooldown.orbitDesiredSwipe = { texture = desiredTexture, r = desiredColor.r, g = desiredColor.g, b = desiredColor.b, a = desiredColor.a }
             r.cooldown.orbitUpdating = true

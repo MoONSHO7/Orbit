@@ -1,6 +1,7 @@
 -- [ ACTION BARS - CONTAINER FACTORY ] ---------------------------------------------------------------
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 local INITIAL_FRAME_SIZE = 40
@@ -76,7 +77,7 @@ function ABC:CreateVehicleExit(plugin)
     local container = CreateFrame("Frame", "OrbitVehicleExit", UIParent, "SecureHandlerStateTemplate")
     container:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     container.systemIndex = VEHICLE_EXIT_INDEX
-    container.editModeName = "Vehicle Exit"
+    container.editModeName = L.PLU_VEHICLE_EXIT
     container:EnableMouse(true)
     container:SetClampedToScreen(true)
     container.anchorOptions = { x = true, y = true }

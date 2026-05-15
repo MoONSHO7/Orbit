@@ -1,4 +1,8 @@
 -- [ ORBIT AURA MIXIN ]-------------------------------------------------------------------------------
+-- Module-level state is deliberate: scratch buffers (`_RecycledSnapshot`, `_RecycledAuraDisplayList`)
+-- avoid per-call table allocation in hot aura paths; the curve ticker (`_activeCurveIcons`,
+-- `_curveTicker`) is a singleton registry following the UnitAuraGridExpirationPulse precedent
+-- (one ticker drives all healer-aura curve animations across frames).
 local _, addonTable = ...
 local Orbit = addonTable
 local pcall, type, ipairs = pcall, type, ipairs
@@ -158,6 +162,11 @@ function Mixin:WipeCaches(frame)
     frame._helpfulAuraCache = nil
 end
 
+function Mixin:InvalidateContainerLayout(frame)
+    if frame.buffContainer then frame.buffContainer._auraFingerprint = nil end
+    if frame.debuffContainer then frame.debuffContainer._auraFingerprint = nil end
+end
+
 function Mixin:FetchAuras(unit, filter, maxCount)
     local auras = {}
     if unit and UnitExists(unit) then
@@ -202,7 +211,9 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
     icon.count:SetFont(fontPath, AURA_COUNT_SIZE, fontOutline)
     Orbit.Skin:ApplyFontShadow(icon.count)
     icon.count:ClearAllPoints()
-    icon.count:SetPoint("BOTTOMRIGHT", icon.Overlay, "BOTTOMRIGHT", -1, 1)
+    local cScale = icon:GetEffectiveScale() or 1
+    local countPad = Orbit.Engine.Pixel:Multiple(1, cScale)
+    icon.count:SetPoint("BOTTOMRIGHT", icon.Overlay, "BOTTOMRIGHT", -countPad, countPad)
     icon.count:SetJustifyH("RIGHT")
     self:ApplyAuraCount(icon, aura, unit)
     if icon.Cooldown then
@@ -321,7 +332,7 @@ function Mixin:UpdateAuraContainer(frame, plugin, containerKey, poolKey, cfg)
     local container = frame[containerKey]
     if not container then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(cfg.componentKey) then container:Hide(); return end
-    local positions = plugin:GetSetting(1, "ComponentPositions") or {}
+    local positions = plugin:GetComponentPositions(1)
     local auraData = positions[cfg.componentKey] or {}
     local overrides = auraData.overrides or {}
     local frameW, frameH = frame:GetWidth(), frame:GetHeight()
@@ -451,8 +462,8 @@ end
 -- Read saved overrides for a component key from plugin settings.
 local function GetComponentOverrides(plugin, iconKey)
     if not plugin or not plugin.GetSetting then return nil end
-    local positions = plugin:GetSetting(1, "ComponentPositions")
-    if not positions or not positions[iconKey] then return nil end
+    local positions = plugin:GetComponentPositions(1)
+    if not positions[iconKey] then return nil end
     return positions[iconKey].overrides
 end
 
@@ -499,7 +510,7 @@ local function HealerCurveOnUpdate(icon)
         local r, g, b, a = CCE:SampleColorCurveUnpacked(d.swipeCurve, remainingPercent)
         if r then
             local cd = icon.Cooldown
-            local swipeTex = Orbit.Constants.Assets.SwipeCustom
+            local swipeTex = Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom
             cd.orbitUpdating = true
             cd:SetSwipeTexture(swipeTex)
             cd:SetSwipeColor(r, g, b, a or 0.8)
@@ -607,7 +618,7 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
                 if c then
                     local cd = icon.Cooldown
                     cd.orbitUpdating = true
-                    cd:SetSwipeTexture(Orbit.Constants.Assets.SwipeCustom)
+                    cd:SetSwipeTexture(Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom)
                     cd:SetSwipeColor(c.r, c.g, c.b, c.a or 0.8)
                     cd.orbitUpdating = false
                 end

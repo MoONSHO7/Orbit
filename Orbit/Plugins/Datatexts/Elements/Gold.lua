@@ -114,7 +114,7 @@ function W:AutoSellJunk()
             end
         end
     end
-    if profit > 0 then print(string.format("|cff00ff00Auto-Sold Junk for %s|r", Fmt:FormatMoney(profit))) end
+    if profit > 0 then print("|cff00ff00" .. L.MSG_DT_AUTOSELL_F:format(Fmt:FormatMoney(profit)) .. "|r") end
 end
 
 -- [ CONTEXT MENU ] ----------------------------------------------------------------------------------
@@ -132,11 +132,11 @@ function W:ShowTooltip()
     GameTooltip:AddLine(L.PLU_DT_GOLD_WEALTH_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local current = GetMoney()
-    GameTooltip:AddDoubleLine("Current:", Fmt:FormatMoney(current), 1, 1, 1, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Session:", FormatProfit(current - self.sessionStart), 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_GOLD_CURRENT, Fmt:FormatMoney(current), 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_GOLD_SESSION, FormatProfit(current - self.sessionStart), 1, 1, 1, 1, 1, 1)
     local elapsed = GetTime() - self.sessionStartTime
     if elapsed > 0 then
-        GameTooltip:AddDoubleLine("Gold/Hour:", FormatProfit((current - self.sessionStart) / elapsed * SECONDS_PER_HOUR), 1, 1, 1, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.PLU_DT_GOLD_PER_HOUR, FormatProfit((current - self.sessionStart) / elapsed * SECONDS_PER_HOUR), 1, 1, 1, 1, 1, 1)
     end
     local deltas = self:GetDailyDeltas()
     if #deltas > 0 then
@@ -147,7 +147,7 @@ function W:ShowTooltip()
     local chars = GetAccountData()
     if #chars > 1 then
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Account Gold", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_DT_GOLD_ACCOUNT, 0.7, 0.7, 0.7)
         local total = 0
         for _, char in ipairs(chars) do
             local cc = RAID_CLASS_COLORS[char.class]
@@ -155,11 +155,11 @@ function W:ShowTooltip()
             total = total + char.gold
         end
         GameTooltip:AddLine(" ")
-        GameTooltip:AddDoubleLine("Total:", Fmt:FormatMoney(total), 1, 0.82, 0, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.PLU_DT_GOLD_TOTAL, Fmt:FormatMoney(total), 1, 0.82, 0, 1, 1, 1)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Left Click", "Open Bags", 0.7, 0.7, 0.7, 1, 1, 1)
-    GameTooltip:AddDoubleLine("Right Click", "Settings", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.CMN_LEFT_CLICK, L.PLU_DT_BAG_OPEN_BAGS, 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.CMN_RIGHT_CLICK, L.PLU_DT_GOLD_SETTINGS, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
     -- Graph
     if self.history:Count() > MIN_HISTORY_POINTS then
@@ -190,7 +190,7 @@ function W:Init()
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:SetClickFunc(function(_, btn) if btn == "RightButton" then self:ShowContextMenu() else ToggleAllBags() end end)
     self.leftClickHint = L.PLU_DT_BAG_OPEN_BAGS
-    self.rightClickHint = "Settings"
+    self.rightClickHint = L.PLU_DT_GOLD_SETTINGS
     self:RegisterEvent("PLAYER_MONEY", function() self:OnMoneyChange() end)
     self:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:OnMoneyChange() end)
     self:RegisterEvent("MERCHANT_SHOW", function() self:AutoSellJunk() end)

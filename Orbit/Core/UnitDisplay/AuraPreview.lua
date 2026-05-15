@@ -165,7 +165,8 @@ function AP:ShowPrivateAuras(frame, posData, baseIconSize)
     paa:SetSize(snappedTotalWidth, snappedIconSize)
     if not posData or not posData.anchorX then
         paa:ClearAllPoints()
-        paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5 + 2, frame:GetEffectiveScale() or 1))
+        local fScale = frame:GetEffectiveScale() or 1
+        paa:SetPoint("CENTER", frame, "BOTTOM", 0, OrbitEngine.Pixel:Snap(iconSize * 0.5, fScale) + OrbitEngine.Pixel:Multiple(2, fScale))
     end
     paa._previewIcons = paa._previewIcons or {}
     for pi = 1, PREVIEW_PAA_COUNT do

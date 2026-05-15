@@ -74,7 +74,10 @@ local function GetColorsSchema()
         },
         {
             type = "solidcolor", key = "BorderColor", label = L.CFG_FRAME_BORDERS,
-            visibleIf = function() return (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderStyle or Constants.BorderStyle.Default) == "flat" end,
+            visibleIf = function()
+                local style = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderStyle) or Constants.BorderStyle.Default
+                return Constants.BorderStyle.Lookup[style] ~= nil
+            end,
             default = { r = 0, g = 0, b = 0, a = 1 },
             tooltip = L.CFG_FRAME_BORDERS_TT,
             onChange = function(val)
@@ -88,7 +91,10 @@ local function GetColorsSchema()
         },
         {
             type = "solidcolor", key = "IconBorderColor", label = L.CFG_ICON_BORDERS,
-            visibleIf = function() return (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.IconBorderStyle or Constants.BorderStyle.Default) == "flat" end,
+            visibleIf = function()
+                local style = (Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.IconBorderStyle) or Constants.BorderStyle.Default
+                return Constants.BorderStyle.Lookup[style] ~= nil
+            end,
             default = { r = 0, g = 0, b = 0, a = 1 },
             tooltip = L.CFG_ICON_BORDERS_TT,
             onChange = function(val)

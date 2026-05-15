@@ -347,11 +347,14 @@ function Plugin:OnLoad()
             else icon:SetPoint("RIGHT", preview, "LEFT", 0, 0) end
             icon:SetTexture(PREVIEW_ICON_ID)
             icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            Orbit.Skin:RegisterMaskedSurface(preview, icon)
         end
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetAllPoints()
+        bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
         bar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
         bar:SetValue(PREVIEW_CAST_PROGRESS)
+        Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
         local textureName = Plugin:GetSetting(1, "Texture")
         local texturePath = textureName and LSM:Fetch("statusbar", textureName)
         if texturePath then bar:SetStatusBarTexture(texturePath) end
@@ -361,6 +364,7 @@ function Plugin:OnLoad()
             if c then bar:SetStatusBarColor(c.r, c.g, c.b) end
         end
         preview.CastBar = bar
+        Orbit.Skin:UpdateRoundedMask(preview, false)
         return preview
     end
 
@@ -780,7 +784,7 @@ function Plugin:OnUpdate(elapsed)
 
         -- Timer shows current stage
         if bar.Timer and bar.Timer:IsShown() then
-            bar.Timer:SetText(string.format("Rank %d", bar.currentStage))
+            bar.Timer:SetText(L.PLU_CASTBAR_RANK_F:format(bar.currentStage))
         end
     end
 end
@@ -933,7 +937,6 @@ function Plugin:ApplyColor()
                 bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
             end
         else
-            -- The party has no curve map; consult the ancient CastBarColor scroll instead
             bar.colorCurve = nil
             local color = self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
             if bar.orbitBar then
@@ -957,7 +960,7 @@ function Plugin:ShowPreview()
     targetBar:SetMinMaxValues(0, PREVIEW_CAST_DURATION)
     targetBar:SetValue(PREVIEW_CAST_PROGRESS)
     if bar.Text then
-        bar.Text:SetText("Preview Cast")
+        bar.Text:SetText(L.PLU_CASTBAR_PREVIEW)
     end
     if bar.Icon then bar.Icon:SetTexture(PREVIEW_ICON_ID) end
     if bar.Timer then

@@ -60,9 +60,7 @@ function CoreMixin:CreateCanvasPreview(options)
     preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers.BackdropDeep)
     preview.bg:SetAllPoints()
     Orbit.Skin:ApplyGradientBackground(preview, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
-
-    -- [ BORDERS ]----------------------------------------------------------------------------------------
-    Orbit.Skin:SkinBorder(preview, preview, borderSize)
+    Orbit.Skin:RegisterMaskedSurface(preview, preview.bg)
 
     -- [ HEALTH BAR ]-------------------------------------------------------------------------------------
     local bar = CreateFrame("StatusBar", nil, preview)
@@ -72,8 +70,11 @@ function CoreMixin:CreateCanvasPreview(options)
     bar:SetValue(PREVIEW_HEALTH_VALUE)
     bar:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.StatusBar)
     Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
+    Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
 
-    -- The cleric inspects the health bar's aura for class-colored enchantments
+    -- [ BORDERS ]----------------------------------------------------------------------------------------
+    Orbit.Skin:SkinBorder(preview, preview, borderSize)
+
     local barCurve = globalSettings.BarColorCurve
     local barColor
     if barCurve and barCurve.pins and #barCurve.pins > 0 then

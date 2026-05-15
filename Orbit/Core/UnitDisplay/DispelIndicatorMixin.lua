@@ -17,6 +17,47 @@ local DISPEL_TYPE_NAMES = { [1] = "Magic", [2] = "Curse", [3] = "Disease", [4] =
 local DISPEL_FILTER = "HARMFUL|RAID_PLAYER_DISPELLABLE"
 local IsAuraFilteredOut = C_UnitAuras and C_UnitAuras.IsAuraFilteredOutByInstanceID
 
+local DISPEL_ATLASES = {
+    Magic = "icons_64x64_magic",
+    Curse = "icons_64x64_curse",
+    Disease = "icons_64x64_disease",
+    Poison = "icons_64x64_poison",
+    Bleed = "icons_64x64_bleed",
+}
+Orbit.DispelIconAtlases = DISPEL_ATLASES
+
+-- GetAuraDispelTypeColor is SecretWhenUnitAuraRestricted, so its result is
+-- a secret color in M+/raid encounters even with a non-secret curve. We
+-- cannot do Lua-side arithmetic or comparisons on the channels. Instead we
+-- stack one sub-texture per dispel type and drive each one's alpha through
+-- a per-type curve that returns 1 only at that type's x value and 0 elsewhere.
+-- SetAlpha accepts secret values, so the right icon "wins" via the C++ sink.
+Orbit.DispelTypeOrder = {
+    { typeNum = 1, name = "Magic",   atlas = DISPEL_ATLASES.Magic   },
+    { typeNum = 2, name = "Curse",   atlas = DISPEL_ATLASES.Curse   },
+    { typeNum = 3, name = "Disease", atlas = DISPEL_ATLASES.Disease },
+    { typeNum = 4, name = "Poison",  atlas = DISPEL_ATLASES.Poison  },
+    { typeNum = 9, name = "Bleed",   atlas = DISPEL_ATLASES.Bleed, altTypeNum = 11 },
+}
+local DISPEL_TYPE_ORDER = Orbit.DispelTypeOrder
+
+local dispelTypeAlphaCurves
+local function GetDispelTypeAlphaCurves()
+    if dispelTypeAlphaCurves then return dispelTypeAlphaCurves end
+    if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
+    dispelTypeAlphaCurves = {}
+    for _, entry in ipairs(DISPEL_TYPE_ORDER) do
+        local curve = C_CurveUtil.CreateColorCurve()
+        curve:SetType(Enum.LuaCurveType.Step)
+        for typeNum in pairs(DISPEL_TYPE_NAMES) do
+            local match = typeNum == entry.typeNum or typeNum == entry.altTypeNum
+            curve:AddPoint(typeNum, CreateColor(0, 0, 0, match and 1 or 0))
+        end
+        dispelTypeAlphaCurves[entry.name] = curve
+    end
+    return dispelTypeAlphaCurves
+end
+
 -- [ CACHED CURVE ]-----------------------------------------------------------------------------------
 local function BuildDispelCurve(plugin)
     if not C_CurveUtil or not C_CurveUtil.CreateColorCurve then return nil end
@@ -65,21 +106,61 @@ end
 
 local DISPEL_GLOW_KEY = "orbitDispel"
 
+local function HideDispelIcon(frame)
+    local icon = frame.DispelIcon
+    if not icon then return end
+    for _, t in pairs(icon._typeTextures) do t:SetAlpha(0) end
+    icon:Hide()
+end
+
+local function ShowDispelIconForAura(frame, unit, auraInstanceID)
+    local icon = frame.DispelIcon
+    if not icon then return end
+    local curves = GetDispelTypeAlphaCurves()
+    if not curves or not C_UnitAuras.GetAuraDispelTypeColor then icon:Hide(); return end
+    for _, entry in ipairs(DISPEL_TYPE_ORDER) do
+        local color = C_UnitAuras.GetAuraDispelTypeColor(unit, auraInstanceID, curves[entry.name])
+        local _, _, _, a = color:GetRGBA()
+        icon._typeTextures[entry.name]:SetAlpha(a)
+    end
+    icon:Show()
+end
+
+function Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, typeName)
+    local icon = frame and frame.DispelIcon
+    if not icon then return end
+    if not typeName then
+        for _, t in pairs(icon._typeTextures) do t:SetAlpha(0) end
+        icon:Hide()
+        return
+    end
+    for _, entry in ipairs(DISPEL_TYPE_ORDER) do
+        icon._typeTextures[entry.name]:SetAlpha(entry.name == typeName and 1 or 0)
+    end
+    icon:Show()
+end
+
+local function IsDispelIconDisabled(plugin)
+    return plugin.IsComponentDisabled and plugin:IsComponentDisabled("DispelIcon")
+end
+
 function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmfulAuras)
     if not frame or not frame.unit then return end
     local GC = Orbit.Engine.GlowController
     local settings = GetDispelSettings(plugin)
-    if not settings.enabled then GC:Hide(frame, DISPEL_GLOW_KEY); return end
+    local iconDisabled = IsDispelIconDisabled(plugin)
+    if not settings.enabled then GC:Hide(frame, DISPEL_GLOW_KEY); HideDispelIcon(frame); return end
     local unit = frame.unit
-    if not UnitExists(unit) then GC:Hide(frame, DISPEL_GLOW_KEY); return end
+    if not UnitExists(unit) then GC:Hide(frame, DISPEL_GLOW_KEY); HideDispelIcon(frame); return end
     if not C_UnitAuras or not C_UnitAuras.GetUnitAuras then return end
     local auras = harmfulAuras or C_UnitAuras.GetUnitAuras(unit, "HARMFUL")
-    if not auras or #auras == 0 then GC:Hide(frame, DISPEL_GLOW_KEY); return end
+    if not auras or #auras == 0 then GC:Hide(frame, DISPEL_GLOW_KEY); HideDispelIcon(frame); return end
     local bestAuraInstanceID = nil
     for _, aura in ipairs(auras) do
         if aura.dispelName then
             if not settings.onlyByMe or (IsAuraFilteredOut and not IsAuraFilteredOut(unit, aura.auraInstanceID, DISPEL_FILTER)) then
-                bestAuraInstanceID = aura.auraInstanceID; break
+                bestAuraInstanceID = aura.auraInstanceID
+                break
             end
         end
     end
@@ -93,14 +174,17 @@ function Orbit.DispelIndicatorMixin:UpdateDispelIndicator(frame, plugin, harmful
                 GC:Show(frame, DISPEL_GLOW_KEY, typeString, { key = DISPEL_GLOW_KEY, color = { color:GetRGBA() }, lines = settings.numLines, particles = settings.numLines, frequency = settings.frequency, length = settings.length, thickness = settings.thickness, border = settings.border, frameLevel = Orbit.Constants.Levels.DispelGlow })
                 frame.orbitActiveDispelAura = bestAuraInstanceID
             end
+            if iconDisabled then HideDispelIcon(frame) else ShowDispelIconForAura(frame, unit, bestAuraInstanceID) end
         else
             if frame.orbitActiveDispelAura then GC:Hide(frame, DISPEL_GLOW_KEY); frame.orbitActiveDispelAura = nil end
+            HideDispelIcon(frame)
         end
     else
         if frame.orbitActiveDispelAura or frame.orbitActiveDispelAura == nil then
             GC:Hide(frame, DISPEL_GLOW_KEY)
             frame.orbitActiveDispelAura = false
         end
+        HideDispelIcon(frame)
     end
 end
 

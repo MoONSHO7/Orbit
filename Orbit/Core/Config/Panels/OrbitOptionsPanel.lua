@@ -88,7 +88,7 @@ function Panel:Open(tabName)
     local tabDef = self.Tabs[resolvedName]
     if not tabDef then return end
 
-    if dialog:IsShown() and self.lastTab == resolvedName and dialog.Title and dialog.Title:GetText() == "Orbit Options" then
+    if dialog:IsShown() and self.lastTab == resolvedName and dialog.Title and dialog.Title:GetText() == L.CFG_ORBIT_OPTIONS then
         return
     end
 

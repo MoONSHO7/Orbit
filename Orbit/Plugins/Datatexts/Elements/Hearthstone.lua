@@ -44,19 +44,23 @@ local HEARTHSTONE_TOYS = {
     { itemID = 265100, name = "Corewarden's Hearthstone", type = "toy" },
 }
 
+local function HearthstoneItemName()
+    return (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(HEARTHSTONE_ID)) or L.PLU_DT_HEARTH_TITLE
+end
+
 local function GetAvailableHearthstones()
     local available = {}
     for bag = 0, BAG_COUNT do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and info.itemID == HEARTHSTONE_ID then 
-                available[#available + 1] = { itemID = HEARTHSTONE_ID, name = "Hearthstone", type = "item" }
+            if info and info.itemID == HEARTHSTONE_ID then
+                available[#available + 1] = { itemID = HEARTHSTONE_ID, name = HearthstoneItemName(), type = "item" }
                 break
             end
         end
         if #available > 0 then break end
     end
-    
+
     if PlayerHasToy then
         for _, toy in ipairs(HEARTHSTONE_TOYS) do
             if PlayerHasToy(toy.itemID) and C_ToyBox.IsToyUsable(toy.itemID) then
@@ -64,9 +68,9 @@ local function GetAvailableHearthstones()
             end
         end
     end
-    
+
     if #available == 0 then
-        available[#available + 1] = { itemID = HEARTHSTONE_ID, name = "Hearthstone", type = "item" }
+        available[#available + 1] = { itemID = HEARTHSTONE_ID, name = HearthstoneItemName(), type = "item" }
     end
     return available
 end
@@ -97,20 +101,20 @@ function W:ShowTooltip()
     GameTooltip:AddLine(L.PLU_DT_HEARTH_TITLE, 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     local bindLoc = GetBindLocation()
-    GameTooltip:AddDoubleLine("Location:", bindLoc or "Unknown", 1, 1, 1, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HEARTH_LOCATION, bindLoc or L.PLU_DT_LOCATION_UNKNOWN, 1, 1, 1, 1, 1, 1)
     local start, duration, enabled = C_Container.GetItemCooldown(HEARTHSTONE_ID)
     if enabled == 1 and duration > 2 then
         local remaining = (start + duration) - GetTime()
         if remaining > 0 then
-            GameTooltip:AddDoubleLine("Cooldown:", DT.Formatting:FormatTime(remaining), 1, 1, 1, 1, 0.5, 0)
+            GameTooltip:AddDoubleLine(L.PLU_DT_HEARTH_COOLDOWN, DT.Formatting:FormatTime(remaining), 1, 1, 1, 1, 0.5, 0)
         else
-            GameTooltip:AddDoubleLine("Status:", "|cff00ff00Ready|r", 1, 1, 1, 1, 1, 1)
+            GameTooltip:AddDoubleLine(L.PLU_DT_HEARTH_STATUS, L.PLU_DT_HEARTH_READY, 1, 1, 1, 1, 1, 1)
         end
     else
-        GameTooltip:AddDoubleLine("Status:", "|cff00ff00Ready|r", 1, 1, 1, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.PLU_DT_HEARTH_STATUS, L.PLU_DT_HEARTH_READY, 1, 1, 1, 1, 1, 1)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Click", "Use Hearthstone", 0.7, 0.7, 0.7, 1, 1, 1)
+    GameTooltip:AddDoubleLine(L.PLU_DT_HINT_CLICK, L.PLU_DT_HEARTH_USE, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
 end
 
@@ -149,7 +153,7 @@ function W:Init()
         end
     end)
     
-    self.leftClickHint = "Random Hearthstone"
+    self.leftClickHint = L.PLU_DT_HEARTH_RANDOM
     self:RegisterEvent("BAG_UPDATE_COOLDOWN")
     self:RegisterEvent("BAG_UPDATE", function() self:RebuildCache() end)
     self:RegisterEvent("TOYS_UPDATED", function() self:RebuildCache() end)

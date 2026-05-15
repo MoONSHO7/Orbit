@@ -43,6 +43,7 @@ Mixin.ICON_PREVIEW_ATLASES = {
     PrivateAuraAnchor = "UI-LFG-PendingMark-Raid",
     Portrait = "adventureguide-campfire",
     PvpIcon = "AllianceAssaultsMapBanner",
+    DispelIcon = "icons_64x64_magic",
 }
 Mixin.MARKER_ICON_TEXCOORD = { 0.75, 1, 0.25, 0.5 }
 
@@ -639,8 +640,8 @@ function Mixin:UpdateStatusText(frame, plugin)
     if frame.healthTextEnabled then return end
     local unit = frame.unit
     if not unit or not UnitExists(unit) then frame.HealthText:Hide(); return end
-    if not UnitIsConnected(unit) then frame.HealthText:SetText("Offline"); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
-    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText("Dead"); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if not UnitIsConnected(unit) then frame.HealthText:SetText(Orbit.L.CMN_OFFLINE); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText(Orbit.L.CMN_DEAD); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
     frame.HealthText:Hide()
 end
 

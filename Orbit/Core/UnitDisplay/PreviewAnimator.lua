@@ -134,7 +134,7 @@ local function TransitionBehavior(cfg, frame)
             cfg.currentHealth = 0
             cfg.behavior = B_DEAD; cfg.deadDuration = DEAD_DURATION_BASE + math.random() * DEAD_DURATION_RANGE; cfg.elapsed = 0
             frame.Health:SetValue(0)
-            if frame.HealthText and frame.HealthText:IsShown() then frame.HealthText:SetText("Dead") end
+            if frame.HealthText and frame.HealthText:IsShown() then frame.HealthText:SetText(Orbit.L.CMN_DEAD) end
             cfg.alpha = OFFLINE_ALPHA; frame:SetAlpha(OFFLINE_ALPHA)
             if frame.ResIcon then frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez"); frame.ResIcon:Show() end
             Orbit.AuraPreview:HideFrameAuras(frame)
@@ -519,12 +519,28 @@ end
 local GC = Orbit.Engine.GlowController
 local DISPEL_PREVIEW_KEY = "dispelPreview"
 
+local function ShowDispelIconForSlot(slot)
+    local frame = slot.frame
+    if not frame or not frame.DispelIcon then return end
+    local plugin = frame.orbitPlugin
+    if plugin and plugin.IsComponentDisabled and plugin:IsComponentDisabled("DispelIcon") then
+        Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, nil)
+        return
+    end
+    Orbit.DispelIndicatorMixin:SetPreviewDispelType(frame, slot.dispelType)
+end
+
+local function HideDispelIconForSlot(slot)
+    if slot.frame then Orbit.DispelIndicatorMixin:SetPreviewDispelType(slot.frame, nil) end
+end
+
 local function ShowDispelGlow(session, slot)
     local c = session.colors[slot.dispelType]
     if not c then return end
     local glowType = session.glowType or Orbit.Constants.Glow.Type.Pixel
     local typeString = glowType == Orbit.Constants.Glow.Type.Autocast and "Autocast" or "Pixel"
     GC:Show(slot.frame, DISPEL_PREVIEW_KEY, typeString, { color = { c.r, c.g, c.b, c.a }, lines = session.numLines, particles = session.numLines, frequency = session.frequency, length = session.length, thickness = session.thickness, border = session.border, key = DISPEL_PREVIEW_KEY, frameLevel = Orbit.Constants.Levels.DispelGlow })
+    ShowDispelIconForSlot(slot)
 end
 
 local function DispelTick()
@@ -535,7 +551,7 @@ local function DispelTick()
         if numFrames == 0 then break end
         for _, slot in ipairs(session.slots) do
             if now >= slot.expiresAt then
-                if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY) end
+                if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY); HideDispelIconForSlot(slot) end
                 local alive = {}
                 for _, f in ipairs(frames) do if not f._previewDead then alive[#alive + 1] = f end end
                 if #alive == 0 then
@@ -586,7 +602,7 @@ function PA:StopDispels(owner)
     local session = dispelSessions[owner]
     if session then
         for _, slot in ipairs(session.slots) do
-            if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY) end
+            if slot.frame then GC:Hide(slot.frame, DISPEL_PREVIEW_KEY); HideDispelIconForSlot(slot) end
         end
     end
     dispelSessions[owner] = nil

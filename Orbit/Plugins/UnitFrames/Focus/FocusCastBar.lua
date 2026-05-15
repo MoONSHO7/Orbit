@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
@@ -10,7 +11,7 @@ local Plugin = Orbit:RegisterPlugin("Focus Cast Bar", "Orbit_FocusCastBar", {
 
 Mixin(Plugin, Orbit.CastBarMixin)
 
-Plugin.previewText = "Focus Cast"
+Plugin.previewText = L.PLU_CASTBAR_FOCUS
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
 function Plugin:AddSettings(dialog, systemFrame)

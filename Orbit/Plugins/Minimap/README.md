@@ -8,7 +8,7 @@ orbit's minimap plugin. reparents blizzard's `Minimap` into a clean, borderless 
 - reparents the actual `Minimap` render surface into an orbit-managed frame
 - reparents blizzard's instance difficulty, expansion landing page, mail, and crafting order indicators into the overlay
 - creates custom zoom in/out buttons with hover-reveal behaviour
-- applies orbit's border system (`Orbit.Skin:SkinBorder`) and backdrop
+- applies orbit's border system (`Orbit.Skin:SkinBorder`) and backdrop. the square shape always uses a square border (`forcePixel`) even under a rounded global Border Style — `Minimap:SetMaskTexture` stretches a flat mask, so the render surface can't be given rounded corners that match a nineslice border
 - integrates with edit mode for drag/position/anchor
 - supports visibility in pet battles / vehicles via `RegisterVisibilityEvents`
 - live-toggle support — can be disabled/enabled without a reload
@@ -62,7 +62,7 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 | ------------------ | ------- | ------- | ---------------------------------------------- |
 | `Scale`            | slider  | 100     | overall minimap scale (%)                      |
 | `Size`             | slider  | 220     | minimap diameter in pixels                     |
-| `BorderRing`       | dropdown | `none`  | decorative ring around the round minimap (`none` / `blizzard` = `ui-hud-minimap-frame` / `void` = `wowlabs_minimapvoid-ring-single`). Tinted by `BorderColor`. Only shown when `Shape = round` |
+| `BorderRing`       | dropdown | `none`  | decorative ring around the round minimap (`none` / `blizzard` = `ui-hud-minimap-frame` / `round` = solid fill / `fadedcircle` = soft-edge mask / `void` = `wowlabs_minimapvoid-ring-single`). Tinted by `BorderColor`. Only shown when `Shape = round` |
 | `ZoneTextColoring` | boolean | true    | colour zone text by pvp type (canvas override) |
 | `DifficultyShowBackground`| boolean | false   | show blizzard banner behind difficulty icon on the live minimap |
 | `LeftClickAction` | dropdown | `none` | left-click action for the minimap |

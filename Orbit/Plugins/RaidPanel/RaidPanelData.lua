@@ -33,8 +33,8 @@ PD.SLOTS = {
         label    = L.PLU_RAIDPANEL_DIFFICULTY,
     },
     READY_CHECK = {
-        kind          = "macro",
-        macro         = "/readycheck",
+        kind          = "action",
+        action        = DoReadyCheck,
         atlas         = "GM-icon-readyCheck",
         atlasHover    = "GM-icon-readyCheck-hover",
         atlasPressed  = "GM-icon-readyCheck-pressed",
@@ -42,8 +42,8 @@ PD.SLOTS = {
         label         = L.PLU_RAIDPANEL_READY_CHECK,
     },
     ROLE_CHECK = {
-        kind          = "macro",
-        macro         = "/rolepoll",
+        kind          = "action",
+        action        = InitiateRolePoll,
         atlas         = "GM-icon-roles",
         atlasHover    = "GM-icon-roles-hover",
         atlasPressed  = "GM-icon-roles-pressed",
@@ -57,8 +57,8 @@ PD.SLOTS = {
         label    = L.PLU_RAIDPANEL_RESTRICT_PINGS,
     },
     CLEAR_MARKERS = {
-        kind          = "macro",
-        macro         = "/clearworldmarker all\n/click OrbitRaidPanelClearTargets",
+        kind          = "clearmarkers",
+        action        = RemoveRaidTargets,
         atlas         = "GM-raidMarker-reset",
         atlasHover    = "GM-raidMarker-reset-hover",
         atlasPressed  = "GM-raidMarker-reset-pressed",

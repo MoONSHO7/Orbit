@@ -18,24 +18,24 @@ local function GetBorderStyleOptions()
     for _, entry in ipairs(Constants.BorderStyle.Styles) do
         opts[#opts + 1] = entry
     end
+    local existing = {}
+    for _, entry in ipairs(opts) do existing[entry.label] = true end
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local lsm = {}
     if LSM then
-        local existing = {}
-        for _, entry in ipairs(opts) do existing[entry.label] = true end
         local borders = LSM:HashTable("border")
         if borders then
             for name, path in pairs(borders) do
                 if not existing[name] and path and path ~= "" and name ~= "None" and not name:match("^Blizzard") then
-                    opts[#opts + 1] = { label = name, value = "lsm:" .. name }
+                    lsm[#lsm + 1] = { label = name, value = "lsm:" .. name }
                 end
             end
         end
     end
-    table.sort(opts, function(a, b)
-        if a.value == "flat" then return true end
-        if b.value == "flat" then return false end
-        return a.label < b.label
-    end)
+    table.sort(lsm, function(a, b) return a.label < b.label end)
+    for _, entry in ipairs(lsm) do
+        opts[#opts + 1] = entry
+    end
     return opts
 end
 
@@ -81,15 +81,23 @@ local function GetGlobalSchema()
     }
 
     local currentStyle = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderStyle or Constants.BorderStyle.Default
+    local currentEntry = Constants.BorderStyle.Lookup[currentStyle]
     local function borderSizeChanged(key, val)
         GlobalPlugin:SetSetting(nil, key, val)
         GlobalPlugin:ApplySettings()
         Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
     end
-    if currentStyle == "flat" then
+    local thicknessLabels = { L.CFG_THICKNESS_SLIM, L.CFG_THICKNESS_MEDIUM, L.CFG_THICKNESS_THICK }
+    local function thicknessFormatter(v) return thicknessLabels[v] or tostring(v) end
+    local roundnessLabels = { L.CFG_ROUNDNESS_SUBTLE, L.CFG_ROUNDNESS_ROUND, L.CFG_ROUNDNESS_HEAVY }
+    local function roundnessFormatter(v) return roundnessLabels[v] or tostring(v) end
+    if currentEntry and currentEntry.sliceMargin then
+        tinsert(controls, { type = "slider", key = "RoundedThickness", label = L.CFG_BORDER_THICKNESS, default = 2, min = 1, max = 3, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedThickness", v) end })
+        tinsert(controls, { type = "slider", key = "RoundedCorner", label = L.CFG_BORDER_ROUNDNESS, default = 2, min = 1, max = 3, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedCorner", v) end })
+    elseif currentStyle == "flat" then
         tinsert(controls, { type = "slider", key = "BorderSize", label = L.CFG_BORDER_SIZE, default = 2, min = 0, max = 5, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderSize", v) end })
     else
-        tinsert(controls, { type = "slider", key = "BorderEdgeSize", label = L.CFG_BORDER_EDGE_SIZE, default = 16, min = 1, max = 32, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderEdgeSize", v) end })
+        tinsert(controls, { type = "slider", key = "BorderEdgeSize", label = L.CFG_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderEdgeSize", v) end })
         tinsert(controls, { type = "slider", key = "BorderOffset", label = L.CFG_BORDER_OFFSET, default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderOffset", v) end })
     end
 
@@ -112,10 +120,14 @@ local function GetGlobalSchema()
     })
 
     local currentIconStyle = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.IconBorderStyle or Constants.BorderStyle.Default
-    if currentIconStyle == "flat" then
+    local currentIconEntry = Constants.BorderStyle.Lookup[currentIconStyle]
+    if currentIconEntry and currentIconEntry.sliceMargin then
+        tinsert(controls, { type = "slider", key = "IconRoundedThickness", label = L.CFG_ICON_BORDER_THICKNESS, default = 2, min = 1, max = 3, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedThickness", v) end })
+        tinsert(controls, { type = "slider", key = "IconRoundedCorner", label = L.CFG_ICON_BORDER_ROUNDNESS, default = 2, min = 1, max = 3, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedCorner", v) end })
+    elseif currentIconStyle == "flat" then
         tinsert(controls, { type = "slider", key = "IconBorderSize", label = L.CFG_ICON_BORDER_SIZE, default = 2, min = 0, max = 5, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderSize", v) end })
     else
-        tinsert(controls, { type = "slider", key = "IconBorderEdgeSize", label = L.CFG_ICON_BORDER_EDGE_SIZE, default = 16, min = 1, max = 32, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderEdgeSize", v) end })
+        tinsert(controls, { type = "slider", key = "IconBorderEdgeSize", label = L.CFG_ICON_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderEdgeSize", v) end })
         tinsert(controls, { type = "slider", key = "IconBorderOffset", label = L.CFG_ICON_BORDER_OFFSET, default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderOffset", v) end })
     end
 
@@ -139,6 +151,10 @@ local function GetGlobalSchema()
                 d.IconBorderSize = 2
                 d.IconBorderEdgeSize = 16
                 d.IconBorderOffset = 0
+                d.RoundedThickness = 2
+                d.IconRoundedThickness = 2
+                d.RoundedCorner = 2
+                d.IconRoundedCorner = 2
             end
             Orbit:Print(L.MSG_GLOBAL_RESET)
         end,

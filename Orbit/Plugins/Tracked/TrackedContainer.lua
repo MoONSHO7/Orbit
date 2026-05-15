@@ -2,6 +2,7 @@
 -- Icons-mode sparse 2D grid with neighbor-expansion drop zones and per-container update ticker.
 local _, Orbit = ...
 
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local CooldownUtils = OrbitEngine.CooldownUtils
@@ -44,12 +45,21 @@ end
 
 -- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
 function Container:Build(plugin, record)
-    local frame = CreateFrame("Frame", "OrbitTrackedContainer" .. record.id, UIParent)
+    local frameName = "OrbitTrackedContainer" .. record.id
+    local frame = _G[frameName]
+    if frame and frame._orbitTrackedMode == "icons" then
+        frame.systemIndex = record.id
+        frame.recordId = record.id
+        frame.orbitPlugin = plugin
+        return frame
+    end
+    frame = CreateFrame("Frame", frameName, UIParent)
+    frame._orbitTrackedMode = "icons"
     OrbitEngine.Pixel:Enforce(frame)
     frame:SetSize(40, 40)
     frame:SetClampedToScreen(true)
     frame.systemIndex = record.id
-    frame.editModeName = "Tracked Icons"
+    frame.editModeName = L.PLU_TRACKED_ICONS_NAME
     frame.orbitPlugin = plugin
     frame.recordId = record.id
     frame.iconItems = {} -- key -> icon item frame

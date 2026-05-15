@@ -83,24 +83,29 @@ function StatusBarBase:Create(globalName, parent)
     local bg = container:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(container)
     container.bg = bg
+    Orbit.Skin:RegisterMaskedSurface(container, bg)
 
     local overlay = CreateFrame("StatusBar", nil, container)
     overlay:SetAllPoints(container)
     overlay:SetFrameLevel(container:GetFrameLevel() + OVERLAY_FRAME_OFFSET)
+    overlay:SetStatusBarTexture(FALLBACK_TEXTURE)
     overlay:SetMinMaxValues(0, 1)
     overlay:SetValue(0)
     overlay:Hide()
     container.Overlay = overlay
+    Orbit.Skin:RegisterMaskedSurface(container, overlay:GetStatusBarTexture())
 
     -- Pending-XP sub-fill: rendered between Overlay and Bar. Shows quest-turn-in XP as a green
     -- translucent fill extending past the current XP point. Hidden for rep/honor.
     local pending = CreateFrame("StatusBar", nil, container)
     pending:SetAllPoints(container)
     pending:SetFrameLevel(container:GetFrameLevel() + OVERLAY_FRAME_OFFSET + 1)
+    pending:SetStatusBarTexture(FALLBACK_TEXTURE)
     pending:SetMinMaxValues(0, 1)
     pending:SetValue(0)
     pending:Hide()
     container.Pending = pending
+    Orbit.Skin:RegisterMaskedSurface(container, pending:GetStatusBarTexture())
 
     local bar = CreateFrame("StatusBar", nil, container)
     bar:SetAllPoints(container)
@@ -112,6 +117,7 @@ function StatusBarBase:Create(globalName, parent)
     -- white line at screen-right. ApplyTheme replaces the file path later but reuses the same Texture object.
     bar:SetStatusBarTexture(FALLBACK_TEXTURE)
     container.Bar = bar
+    Orbit.Skin:RegisterMaskedSurface(container, bar:GetStatusBarTexture())
 
     -- Leading-edge tick: solid vertical line riding the fill's right edge. Width is driven by
     -- the plugin's TickWidth setting (0 = hidden). Anchored so height auto-tracks the bar and
