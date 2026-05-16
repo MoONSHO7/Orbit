@@ -47,25 +47,29 @@ function Layout:CreateDropdown(parent, label, options, initialValue, callback, v
             rootDescription:SetTag("OrbitDropdown")
 
             for _, option in ipairs(options) do
-                local text = option.label or option.text or tostring(option.value)
-                local value = option.value
+                if option.divider then
+                    rootDescription:CreateDivider()
+                else
+                    local text = option.label or option.text or tostring(option.value)
+                    local value = option.value
 
-                local radio = rootDescription:CreateRadio(text, function(data)
-                    return frame.currentValue == data
-                end, function(data)
-                    frame.currentValue = data
-                    frame.Dropdown:SetText(GetTextForValue(data))
-                    if callback then
-                        callback(data)
-                    end
-                end, value)
-
-                if option.font then
-                    radio:AddInitializer(function(button, description, menu)
-                        if button.fontString then
-                            button.fontString:SetFont(option.font, 14)
+                    local radio = rootDescription:CreateRadio(text, function(data)
+                        return frame.currentValue == data
+                    end, function(data)
+                        frame.currentValue = data
+                        frame.Dropdown:SetText(GetTextForValue(data))
+                        if callback then
+                            callback(data)
                         end
-                    end)
+                    end, value)
+
+                    if option.font then
+                        radio:AddInitializer(function(button, description, menu)
+                            if button.fontString then
+                                button.fontString:SetFont(option.font, 14)
+                            end
+                        end)
+                    end
                 end
             end
         end)

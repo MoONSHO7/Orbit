@@ -70,6 +70,10 @@ local function CreatePowerBar(parent, unit)
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
+    -- Register the power bar's surfaces so the rounded border mask clips them too; without this
+    -- the power bar keeps square corners and sits outside the rounded border (matches GroupFrames).
+    Orbit.Skin:RegisterMaskedSurface(parent, power.bg)
+    Orbit.Skin:RegisterMaskedSurface(parent, power:GetStatusBarTexture())
     return power
 end
 

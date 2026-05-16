@@ -13,7 +13,7 @@ suppresses native blizzard action bars and reparents their buttons into orbit co
 | ActionBars.lua | main plugin. bar creation, button reparenting, visibility drivers, ooc fade, grid layout, spell state coloring (range/usable/mana), proc glow hooks (via GlowController, triggered by ActionButtonSpellAlertManager). |
 | ActionBarsContainer.lua | individual bar container frame. manages button grid within a single bar. |
 | ActionBarsPreview.lua | canvas mode preview generation. |
-| ActionBarsText.lua | text overlay settings (keybind, macro name, count) and canvas mode text styling. |
+| ActionBarsText.lua | text overlay settings (keybind, macro name, count) and canvas mode text styling. also re-levels blizzard's `ProfessionQualityOverlayFrame` (the item-quality diamond) so it renders above the orbit border. |
 
 ## how it works
 
@@ -50,3 +50,4 @@ graph LR
 - button reparenting must preserve secure frame references for combat
 - all grid math must use pixel-snapped values
 - bar visibility uses macro conditional drivers (`RegisterStateDriver`)
+- blizzard's `ProfessionQualityOverlayFrame` carries no frame level and renders beneath the orbit border; `ABText:ApplyQualityOverlay` raises it to `Constants.Levels.IconGlow` (above per-icon and merged group borders). it is `hooksecurefunc`-bound to `UpdateProfessionQuality` since blizzard creates the overlay lazily. placement is left at blizzard's default — the diamond is not a canvas component

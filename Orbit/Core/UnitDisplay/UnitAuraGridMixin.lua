@@ -744,31 +744,48 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
     overlay:ClearAllPoints()
     if iconNineSlice and iconNineSlice.sliceMargin then
         local style = Skin:BuildIconStyle(iconNineSlice)
-        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
-        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
-        local c = Skin:ResolveBorderColor(true)
-        Skin:_RenderSliceTexture(overlay, style, c)
+        if style.edgeFile then
+            overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+            overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
+            Skin:_RenderSliceTexture(overlay, style, Skin:ResolveBorderColor(true))
+            overlay:Show()
+        else
+            -- Border Thickness None: no grid outline — the corner-clip mask still applies.
+            if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+            overlay:Hide()
+        end
 
-        if not Frame._gridGroupRoundedMask then
-            Frame._gridGroupRoundedMask = Frame:CreateMaskTexture(nil, "BACKGROUND")
-            if Orbit.Engine.Pixel then Orbit.Engine.Pixel:Enforce(Frame._gridGroupRoundedMask) end
-        end
-        local mask = Frame._gridGroupRoundedMask
-        local tier = Skin:GetRoundedTier(true)
-        mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
-        mask:ClearAllPoints()
-        mask:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
-        mask:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
-        for _, icon in ipairs(activeIcons) do
-            for _, t in ipairs(icon._maskedSurfaces or {}) do
-                if t.RemoveMaskTexture then
-                    if icon._roundedMask then t:RemoveMaskTexture(icon._roundedMask) end
-                    t:RemoveMaskTexture(mask)
-                end
-                if t.AddMaskTexture then t:AddMaskTexture(mask) end
+        -- The mask uses the SAME `style` as the outline above.
+        -- Square carries no mask: no content clipping needed.
+        if style.mask then
+            if not Frame._gridGroupRoundedMask then
+                Frame._gridGroupRoundedMask = Frame:CreateMaskTexture(nil, "BACKGROUND")
+                if Orbit.Engine.Pixel then Orbit.Engine.Pixel:Enforce(Frame._gridGroupRoundedMask) end
             end
+            local mask = Frame._gridGroupRoundedMask
+            local m = style.sliceMargin
+            mask:SetTexture(style.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            mask:SetTextureSliceMargins(m, m, m, m)
+            mask:ClearAllPoints()
+            mask:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+            mask:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
+            for _, icon in ipairs(activeIcons) do
+                for _, t in ipairs(icon._maskedSurfaces or {}) do
+                    if t.RemoveMaskTexture then
+                        if icon._roundedMask then t:RemoveMaskTexture(icon._roundedMask) end
+                        t:RemoveMaskTexture(mask)
+                    end
+                    if t.AddMaskTexture then t:AddMaskTexture(mask) end
+                end
+            end
+        else
+            ClearGridRoundedMask(Frame, activeIcons)
         end
+        for _, icon in ipairs(activeIcons) do
+            if icon._borderFrame then icon._borderFrame:Hide() end
+            if icon._edgeBorderOverlay then icon._edgeBorderOverlay:Hide() end
+        end
+        return
     elseif iconNineSlice and iconNineSlice.edgeFile then
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         ClearGridRoundedMask(Frame, activeIcons)

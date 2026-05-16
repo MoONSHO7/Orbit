@@ -5,6 +5,32 @@ local Skin = Orbit.Skin
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 
+-- Every highlight overlay ever built, weak-keyed so it follows frame GC. Highlight borders are
+-- state-driven — applied on aggro/selection/dispel events, never on settings-apply — so a border
+-- style change must rebuild the visible ones from here (see the ORBIT_BORDER_SIZE_CHANGED hook).
+local activeHighlights = setmetatable({}, { __mode = "k" })
+
+local function RecordHighlight(overlay, frame, storageKey, color, levelOffset)
+    overlay._hlFrame = frame
+    overlay._hlStorageKey = storageKey
+    overlay._hlColor = color
+    overlay._hlLevelOffset = levelOffset
+    activeHighlights[overlay] = true
+end
+
+-- Captures everything the rendered outline depends on. The cache key needs this because pathType
+-- alone can't tell Square from Round (both resolve to "modern") — without it a roundness change
+-- would hit the cache and keep the stale corner texture.
+local function StyleSignature(pathType, nineSliceStyle, gs)
+    if pathType == "modern" then
+        local hlThickness = math.max(nineSliceStyle.thickness or 1, Constants.BorderStyle.Thickness.Slim)
+        return nineSliceStyle.baseEdgeFile .. "_" .. nineSliceStyle.roundness .. "_" .. hlThickness
+    elseif pathType == "legacy" then
+        return (nineSliceStyle.edgeFile or "") .. ":" .. ((gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize)
+    end
+    return "pixel:" .. math.max(1, (gs and gs.BorderSize) or 1)
+end
+
 -- [ HIGHLIGHT BORDER ]-------------------------------------------------------------------------------
 -- When borders are merged, anchors to the group border overlay instead of the per-frame border.
 function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendMode)
@@ -38,10 +64,13 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     elseif nineSliceStyle and nineSliceStyle.edgeFile then pathType = "legacy"
     else pathType = "pixel" end
 
+    local styleSig = StyleSignature(pathType, nineSliceStyle, gs)
+
     local overlay = frame[storageKey]
-    if overlay and overlay._hlCacheValid
+    if overlay
         and overlay._hlBlendMode == mode
         and overlay._hlPathType == pathType
+        and overlay._hlStyleSig == styleSig
         and overlay._hlAnchorTarget == anchorTarget then
         if pathType == "modern" then
             if overlay._sliceTexture then overlay._sliceTexture:SetVertexColor(r, g, b, a) end
@@ -54,6 +83,8 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         else
             overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
         end
+        if pathType == "modern" then self:_PinBorderScale(overlay, frame) else overlay:SetScale(1) end
+        RecordHighlight(overlay, frame, storageKey, color, levelOffset)
         overlay:Show()
         return
     end
@@ -63,6 +94,9 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         overlay:EnableMouse(false)
         frame[storageKey] = overlay
     end
+    -- Modern nine-slice highlight renders at the fixed pixel scale (matching the border it sits
+    -- on); legacy/pixel highlights stay at scale 1 (their geometry is in frame-local units).
+    if pathType == "modern" then self:_PinBorderScale(overlay, frame) else overlay:SetScale(1) end
 
     if anchorTarget then
         local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
@@ -78,7 +112,16 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     local borderOffset = (gs and gs.BorderOffset) or 0
 
     if pathType == "modern" then
-        self:_RenderSliceTexture(overlay, nineSliceStyle, { r = r, g = g, b = b, a = a }, mode)
+        -- The highlight always shows a border even when the cosmetic Border Thickness is None,
+        -- so it builds its own slice entry at the active roundness and at least a Slim outline.
+        local roundness = nineSliceStyle.roundness
+        local tier = Constants.BorderStyle.RoundedTiers[roundness]
+        local hlThickness = math.max(nineSliceStyle.thickness or 1, Constants.BorderStyle.Thickness.Slim)
+        local hlStyle = {
+            edgeFile = nineSliceStyle.baseEdgeFile .. "_" .. roundness .. "_" .. hlThickness,
+            sliceMargin = tier.margin,
+        }
+        self:_RenderSliceTexture(overlay, hlStyle, { r = r, g = g, b = b, a = a }, mode)
         overlay:ClearAllPoints()
         overlay:SetAllPoints(anchorTarget or frame)
     elseif pathType == "legacy" then
@@ -115,10 +158,11 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     end
     overlay:Show()
 
-    overlay._hlCacheValid = true
     overlay._hlBlendMode = mode
     overlay._hlAnchorTarget = anchorTarget
     overlay._hlPathType = pathType
+    overlay._hlStyleSig = styleSig
+    RecordHighlight(overlay, frame, storageKey, color, levelOffset)
 end
 
 function Skin:ClearHighlightBorder(frame, storageKey)
@@ -127,11 +171,14 @@ function Skin:ClearHighlightBorder(frame, storageKey)
     if overlay then overlay:Hide() end
 end
 
--- Invalidate highlight caches when border settings change
-function Skin:InvalidateHighlightCaches(frame)
-    if not frame then return end
-    for _, key in ipairs({ "_selectionBorderOverlay", "_aggroHighlightOverlay", "_aggroBorderOverlay" }) do
-        local overlay = frame[key]
-        if overlay then overlay._hlCacheValid = nil end
+-- A border style / thickness / roundness change must rebuild every visible highlight border:
+-- their callers only re-run on unit state events, so without this they keep the old corner
+-- shape until the unit's aggro/selection/dispel state next changes.
+Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function()
+    for overlay in pairs(activeHighlights) do
+        if overlay._hlFrame and overlay:IsShown() then
+            Skin:ApplyHighlightBorder(overlay._hlFrame, overlay._hlStorageKey, overlay._hlColor,
+                overlay._hlLevelOffset, overlay._hlBlendMode)
+        end
     end
-end
+end)

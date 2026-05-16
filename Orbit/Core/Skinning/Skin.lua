@@ -26,13 +26,13 @@ local function RefreshBordersIfNeeded()
     local gs = Orbit.db and Orbit.db.GlobalSettings
     if not gs then return end
     local needsRefresh = false
-    if gs.BorderStyle and gs.BorderStyle ~= "flat" then
-        local style = Skin:ResolveStyle("BorderStyle")
-        if not style then needsRefresh = true end
-    end
-    if gs.IconBorderStyle and gs.IconBorderStyle ~= "flat" then
-        local style = Skin:ResolveStyle("IconBorderStyle")
-        if not style then needsRefresh = true end
+    -- Only LibSharedMedia borders can resolve late (sibling addon registers after us);
+    -- the built-in Orbit style always resolves.
+    for _, key in ipairs({ "BorderStyle", "IconBorderStyle" }) do
+        local v = gs[key]
+        if v and v:match("^lsm:") and not Skin:ResolveStyle(key) then
+            needsRefresh = true
+        end
     end
     if not needsRefresh then return end
     lsmPendingRefresh = true
@@ -55,31 +55,14 @@ LSM.RegisterCallback(Orbit, "LibSharedMedia_Registered", function(_, mediaType, 
     end
 end)
 
--- Deferred one-shot: all addons are loaded by PLAYER_ENTERING_WORLD; reconcile if borders are stale.
-C_Timer.After(0, function()
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
-        C_Timer.After(1, RefreshBordersIfNeeded)
-    end)
+-- All addons are loaded by PLAYER_ENTERING_WORLD; reconcile if borders are stale.
+Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    C_Timer.After(1, RefreshBordersIfNeeded)
 end)
 
 -- [ UTILITIES ]--------------------------------------------------------------------------------------
 function Skin:GetPixelScale()
     return Engine.Pixel:GetScale()
-end
-
--- [ ICON SKINNING ]----------------------------------------------------------------------------------
-function Skin:SkinIcon(icon, settings)
-    if not icon then
-        return
-    end
-    if not icon.SetTexCoord then return end
-
-    local zoom = settings.zoom or 0
-    local trim = Constants.Texture.BlizzardIconBorderTrim
-    trim = trim + ((zoom / 100) / 2)
-
-    local left, right, top, bottom = trim, 1 - trim, trim, 1 - trim
-    icon:SetTexCoord(left, right, top, bottom)
 end
 
 -- [ BORDER SKINNING ]--------------------------------------------------------------------------------
@@ -99,34 +82,46 @@ function Skin:RegisterMaskedSurface(frame, texture)
     table.insert(frame._maskedSurfaces, texture)
 end
 
-function Skin:GetRoundedTier(isIcon)
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    local roundness = (gs and gs[isIcon and "IconRoundedCorner" or "RoundedCorner"]) or 2
-    return Constants.BorderStyle.RoundedTiers[roundness] or Constants.BorderStyle.RoundedTiers[2]
-end
-
--- Cooldown swipes are rendered by the C++ widget and cannot take a MaskTexture;
--- routing the active rounded-mask asset through SetSwipeTexture is the only way
--- the swipe can inherit the frame's rounded corners.
+-- Cooldown swipes are rendered by the C++ widget and cannot take a MaskTexture; routing the
+-- active rounded-mask asset through SetSwipeTexture is the only way the swipe inherits the
+-- frame's rounded corners.
 function Skin:GetRoundedSwipeTexture(isIcon)
     local style = isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
-    if style and style.sliceMargin then
-        return self:GetRoundedTier(isIcon).mask
-    end
-    return nil
+    return style and style.mask or nil
 end
 
-function Skin:_EnsureRoundedMask(frame, isIcon)
+-- Border overlays render at the fixed pixel scale, NOT the bordered frame's effective scale, so a
+-- given Border Thickness / corner radius is the same physical size on every frame however the
+-- frame itself is scaled. SetTextureSliceMargins margins are fixed texels — at the pixel scale they
+-- map 1:1 to device pixels. `overlay` must be a direct child of `frame`.
+function Skin:_PinBorderScale(overlay, frame)
+    local fs = frame:GetEffectiveScale()
+    if not fs or fs < 0.01 then fs = 1 end
+    overlay:SetScale(Engine.Pixel:GetScale() / fs)
+end
+
+-- Builds/updates frame._roundedMask from the SAME style the border outline uses. The mask lives on
+-- a dedicated host frame pinned to the fixed pixel scale, so its rounded corners stay a constant
+-- size and line up with the equally-pinned outline. The host is separate from _edgeBorderOverlay
+-- so border-hide logic (which toggles the outline) never disturbs the content clip.
+function Skin:_EnsureRoundedMask(frame, styleEntry)
+    local host = frame._roundedMaskHost
+    if not host then
+        host = CreateFrame("Frame", nil, frame)
+        host:SetAllPoints(frame)
+        frame._roundedMaskHost = host
+    end
+    self:_PinBorderScale(host, frame)
     local mask = frame._roundedMask
     if not mask then
-        mask = frame:CreateMaskTexture(nil, "BACKGROUND")
+        mask = host:CreateMaskTexture(nil, "BACKGROUND")
         frame._roundedMask = mask
         if Engine.Pixel then Engine.Pixel:Enforce(mask) end
     end
-    local tier = self:GetRoundedTier(isIcon)
-    mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-    mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
-    mask:SetAllPoints(frame)
+    local m = styleEntry.sliceMargin
+    mask:SetTexture(styleEntry.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    mask:SetTextureSliceMargins(m, m, m, m)
+    mask:SetAllPoints(host)
     return mask
 end
 
@@ -141,37 +136,46 @@ function Skin:_SetSurfaceMask(tex, mask)
     tex._orbitRoundedMask = mask
 end
 
-function Skin:ApplyRoundedMaskToSurfaces(frame, isIcon)
+-- Applies (or clears) the corner-clip mask on every registered surface, from `styleEntry` — the
+-- SAME style handed to the border outline, so the two stay locked together at all times.
+function Skin:ApplyRoundedMaskToSurfaces(frame, styleEntry)
     if not frame or not frame._maskedSurfaces then return end
     local mask
     if frame._groupBorderActive then
         -- Merged frames defer to the group root's mask; if the refresh hasn't run, leave them.
         mask = frame._groupBorderRoot and frame._groupBorderRoot._groupRoundedMask
         if not mask then return end
+    elseif styleEntry and styleEntry.mask then
+        mask = self:_EnsureRoundedMask(frame, styleEntry)
     else
-        mask = self:_EnsureRoundedMask(frame, isIcon)
+        -- Square, no style, or a LibSharedMedia border — no corner curve to clip.
+        self:ClearRoundedMaskFromSurfaces(frame)
+        return
     end
     for _, tex in ipairs(frame._maskedSurfaces) do
         self:_SetSurfaceMask(tex, mask)
     end
 end
 
+-- Releases ONLY this frame's own rounded mask. An icon texture is registered on both the icon
+-- and its container, sharing one mask slot; clearing the container's surfaces must not wipe a
+-- per-icon mask that legitimately owns the surface now (and vice versa). Blindly nil-ing every
+-- registered surface would clobber the other owner on every merge/unmerge.
 function Skin:ClearRoundedMaskFromSurfaces(frame)
     if not frame or not frame._maskedSurfaces then return end
+    local own = frame._roundedMask
+    if not own then return end
     for _, tex in ipairs(frame._maskedSurfaces) do
-        self:_SetSurfaceMask(tex, nil)
+        if tex._orbitRoundedMask == own then
+            self:_SetSurfaceMask(tex, nil)
+        end
     end
 end
 
--- For frames built outside the SkinBorder lifecycle (e.g., canvas-mode previews) where the
--- usual ApplyNineSliceBorder dispatch isn't re-run after surfaces are registered.
+-- For frames built outside the SkinBorder lifecycle (e.g. canvas-mode previews) where surfaces
+-- are registered after the border dispatch ran. Uses the same style the border uses.
 function Skin:UpdateRoundedMask(frame, isIcon)
-    local style = isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
-    if style and style.sliceMargin then
-        self:ApplyRoundedMaskToSurfaces(frame, isIcon)
-    else
-        self:ClearRoundedMaskFromSurfaces(frame)
-    end
+    self:ApplyRoundedMaskToSurfaces(frame, isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle())
 end
 
 function Skin:_RenderSliceTexture(overlay, styleEntry, color, blendMode)
@@ -191,17 +195,22 @@ function Skin:_RenderSliceTexture(overlay, styleEntry, color, blendMode)
 end
 
 -- [ NINESLICE BORDER ]-------------------------------------------------------------------------------
-function Skin:ApplyNineSliceBorder(frame, styleEntry)
+-- levelOverride: explicit border-level offset for callers that need it (e.g. an icon container's
+-- group border sits at IconOverlay, above the child buttons, not at the per-icon IconBorder).
+function Skin:ApplyNineSliceBorder(frame, styleEntry, levelOverride)
     if not frame or not styleEntry then return end
-    if not styleEntry.edgeFile then return end
-    if not frame._edgeBorderOverlay then
-        frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    end
-    local borderLevel = styleEntry.isIcon and Constants.Levels.IconBorder or Constants.Levels.Border
-    frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + borderLevel)
     if styleEntry.sliceMargin then
-        self:_ApplyModernSliceBorder(frame, styleEntry)
-    else
+        -- Orbit slice style: outline (when Border Thickness > None) and/or corner-clip mask.
+        self:_ApplyModernSliceBorder(frame, styleEntry, levelOverride)
+    elseif styleEntry.edgeFile then
+        -- LibSharedMedia legacy edge-file border. Drawn at scale 1 — the outset offsets and
+        -- backdrop edgeSize are computed in frame-local units; only the orbit nine-slice is pinned.
+        if not frame._edgeBorderOverlay then
+            frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+        end
+        frame._edgeBorderOverlay:SetScale(1)
+        local borderLevel = levelOverride or (styleEntry.isIcon and Constants.Levels.IconBorder or Constants.Levels.Border)
+        frame._edgeBorderOverlay:SetFrameLevel(frame:GetFrameLevel() + borderLevel)
         self:_ApplyLegacyEdgeFileBorder(frame, styleEntry)
     end
 end
@@ -231,15 +240,28 @@ function Skin:_ApplyLegacyEdgeFileBorder(frame, styleEntry)
     self:ClearRoundedMaskFromSurfaces(frame)
 end
 
-function Skin:_ApplyModernSliceBorder(frame, styleEntry)
-    local overlay = frame._edgeBorderOverlay
+function Skin:_ApplyModernSliceBorder(frame, styleEntry, levelOverride)
     frame.borderPixelSize = 0
+    if not frame._edgeBorderOverlay then
+        frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    end
+    local overlay = frame._edgeBorderOverlay
+    self:_PinBorderScale(overlay, frame)
+    local borderLevel = levelOverride or (styleEntry.isIcon and Constants.Levels.IconBorder or Constants.Levels.Border)
+    overlay:SetFrameLevel(frame:GetFrameLevel() + borderLevel)
     overlay:ClearAllPoints()
     overlay:SetAllPoints(frame)
-    local c = styleEntry.color or self:ResolveBorderColor(styleEntry.isIcon)
-    self:_RenderSliceTexture(overlay, styleEntry, c)
+    if styleEntry.edgeFile then
+        self:_RenderSliceTexture(overlay, styleEntry, self:ResolveBorderColor(styleEntry.isIcon))
+    else
+        -- Border Thickness None — no outline. The overlay frame stays (transparent) so a stale
+        -- backdrop can't linger; the corner-clip mask below still applies via its own host.
+        overlay:SetBackdrop(nil)
+        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+    end
     overlay:SetShown(not frame._groupBorderActive)
-    self:ApplyRoundedMaskToSurfaces(frame, styleEntry.isIcon)
+    -- Mask, from the SAME style as the outline — applied or cleared in lockstep with it.
+    self:ApplyRoundedMaskToSurfaces(frame, styleEntry)
 end
 
 function Skin:ClearNineSliceBorder(frame)
@@ -273,9 +295,9 @@ function Skin:ApplyIconGroupBorder(container, styleEntry, iconsList)
     if styleEntry then
         container._activeBorderMode = "nineslice"
         if container._borderFrame then container._borderFrame:Hide() end
-        self:ApplyNineSliceBorder(container, self:BuildIconStyle(styleEntry))
-        local overlay = container._edgeBorderOverlay
-        if overlay then overlay:SetFrameLevel(container:GetFrameLevel() + Constants.Levels.IconOverlay) end
+        -- The container border sits above the child icon buttons (IconOverlay), not at the
+        -- per-icon IconBorder level.
+        self:ApplyNineSliceBorder(container, self:BuildIconStyle(styleEntry), Constants.Levels.IconOverlay)
     else
         -- Pixel mode: flat border on container
         self:ClearNineSliceBorder(container)
@@ -302,22 +324,26 @@ end
 
 function Skin:ResolveStyle(settingsKey)
     local gs = Orbit.db and Orbit.db.GlobalSettings
-    local styleKey = gs and gs[settingsKey]
-    if not styleKey or styleKey == Constants.BorderStyle.Default then return nil end
-    local builtIn = Constants.BorderStyle.Lookup[styleKey]
+    local bs = Constants.BorderStyle
+    local styleKey = (gs and gs[settingsKey]) or bs.Default
+    local builtIn = bs.Lookup[styleKey]
     if builtIn then
-        if builtIn.sliceMargin then
-            local isIcon = settingsKey == "IconBorderStyle"
-            local thickness = (gs and gs[isIcon and "IconRoundedThickness" or "RoundedThickness"]) or 2
-            local roundness = (gs and gs[isIcon and "IconRoundedCorner" or "RoundedCorner"]) or 2
-            local tier = Constants.BorderStyle.RoundedTiers[roundness] or Constants.BorderStyle.RoundedTiers[2]
-            local style = {}
-            for k, v in pairs(builtIn) do style[k] = v end
-            style.edgeFile = builtIn.edgeFile .. "_" .. roundness .. "_" .. thickness
-            style.sliceMargin = tier.margin
-            return style
-        end
-        return builtIn
+        if not builtIn.roundnessDriven then return builtIn end
+        local isIcon = settingsKey == "IconBorderStyle"
+        local roundness = (gs and gs[isIcon and "IconRoundedCorner" or "RoundedCorner"]) or bs.DefaultRoundness
+        local thickness = (gs and gs[isIcon and "IconRoundedThickness" or "RoundedThickness"]) or bs.DefaultThickness
+        local tier = bs.RoundedTiers[roundness] or bs.RoundedTiers[bs.DefaultRoundness]
+        -- edgeFile is nil at thickness None (no outline); the mask still applies for rounded
+        -- tiers. roundness/thickness/baseEdgeFile let HighlightBorder build its own outline.
+        return {
+            edgeFile = (thickness > 0) and (builtIn.edgeFile .. "_" .. roundness .. "_" .. thickness) or nil,
+            sliceMargin = tier.margin,
+            mask = tier.mask,
+            roundness = roundness,
+            thickness = thickness,
+            baseEdgeFile = builtIn.edgeFile,
+            isIcon = isIcon,
+        }
     end
     local lsmName = styleKey:match("^lsm:(.+)$")
     if lsmName then
@@ -352,7 +378,25 @@ function Skin:BuildIconStyle(baseStyle)
     return style
 end
 
-function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
+-- Returns a copy of an orbit slice style pinned to Square corner roundness, keeping its
+-- configured thickness. For render surfaces that can't take a corner-clip mask — a 3D model
+-- portrait's PlayerModel is a hard rectangle, so its border must use square corners.
+function Skin:_SquareStyle(styleEntry)
+    if not styleEntry or not styleEntry.sliceMargin then return styleEntry end
+    if styleEntry.roundness == 0 then return styleEntry end
+    local thickness = styleEntry.thickness
+    local tier = Constants.BorderStyle.RoundedTiers[Constants.BorderStyle.Roundness.Square]
+    return {
+        edgeFile = (thickness and thickness > 0) and (styleEntry.baseEdgeFile .. "_0_" .. thickness) or nil,
+        sliceMargin = tier.margin,
+        roundness = 0,
+        thickness = thickness,
+        baseEdgeFile = styleEntry.baseEdgeFile,
+        isIcon = styleEntry.isIcon,
+    }
+end
+
+function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel, forceSquare)
     if not frame or not backdrop then
         return
     end
@@ -362,9 +406,12 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel)
     if not forcePixel then
         if isIcon then nineSliceStyle = self:GetActiveIconBorderStyle()
         else nineSliceStyle = self:GetActiveBorderStyle() end
+        -- forceSquare: pin to Square corners, keep the configured thickness.
+        if forceSquare and nineSliceStyle then nineSliceStyle = self:_SquareStyle(nineSliceStyle) end
     end
     if nineSliceStyle then
         if frame._borderFrame then frame._borderFrame:Hide() end
+        if not frame.SetBorderHidden then frame.SetBorderHidden = Skin.DefaultSetBorderHidden end
         frame._activeBorderMode = "nineslice"
         local styleEntry = isIcon and self:BuildIconStyle(nineSliceStyle) or nineSliceStyle
         self:ApplyNineSliceBorder(frame, styleEntry)

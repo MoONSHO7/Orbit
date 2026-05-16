@@ -1,9 +1,9 @@
 [start]
 
 ### Updates
-- Added "Orbit Rounded" border style with adjustable Corner Roundness and Thickness (Global tab)
-- Rounded borders apply to frames and icons alike
-- Renamed the "Orbit Pixel" border style to "Orbit Squared"
+- New unified "Orbit" border style with two independent sliders: Corner Roundness (Square, Subtle, Round, Heavy) and Border Thickness (None, Slim, Medium, Thick) — Global tab
+- Border Thickness None removes the outline while keeping the rounded corner shape — e.g. rounded frames with no border line
+- The Orbit border applies to frames and icons alike; LibSharedMedia borders sit below a divider in the style dropdown
 - Added "Faded Circle" Minimap border option
 - Added a Dispel Icon to Group frames showing the debuff type — positionable in Canvas Mode
 

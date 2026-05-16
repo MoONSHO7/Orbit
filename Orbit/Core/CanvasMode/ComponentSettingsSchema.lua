@@ -139,6 +139,8 @@ Schema.KEY_SCHEMAS = {
         controls = {
             { type = "dropdown", key = "PortraitStyle", label = L.CFG_STYLE, plugin = true, rebuildsPanel = true,
               options = { { text = L.CFG_PORTRAIT_STYLE_2D, value = "2d" }, { text = L.CFG_PORTRAIT_STYLE_3D, value = "3d" } }, default = "3d" },
+            { type = "dropdown", key = "PortraitType", label = L.CFG_PORTRAIT_TYPE, plugin = true, showIfValue = { key = "PortraitStyle", value = "2d" },
+              options = { { text = L.CFG_PORTRAIT_TYPE_PORTRAIT, value = "portrait" }, { text = L.CFG_PORTRAIT_TYPE_CLASS, value = "classicon" } }, default = "portrait" },
             { type = "slider", key = "PortraitScale", label = L.CFG_SCALE, plugin = true, min = 50, max = 200, step = 1,
               formatter = function(v) return v .. "%" end, default = 120 },
             { type = "checkbox", key = "PortraitBorder", label = L.CFG_BORDER, plugin = true, default = true, showIfValue = { key = "PortraitStyle", value = "3d" } },

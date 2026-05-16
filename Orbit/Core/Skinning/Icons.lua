@@ -101,7 +101,6 @@ function Icons:ApplyCustom(icon, settings)
         local scale = icon:GetEffectiveScale()
         newWidth = Pixel:Snap(newWidth, scale)
         newHeight = Pixel:Snap(newHeight, scale)
-        Skin:SkinIcon(tex, settings)
         local trim = Constants.Texture.BlizzardIconBorderTrim
         local zoom = settings.zoom or 0
         trim = trim + ((zoom / 100) / 2)

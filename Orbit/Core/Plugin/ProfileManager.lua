@@ -40,6 +40,37 @@ local function CopyTable(src, dest)
     return dest
 end
 
+-- One-shot border-style consolidation: the former "Orbit Squared" (flat) and "Orbit Rounded"
+-- (rounded) styles merged into one "orbit" style with orthogonal Corner Roundness + Border
+-- Thickness sliders. Idempotent — only legacy "flat"/"rounded" keys and the interim None=-1
+-- roundness are rewritten; a settled "orbit" profile passes through untouched.
+local function NormalizeBorderStyle(gs)
+    if not gs then return end
+    local entries = {
+        { style = "BorderStyle",     corner = "RoundedCorner",     thickness = "RoundedThickness",     size = "BorderSize" },
+        { style = "IconBorderStyle", corner = "IconRoundedCorner", thickness = "IconRoundedThickness", size = "IconBorderSize" },
+    }
+    for _, p in ipairs(entries) do
+        local v = gs[p.style]
+        if v == "flat" then
+            gs[p.style] = "orbit"
+            if gs[p.corner] == nil then gs[p.corner] = 0 end          -- Square ≈ the old flat look
+            -- Old flat BorderSize (0-5) maps onto Border Thickness (None=0 .. Thick=3).
+            if gs[p.thickness] == nil then gs[p.thickness] = math.min(gs[p.size] or 2, 3) end
+        elseif v == "rounded" then
+            gs[p.style] = "orbit"
+            -- Preserve the pre-consolidation Rounded default (Round) for untouched profiles.
+            if gs[p.corner] == nil then gs[p.corner] = 2 end
+        end
+        -- Interim None=-1 roundness meant "no border" — now Border Thickness None, Square corner.
+        if gs[p.corner] == -1 then
+            gs[p.corner] = 0
+            gs[p.thickness] = 0
+        end
+    end
+    Orbit.Constants.BorderStyle.SyncEffectiveSize(gs)
+end
+
 local function SafeApplyPlugin(plugin)
     local success, err = pcall(function() plugin:ApplySettings(nil) end)
     if not success then
@@ -66,6 +97,7 @@ function Orbit.Profile:Initialize()
             end
         end
     end
+    NormalizeBorderStyle(gs)
 
     if not Orbit.db.profiles[DEFAULT_PROFILE] then
         Orbit.db.profiles[DEFAULT_PROFILE] = CopyTable(self.defaults, {})
@@ -98,6 +130,7 @@ function Orbit.Profile:Initialize()
         if not profileData.GlobalSettings then
             profileData.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
         end
+        NormalizeBorderStyle(profileData.GlobalSettings)
     end
 
 

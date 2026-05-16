@@ -274,7 +274,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
     end
 
     if schema.openPluginManager then
-        local pmBtn = Layout:CreateButton(footer, "Plugin Manager", function()
+        local pmBtn = Layout:CreateButton(footer, "Advanced", function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
                 securecall("HideUIPanel", EditModeManagerFrame)
             end

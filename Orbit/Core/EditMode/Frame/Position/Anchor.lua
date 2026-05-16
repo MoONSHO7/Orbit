@@ -172,7 +172,8 @@ ApplyAnchorPosition = function(child, parent, edge, padding, align, syncOptions)
 
     local bothMerge = ShouldMergeBorders(parentOptions, edge) and ShouldMergeBorders(childOptions, edge)
     local shouldMerge = bothMerge and padding == 0
-    if shouldMerge and child:IsShown() and (child:GetAlpha() > 0 or child._oocFadeHidden) then
+    local childAlpha = child:GetAlpha()
+    if shouldMerge and child:IsShown() and (issecretvalue(childAlpha) or childAlpha > 0 or child._oocFadeHidden) then
         SetMergeBorderState(parent, child, edge, true)
     elseif bothMerge then
         SetMergeBorderState(parent, child, edge, false)
@@ -268,8 +269,8 @@ end
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings, skipLogical)
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
-        -- Only legacy edgeFile borders outset and need the wider gap; modern slice (Orbit
-        -- Rounded) and flat (Orbit Squared) render flush, so they use DEFAULT_PADDING.
+        -- Only legacy LibSharedMedia edgeFile borders outset and need the wider gap; the modern
+        -- slice "Orbit" border (and None) render flush, so they use DEFAULT_PADDING.
         local outsetBorder = style and style.edgeFile and not style.sliceMargin
         padding = outsetBorder and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
     end

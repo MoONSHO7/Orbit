@@ -65,6 +65,14 @@ function Skin:UpdateGroupBorder(rootFrame)
         if frame._isIconContainer then isIconStyle = true; break end
     end
 
+    -- Determine border mode: NineSlice texture or pixel flat.
+    local styleEntry
+    if isIconStyle then styleEntry = self:GetActiveIconBorderStyle()
+    else styleEntry = self:GetActiveBorderStyle() end
+    -- Pixel fallback only when no style resolves at all (e.g. a LibSharedMedia border not yet
+    -- registered); the orbit slice style always resolves, even at Border Thickness None.
+    local isPixelMode = (styleEntry == nil)
+
     -- Mark all merged frames and hide their individual borders
     for _, frame in ipairs(allFrames) do
         frame._groupBorderActive = true
@@ -80,15 +88,6 @@ function Skin:UpdateGroupBorder(rootFrame)
             frame._groupBorderHiddenPixels = true
         end
         if frame._gridGroupBorder then frame._gridGroupBorder:Hide() end
-    end
-
-    -- Determine border mode: NineSlice texture or pixel flat
-    local isPixelMode = false
-    local styleEntry
-    if isIconStyle then styleEntry = self:GetActiveIconBorderStyle()
-    else styleEntry = self:GetActiveBorderStyle() end
-    if not styleEntry or not styleEntry.edgeFile then
-        isPixelMode = true
     end
 
     -- Icon containers: boost above the highest child button level.
@@ -114,8 +113,6 @@ function Skin:UpdateGroupBorder(rootFrame)
 
     local overlay = rootFrame._groupBorderOverlay
     local gs = Orbit.db and Orbit.db.GlobalSettings
-
-
 
     -- Calculate bounding box from anchor edge data (deterministic, no screen coords needed).
     -- Each frame's position relative to rootFrame TOPLEFT is derived from its anchor edge.
@@ -185,8 +182,10 @@ function Skin:UpdateGroupBorder(rootFrame)
 
 
     local hasModernSlice = (not isPixelMode) and styleEntry and styleEntry.sliceMargin
+    local hideOverlay = false
 
     if isPixelMode then
+        overlay:SetScale(1)
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (gs and gs.BorderSize or Constants.Settings.BorderSize.Default)
@@ -217,19 +216,35 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     elseif hasModernSlice then
+        -- Pinned to the fixed pixel scale so the merged outline is the same physical thickness as
+        -- every per-frame border, regardless of the root frame's scale.
+        self:_PinBorderScale(overlay, rootFrame)
         overlay:ClearAllPoints()
         if canNativeAnchor then
             overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
             overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
         else
-            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
-            overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
+            -- offsetX/Y and totalW/H are root-frame-local; convert to the pinned overlay's units.
+            local oScale = overlay:GetScale()
+            local ps = Engine.Pixel:GetScale()
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX / oScale, ps), Engine.Pixel:Snap(offsetY / oScale, ps))
+            overlay:SetSize(Engine.Pixel:Snap(totalW / oScale, ps), Engine.Pixel:Snap(totalH / oScale, ps))
         end
-
-        local c = self:ResolveBorderColor(isIconStyle)
-        self:_RenderSliceTexture(overlay, styleEntry, c)
-        self:_ApplyGroupRoundedMask(rootFrame, allFrames, isIconStyle, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
+        if styleEntry.edgeFile then
+            self:_RenderSliceTexture(overlay, styleEntry, self:ResolveBorderColor(isIconStyle))
+        else
+            -- Border Thickness None: no merged outline — the corner-clip mask still applies.
+            if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+            hideOverlay = true
+        end
+        -- Square carries no mask — no content clipping needed.
+        if styleEntry.mask then
+            self:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry)
+        else
+            self:_ClearGroupRoundedMask(rootFrame, allFrames)
+        end
     else
+        overlay:SetScale(1)
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local edgeSize, borderOffset
@@ -260,10 +275,14 @@ function Skin:UpdateGroupBorder(rootFrame)
         overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     end
-    overlay:Show()
-    -- Re-hide if any merged frame is OOC-faded (prevents refresh from undoing OOCFadeMixin's hide)
-    for _, frame in ipairs(allFrames) do
-        if frame._oocFadeHidden then overlay:Hide(); break end
+    if hideOverlay then
+        overlay:Hide()
+    else
+        overlay:Show()
+        -- Re-hide if any merged frame is OOC-faded (prevents refresh from undoing OOCFadeMixin's hide)
+        for _, frame in ipairs(allFrames) do
+            if frame._oocFadeHidden then overlay:Hide(); break end
+        end
     end
 
     -- Hook visibility changes so merges update immediately when frames show/hide
@@ -277,23 +296,34 @@ function Skin:UpdateGroupBorder(rootFrame)
     end
 end
 
-function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, isIconStyle, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
-    if not rootFrame._groupRoundedMask then
-        rootFrame._groupRoundedMask = rootFrame:CreateMaskTexture(nil, "BACKGROUND")
-        if Engine.Pixel then Engine.Pixel:Enforce(rootFrame._groupRoundedMask) end
+-- `styleEntry` is the group's resolved roundness style — the same one the merged outline uses, so
+-- the mask matches the merged border exactly. The mask lives on a host frame pinned to the fixed
+-- pixel scale and tracking the group overlay's rect, so its corners stay a constant size.
+function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry)
+    local overlay = rootFrame._groupBorderOverlay
+    local host = rootFrame._groupRoundedMaskHost
+    if not host then
+        host = CreateFrame("Frame", nil, rootFrame)
+        rootFrame._groupRoundedMaskHost = host
     end
+    self:_PinBorderScale(host, rootFrame)
+    host:ClearAllPoints()
+    host:SetAllPoints(overlay)
     local mask = rootFrame._groupRoundedMask
-    local tier = self:GetRoundedTier(isIconStyle)
-    mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-    mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
-    mask:ClearAllPoints()
-    if canNativeAnchor then
-        mask:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
-        mask:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
-    else
-        mask:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
-        mask:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
+    if not mask then
+        mask = host:CreateMaskTexture(nil, "BACKGROUND")
+        rootFrame._groupRoundedMask = mask
+        if Engine.Pixel then Engine.Pixel:Enforce(mask) end
     end
+    local margin = styleEntry.sliceMargin
+    mask:SetTexture(styleEntry.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    mask:SetTextureSliceMargins(margin, margin, margin, margin)
+    mask:ClearAllPoints()
+    mask:SetAllPoints(host)
+    -- Applied to EVERY merged member, icon containers included: a container's _maskedSurfaces are
+    -- its child icon textures, which must clip to the merged shape — not the per-container shape —
+    -- or the icons gap away from the merged border. ClearGroupBorder / _RestoreExMergeMember hand
+    -- the per-container mask back on un-merge, so the icons never stay stuck looking merged.
     for _, frame in ipairs(allFrames) do
         for _, tex in ipairs(frame._maskedSurfaces or {}) do
             self:_SetSurfaceMask(tex, mask)
@@ -303,6 +333,8 @@ end
 
 -- Clears whatever Orbit mask sits on each surface — per-frame or any group's — not just
 -- rootFrame's, so a frame that hopped groups or fell back to pixel/legacy leaves no residue.
+-- Icon containers included: their child-icon surfaces carry the group mask too (see
+-- _ApplyGroupRoundedMask); the caller re-applies the per-container mask afterwards.
 function Skin:_ClearGroupRoundedMask(rootFrame, frames)
     if not frames then return end
     for _, frame in ipairs(frames) do
@@ -310,9 +342,8 @@ function Skin:_ClearGroupRoundedMask(rootFrame, frames)
             self:_SetSurfaceMask(tex, nil)
         end
     end
-    -- Detach the group mask from the member frames it was SetPoint-anchored to. A MaskTexture
-    -- left cross-anchored onto a frame blocks that frame's StartMoving from re-latching a
-    -- follow point — it must be fully unanchored when the group is torn down.
+    -- Release the group mask's anchor (it tracks its host frame) so a torn-down group leaves
+    -- nothing chasing stale geometry; the next merge re-anchors it via _ApplyGroupRoundedMask.
     if rootFrame and rootFrame._groupRoundedMask then
         rootFrame._groupRoundedMask:ClearAllPoints()
     end
@@ -343,12 +374,14 @@ function Skin:ClearGroupBorder(rootFrame)
     end
     walk(rootFrame)
     self:_ClearGroupRoundedMask(rootFrame, walked)
-    local activeStyle = self:GetActiveBorderStyle()
-    local activeIconStyle = self:GetActiveIconBorderStyle()
+    -- Restore each member's own mask now the group mask is gone. Icon containers take the icon
+    -- border style — their surfaces are the child icon textures, clipped to the per-container
+    -- shape by the icon skinning; every other frame takes the frame border style.
     for _, frame in ipairs(walked) do
-        local style = frame._isIconContainer and activeIconStyle or activeStyle
-        if style and style.sliceMargin then
-            self:ApplyRoundedMaskToSurfaces(frame, frame._isIconContainer)
+        if frame._isIconContainer then
+            self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
+        else
+            self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveBorderStyle())
         end
     end
 end
@@ -361,11 +394,12 @@ function Skin:_RestoreExMergeMember(frame)
     frame._groupBorderHiddenPixels = nil
     if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
     if frame.SetBorderHidden then frame:SetBorderHidden(false) end
-    local activeStyle = frame._isIconContainer and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
-    if activeStyle and activeStyle.sliceMargin then
-        self:ApplyRoundedMaskToSurfaces(frame, frame._isIconContainer)
+    -- Restore the ex-member's own mask. Icon containers take the icon border style (their
+    -- surfaces are the child icon textures); every other frame takes the frame border style.
+    if frame._isIconContainer then
+        self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
     else
-        self:ClearRoundedMaskFromSurfaces(frame)
+        self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveBorderStyle())
     end
 end
 
@@ -459,6 +493,14 @@ Orbit.EventBus:On("BORDER_LAYOUT_CHANGED", function()
     Orbit.Async:Debounce("GroupBorderRefresh", function()
         Skin:RefreshAllGroupBorders()
     end, 0)
+end)
+
+-- A border style / thickness / roundness change must also rebuild merged group borders: the
+-- per-frame re-skin from GlobalSettings' ApplySettings updates each member's own overlay/mask
+-- but never touches the group overlay slice texture or the shared group mask. Without this a
+-- merged group keeps showing the pre-change border until the next merge/unmerge/drag.
+Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function()
+    Skin:DeferGroupBorderRefresh()
 end)
 
 -- Refresh group borders after plugins finish loading

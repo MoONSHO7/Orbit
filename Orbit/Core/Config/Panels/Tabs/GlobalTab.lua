@@ -48,6 +48,10 @@ local function GetBorderStyleOptions()
         end
     end
     table.sort(lsm, function(a, b) return a.label < b.label end)
+    -- The built-in "Orbit" style sits above a divider; LibSharedMedia borders fill the rest.
+    if #lsm > 0 then
+        opts[#opts + 1] = { divider = true }
+    end
     for _, entry in ipairs(lsm) do
         opts[#opts + 1] = entry
     end
@@ -139,18 +143,24 @@ local function GetGlobalSchema()
 
     local function borderSizeChanged(key, val)
         GlobalPlugin:SetSetting(nil, key, val)
+        Constants.BorderStyle.SyncEffectiveSize(Orbit.db.GlobalSettings)
         GlobalPlugin:ApplySettings()
         Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
     end
-    local thicknessLabels = { L.CFG_THICKNESS_SLIM, L.CFG_THICKNESS_MEDIUM, L.CFG_THICKNESS_THICK }
+    -- Both keyed by slider value. Thickness None (0) = no outline; roundness still drives the mask.
+    local thicknessLabels = {
+        [0] = L.CFG_THICKNESS_NONE, [1] = L.CFG_THICKNESS_SLIM,
+        [2] = L.CFG_THICKNESS_MEDIUM, [3] = L.CFG_THICKNESS_THICK,
+    }
     local function thicknessFormatter(v) return thicknessLabels[v] or tostring(v) end
-    local roundnessLabels = { L.CFG_ROUNDNESS_SUBTLE, L.CFG_ROUNDNESS_ROUND, L.CFG_ROUNDNESS_HEAVY }
+    local roundnessLabels = {
+        [0] = L.CFG_ROUNDNESS_SQUARE, [1] = L.CFG_ROUNDNESS_SUBTLE,
+        [2] = L.CFG_ROUNDNESS_ROUND, [3] = L.CFG_ROUNDNESS_HEAVY,
+    }
     local function roundnessFormatter(v) return roundnessLabels[v] or tostring(v) end
-    if currentEntry and currentEntry.sliceMargin then
-        tinsert(controls, { type = "slider", key = "RoundedThickness", label = L.CFG_BORDER_THICKNESS, default = 2, min = 1, max = 3, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedThickness", v) end })
-        tinsert(controls, { type = "slider", key = "RoundedCorner", label = L.CFG_BORDER_ROUNDNESS, default = 2, min = 1, max = 3, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedCorner", v) end })
-    elseif currentStyle == "flat" then
-        tinsert(controls, { type = "slider", key = "BorderSize", label = L.CFG_BORDER_SIZE, default = 2, min = 0, max = 5, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderSize", v) end })
+    if currentEntry and currentEntry.roundnessDriven then
+        tinsert(controls, { type = "slider", key = "RoundedThickness", label = L.CFG_BORDER_THICKNESS, default = Constants.BorderStyle.DefaultThickness, min = Constants.BorderStyle.Thickness.None, max = Constants.BorderStyle.Thickness.Thick, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedThickness", v) end })
+        tinsert(controls, { type = "slider", key = "RoundedCorner", label = L.CFG_BORDER_ROUNDNESS, default = Constants.BorderStyle.DefaultRoundness, min = Constants.BorderStyle.Roundness.Square, max = Constants.BorderStyle.Roundness.Heavy, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedCorner", v) end })
     else
         tinsert(controls, { type = "slider", key = "BorderEdgeSize", label = L.CFG_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderEdgeSize", v) end })
         tinsert(controls, { type = "slider", key = "BorderOffset", label = L.CFG_BORDER_OFFSET, default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderOffset", v) end })
@@ -167,11 +177,9 @@ local function GetGlobalSchema()
         end,
     })
 
-    if currentIconEntry and currentIconEntry.sliceMargin then
-        tinsert(controls, { type = "slider", key = "IconRoundedThickness", label = L.CFG_ICON_BORDER_THICKNESS, default = 2, min = 1, max = 3, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedThickness", v) end })
-        tinsert(controls, { type = "slider", key = "IconRoundedCorner", label = L.CFG_ICON_BORDER_ROUNDNESS, default = 2, min = 1, max = 3, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedCorner", v) end })
-    elseif currentIconStyle == "flat" then
-        tinsert(controls, { type = "slider", key = "IconBorderSize", label = L.CFG_ICON_BORDER_SIZE, default = 2, min = 0, max = 5, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderSize", v) end })
+    if currentIconEntry and currentIconEntry.roundnessDriven then
+        tinsert(controls, { type = "slider", key = "IconRoundedThickness", label = L.CFG_ICON_BORDER_THICKNESS, default = Constants.BorderStyle.DefaultThickness, min = Constants.BorderStyle.Thickness.None, max = Constants.BorderStyle.Thickness.Thick, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedThickness", v) end })
+        tinsert(controls, { type = "slider", key = "IconRoundedCorner", label = L.CFG_ICON_BORDER_ROUNDNESS, default = Constants.BorderStyle.DefaultRoundness, min = Constants.BorderStyle.Roundness.Square, max = Constants.BorderStyle.Roundness.Heavy, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedCorner", v) end })
     else
         tinsert(controls, { type = "slider", key = "IconBorderEdgeSize", label = L.CFG_ICON_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderEdgeSize", v) end })
         tinsert(controls, { type = "slider", key = "IconBorderOffset", label = L.CFG_ICON_BORDER_OFFSET, default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderOffset", v) end })
@@ -189,18 +197,17 @@ local function GetGlobalSchema()
                 d.Font = "PT Sans Narrow"
                 d.FontOutline = "OUTLINE"
                 d.FontShadow = false
-                d.BorderSize = 2
                 d.BorderStyle = Constants.BorderStyle.Default
                 d.BorderEdgeSize = 16
                 d.BorderOffset = 0
                 d.IconBorderStyle = Constants.BorderStyle.Default
-                d.IconBorderSize = 2
                 d.IconBorderEdgeSize = 16
                 d.IconBorderOffset = 0
-                d.RoundedThickness = 2
-                d.IconRoundedThickness = 2
-                d.RoundedCorner = 2
-                d.IconRoundedCorner = 2
+                d.RoundedThickness = Constants.BorderStyle.DefaultThickness
+                d.IconRoundedThickness = Constants.BorderStyle.DefaultThickness
+                d.RoundedCorner = Constants.BorderStyle.DefaultRoundness
+                d.IconRoundedCorner = Constants.BorderStyle.DefaultRoundness
+                Constants.BorderStyle.SyncEffectiveSize(d)
                 d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
                 d.BorderColor = { r = 0, g = 0, b = 0, a = 1 }
                 d.IconBorderColor = { r = 0, g = 0, b = 0, a = 1 }

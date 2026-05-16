@@ -159,22 +159,30 @@ C.Settings = {
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
 local MASK_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Masks\\"
+-- One built-in "Orbit" border style with two orthogonal sliders: Corner Roundness picks the
+-- corner shape (and content-clip mask), Border Thickness picks the outline weight. Thickness
+-- None means no outline — independent of roundness, so a frame can carry a rounded-corner mask
+-- with no border line at all.
 C.BorderStyle = {
-    Default = "flat",
+    Default = "orbit",
     Offset = 6,
     EdgeSize = 16,
+    DefaultRoundness = 0,
+    DefaultThickness = 2,
+    Roundness = { Square = 0, Subtle = 1, Round = 2, Heavy = 3 },
+    Thickness = { None = 0, Slim = 1, Medium = 2, Thick = 3 },
     Styles = {
-        { label = "Orbit Squared", value = "flat" },
-        { label = "Orbit Rounded", value = "rounded",
-          edgeFile = MASK_PATH .. "Orbit_Rounded_Border",
-          sliceMargin = 12 },
+        { label = "Orbit", value = "orbit", roundnessDriven = true,
+          edgeFile = MASK_PATH .. "Orbit_Border" },
     },
-    -- `margin` is the SetTextureSliceMargins value (= rendered corner pixel size); `mask` is the
-    -- matching mask asset.
+    -- Indexed by the Corner Roundness slider value. `margin` is the SetTextureSliceMargins
+    -- value (= rendered corner pixel size); `mask` clips frame content to the corner curve
+    -- and is absent for Square — square corners need no clipping.
     RoundedTiers = {
-        [1] = { margin = 6,  mask = MASK_PATH .. "Orbit_Rounded_Mask_1" },
-        [2] = { margin = 12, mask = MASK_PATH .. "Orbit_Rounded_Mask_2" },
-        [3] = { margin = 20, mask = MASK_PATH .. "Orbit_Rounded_Mask_3" },
+        [0] = { margin = 6 },
+        [1] = { margin = 6,  mask = MASK_PATH .. "Orbit_Mask_1" },
+        [2] = { margin = 12, mask = MASK_PATH .. "Orbit_Mask_2" },
+        [3] = { margin = 20, mask = MASK_PATH .. "Orbit_Mask_3" },
     },
 }
 
@@ -182,6 +190,16 @@ C.BorderStyle = {
 C.BorderStyle.Lookup = {}
 for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
+end
+
+-- `BorderSize`/`IconBorderSize` mirror the active border's outline thickness (0 = None, else the
+-- thickness tier). Layout math across the addon reads them rather than re-deriving, so they must
+-- be re-synced whenever Border Thickness changes.
+function C.BorderStyle.SyncEffectiveSize(gs)
+    if not gs then return end
+    local dT = C.BorderStyle.DefaultThickness
+    gs.BorderSize = gs.RoundedThickness or dT
+    gs.IconBorderSize = gs.IconRoundedThickness or dT
 end
 
 -- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------
