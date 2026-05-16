@@ -43,7 +43,7 @@ EditMode/
     Selection/
       Drag.lua          -- drag-to-move interaction
       Nudge.lua         -- arrow-key pixel nudge
-      Resize.lua        -- drag-to-resize handle (width/height settings)
+      Resize.lua        -- drag-to-resize handle (width/height settings; square mode for aspect-locked frames)
       Tooltip.lua       -- selection tooltip display
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)

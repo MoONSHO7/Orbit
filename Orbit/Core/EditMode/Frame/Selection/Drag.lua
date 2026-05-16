@@ -122,6 +122,16 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
 
+    -- Manual cursor-follow: active only when StartMoving failed to engage (see BeginMove).
+    if parent._orbitManualDrag and not InCombatLockdown() then
+        local scale = parent:GetEffectiveScale()
+        if not scale or scale < 0.01 then scale = 1 end
+        local cx, cy = GetCursorPosition()
+        parent:ClearAllPoints()
+        parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT",
+            cx / scale + parent._manualDragOffX, cy / scale + parent._manualDragOffY)
+    end
+
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, false)
@@ -199,6 +209,34 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     Engine.SelectionTooltip:ShowPosition(parent, Selection, true, anchorLabel)
 end
 
+-- [ MOVE ENGAGE ] -----------------------------------------------------------------------------------
+-- StartMoving can fail to re-latch a follow point — an Orbit Rounded MaskTexture bound onto the
+-- frame leaves StartMoving unable to engage, so the frame stays unanchored for the whole drag and
+-- lands at screen centre on drop. BeginMove detects that (zero points after StartMoving) and falls
+-- back to manual cursor tracking in OnDragUpdate so the drag works regardless.
+local function BeginMove(parent)
+    local preL, preB = parent:GetLeft(), parent:GetBottom()
+    parent:StartMoving()
+    parent._orbitManualDrag = nil
+    if parent:GetNumPoints() > 0 then return end
+
+    -- StartMoving failed to set a follow point but may still have flagged the frame as "moving"
+    -- in WoW's internal state. Clear that — left set, it fights the manual SetPoints below and
+    -- makes the StopMovingOrSizing on drag-stop strip the frame's point (frame lands at 0,0).
+    parent:StopMovingOrSizing()
+
+    local scale = parent:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
+    preL, preB = preL or 0, preB or 0
+    local cx, cy = GetCursorPosition()
+    parent._orbitManualDrag = true
+    parent._manualDragOffX = preL - cx / scale
+    parent._manualDragOffY = preB - cy / scale
+    -- Re-anchor immediately so the frame is never left point-less.
+    parent:ClearAllPoints()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", preL, preB)
+end
+
 -- [ DRAG START (FUNCTION) ] -------------------------------------------------------------------------
 function Drag:OnDragStart(selectionOverlay)
     if InCombatLockdown() then
@@ -215,8 +253,10 @@ function Drag:OnDragStart(selectionOverlay)
 
     if parent:IsMovable() and not parent.orbitNoDrag then
         parent.orbitIsDragging = true
+        parent._mergeSuspendGroup = Orbit.Skin:SuspendMergeGroup(parent)
 
         local anchor = Engine.FrameAnchor.anchors[parent]
+        parent._dragPrevAnchor = anchor and { parent = anchor.parent, edge = anchor.edge, padding = anchor.padding } or nil
         if anchor then
             -- Capture visual center before break. BreakAnchor fires
             -- OnAnchorChanged which may resize the frame (e.g. TrackedBar
@@ -240,9 +280,9 @@ function Drag:OnDragStart(selectionOverlay)
             parent:ClearAllPoints()
             local scale = parent:GetEffectiveScale()
             parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(preCX - postW / 2, scale), Engine.Pixel:Snap(preCY - postH / 2, scale))
-            parent:StartMoving()
+            BeginMove(parent)
         else
-            parent:StartMoving()
+            BeginMove(parent)
         end
 
         if parent.orbitAutoOrient and Engine.FrameOrientation then
@@ -268,7 +308,14 @@ end
 function Drag:OnDragStop(selectionOverlay)
     Drag.isDragging = false
     local parent = selectionOverlay.parent
-    
+    parent._orbitManualDrag = nil
+
+    -- Cleared before the combat early-return below so combat starting mid-drag can't strand it.
+    if parent._mergeSuspendGroup then
+        Orbit.Skin:ResumeMergeGroup(parent._mergeSuspendGroup)
+        parent._mergeSuspendGroup = nil
+    end
+
     if selectionOverlay.lastAnchorTarget then
         local Selection = Engine.FrameSelection
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
@@ -332,12 +379,19 @@ function Drag:OnDragStop(selectionOverlay)
 
         if anchorTarget and anchorEdge and anchoringEnabled and isOrbitFrame then
             local padding = nil
-            local name = parent:GetName()
-            local partnerName = Selection:GetSymmetricPartner(name)
-            if partnerName then
-                local partner = _G[partnerName]
-                if partner and Engine.FrameAnchor.anchors[partner] then
-                    padding = Engine.FrameAnchor.anchors[partner].padding or 0
+            -- Re-dropping onto the same target keeps the user's existing gap (e.g. a deliberate 0).
+            local prev = parent._dragPrevAnchor
+            if prev and prev.parent == anchorTarget and prev.edge == anchorEdge then
+                padding = prev.padding
+            end
+            if padding == nil then
+                local name = parent:GetName()
+                local partnerName = Selection:GetSymmetricPartner(name)
+                if partnerName then
+                    local partner = _G[partnerName]
+                    if partner and Engine.FrameAnchor.anchors[partner] then
+                        padding = Engine.FrameAnchor.anchors[partner].padding or 0
+                    end
                 end
             end
 

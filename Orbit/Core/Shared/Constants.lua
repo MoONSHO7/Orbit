@@ -7,12 +7,12 @@ local C = Orbit.Constants
 
 -- [ UI PANEL LAYOUT ]--------------------------------------------------------------------------------
 C.Panel = {
-    Width = 320,
-    DialogWidth = 350,
+    Width = 340,
+    DialogWidth = 370,
     MinDialogHeight = 150,
     MaxHeight = 800,
     ScrollbarWidth = 26,
-    ContentPadding = 8,
+    ContentPadding = 3,
     DividerWidth = 280,
     DividerHeight = 16,
     HeaderHeight = 55, -- Height to clear tabs completely
@@ -25,7 +25,7 @@ C.Footer = {
     BottomPadding = 12,
     ButtonHeight = 20,
     RowSpacing = 6,
-    SidePadding = 10,
+    SidePadding = 5,
     ButtonSpacing = 8,
     DividerOffset = 6,
 }
@@ -37,7 +37,10 @@ C.Widget = {
     Height = 26,
     LabelWidth = 100, -- Fixed width for left label column
     LabelGap = 3, -- Gap between label and control
-    ValueWidth = 45, -- Fixed width for right value column
+    ValueWidth = 65, -- Fixed width for right value column
+    ValueInset = 3, -- Right-edge inset for value-column content (text and controls share this)
+    ValueSwatchSize = 21, -- Color swatch box in the value column
+    ValueCheckboxSize = 26, -- Value-column checkbox; larger than the swatch so its art's padded box renders the same visible size
     CheckboxIconWidth = 32,
     CheckboxIconGap = 4,
 }
@@ -80,8 +83,8 @@ C.Levels = {
     IconContent = 1,        -- Icon backdrop
     IconSwipe = 2,          -- Cooldown swipe (border group, below glow)
     IconBorder = 3,         -- Per-icon pixel/NineSlice border
-    IconGlow = 6,           -- Pandemic/proc glow (above border)
     IconOverlay = 7,        -- Text, stacks, flash
+    IconGlow = 9,           -- Pandemic/proc glow — above per-icon AND merged group borders (IconOverlay)
     -- Editor & UI Overlays
     EditModeText = 20,
     EditModeSelection = 100,
@@ -151,7 +154,7 @@ C.Settings = {
     Spacing = { Min = -5, Max = 50, Step = 1, Default = 2 },
     Padding = { Min = -5, Max = 15, Step = 1, Default = 0 },
     Font = { Default = "Barlow Condensed Bold", FallbackPath = "Fonts\\FRIZQT__.TTF" },
-    Texture = { Default = "Solid" },
+    Texture = { Default = "Orbit Gradient Top-Bottom" },
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
@@ -349,6 +352,7 @@ C.PowerTypeIds = {
 
 C.Colors = {
     Background = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+    Absorb = { r = 0.4, g = 0.75, b = 1.0, a = 0.85 },
 
     -- Power Type Colors (for boss frames, etc.)
     -- Keys correspond to Enum.PowerType

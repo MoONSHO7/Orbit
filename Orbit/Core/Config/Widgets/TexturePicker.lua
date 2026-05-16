@@ -3,157 +3,142 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local LSM = LibStub("LibSharedMedia-3.0")
-local tinsert, tsort = table.insert, table.sort
+local tinsert = table.insert
 
-local MAX_DROPDOWN_HEIGHT = 250
-local BUTTON_HEIGHT = 22
+local ROW_HEIGHT = 22
+local MAX_HEIGHT = 300
 local NONE_LABEL = "None"
+
+local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 
 -- TexturePicker Widget
 -- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
-function Layout:CreateTexturePicker(parent, label, initialTexture, callback, previewColor, valueCheckboxCfg)
-    -- Pool retrieval
+-- Control is a preview swatch; clicking opens a MediaMenu whose rows preview each statusbar texture.
+-- allowOverlays partitions the statusbar media list by whether a name contains "overlay"
+-- (case-insensitive): bar-fill pickers list only non-overlay textures, the Overlay Texture
+-- control (allowOverlays = true) lists only overlay textures.
+function Layout:CreateTexturePicker(parent, label, initialTexture, callback, previewColor, valueCheckboxCfg, valueColorCfg, allowOverlays)
     if not self.texturePool then self.texturePool = {} end
     local frame = table.remove(self.texturePool)
 
-    -- Frame creation
     if not frame then
         frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         frame.OrbitType = "Texture"
+        frame.Label = frame:CreateFontString(nil, "ARTWORK", Constants.UI.LabelFont)
 
-        -- Label
-        frame.Label = frame:CreateFontString(nil, "ARTWORK", Orbit.Constants.UI.LabelFont)
+        local control = CreateFrame("Button", nil, frame, "BackdropTemplate")
+        control:SetBackdrop({ bgFile = WHITE8x8, edgeFile = WHITE8x8, edgeSize = 1 })
+        control:SetBackdropBorderColor(0, 0, 0, 1)
+        control:SetHeight(20)
 
-        -- Control: Preview button with texture display
-        frame.Control = CreateFrame("Button", nil, frame, "BackdropTemplate")
-        frame.Control:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-        })
-        frame.Control:SetBackdropBorderColor(0, 0, 0, 1)
+        control.Texture = control:CreateTexture(nil, "BACKGROUND")
+        control.Texture:SetPoint("TOPLEFT", 1, -1)
+        control.Texture:SetPoint("BOTTOMRIGHT", -1, 1)
 
-        -- Texture display
-        frame.Control.Texture = frame.Control:CreateTexture(nil, "BACKGROUND")
-        frame.Control.Texture:SetPoint("TOPLEFT", 1, -1)
-        frame.Control.Texture:SetPoint("BOTTOMRIGHT", -1, 1)
+        control.Text = control:CreateFontString(nil, "OVERLAY", Constants.UI.LabelFont)
+        control.Text:SetPoint("LEFT", 4, 0)
+        control.Text:SetPoint("RIGHT", -18, 0)
+        control.Text:SetJustifyH("CENTER")
+        control.Text:SetWordWrap(false)
+        control.Text:SetShadowOffset(1, -1)
+        control.Text:SetShadowColor(0, 0, 0, 1)
 
-        -- Text overlay (centered)
-        frame.Control.Text = frame.Control:CreateFontString(nil, "OVERLAY", Orbit.Constants.UI.LabelFont)
-        frame.Control.Text:SetPoint("LEFT", 4, 0)
-        frame.Control.Text:SetPoint("RIGHT", -18, 0)
-        frame.Control.Text:SetJustifyH("CENTER")
-        frame.Control.Text:SetWordWrap(false)
-        frame.Control.Text:SetShadowOffset(1, -1)
-        frame.Control.Text:SetShadowColor(0, 0, 0, 1)
+        control.Arrow = control:CreateTexture(nil, "OVERLAY")
+        control.Arrow:SetSize(12, 12)
+        control.Arrow:SetPoint("RIGHT", -4, 0)
+        control.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
 
-        -- Dropdown arrow
-        frame.Control.Arrow = frame.Control:CreateTexture(nil, "OVERLAY")
-        frame.Control.Arrow:SetSize(12, 12)
-        frame.Control.Arrow:SetPoint("RIGHT", -4, 0)
-        frame.Control.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
-
-        frame.Control:SetScript("OnClick", function()
-            if frame.ShowDropdown then frame:ShowDropdown() end
-        end)
-        frame.Control:SetScript("OnEnter", function(self)
+        control:SetScript("OnClick", function() frame:ShowDropdown() end)
+        control:SetScript("OnEnter", function(self)
             self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
             self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-hover")
         end)
-        frame.Control:SetScript("OnLeave", function(self)
+        control:SetScript("OnLeave", function(self)
             self:SetBackdropBorderColor(0, 0, 0, 1)
             self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
         end)
-        frame.Control:SetScript("OnMouseDown", function(self)
-            self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-pressed-hover")
-        end)
-        frame.Control:SetScript("OnMouseUp", function(self)
-            if MouseIsOver(self) then
-                self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-hover")
-            else
-                self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
-            end
-        end)
+        frame.Control = control
     end
 
-    -- Set parent
     frame:SetParent(parent)
-
-    -- Configure control logic
     frame.selectedTexture = initialTexture or Constants.Settings.Texture.Default
     frame.previewColor = previewColor or { r = 0.8, g = 0.8, b = 0.8 }
+    frame.textureCallback = callback
+    frame.allowOverlays = allowOverlays
 
     local function UpdatePreview()
         local color = frame.previewColor
+        local tex = frame.Control.Texture
         if frame.selectedTexture == NONE_LABEL then
-            frame.Control.Texture:SetColorTexture(color.r or 0.3, color.g or 0.3, color.b or 0.3, 1)
-            frame.Control.Text:SetText(NONE_LABEL)
-            return
-        end
-        local path = LSM:Fetch("statusbar", frame.selectedTexture)
-        if path and path ~= "" then
-            frame.Control.Texture:SetTexture(path)
-            frame.Control.Texture:SetVertexColor(color.r or 0.8, color.g or 0.8, color.b or 0.8, 1)
-            frame.Control.Texture:SetTexCoord(0, 1, 0, 1)
+            tex:SetColorTexture(color.r or 0.3, color.g or 0.3, color.b or 0.3, 1)
         else
-            frame.Control.Texture:SetColorTexture(color.r or 0.3, color.g or 0.3, color.b or 0.3, 1)
+            local path = LSM:Fetch("statusbar", frame.selectedTexture)
+            if path and path ~= "" then
+                tex:SetTexture(path)
+                tex:SetVertexColor(color.r or 0.8, color.g or 0.8, color.b or 0.8, 1)
+                tex:SetTexCoord(0, 1, 0, 1)
+            else
+                tex:SetColorTexture(0.3, 0.3, 0.3, 1)
+            end
         end
-        local text = frame.selectedTexture
-        if #text > 22 then text = string.sub(text, 1, 20) .. ".." end
-        frame.Control.Text:SetText(text)
+        frame.Control.Text:SetText(frame.selectedTexture)
     end
 
-    local function GetTextureList()
-        local list = { NONE_LABEL }
-        for name in pairs(LSM:HashTable("statusbar")) do
-            tinsert(list, name)
-        end
-        tsort(list, function(a, b)
-            if a == NONE_LABEL then return true end
-            if b == NONE_LABEL then return false end
-            return a < b
-        end)
-        return list
-    end
-
-    frame.ShowDropdown = function()
-        if not frame.DropdownFrame then
-            frame.DropdownFrame = Engine.SharedMediaDropdown:Create(
-                frame, BUTTON_HEIGHT, MAX_DROPDOWN_HEIGHT,
-                function(contentFrame, index)
-                    local btn = CreateFrame("Button", nil, contentFrame, "BackdropTemplate")
-                    btn:SetSize(Engine.SharedMediaDropdown.CONTENT_WIDTH, BUTTON_HEIGHT)
-                    btn.Texture = btn:CreateTexture(nil, "BACKGROUND")
-                    btn.Texture:SetAllPoints()
-                    btn.Name = btn:CreateFontString(nil, "OVERLAY", Orbit.Constants.UI.LabelFont)
-                    btn.Name:SetPoint("CENTER")
-                    btn.Name:SetShadowOffset(1, -1)
-                    btn.Name:SetShadowColor(0, 0, 0, 1)
-                    return btn
+    function frame:ShowDropdown()
+        if not frame.Dropdown then
+            frame.Dropdown = Engine.MediaMenu:Create(frame.Control, {
+                rowHeight = ROW_HEIGHT,
+                maxHeight = MAX_HEIGHT,
+                firstItem = NONE_LABEL,
+                createRow = function(rowParent)
+                    local row = CreateFrame("Button", nil, rowParent)
+                    row.Texture = row:CreateTexture(nil, "BACKGROUND")
+                    row.Texture:SetPoint("TOPLEFT", 2, -1)
+                    row.Texture:SetPoint("BOTTOMRIGHT", -2, 1)
+                    row.Text = row:CreateFontString(nil, "OVERLAY", Constants.UI.LabelFont)
+                    row.Text:SetPoint("CENTER")
+                    row.Text:SetShadowOffset(1, -1)
+                    row.Text:SetShadowColor(0, 0, 0, 1)
+                    row.Sel = row:CreateTexture(nil, "OVERLAY")
+                    row.Sel:SetPoint("LEFT", 0, 0)
+                    row.Sel:SetSize(3, ROW_HEIGHT - 6)
+                    row.Sel:SetColorTexture(0.3, 0.7, 1, 1)
+                    return row
                 end,
-                function(btn, textureName)
-                    btn.Name:SetText(textureName)
-                    if textureName == NONE_LABEL then
-                        btn.Texture:SetColorTexture(0.15, 0.15, 0.15, 1)
-                        return
-                    end
-                    local path = LSM:Fetch("statusbar", textureName)
-                    if path then
-                        btn.Texture:SetVertexColor(0.6, 0.6, 0.6, 1)
-                        btn.Texture:SetTexture(path)
-                        btn.Texture:SetTexCoord(0, 1, 0, 1)
+                renderRow = function(row, name, isSelected)
+                    row.Text:SetText(name)
+                    if name == NONE_LABEL then
+                        row.Texture:SetColorTexture(0.15, 0.15, 0.15, 1)
                     else
-                        btn.Texture:SetColorTexture(0.3, 0.3, 0.3, 1)
+                        local path = LSM:Fetch("statusbar", name)
+                        if path and path ~= "" then
+                            row.Texture:SetTexture(path)
+                            row.Texture:SetVertexColor(0.7, 0.7, 0.7, 1)
+                            row.Texture:SetTexCoord(0, 1, 0, 1)
+                        else
+                            row.Texture:SetColorTexture(0.3, 0.3, 0.3, 1)
+                        end
                     end
+                    row.Sel:SetShown(isSelected)
                 end,
-                function(textureName)
-                    frame.selectedTexture = textureName
+                onSelect = function(name)
+                    frame.selectedTexture = name
                     UpdatePreview()
-                    if callback then callback(textureName) end
-                end
-            )
+                    if frame.textureCallback then frame.textureCallback(name) end
+                end,
+            })
         end
-        frame.DropdownFrame:Populate(GetTextureList(), frame.selectedTexture)
+        local list = {}
+        local wantOverlays = frame.allowOverlays == true
+        for name in pairs(LSM:HashTable("statusbar")) do
+            -- Overlay media (name contains "overlay") and bar fills are mutually exclusive lists;
+            -- the current selection is always kept so the user can still see/change it.
+            local isOverlay = name:lower():find("overlay", 1, true) ~= nil
+            if isOverlay == wantOverlays or name == frame.selectedTexture then
+                tinsert(list, name)
+            end
+        end
+        frame.Dropdown:Populate(list, frame.selectedTexture)
     end
 
     UpdatePreview()
@@ -170,32 +155,21 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
     frame.Control:ClearAllPoints()
     frame.Control:SetPoint("LEFT", frame.Label, "RIGHT", C.Widget.LabelGap, 0)
     frame.Control:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueWidth, 0)
-    frame.Control:SetHeight(20)
 
-    -- Value column: optional inline checkbox
+    -- Value column: a right-aligned [swatch][checkbox] cluster. The checkbox flushes right;
+    -- when both are present the swatch takes the slot to its left.
     if valueCheckboxCfg then
-        if not frame.ValueCheckbox then
-            frame.ValueCheckbox = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-            frame.ValueCheckbox:SetSize(22, 22)
-        end
-        local vcb = frame.ValueCheckbox
-        vcb:ClearAllPoints()
-        vcb:SetPoint("CENTER", frame, "RIGHT", -Engine.Pixel:Snap(C.Widget.ValueWidth / 2, frame:GetEffectiveScale()), 0)
-        vcb:SetChecked(valueCheckboxCfg.initialValue or false)
-        vcb:SetScript("OnClick", function(self)
-            if valueCheckboxCfg.callback then valueCheckboxCfg.callback(self:GetChecked()) end
-        end)
-        if valueCheckboxCfg.tooltip then
-            vcb:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:SetText(valueCheckboxCfg.tooltip, 1, 1, 1, 1, true)
-                GameTooltip:Show()
-            end)
-            vcb:SetScript("OnLeave", GameTooltip_Hide)
-        end
-        vcb:Show()
+        self:ApplyValueCheckbox(frame, valueCheckboxCfg)
     elseif frame.ValueCheckbox then
         frame.ValueCheckbox:Hide()
+    end
+
+    if valueColorCfg then
+        local swatchX = valueCheckboxCfg
+            and (C.Widget.ValueInset + C.Widget.ValueSwatchSize * 1.5 + 1) or nil
+        self:ApplyValueColorSwatch(frame, valueColorCfg, swatchX)
+    elseif frame.ValueColorSwatch then
+        frame.ValueColorSwatch:Hide()
     end
 
     frame:SetSize(C.Widget.Width, C.Widget.Height)

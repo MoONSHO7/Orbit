@@ -12,7 +12,7 @@ provides the entire settings interface for orbit. plugins declare their settings
 Config/
   Schema/    -- schema declaration + rendering pipeline
   Panels/    -- the Orbit Options dialog shell + tab content
-    Tabs/    -- one file per tab (Global, Colors, Edit Mode, Profiles)
+    Tabs/    -- one file per tab (Global, Textures, Edit Mode, Profiles)
   Entry/     -- user entry points (slash command, minimap button, addon compartment button)
   Advanced/  -- addon-settings-panel content builders (plugin manager, visibility, QoL)
   Widgets/   -- individual control widgets
@@ -29,8 +29,8 @@ Config/
 | Panels/OrbitOptionsPanel.lua | dialog shell only: tab registry, open/hide/toggle/refresh lifecycle, and `Panel._helpers` (shared `CreateGlobalSettingsPlugin` / `RefreshAllPreviews` used by tab files). |
 | Panels/OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
 | Panels/OrbitAdvancedSettings.lua | orchestrator: tab bar, panel shell, settings registration for the addon settings panel. |
-| Panels/Tabs/GlobalTab.lua | Global tab schema: font, border (size, style, edge size, offset), `IconBorderStyle`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Squared" (the legacy `value="flat"` style). |
-| Panels/Tabs/ColorsTab.lua | Colors tab schema: textures, color curves (font/bar/backdrop), `BorderColor`, `IconBorderColor`. |
+| Panels/Tabs/GlobalTab.lua | Global tab schema: font, border (size, style, edge size, offset), `IconBorderStyle`. Border Edge Size and Border Offset are conditionally hidden when Border Style is "Orbit Squared" (the legacy `value="flat"` style). The Font / Border Style / Icon Border Style rows carry a value-column color swatch (`valueColor`) for `FontColorCurve` / `BorderColor` / `IconBorderColor`; the border swatches hide for LibSharedMedia styles. |
+| Panels/Tabs/ColorsTab.lua | "Textures" tab schema: textures and color curves (bar/backdrop). Font and border colors moved to the Global tab as value-column swatches. The tab key/label is `"Textures"`; the file keeps its `ColorsTab.lua` name (plugin id `OrbitColors`). |
 | Panels/Tabs/EditModeTab.lua | Edit Mode tab schema: show/hide blizzard frames, anchoring, edit mode color curve. |
 | Panels/Tabs/ProfilesTab.lua | Profiles tab schema + sub-views (export/import/clone/delete/reset). owns widget registrations only used here (`profileactive`, `profileselect`, `collapseheader`, `checkheader`, `statusmessage`). |
 | Entry/SlashCommands.lua | `/orbit` slash command handler, confirmation popups, and debug utilities (help, version, profile, frames, inspect). |
@@ -38,7 +38,7 @@ Config/
 | Advanced/PluginManager.lua | plugin enable/disable checkbox grid content builder. |
 | Advanced/VisibilityEngine.lua | visibility engine scrollable table content builder. |
 | Advanced/QoL.lua | quality-of-life expandable accordion sections content builder. |
-| Widgets/ | individual control widgets (slider, checkbox, dropdown, color picker, font/texture pickers, etc.). |
+| Widgets/ | individual control widgets (slider, checkbox, dropdown, color picker, font/texture pickers, etc.). `ValueSwatch.lua` holds the shared value-column helpers `Layout:ApplyValueColorSwatch` and `Layout:ApplyValueCheckbox` — every value-column control routes through these and right-aligns off `Constants.Widget.ValueInset`, so checkboxes/swatches stay consistent across Dropdown / ColorCurvePicker / TexturePicker / FontPicker. |
 | WhatsNew.lua / ChangelogData.lua | post-update changelog popup. |
 
 ## adding a new tab

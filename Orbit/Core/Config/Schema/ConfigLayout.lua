@@ -429,11 +429,11 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("texture", function(container, def, getValue, callback)
-        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox)
+        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox, def.valueColor, def.allowOverlays)
     end)
 
     self:RegisterWidgetType("font", function(container, def, getValue, callback)
-        return self:CreateFontPicker(container, def.label, getValue(), callback)
+        return self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
     end)
 
     self:RegisterWidgetType("editbox", function(container, def, getValue, callback)

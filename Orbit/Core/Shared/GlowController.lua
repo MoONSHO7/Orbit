@@ -21,7 +21,7 @@ function GC:Show(frame, glowKey, typeName, options)
     local entry = state.active[glowKey]
     
     if options and not options.frameLevel then 
-        options.frameLevel = Constants.Levels.IconOverlay + 2 
+        options.frameLevel = Constants.Levels.IconGlow
     end
     
     local hash = Engine.GlowUtils:GetOptionsHash(options)
@@ -159,7 +159,7 @@ function GC:ShowPandemic(frame, typeName, options, alpha)
     local state = GetState(frame)
     
     if options and not options.frameLevel then 
-        options.frameLevel = Constants.Levels.IconOverlay + 2 
+        options.frameLevel = Constants.Levels.IconGlow
     end
     
     local hash = Engine.GlowUtils:GetOptionsHash(options)

@@ -3,143 +3,109 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local LSM = LibStub("LibSharedMedia-3.0")
-local tinsert, tsort = table.insert, table.sort
+local tinsert = table.insert
 
-local MAX_DROPDOWN_HEIGHT = 250
-local BUTTON_HEIGHT = 24
+local ROW_HEIGHT = 24
+local MAX_HEIGHT = 300
+local ROW_PREVIEW = 13
+local CONTROL_PREVIEW = 12
+
+local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 
 -- FontPicker Widget
--- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
-function Layout:CreateFontPicker(parent, label, initialFont, callback)
-    -- Pool retrieval
+-- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right]
+-- Control is a preview button (the name drawn in the selected font); clicking opens a MediaMenu.
+-- Optional valueColorCfg fills the value column with a color swatch (used for the global font color).
+function Layout:CreateFontPicker(parent, label, initialFont, callback, valueColorCfg)
     if not self.fontPool then self.fontPool = {} end
     local frame = table.remove(self.fontPool)
 
-    -- Frame creation
     if not frame then
         frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
         frame.OrbitType = "Font"
+        frame.Label = frame:CreateFontString(nil, "ARTWORK", Constants.UI.LabelFont)
 
-        -- Label
-        frame.Label = frame:CreateFontString(nil, "ARTWORK", Orbit.Constants.UI.LabelFont)
+        local control = CreateFrame("Button", nil, frame, "BackdropTemplate")
+        control:SetBackdrop({ bgFile = WHITE8x8, edgeFile = WHITE8x8, edgeSize = 1 })
+        control:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+        control:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+        control:SetHeight(22)
 
-        -- Control: Preview button
-        frame.Control = CreateFrame("Button", nil, frame, "BackdropTemplate")
-        frame.Control:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-        })
-        frame.Control:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
-        frame.Control:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+        control.Text = control:CreateFontString(nil, "OVERLAY")
+        control.Text:SetPoint("LEFT", 6, 0)
+        control.Text:SetPoint("RIGHT", -18, 0)
+        control.Text:SetJustifyH("LEFT")
+        control.Text:SetWordWrap(false)
+        control.Text:SetTextColor(1, 1, 1, 1)
 
-        -- Text preview (renders in selected font)
-        frame.Control.Text = frame.Control:CreateFontString(nil, "OVERLAY")
-        frame.Control.Text:SetPoint("LEFT", 4, 0)
-        frame.Control.Text:SetPoint("RIGHT", -18, 0)
-        frame.Control.Text:SetJustifyH("LEFT")
-        frame.Control.Text:SetWordWrap(false)
-        frame.Control.Text:SetTextColor(1, 1, 1, 1)
+        control.Arrow = control:CreateTexture(nil, "OVERLAY")
+        control.Arrow:SetSize(12, 12)
+        control.Arrow:SetPoint("RIGHT", -4, 0)
+        control.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
 
-        -- Dropdown arrow
-        frame.Control.Arrow = frame.Control:CreateTexture(nil, "OVERLAY")
-        frame.Control.Arrow:SetSize(12, 12)
-        frame.Control.Arrow:SetPoint("RIGHT", -4, 0)
-        frame.Control.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
-
-        frame.Control:SetScript("OnClick", function()
-            if frame.ShowDropdown then frame:ShowDropdown() end
-        end)
-        frame.Control:SetScript("OnEnter", function(self)
+        control:SetScript("OnClick", function() frame:ShowDropdown() end)
+        control:SetScript("OnEnter", function(self)
             self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
             self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-hover")
         end)
-        frame.Control:SetScript("OnLeave", function(self)
+        control:SetScript("OnLeave", function(self)
             self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
             self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
         end)
-        frame.Control:SetScript("OnMouseDown", function(self)
-            self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-pressed-hover")
-        end)
-        frame.Control:SetScript("OnMouseUp", function(self)
-            if MouseIsOver(self) then
-                self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown-hover")
-            else
-                self.Arrow:SetAtlas("glues-characterSelect-icon-arrowDown")
-            end
-        end)
+        frame.Control = control
     end
 
-    -- Set parent
     frame:SetParent(parent)
-
-    -- Configure control logic
     frame.selectedFont = initialFont or Constants.Settings.Font.Default
+    frame.fontCallback = callback
 
     local function UpdatePreview()
-        local text = frame.selectedFont
-        if #text > 22 then text = string.sub(text, 1, 20) .. ".." end
-
-        local fontPath = LSM:Fetch("font", frame.selectedFont)
-        if fontPath then
-            frame.Control.Text:SetFont(fontPath, 12, "")
-            frame.Control.Text:SetText(text)
-        else
-            frame.Control.Text:SetFont(Constants.Settings.Font.FallbackPath, 12, "")
-            frame.Control.Text:SetText(text .. " (missing)")
-        end
+        local path = LSM:Fetch("font", frame.selectedFont)
+        frame.Control.Text:SetFont(path or Constants.Settings.Font.FallbackPath, CONTROL_PREVIEW, "")
+        frame.Control.Text:SetText(frame.selectedFont)
     end
 
-    local function GetFontList()
-        local list = {}
-        for name in pairs(LSM:HashTable("font")) do
-            tinsert(list, name)
-        end
-        tsort(list)
-        return list
-    end
-
-    frame.ShowDropdown = function()
-        if not frame.DropdownFrame then
-            frame.DropdownFrame = Engine.SharedMediaDropdown:Create(
-                frame, BUTTON_HEIGHT, MAX_DROPDOWN_HEIGHT,
-                function(contentFrame, index)
-                    local btn = CreateFrame("Button", nil, contentFrame, "BackdropTemplate")
-                    btn:SetSize(192, BUTTON_HEIGHT)
-                    btn:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-                    btn:SetBackdropColor(0, 0, 0, 0)
-                    btn.Name = btn:CreateFontString(nil, "OVERLAY")
-                    btn.Name:SetPoint("LEFT", 8, 0)
-                    btn.Name:SetPoint("RIGHT", -8, 0)
-                    btn.Name:SetJustifyH("LEFT")
-                    btn.Name:SetTextColor(0.9, 0.9, 0.9, 1)
-                    btn.Selected = btn:CreateTexture(nil, "ARTWORK")
-                    btn.Selected:SetSize(4, BUTTON_HEIGHT - 4)
-                    btn.Selected:SetPoint("LEFT", 0, 0)
-                    btn.Selected:SetColorTexture(0.3, 0.7, 1, 1)
-                    btn.Selected:Hide()
-                    return btn
+    function frame:ShowDropdown()
+        if not frame.Dropdown then
+            frame.Dropdown = Engine.MediaMenu:Create(frame.Control, {
+                rowHeight = ROW_HEIGHT,
+                maxHeight = MAX_HEIGHT,
+                createRow = function(rowParent)
+                    local row = CreateFrame("Button", nil, rowParent)
+                    row.Text = row:CreateFontString(nil, "OVERLAY")
+                    row.Text:SetPoint("LEFT", 10, 0)
+                    row.Text:SetPoint("RIGHT", -8, 0)
+                    row.Text:SetJustifyH("LEFT")
+                    row.Text:SetWordWrap(false)
+                    row.Sel = row:CreateTexture(nil, "ARTWORK")
+                    row.Sel:SetPoint("LEFT", 0, 0)
+                    row.Sel:SetSize(3, ROW_HEIGHT - 8)
+                    row.Sel:SetColorTexture(0.3, 0.7, 1, 1)
+                    return row
                 end,
-                function(btn, fontName, isSelected)
-                    local fontPath = LSM:Fetch("font", fontName)
-                    if fontPath then
-                        btn.Name:SetFont(fontPath, 13, "")
-                        btn.Name:SetText(fontName)
+                renderRow = function(row, name, isSelected)
+                    local path = LSM:Fetch("font", name)
+                    if path then
+                        row.Text:SetFont(path, ROW_PREVIEW, "")
+                        row.Text:SetText(name)
+                        row.Text:SetTextColor(0.9, 0.9, 0.9, 1)
                     else
-                        btn.Name:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
-                        btn.Name:SetText(fontName .. " (!)")
+                        row.Text:SetFont(Constants.Settings.Font.FallbackPath, ROW_PREVIEW, "")
+                        row.Text:SetText(name .. " (!)")
+                        row.Text:SetTextColor(1, 0.5, 0.5, 1)
                     end
-                    if isSelected then btn.Selected:Show() else btn.Selected:Hide() end
+                    row.Sel:SetShown(isSelected)
                 end,
-                function(fontName)
-                    frame.selectedFont = fontName
+                onSelect = function(name)
+                    frame.selectedFont = name
                     UpdatePreview()
-                    if callback then callback(fontName) end
-                end
-            )
-            frame.DropdownFrame:SetFrameLevel(1000)
+                    if frame.fontCallback then frame.fontCallback(name) end
+                end,
+            })
         end
-        frame.DropdownFrame:Populate(GetFontList(), frame.selectedFont)
+        local list = {}
+        for name in pairs(LSM:HashTable("font")) do tinsert(list, name) end
+        frame.Dropdown:Populate(list, frame.selectedFont)
     end
 
     UpdatePreview()
@@ -156,9 +122,13 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback)
     frame.Control:ClearAllPoints()
     frame.Control:SetPoint("LEFT", frame.Label, "RIGHT", C.Widget.LabelGap, 0)
     frame.Control:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueWidth, 0)
-    frame.Control:SetHeight(22)
 
-    -- Value column reserved
+    -- Value column: optional inline color swatch
+    if valueColorCfg then
+        self:ApplyValueColorSwatch(frame, valueColorCfg)
+    elseif frame.ValueColorSwatch then
+        frame.ValueColorSwatch:Hide()
+    end
 
     frame:SetSize(C.Widget.Width, C.Widget.Height)
     return frame

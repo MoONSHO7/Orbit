@@ -19,7 +19,21 @@ LSM:Register("font", "Roboto Condensed SemiBold", mediaPath .. "Fonts\\RobotoCon
 LSM:Register("font", "Expressway", mediaPath .. "Fonts\\expressway.ttf")
 
 -- Statusbars
--- LSM:Register("statusbar", "Dummy", mediaPath .. "Statusbar\\Dummy.tga")
+LSM:Register("statusbar", "Orbit Absorb", mediaPath .. "Statusbar\\orbit-absorb.tga")
+LSM:Register("statusbar", "Orbit Absorb Glossy", mediaPath .. "Statusbar\\orbit-absorb-glossy.tga")
+LSM:Register("statusbar", "Orbit Absorb Darkened", mediaPath .. "Statusbar\\orbit-absorb-darkened.tga")
+LSM:Register("statusbar", "Orbit Solid", mediaPath .. "Statusbar\\orbit-solid.tga")
+LSM:Register("statusbar", "Orbit Gradient Left-Right", mediaPath .. "Statusbar\\orbit-gradient-lr.tga")
+LSM:Register("statusbar", "Orbit Gradient Right-Left", mediaPath .. "Statusbar\\orbit-gradient-rl.tga")
+LSM:Register("statusbar", "Orbit Gradient Bottom-Top", mediaPath .. "Statusbar\\orbit-gradient-bt.tga")
+LSM:Register("statusbar", "Orbit Gradient Top-Bottom", mediaPath .. "Statusbar\\orbit-gradient-tb.tga")
+
+-- Static bar overlays. Painted to sit on top of a coloured fill; Skin.lua's OVERLAY_RENDER
+-- maps each name to its blend mode + alpha. "Overlay" in the name is load-bearing: texture
+-- pickers partition statusbar media by whether the name contains "overlay" (case-insensitive)
+-- -- bar-fill pickers list non-overlays, the Overlay Texture control lists overlays.
+LSM:Register("statusbar", "Orbit Gloss Overlay", mediaPath .. "Statusbar\\orbit-gloss.tga")
+LSM:Register("statusbar", "Orbit Frost Overlay", mediaPath .. "Statusbar\\orbit-frost.tga")
 
 -- Borders
 -- LSM:Register("border", "Dummy", mediaPath .. "Borders\\Dummy.tga")

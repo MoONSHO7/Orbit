@@ -16,6 +16,7 @@ Skin._groupMembers = setmetatable({}, { __mode = "k" })
 
 function Skin:UpdateGroupBorder(rootFrame)
     if not rootFrame then return end
+    if rootFrame._mergeSuspended then return self:ClearGroupBorder(rootFrame) end
 
     local FrameAnchor = Orbit.Engine.FrameAnchor
     local GetFrameOptions = FrameAnchor.GetFrameOptions
@@ -41,6 +42,7 @@ function Skin:UpdateGroupBorder(rootFrame)
                 local alphaVisible = issecretvalue(childAlpha) or (childAlpha > 0)
                 local merged = ShouldMergeBorders(pOpts, a.edge) and ShouldMergeBorders(cOpts, a.edge)
                     and child:IsShown() and (alphaVisible or child._oocFadeHidden)
+                    and not child._mergeSuspended
                 if merged then
                     hasMerge = true
                     allFrames[#allFrames + 1] = child
@@ -294,22 +296,25 @@ function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, isIconStyle, canNativ
     end
     for _, frame in ipairs(allFrames) do
         for _, tex in ipairs(frame._maskedSurfaces or {}) do
-            if tex.RemoveMaskTexture then
-                if frame._roundedMask then tex:RemoveMaskTexture(frame._roundedMask) end
-                tex:RemoveMaskTexture(mask)
-            end
-            if tex.AddMaskTexture then tex:AddMaskTexture(mask) end
+            self:_SetSurfaceMask(tex, mask)
         end
     end
 end
 
+-- Clears whatever Orbit mask sits on each surface — per-frame or any group's — not just
+-- rootFrame's, so a frame that hopped groups or fell back to pixel/legacy leaves no residue.
 function Skin:_ClearGroupRoundedMask(rootFrame, frames)
-    local mask = rootFrame._groupRoundedMask
-    if not mask or not frames then return end
+    if not frames then return end
     for _, frame in ipairs(frames) do
         for _, tex in ipairs(frame._maskedSurfaces or {}) do
-            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+            self:_SetSurfaceMask(tex, nil)
         end
+    end
+    -- Detach the group mask from the member frames it was SetPoint-anchored to. A MaskTexture
+    -- left cross-anchored onto a frame blocks that frame's StartMoving from re-latching a
+    -- follow point — it must be fully unanchored when the group is torn down.
+    if rootFrame and rootFrame._groupRoundedMask then
+        rootFrame._groupRoundedMask:ClearAllPoints()
     end
 end
 
@@ -348,14 +353,8 @@ function Skin:ClearGroupBorder(rootFrame)
     end
 end
 
-function Skin:_RestoreExMergeMember(frame, oldRoot)
+function Skin:_RestoreExMergeMember(frame)
     if not frame then return end
-    if oldRoot and oldRoot._groupRoundedMask then
-        local mask = oldRoot._groupRoundedMask
-        for _, tex in ipairs(frame._maskedSurfaces or {}) do
-            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
-        end
-    end
     frame._groupBorderActive = nil
     frame._groupBorderRoot = nil
     frame._groupBorderHiddenNineSlice = nil
@@ -365,6 +364,8 @@ function Skin:_RestoreExMergeMember(frame, oldRoot)
     local activeStyle = frame._isIconContainer and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle()
     if activeStyle and activeStyle.sliceMargin then
         self:ApplyRoundedMaskToSurfaces(frame, frame._isIconContainer)
+    else
+        self:ClearRoundedMaskFromSurfaces(frame)
     end
 end
 
@@ -384,6 +385,7 @@ function Skin:RefreshAllGroupBorders()
         while true do
             local pa = FrameAnchor.anchors[mergeRoot]
             if not pa or pa.padding ~= 0 then break end
+            if mergeRoot._mergeSuspended or pa.parent._mergeSuspended then break end
             local pO = FrameAnchor.GetFrameOptions(pa.parent)
             local cO = FrameAnchor.GetFrameOptions(mergeRoot)
             if not (FrameAnchor.ShouldMergeBorders(pO, pa.edge) and FrameAnchor.ShouldMergeBorders(cO, pa.edge)) then break end
@@ -413,11 +415,39 @@ function Skin:RefreshAllGroupBorders()
     end
 
     -- Phase 4: Restore ex-members (frames that were merged last refresh but aren't anymore).
-    for frame, oldRoot in pairs(previousMembers) do
+    for frame in pairs(previousMembers) do
         if not self._groupMembers[frame] then
-            self:_RestoreExMergeMember(frame, oldRoot)
+            self:_RestoreExMergeMember(frame)
         end
     end
+end
+
+-- [ MERGE SUSPENSION ] ------------------------------------------------------------------------------
+-- Drag disables border merging for the dragged frame's whole group: every member shows its own
+-- border for the drag, one rebuild runs on drop. The teardown must be synchronous — the group
+-- overlay and group mask are anchored to member frames, so a deferred teardown lets both chase
+-- the dragged frame until the refresh lands. ClearGroupBorder restores each member's own
+-- self-anchored border + mask before the drag moves anything.
+function Skin:SuspendMergeGroup(frame)
+    if not frame then return end
+    local members = {}
+    local root = self._groupMembers[frame]
+    if root then
+        for member, r in pairs(self._groupMembers) do
+            if r == root then members[#members + 1] = member end
+        end
+    else
+        members[1] = frame
+    end
+    for _, m in ipairs(members) do m._mergeSuspended = true end
+    if root then self:ClearGroupBorder(root) end
+    return members
+end
+
+function Skin:ResumeMergeGroup(members)
+    if not members then return end
+    for _, m in ipairs(members) do m._mergeSuspended = nil end
+    self:DeferGroupBorderRefresh()
 end
 
 function Skin:DeferGroupBorderRefresh()

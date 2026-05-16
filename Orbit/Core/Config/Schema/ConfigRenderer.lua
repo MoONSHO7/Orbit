@@ -100,7 +100,7 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
     panel.ScrollFrame:SetScrollChild(targetContent)
 
     local needsRender = true
-    if tabKey and tabKey ~= "Profiles" and tabKey ~= "Colors" and targetContent.OrbitRendered then
+    if tabKey and tabKey ~= "Profiles" and tabKey ~= "Textures" and targetContent.OrbitRendered then
         needsRender = false
         targetContent:Show()
     end

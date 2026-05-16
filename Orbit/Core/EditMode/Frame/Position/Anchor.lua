@@ -268,7 +268,10 @@ end
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings, skipLogical)
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
-        padding = (style and style.edgeFile) and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
+        -- Only legacy edgeFile borders outset and need the wider gap; modern slice (Orbit
+        -- Rounded) and flat (Orbit Squared) render flush, so they use DEFAULT_PADDING.
+        local outsetBorder = style and style.edgeFile and not style.sliceMargin
+        padding = outsetBorder and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
     end
 
     -- Prevent circular anchoring (checks full chain, not just immediate parent)

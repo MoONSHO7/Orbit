@@ -6,6 +6,8 @@ local OrbitEngine = Orbit.Engine
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Minimap"
 local DEFAULT_SIZE = Orbit.MinimapConstants.DEFAULT_SIZE
+local MIN_SIZE = Orbit.MinimapConstants.MIN_SIZE
+local MAX_SIZE = Orbit.MinimapConstants.MAX_SIZE
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
@@ -71,8 +73,8 @@ function Plugin:AddSettings(dialog, systemFrame)
             type = "slider",
             key = "Size",
             label = L.PLU_MINIMAP_SIZE,
-            min = 100,
-            max = 400,
+            min = MIN_SIZE,
+            max = MAX_SIZE,
             step = 1,
             default = DEFAULT_SIZE,
         })

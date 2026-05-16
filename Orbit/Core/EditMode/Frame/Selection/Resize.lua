@@ -1,8 +1,10 @@
 -- [ ORBIT SELECTION - RESIZE HANDLE ] ---------------------------------------------------------------
 -- Attaches a bottom-right resize handle to selection overlays for frames
 -- whose orbitPlugin exposes size settings. Reads per-plugin config from
--- frame.orbitResizeBounds = { minW, maxW, minH, maxH, widthKey, heightKey }.
--- widthKey/heightKey default to "Width"/"Height" when omitted.
+-- frame.orbitResizeBounds = { minW, maxW, minH, maxH, widthKey, heightKey, square }.
+-- widthKey/heightKey default to "Width"/"Height" when omitted. square=true (Minimap)
+-- locks aspect: the dominant drag axis drives both dimensions through widthKey,
+-- clamped to minW/maxW.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -12,8 +14,8 @@ local Resize = Engine.SelectionResize
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HANDLE_SIZE = 30
-local HANDLE_OFFSET_X = 5
-local HANDLE_OFFSET_Y = -5
+local HANDLE_OFFSET_X = 12
+local HANDLE_OFFSET_Y = -13
 local DEFAULT_MIN_W = 50
 local DEFAULT_MAX_W = 400
 local DEFAULT_MIN_H = 20
@@ -104,6 +106,7 @@ function Resize:Attach(selection, frame)
         local b = self.parentFrame.orbitResizeBounds or {}
         self.wKey = b.widthKey or DEFAULT_WIDTH_KEY
         self.hKey = b.heightKey or DEFAULT_HEIGHT_KEY
+        self.square = b.square
         self.minW = b.minW or DEFAULT_MIN_W
         self.maxW = b.maxW or DEFAULT_MAX_W
         self.minH = b.minH or DEFAULT_MIN_H
@@ -160,6 +163,21 @@ function Resize:Attach(selection, frame)
 
         local dx = (mx - self.startMouseX) / (shift and SHIFT_DIVISOR_X or DRAG_DIVISOR_X)
         local dy = (self.startMouseY - my) / (shift and SHIFT_DIVISOR_Y or DRAG_DIVISOR_Y)
+
+        -- Square frames (Minimap) resize on a single axis: the dominant drag delta drives both
+        -- dimensions through widthKey so a corner drag from any direction keeps the frame square.
+        if self.square then
+            local delta = math.abs(dx) >= math.abs(dy) and dx or dy
+            local size = math.max(self.minW, math.min(self.maxW, math.floor(self.startWidth + delta + 0.5)))
+            if self.plugin:GetSetting(self.sysIdx, self.wKey) == size then return end
+            self.plugin:SetSetting(self.sysIdx, self.wKey, size)
+            self.parentFrame:SetSize(size, size)
+            if self.plugin.ApplySettings then self.plugin:ApplySettings() end
+            RefreshDialogSliders(self.plugin, size, size, self.wKey, self.hKey)
+            Engine.SelectionTooltip:ShowResizeInfo(self.parentFrame, size, size, true)
+            return
+        end
+
         -- Anchor-synced axes are pinned: the user's drag delta is discarded.
         local rawW = self.widthLocked  and self.startWidth  or (self.startWidth + dx)
         local rawH = self.heightLocked and self.startHeight or (self.startHeight + dy)

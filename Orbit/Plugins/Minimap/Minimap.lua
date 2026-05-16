@@ -106,6 +106,9 @@ function Plugin:OnLoad()
     self.frame:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Minimap"
+    -- Edit Mode drag-resize handle. The minimap is square, so square=true locks aspect and drives
+    -- the single Size setting; bounds match the Size slider's range (clamped, can't exceed it).
+    self.frame.orbitResizeBounds = { minW = C.MIN_SIZE, maxW = C.MAX_SIZE, widthKey = "Size", heightKey = "Size", square = true }
 
     -- HUD host: surface reparents here while HUD is active so self.frame stays put and FrameAnchor children don't follow.
     self.hudFrame = CreateFrame("Frame", "OrbitMinimapHUD", UIParent)

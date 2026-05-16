@@ -9,7 +9,7 @@ local Config = OrbitEngine.Config
 local L = Orbit.L
 
 -- [ TAB ORDER ]--------------------------------------------------------------------------------------
-local TAB_ORDER = { "Global", "Colors", "Edit Mode", "Profiles" }
+local TAB_ORDER = { "Global", "Textures", "Edit Mode", "Profiles" }
 
 -- [ PANEL ]------------------------------------------------------------------------------------------
 Orbit.OptionsPanel = {}

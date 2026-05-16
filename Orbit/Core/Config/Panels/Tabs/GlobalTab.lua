@@ -13,6 +13,21 @@ local CreateGlobalSettingsPlugin = Panel._helpers.CreateGlobalSettingsPlugin
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local GlobalPlugin = CreateGlobalSettingsPlugin("OrbitGlobal")
 
+-- A border-style change adds/removes conditional sliders, so the cached tab is dropped and rebuilt.
+local function RebuildGlobalTab()
+    local dialog = Orbit.SettingsDialog
+    if dialog and dialog.OrbitPanel and dialog.OrbitPanel.Tabs then
+        local oldTab = dialog.OrbitPanel.Tabs["Global"]
+        if oldTab then
+            Layout:Reset(oldTab)
+            oldTab:Hide()
+        end
+        dialog.OrbitPanel.Tabs["Global"] = nil
+    end
+    Panel.lastTab = nil
+    Panel:Open("Global")
+end
+
 local function GetBorderStyleOptions()
     local opts = {}
     for _, entry in ipairs(Constants.BorderStyle.Styles) do
@@ -41,8 +56,59 @@ end
 
 -- [ SCHEMA ]-----------------------------------------------------------------------------------------
 local function GetGlobalSchema()
+    local g = Orbit.db and Orbit.db.GlobalSettings
+    local currentStyle = (g and g.BorderStyle) or Constants.BorderStyle.Default
+    local currentEntry = Constants.BorderStyle.Lookup[currentStyle]
+    local currentIconStyle = (g and g.IconBorderStyle) or Constants.BorderStyle.Default
+    local currentIconEntry = Constants.BorderStyle.Lookup[currentIconStyle]
+
+    -- Value-column swatches. Border colors only apply to Orbit's built-in styles, so the swatch
+    -- hides for LibSharedMedia border textures (no BorderStyle.Lookup entry).
+    local DEFAULT_FONT_CURVE = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+    local function GS() return Orbit.db and Orbit.db.GlobalSettings end
+    local function StyleHasColor(key)
+        local gs = GS()
+        return Constants.BorderStyle.Lookup[(gs and gs[key]) or Constants.BorderStyle.Default] ~= nil
+    end
+
+    local fontColorValue = {
+        curve = true,
+        tooltip = L.CFG_FONT_COLOR_TT,
+        initialValue = function() local gs = GS(); return (gs and gs.FontColorCurve) or DEFAULT_FONT_CURVE end,
+        callback = function(val)
+            GlobalPlugin:SetSetting(nil, "FontColorCurve", val)
+            Orbit.Async:Debounce("GlobalTab_FontColor", function() GlobalPlugin:ApplySettings() end, 0.15)
+        end,
+    }
+    local borderColorValue = {
+        curve = false,
+        tooltip = L.CFG_FRAME_BORDERS_TT,
+        enabled = function() return StyleHasColor("BorderStyle") end,
+        initialValue = function() local gs = GS(); return (gs and gs.BorderColor) or { r = 0, g = 0, b = 0, a = 1 } end,
+        callback = function(val)
+            GlobalPlugin:SetSetting(nil, "BorderColor", val)
+            Orbit.Async:Debounce("GlobalTab_BorderColor", function()
+                GlobalPlugin:ApplySettings()
+                Orbit.EventBus:Fire("ORBIT_GLOBAL_BORDER_COLOR_CHANGED")
+            end, 0.15)
+        end,
+    }
+    local iconBorderColorValue = {
+        curve = false,
+        tooltip = L.CFG_ICON_BORDERS_TT,
+        enabled = function() return StyleHasColor("IconBorderStyle") end,
+        initialValue = function() local gs = GS(); return (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 } end,
+        callback = function(val)
+            GlobalPlugin:SetSetting(nil, "IconBorderColor", val)
+            Orbit.Async:Debounce("GlobalTab_IconBorderColor", function()
+                GlobalPlugin:ApplySettings()
+                Orbit.EventBus:Fire("ORBIT_GLOBAL_BORDER_COLOR_CHANGED")
+            end, 0.15)
+        end,
+    }
+
     local controls = {
-        { type = "font", key = "Font", label = L.CFG_FONT, default = "PT Sans Narrow" },
+        { type = "font", key = "Font", label = L.CFG_FONT, default = "PT Sans Narrow", valueColor = fontColorValue },
         {
             type = "dropdown", key = "FontOutline", label = L.CFG_FONT_OUTLINE,
             options = {
@@ -60,28 +126,17 @@ local function GetGlobalSchema()
             },
         },
         {
-            type = "dropdown", key = "BorderStyle", label = L.CFG_BORDER_STYLE, options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default,
+            type = "dropdown", key = "BorderStyle", label = L.CFG_BORDER_STYLE, options = GetBorderStyleOptions(),
+            default = Constants.BorderStyle.Default, valueColor = borderColorValue,
             onChange = function(val)
                 GlobalPlugin:SetSetting(nil, "BorderStyle", val)
                 GlobalPlugin:ApplySettings()
                 Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
-                local dialog = Orbit.SettingsDialog
-                if dialog and dialog.OrbitPanel and dialog.OrbitPanel.Tabs then
-                    local oldTab = dialog.OrbitPanel.Tabs["Global"]
-                    if oldTab then
-                        Layout:Reset(oldTab)
-                        oldTab:Hide()
-                    end
-                    dialog.OrbitPanel.Tabs["Global"] = nil
-                end
-                Panel.lastTab = nil
-                Panel:Open("Global")
+                RebuildGlobalTab()
             end,
         },
     }
 
-    local currentStyle = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.BorderStyle or Constants.BorderStyle.Default
-    local currentEntry = Constants.BorderStyle.Lookup[currentStyle]
     local function borderSizeChanged(key, val)
         GlobalPlugin:SetSetting(nil, key, val)
         GlobalPlugin:ApplySettings()
@@ -102,25 +157,16 @@ local function GetGlobalSchema()
     end
 
     tinsert(controls, {
-        type = "dropdown", key = "IconBorderStyle", label = L.CFG_ICON_BORDER_STYLE, options = GetBorderStyleOptions(), default = Constants.BorderStyle.Default,
+        type = "dropdown", key = "IconBorderStyle", label = L.CFG_ICON_BORDER_STYLE, options = GetBorderStyleOptions(),
+        default = Constants.BorderStyle.Default, valueColor = iconBorderColorValue,
         onChange = function(val)
             GlobalPlugin:SetSetting(nil, "IconBorderStyle", val)
             GlobalPlugin:ApplySettings()
             Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
-            local dialog = Orbit.SettingsDialog
-            if dialog and dialog.OrbitPanel and dialog.OrbitPanel.Tabs then
-                local oldTab = dialog.OrbitPanel.Tabs["Global"]
-                if oldTab then Layout:Reset(oldTab); oldTab:Hide()
-                    dialog.OrbitPanel.Tabs["Global"] = nil
-                end
-                Panel.lastTab = nil
-                Panel:Open("Global")
-            end
+            RebuildGlobalTab()
         end,
     })
 
-    local currentIconStyle = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.IconBorderStyle or Constants.BorderStyle.Default
-    local currentIconEntry = Constants.BorderStyle.Lookup[currentIconStyle]
     if currentIconEntry and currentIconEntry.sliceMargin then
         tinsert(controls, { type = "slider", key = "IconRoundedThickness", label = L.CFG_ICON_BORDER_THICKNESS, default = 2, min = 1, max = 3, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedThickness", v) end })
         tinsert(controls, { type = "slider", key = "IconRoundedCorner", label = L.CFG_ICON_BORDER_ROUNDNESS, default = 2, min = 1, max = 3, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedCorner", v) end })
@@ -155,6 +201,9 @@ local function GetGlobalSchema()
                 d.IconRoundedThickness = 2
                 d.RoundedCorner = 2
                 d.IconRoundedCorner = 2
+                d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+                d.BorderColor = { r = 0, g = 0, b = 0, a = 1 }
+                d.IconBorderColor = { r = 0, g = 0, b = 0, a = 1 }
             end
             Orbit:Print(L.MSG_GLOBAL_RESET)
         end,

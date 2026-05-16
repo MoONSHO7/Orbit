@@ -7,11 +7,17 @@ local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
 
--- Register Orbit's overlay texture with LibSharedMedia
 local SHADOW_OFFSET_X = 2
 local SHADOW_OFFSET_Y = -2
-local ORBIT_OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
-LSM:Register("statusbar", "Orbit Gradient", ORBIT_OVERLAY_PATH)
+
+-- Per-overlay blend mode + alpha. Orbit's painted overlays (Media.lua) carry their full intent
+-- in the alpha channel and apply at strength 1; an unrecognised pick -- a user choosing a plain
+-- bar fill as an overlay -- falls back to a neutral additive sheen.
+local OVERLAY_RENDER = {
+    ["Orbit Gloss Overlay"] = { blend = "ADD",   alpha = 1.0 },
+    ["Orbit Frost Overlay"] = { blend = "BLEND", alpha = 1.0 },
+}
+local OVERLAY_DEFAULT = { blend = "ADD", alpha = 0.5 }
 
 -- [ LSM BORDER RECONCILIATION ] ---------------------------------------------------------------------
 local lsmPendingRefresh
@@ -124,22 +130,36 @@ function Skin:_EnsureRoundedMask(frame, isIcon)
     return mask
 end
 
+-- A surface holds at most one Orbit rounded mask, tracked as tex._orbitRoundedMask; this
+-- removes whatever is present before adding, so stale per-frame/ex-group masks never stack.
+function Skin:_SetSurfaceMask(tex, mask)
+    if not tex.AddMaskTexture then return end
+    local prev = tex._orbitRoundedMask
+    if prev == mask then return end
+    if prev and tex.RemoveMaskTexture then tex:RemoveMaskTexture(prev) end
+    if mask then tex:AddMaskTexture(mask) end
+    tex._orbitRoundedMask = mask
+end
+
 function Skin:ApplyRoundedMaskToSurfaces(frame, isIcon)
     if not frame or not frame._maskedSurfaces then return end
-    local mask = self:_EnsureRoundedMask(frame, isIcon)
+    local mask
+    if frame._groupBorderActive then
+        -- Merged frames defer to the group root's mask; if the refresh hasn't run, leave them.
+        mask = frame._groupBorderRoot and frame._groupBorderRoot._groupRoundedMask
+        if not mask then return end
+    else
+        mask = self:_EnsureRoundedMask(frame, isIcon)
+    end
     for _, tex in ipairs(frame._maskedSurfaces) do
-        if tex.AddMaskTexture then
-            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
-            tex:AddMaskTexture(mask)
-        end
+        self:_SetSurfaceMask(tex, mask)
     end
 end
 
 function Skin:ClearRoundedMaskFromSurfaces(frame)
-    if not frame or not frame._maskedSurfaces or not frame._roundedMask then return end
-    local mask = frame._roundedMask
+    if not frame or not frame._maskedSurfaces then return end
     for _, tex in ipairs(frame._maskedSurfaces) do
-        if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
+        self:_SetSurfaceMask(tex, nil)
     end
 end
 
@@ -439,8 +459,13 @@ function Skin:SkinStatusBar(bar, textureName, color, isUnitFrame)
         if bar.Overlay then bar.Overlay:Hide() end
         return
     end
-    local overlayPath = LSM:Fetch("statusbar", overlayTextureName) or ORBIT_OVERLAY_PATH
-    self:AddOverlay(bar, overlayPath, "BLEND", 0.5)
+    local overlayPath = LSM:Fetch("statusbar", overlayTextureName)
+    if not overlayPath then
+        if bar.Overlay then bar.Overlay:Hide() end
+        return
+    end
+    local render = OVERLAY_RENDER[overlayTextureName] or OVERLAY_DEFAULT
+    self:AddOverlay(bar, overlayPath, render.blend, render.alpha)
 end
 
 function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
@@ -451,6 +476,12 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha)
     if not bar.Overlay then
         bar.Overlay = bar:CreateTexture(nil, "OVERLAY")
         bar.Overlay:SetAllPoints(bar)
+    end
+
+    -- No path: just ensure the overlay texture exists (so a caller can mask-register it), hidden.
+    if not texturePath then
+        bar.Overlay:Hide()
+        return
     end
 
     bar.Overlay:SetTexture(texturePath)

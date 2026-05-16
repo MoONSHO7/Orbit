@@ -13,7 +13,7 @@ local DAMAGE_BAR_DELAY = 0.2
 local DAMAGE_COLOR = { r = 0.8, g = 0.1, b = 0.1, a = 0.6 }
 local MY_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }
 local OTHER_HEAL_COLOR = { r = 0.66, g = 1, b = 0.66, a = 0.6 }
-local ABSORB_COLOR = { r = 0.4, g = 0.75, b = 1.0, a = 0.85 }
+local ABSORB_COLOR = Constants.Colors.Absorb
 local HEAL_ABSORB_ALPHA = 0.15
 local HEAL_ABSORB_PATTERN_SIZE = 3200
 local HEAL_ABSORB_TEXCOORD = 100
@@ -21,8 +21,6 @@ local HEAL_ABSORB_TEXCOORD = 100
 local TEXT_INSET = 5
 local SHADOW_OFFSET_X = 1
 local SHADOW_OFFSET_Y = -1
-local OVERLAY_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Statusbar\\orbit-left-right.tga"
-local OVERLAY_ALPHA = 0.3
 local NECROTIC_PATH = "Interface\\AddOns\\Orbit\\Core\\Assets\\Statusbar\\necrotic.tga"
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 
@@ -112,7 +110,9 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealthDamageTexture:SetPoint("BOTTOMRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
     Orbit.Skin:RegisterMaskedSurface(f, f.HealthDamageTexture)
 
-    Orbit.Skin:AddOverlay(f.Health, OVERLAY_PATH, "BLEND", OVERLAY_ALPHA)
+    -- Pre-create the (hidden) health overlay so it can inherit the rounded mask; SkinStatusBar
+    -- fills or hides it per the OverlayTexture setting.
+    Orbit.Skin:AddOverlay(f.Health)
     if f.Health.Overlay then Orbit.Skin:RegisterMaskedSurface(f, f.Health.Overlay) end
 
     f.MyIncomingHealBar = CreatePredictionBar(f, f.Health, MY_HEAL_COLOR)

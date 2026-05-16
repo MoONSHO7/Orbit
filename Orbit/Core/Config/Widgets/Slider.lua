@@ -148,8 +148,8 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
 
     if frame.Value then
         frame.Value:ClearAllPoints()
-        frame.Value:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
-        frame.Value:SetWidth(C.Widget.ValueWidth)
+        frame.Value:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueInset, 0)
+        frame.Value:SetWidth(C.Widget.ValueWidth - C.Widget.ValueInset)
         frame.Value:SetJustifyH("RIGHT")
     end
 
