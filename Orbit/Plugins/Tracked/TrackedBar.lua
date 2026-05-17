@@ -289,6 +289,7 @@ function Bar:Build(plugin, record)
         bar:SetAllPoints()
         bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
         bar:SetOrientation(isVertical and "VERTICAL" or "HORIZONTAL")
+        bar:SetRotatesTexture(isVertical)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.6)
         Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
@@ -450,8 +451,10 @@ function Bar:Apply(plugin, frame, record)
     frame.StatusBar:ClearAllPoints()
     if isVertical then
         frame.StatusBar:SetOrientation("VERTICAL")
+        frame.StatusBar:SetRotatesTexture(true)
         frame.RechargePositioner:SetOrientation("VERTICAL")
         frame.RechargeSegment:SetOrientation("VERTICAL")
+        frame.RechargeSegment:SetRotatesTexture(true)
         if iconSize > 0 then
             if iconAtEnd then
                 frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
@@ -466,8 +469,10 @@ function Bar:Apply(plugin, frame, record)
         end
     else
         frame.StatusBar:SetOrientation("HORIZONTAL")
+        frame.StatusBar:SetRotatesTexture(false)
         frame.RechargePositioner:SetOrientation("HORIZONTAL")
         frame.RechargeSegment:SetOrientation("HORIZONTAL")
+        frame.RechargeSegment:SetRotatesTexture(false)
         if iconSize > 0 then
             if iconAtEnd then
                 frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)

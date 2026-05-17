@@ -239,7 +239,7 @@ the `TickMixin` is built once against the main `StatusBar` in `Build`, and `Layo
 
 `IconPosition` slider values 1/2/3 map to `Left/Off/Right` when horizontal and `Top/Off/Bottom` when vertical — the formatter branches on the current `Layout`. The stored value is the same integer either way; only the displayed labels and the eventual frame anchor differ.
 
-vertical bars set `StatusBar:SetOrientation("VERTICAL")` plus the same on `RechargePositioner` and `RechargeSegment`. WoW's vertical fill is `BOTTOM→TOP`, which naturally gives the requested behavior in both continuous modes:
+vertical bars set `StatusBar:SetOrientation("VERTICAL")` plus the same on `RechargePositioner` and `RechargeSegment`. they also set `SetRotatesTexture(true)` on the visible bars (`StatusBar`, `RechargeSegment`) so a horizontally-authored statusbar texture is rotated 90° instead of stretched down the long axis; horizontal bars set it back to `false`. WoW's vertical fill is `BOTTOM→TOP`, which naturally gives the requested behavior in both continuous modes:
 
 - **active_cd**: value drains from 1 → 0 during the active phase, so the texture's TOP edge moves downward → "active drains downward". value then refills from 0 → 1 during the cd phase, texture's TOP edge moves upward → "cd fills upward".
 - **cd_only**: value goes from 0 → 1, texture's TOP edge moves upward → "cd fills upward".

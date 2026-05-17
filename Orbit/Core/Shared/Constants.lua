@@ -159,21 +159,26 @@ C.Settings = {
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
 local MASK_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Masks\\"
--- One built-in "Orbit" border style with two orthogonal sliders: Corner Roundness picks the
--- corner shape (and content-clip mask), Border Thickness picks the outline weight. Thickness
--- None means no outline — independent of roundness, so a frame can carry a rounded-corner mask
--- with no border line at all.
+-- Two built-in border styles. "Orbit" is roundness-driven: Corner Roundness picks the corner
+-- shape (and content-clip mask), Border Thickness picks the outline weight; Thickness None means
+-- no outline — independent of roundness, so a frame can carry a rounded-corner mask with no
+-- border line at all. "Orbit Pixel (Legacy)" is the pre-consolidation flat border — a plain
+-- WHITE8x8 outline with a single Border Size slider (0-5); `pixel = true` marks it so the
+-- resolver routes it to the pixel render path.
 C.BorderStyle = {
     Default = "orbit",
     Offset = 6,
     EdgeSize = 16,
     DefaultRoundness = 0,
     DefaultThickness = 2,
+    DefaultPixelSize = 2,
     Roundness = { Square = 0, Subtle = 1, Round = 2, Heavy = 3 },
     Thickness = { None = 0, Slim = 1, Medium = 2, Thick = 3 },
+    PixelSize = { Min = 0, Max = 5, Step = 1 },
     Styles = {
         { label = "Orbit", value = "orbit", roundnessDriven = true,
           edgeFile = MASK_PATH .. "Orbit_Border" },
+        { label = "Orbit Pixel (Legacy)", value = "pixel", pixel = true },
     },
     -- Indexed by the Corner Roundness slider value. `margin` is the SetTextureSliceMargins
     -- value (= rendered corner pixel size); `mask` clips frame content to the corner curve
@@ -192,14 +197,20 @@ for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
 end
 
--- `BorderSize`/`IconBorderSize` mirror the active border's outline thickness (0 = None, else the
--- thickness tier). Layout math across the addon reads them rather than re-deriving, so they must
--- be re-synced whenever Border Thickness changes.
+-- `BorderSize`/`IconBorderSize` mirror the active border's effective outline size — the Border
+-- Thickness tier for the roundness-driven "Orbit" style, or the raw 0-5 Border Size slider for
+-- the "Orbit Pixel (Legacy)" style. Layout math across the addon reads them rather than
+-- re-deriving, so they must be re-synced whenever a border size/thickness or style changes.
 function C.BorderStyle.SyncEffectiveSize(gs)
     if not gs then return end
-    local dT = C.BorderStyle.DefaultThickness
-    gs.BorderSize = gs.RoundedThickness or dT
-    gs.IconBorderSize = gs.IconRoundedThickness or dT
+    local dT, dP = C.BorderStyle.DefaultThickness, C.BorderStyle.DefaultPixelSize
+    local function effective(styleKey, pixelKey, thicknessKey)
+        local entry = C.BorderStyle.Lookup[styleKey or ""]
+        if entry and entry.pixel then return gs[pixelKey] or dP end
+        return gs[thicknessKey] or dT
+    end
+    gs.BorderSize = effective(gs.BorderStyle, "PixelBorderSize", "RoundedThickness")
+    gs.IconBorderSize = effective(gs.IconBorderStyle, "IconPixelBorderSize", "IconRoundedThickness")
 end
 
 -- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------

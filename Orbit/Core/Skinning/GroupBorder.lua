@@ -114,6 +114,8 @@ function Skin:UpdateGroupBorder(rootFrame)
     local overlay = rootFrame._groupBorderOverlay
     local gs = Orbit.db and Orbit.db.GlobalSettings
 
+
+
     -- Calculate bounding box from anchor edge data (deterministic, no screen coords needed).
     -- Each frame's position relative to rootFrame TOPLEFT is derived from its anchor edge.
     local positions = {}
@@ -185,7 +187,6 @@ function Skin:UpdateGroupBorder(rootFrame)
     local hideOverlay = false
 
     if isPixelMode then
-        overlay:SetScale(1)
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (gs and gs.BorderSize or Constants.Settings.BorderSize.Default)
@@ -216,21 +217,15 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
     elseif hasModernSlice then
-        -- Pinned to the fixed pixel scale so the merged outline is the same physical thickness as
-        -- every per-frame border, regardless of the root frame's scale.
-        self:_PinBorderScale(overlay, rootFrame)
-        overlay:ClearAllPoints()
-        if canNativeAnchor then
-            overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
-            overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
-        else
-            -- offsetX/Y and totalW/H are root-frame-local; convert to the pinned overlay's units.
-            local oScale = overlay:GetScale()
-            local ps = Engine.Pixel:GetScale()
-            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX / oScale, ps), Engine.Pixel:Snap(offsetY / oScale, ps))
-            overlay:SetSize(Engine.Pixel:Snap(totalW / oScale, ps), Engine.Pixel:Snap(totalH / oScale, ps))
-        end
         if styleEntry.edgeFile then
+            overlay:ClearAllPoints()
+            if canNativeAnchor then
+                overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
+                overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
+            else
+                overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
+                overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
+            end
             self:_RenderSliceTexture(overlay, styleEntry, self:ResolveBorderColor(isIconStyle))
         else
             -- Border Thickness None: no merged outline — the corner-clip mask still applies.
@@ -239,12 +234,11 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
         -- Square carries no mask — no content clipping needed.
         if styleEntry.mask then
-            self:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry)
+            self:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
         else
             self:_ClearGroupRoundedMask(rootFrame, allFrames)
         end
     else
-        overlay:SetScale(1)
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local edgeSize, borderOffset
@@ -296,54 +290,56 @@ function Skin:UpdateGroupBorder(rootFrame)
     end
 end
 
--- `styleEntry` is the group's resolved roundness style — the same one the merged outline uses, so
--- the mask matches the merged border exactly. The mask lives on a host frame pinned to the fixed
--- pixel scale and tracking the group overlay's rect, so its corners stay a constant size.
-function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry)
-    local overlay = rootFrame._groupBorderOverlay
-    local host = rootFrame._groupRoundedMaskHost
-    if not host then
-        host = CreateFrame("Frame", nil, rootFrame)
-        rootFrame._groupRoundedMaskHost = host
-    end
-    self:_PinBorderScale(host, rootFrame)
-    host:ClearAllPoints()
-    host:SetAllPoints(overlay)
-    local mask = rootFrame._groupRoundedMask
-    if not mask then
-        mask = host:CreateMaskTexture(nil, "BACKGROUND")
-        rootFrame._groupRoundedMask = mask
-        if Engine.Pixel then Engine.Pixel:Enforce(mask) end
-    end
-    local margin = styleEntry.sliceMargin
-    mask:SetTexture(styleEntry.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-    mask:SetTextureSliceMargins(margin, margin, margin, margin)
-    mask:ClearAllPoints()
-    mask:SetAllPoints(host)
-    -- Applied to EVERY merged member, icon containers included: a container's _maskedSurfaces are
-    -- its child icon textures, which must clip to the merged shape — not the per-container shape —
-    -- or the icons gap away from the merged border. ClearGroupBorder / _RestoreExMergeMember hand
-    -- the per-container mask back on un-merge, so the icons never stay stuck looking merged.
+-- A frame's masked surfaces are group-managed UNLESS:
+--  - it is a per-icon icon container (Icon Padding > 0): each child icon owns its own mask via
+--    Icons:ApplyCustom. ClearIconGroupBorder leaves _activeBorderMode nil; a container-bordered
+--    (padding 0) icon container keeps _activeBorderMode set.
+--  - it is the player aura grid: UnitAuraGridMixin masks its own child icons on the UNIT_AURA
+--    cycle (it must, to catch pool-acquired icons), so the group layer must not fight it.
+local function GroupManagesMask(frame)
+    if frame._auraGridFrame then return false end
+    return (not frame._isIconContainer) or frame._activeBorderMode ~= nil
+end
+
+-- `styleEntry` is the group's resolved roundness style — the same one the merged outline uses,
+-- so the mask matches the merged border exactly.
+function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
+    local mask = self:EnsureSliceMask(rootFrame, "_groupRoundedMask", styleEntry, function(m)
+        if canNativeAnchor then
+            m:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
+            m:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
+        else
+            m:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
+            m:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
+        end
+    end)
+    -- Applied to every group-managed member, container-bordered icon containers included: their
+    -- _maskedSurfaces are the child icon textures, which must clip to the MERGED shape — not the
+    -- per-container shape — or the icons gap away from the merged border. Per-icon containers
+    -- (Icon Padding > 0) are skipped: their icons keep their own per-icon masks.
     for _, frame in ipairs(allFrames) do
-        for _, tex in ipairs(frame._maskedSurfaces or {}) do
-            self:_SetSurfaceMask(tex, mask)
+        if GroupManagesMask(frame) then
+            for _, tex in ipairs(frame._maskedSurfaces or {}) do
+                self:_SetSurfaceMask(tex, mask)
+            end
         end
     end
 end
 
 -- Clears whatever Orbit mask sits on each surface — per-frame or any group's — not just
 -- rootFrame's, so a frame that hopped groups or fell back to pixel/legacy leaves no residue.
--- Icon containers included: their child-icon surfaces carry the group mask too (see
--- _ApplyGroupRoundedMask); the caller re-applies the per-container mask afterwards.
 function Skin:_ClearGroupRoundedMask(rootFrame, frames)
     if not frames then return end
     for _, frame in ipairs(frames) do
-        for _, tex in ipairs(frame._maskedSurfaces or {}) do
-            self:_SetSurfaceMask(tex, nil)
+        if GroupManagesMask(frame) then
+            for _, tex in ipairs(frame._maskedSurfaces or {}) do
+                self:_SetSurfaceMask(tex, nil)
+            end
         end
     end
-    -- Release the group mask's anchor (it tracks its host frame) so a torn-down group leaves
-    -- nothing chasing stale geometry; the next merge re-anchors it via _ApplyGroupRoundedMask.
+    -- Detach the group mask from the member frames it was SetPoint-anchored to. A MaskTexture
+    -- left cross-anchored onto a frame blocks that frame's StartMoving from re-latching a
+    -- follow point — it must be fully unanchored when the group is torn down.
     if rootFrame and rootFrame._groupRoundedMask then
         rootFrame._groupRoundedMask:ClearAllPoints()
     end
@@ -374,14 +370,17 @@ function Skin:ClearGroupBorder(rootFrame)
     end
     walk(rootFrame)
     self:_ClearGroupRoundedMask(rootFrame, walked)
-    -- Restore each member's own mask now the group mask is gone. Icon containers take the icon
-    -- border style — their surfaces are the child icon textures, clipped to the per-container
-    -- shape by the icon skinning; every other frame takes the frame border style.
+    -- Restore each member's own mask now the group mask is gone. restoreFrame cleared
+    -- _groupBorderActive above, so ApplyRoundedMaskToSurfaces rebuilds the per-frame mask.
+    -- Container-bordered icon containers take the ICON border style; per-icon containers
+    -- (Icon Padding > 0) are skipped — their per-icon masks were never group-touched.
     for _, frame in ipairs(walked) do
-        if frame._isIconContainer then
-            self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
-        else
-            self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveBorderStyle())
+        if GroupManagesMask(frame) then
+            if frame._isIconContainer then
+                self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
+            else
+                self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveBorderStyle())
+            end
         end
     end
 end
@@ -394,12 +393,14 @@ function Skin:_RestoreExMergeMember(frame)
     frame._groupBorderHiddenPixels = nil
     if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
     if frame.SetBorderHidden then frame:SetBorderHidden(false) end
-    -- Restore the ex-member's own mask. Icon containers take the icon border style (their
-    -- surfaces are the child icon textures); every other frame takes the frame border style.
-    if frame._isIconContainer then
-        self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
-    else
-        self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveBorderStyle())
+    -- Restore the ex-member's own mask. Container-bordered icon containers take the icon border
+    -- style; per-icon containers (Icon Padding > 0) are skipped — their per-icon masks stand.
+    if GroupManagesMask(frame) then
+        if frame._isIconContainer then
+            self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
+        else
+            self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveBorderStyle())
+        end
     end
 end
 
