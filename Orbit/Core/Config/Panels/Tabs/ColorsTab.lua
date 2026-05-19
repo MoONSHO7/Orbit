@@ -15,11 +15,11 @@ local ColorsPlugin = CreateGlobalSettingsPlugin("OrbitColors")
 -- [ SCHEMA ]-----------------------------------------------------------------------------------------
 local function GetColorsSchema()
     local controls = {
-        { type = "texture", key = "Texture", label = L.CFG_TEXTURE, default = "Orbit Gradient Top-Bottom", previewColor = { r = 0.8, g = 0.8, b = 0.8 } },
-        { type = "texture", key = "OverlayTexture", label = L.CFG_OVERLAY_TEXTURE, default = "None", previewColor = { r = 0.5, g = 0.5, b = 0.5 }, allowOverlays = true },
+        { type = "texture", key = "Texture", label = L.CFG_TEXTURE, default = "Orbit Gradient Top-Bottom", previewColor = { r = 0.8, g = 0.8, b = 0.8 }, mediaCategory = "fill" },
+        { type = "texture", key = "OverlayTexture", label = L.CFG_OVERLAY_TEXTURE, default = "None", previewColor = { r = 0.5, g = 0.5, b = 0.5 }, mediaCategory = "overlay" },
         {
             type = "texture", key = "AbsorbTexture", label = L.CFG_ABSORB_TEXTURE, default = "Orbit Absorb",
-            previewColor = { r = 0.5, g = 0.8, b = 1.0 },
+            previewColor = { r = 0.5, g = 0.8, b = 1.0 }, mediaCategory = "absorb",
             valueCheckbox = {
                 tooltip = L.CFG_ALWAYS_SHOW_ABSORB,
                 initialValue = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AlwaysShowAbsorb or false,

@@ -2,6 +2,7 @@
 -- System performance datatext: FPS, latency, memory, addon usage, sparkline graph
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
 local L = Orbit.L

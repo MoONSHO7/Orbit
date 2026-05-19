@@ -104,16 +104,16 @@ auto-detected from the dock's centre relative to the four screen edges (`LEFT/RI
 
 **DisplayShape** chooses the icon shell:
 
-- `1` **Circle** — circular mask, background tinted with `GlobalSettings.BackdropColour`, silver atlas ring (`talents-node-choiceflyout-circle-gray`).
-- `2` **Square** — non-clipping mask (`CLAMPTOBLACKADDITIVE` wrap on WHITE so anything past the icon bounds is clipped, same as circle just square-shaped), background tinted with `GlobalSettings.BackdropColour`, silver atlas ring hidden.
+- `1` **Circle** — circular mask, background tinted with the global "Background" colour (`Orbit.Skin:GetBackgroundColor()`), silver atlas ring (`talents-node-choiceflyout-circle-gray`).
+- `2` **Square** — non-clipping mask (`CLAMPTOBLACKADDITIVE` wrap on WHITE so anything past the icon bounds is clipped, same as circle just square-shaped), background tinted with the global "Background" colour, silver atlas ring hidden.
 
-Both shapes share the same `GlobalSettings.BackdropColour` source for the per-icon background. Shape toggles by re-setting the mask texture (`CIRCULAR_MASK_PATH` vs `WHITE_TEXTURE`) — one swap reshapes everything (mask is shared by background / Normal / Highlight / Pushed / sheen).
+Both shapes share the same `Orbit.Skin:GetBackgroundColor()` source for the per-icon background. Shape toggles by re-setting the mask texture (`CIRCULAR_MASK_PATH` vs `WHITE_TEXTURE`) — one swap reshapes everything (mask is shared by background / Normal / Highlight / Pushed / sheen).
 
 **Square border modes** depend on `Spacing`:
 
 | `Spacing` | per-icon border | container border | backdrop |
 |---|---|---|---|
-| `> 0` | `Orbit.Skin:SkinBorder(icon, icon, nil, nil, true)` per icon (`GlobalSettings.IconBorderStyle` + `IconBorderColor`) | — | per-icon `icon.background` tinted with `BackdropColour` |
+| `> 0` | `Orbit.Skin:SkinBorder(icon, icon, nil, nil, true)` per icon (`GlobalSettings.IconBorderStyle` + `IconBorderColor`) | — | per-icon `icon.background` tinted with the global "Background" colour |
 | `= 0` | hidden (`_borderFrame:Hide`, `_edgeBorderOverlay:Hide`) | `Orbit.Skin:ApplyIconGroupBorder(dock, GetActiveIconBorderStyle())` — one merged border wraps the whole row | single `dock.backdrop` at BACKGROUND layer covers the whole dock; per-icon `icon.background` hidden to avoid alpha-overlap seams between adjacent icons |
 
 Same convention as ActionBars / CooldownLayout / TrackedContainer — `padding == 0` flips per-icon → group border. Switching back to `Spacing > 0` calls `Skin:ClearIconGroupBorder(dock)`, hides the dock backdrop, and reapplies per-icon borders + per-icon background.

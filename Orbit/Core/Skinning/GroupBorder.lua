@@ -65,12 +65,12 @@ function Skin:UpdateGroupBorder(rootFrame)
         if frame._isIconContainer then isIconStyle = true; break end
     end
 
-    -- Determine border mode: NineSlice texture or pixel flat.
+    -- Determine border mode: a LibSharedMedia edge-file border, or the flat pixel border.
     local styleEntry
     if isIconStyle then styleEntry = self:GetActiveIconBorderStyle()
     else styleEntry = self:GetActiveBorderStyle() end
-    -- Pixel fallback only when no style resolves at all (e.g. a LibSharedMedia border not yet
-    -- registered); the orbit slice style always resolves, even at Border Thickness None.
+    -- The built-in "Orbit" border resolves to nil — the pixel-mode signal. Only an LSM
+    -- edge-file border yields a non-nil styleEntry.
     local isPixelMode = (styleEntry == nil)
 
     -- Mark all merged frames and hide their individual borders
@@ -183,7 +183,6 @@ function Skin:UpdateGroupBorder(rootFrame)
 
 
 
-    local hasModernSlice = (not isPixelMode) and styleEntry and styleEntry.sliceMargin
     local hideOverlay = false
 
     if isPixelMode then
@@ -216,29 +215,8 @@ function Skin:UpdateGroupBorder(rootFrame)
             c = (Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw) or { r = 0, g = 0, b = 0, a = 1 }
         end
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
-    elseif hasModernSlice then
-        if styleEntry.edgeFile then
-            overlay:ClearAllPoints()
-            if canNativeAnchor then
-                overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
-                overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
-            else
-                overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
-                overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
-            end
-            self:_RenderSliceTexture(overlay, styleEntry, self:ResolveBorderColor(isIconStyle))
-        else
-            -- Border Thickness None: no merged outline — the corner-clip mask still applies.
-            if overlay._sliceTexture then overlay._sliceTexture:Hide() end
-            hideOverlay = true
-        end
-        -- Square carries no mask — no content clipping needed.
-        if styleEntry.mask then
-            self:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
-        else
-            self:_ClearGroupRoundedMask(rootFrame, allFrames)
-        end
     else
+        -- LibSharedMedia edge-file border drawn on the merged bounding box.
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
         local edgeSize, borderOffset
@@ -301,33 +279,9 @@ local function GroupManagesMask(frame)
     return (not frame._isIconContainer) or frame._activeBorderMode ~= nil
 end
 
--- `styleEntry` is the group's resolved roundness style — the same one the merged outline uses,
--- so the mask matches the merged border exactly.
-function Skin:_ApplyGroupRoundedMask(rootFrame, allFrames, styleEntry, canNativeAnchor, tlFrame, brFrame, offsetX, offsetY, totalW, totalH, rootScale)
-    local mask = self:EnsureSliceMask(rootFrame, "_groupRoundedMask", styleEntry, function(m)
-        if canNativeAnchor then
-            m:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
-            m:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
-        else
-            m:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
-            m:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
-        end
-    end)
-    -- Applied to every group-managed member, container-bordered icon containers included: their
-    -- _maskedSurfaces are the child icon textures, which must clip to the MERGED shape — not the
-    -- per-container shape — or the icons gap away from the merged border. Per-icon containers
-    -- (Icon Padding > 0) are skipped: their icons keep their own per-icon masks.
-    for _, frame in ipairs(allFrames) do
-        if GroupManagesMask(frame) then
-            for _, tex in ipairs(frame._maskedSurfaces or {}) do
-                self:_SetSurfaceMask(tex, mask)
-            end
-        end
-    end
-end
-
 -- Clears whatever Orbit mask sits on each surface — per-frame or any group's — not just
 -- rootFrame's, so a frame that hopped groups or fell back to pixel/legacy leaves no residue.
+-- No style produces a mask any more; this only sweeps away masks left by an ex-rounded profile.
 function Skin:_ClearGroupRoundedMask(rootFrame, frames)
     if not frames then return end
     for _, frame in ipairs(frames) do
@@ -496,10 +450,10 @@ Orbit.EventBus:On("BORDER_LAYOUT_CHANGED", function()
     end, 0)
 end)
 
--- A border style / thickness / roundness change must also rebuild merged group borders: the
--- per-frame re-skin from GlobalSettings' ApplySettings updates each member's own overlay/mask
--- but never touches the group overlay slice texture or the shared group mask. Without this a
--- merged group keeps showing the pre-change border until the next merge/unmerge/drag.
+-- A border style / size change must also rebuild merged group borders: the per-frame re-skin
+-- from GlobalSettings' ApplySettings updates each member's own overlay but never touches the
+-- group overlay. Without this a merged group keeps showing the pre-change border until the
+-- next merge/unmerge/drag.
 Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function()
     Skin:DeferGroupBorderRefresh()
 end)

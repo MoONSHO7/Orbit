@@ -941,7 +941,7 @@ function Plugin:ApplyFrameStyle(frame, showPower)
     if frame.Health then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
     if frame.TotalAbsorbBar then
         local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
-        frame.TotalAbsorbBar:SetStatusBarTexture(LSM:Fetch("statusbar", absorbTextureName or "Blizzard"))
+        Orbit.Skin:ApplyAbsorbTexture(frame.TotalAbsorbBar, absorbTextureName)
     end
     if frame.Power then
         local texturePath = LSM:Fetch("statusbar", textureName) or "Interface\\TargetingFrame\\UI-StatusBar"

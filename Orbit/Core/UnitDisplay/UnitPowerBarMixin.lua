@@ -231,13 +231,7 @@ function Mixin:ApplySettings()
     Orbit.Skin:SkinStatusBar(PowerBar, textureName, nil, true)
     Frame:SetBorder(borderSize)
 
-    local backdropColor = self:GetSetting(1, "BackdropColour")
-    if backdropColor and Frame.bg then
-        Frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.9)
-    elseif Frame.bg then
-        local c = Orbit.Constants.Colors.Background
-        Frame.bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.9)
-    end
+    Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
     local fontPath = LSM:Fetch("font", fontName)
     local positions = self:GetSetting(1, "ComponentPositions") or {}

@@ -14,10 +14,11 @@ local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 -- TexturePicker Widget
 -- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
 -- Control is a preview swatch; clicking opens a MediaMenu whose rows preview each statusbar texture.
--- allowOverlays partitions the statusbar media list by whether a name contains "overlay"
--- (case-insensitive): bar-fill pickers list only non-overlay textures, the Overlay Texture
--- control (allowOverlays = true) lists only overlay textures.
-function Layout:CreateTexturePicker(parent, label, initialTexture, callback, previewColor, valueCheckboxCfg, valueColorCfg, allowOverlays)
+-- mediaCategory partitions the statusbar media list into three mutually exclusive lists by a
+-- case-insensitive substring of the texture name: a name containing "overlay" belongs to the
+-- Overlay Texture control, one containing "absorb" to the Absorb Texture control, anything else
+-- to bar-fill pickers ("fill", the default). The current selection is always kept in the list.
+function Layout:CreateTexturePicker(parent, label, initialTexture, callback, previewColor, valueCheckboxCfg, valueColorCfg, mediaCategory)
     if not self.texturePool then self.texturePool = {} end
     local frame = table.remove(self.texturePool)
 
@@ -64,7 +65,7 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
     frame.selectedTexture = initialTexture or Constants.Settings.Texture.Default
     frame.previewColor = previewColor or { r = 0.8, g = 0.8, b = 0.8 }
     frame.textureCallback = callback
-    frame.allowOverlays = allowOverlays
+    frame.mediaCategory = mediaCategory or "fill"
 
     local function UpdatePreview()
         local color = frame.previewColor
@@ -129,12 +130,14 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
             })
         end
         local list = {}
-        local wantOverlays = frame.allowOverlays == true
+        local category = frame.mediaCategory
         for name in pairs(LSM:HashTable("statusbar")) do
-            -- Overlay media (name contains "overlay") and bar fills are mutually exclusive lists;
-            -- the current selection is always kept so the user can still see/change it.
-            local isOverlay = name:lower():find("overlay", 1, true) ~= nil
-            if isOverlay == wantOverlays or name == frame.selectedTexture then
+            -- Classify by name substring: overlay / absorb / fill are mutually exclusive lists.
+            -- The current selection is always kept so the user can still see/change it.
+            local lower = name:lower()
+            local nameCategory = lower:find("overlay", 1, true) and "overlay"
+                or lower:find("absorb", 1, true) and "absorb" or "fill"
+            if nameCategory == category or name == frame.selectedTexture then
                 tinsert(list, name)
             end
         end

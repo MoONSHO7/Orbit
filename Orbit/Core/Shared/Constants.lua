@@ -158,36 +158,18 @@ C.Settings = {
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
-local MASK_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Masks\\"
--- Two built-in border styles. "Orbit" is roundness-driven: Corner Roundness picks the corner
--- shape (and content-clip mask), Border Thickness picks the outline weight; Thickness None means
--- no outline — independent of roundness, so a frame can carry a rounded-corner mask with no
--- border line at all. "Orbit Pixel (Legacy)" is the pre-consolidation flat border — a plain
--- WHITE8x8 outline with a single Border Size slider (0-5); `pixel = true` marks it so the
--- resolver routes it to the pixel render path.
+-- One built-in border style: "Orbit" — a flat WHITE8x8 outline sized by the Border Size slider
+-- (0-5). `pixel = true` routes it to the pixel render path: ResolveStyle returns nil for it, and
+-- a nil styleEntry is the pipeline-wide signal for flat-border mode. LibSharedMedia edge-file
+-- borders also resolve (via the `lsm:` key) and render through the legacy edge-file path.
 C.BorderStyle = {
     Default = "orbit",
     Offset = 6,
     EdgeSize = 16,
-    DefaultRoundness = 0,
-    DefaultThickness = 2,
     DefaultPixelSize = 2,
-    Roundness = { Square = 0, Subtle = 1, Round = 2, Heavy = 3 },
-    Thickness = { None = 0, Slim = 1, Medium = 2, Thick = 3 },
     PixelSize = { Min = 0, Max = 5, Step = 1 },
     Styles = {
-        { label = "Orbit", value = "orbit", roundnessDriven = true,
-          edgeFile = MASK_PATH .. "Orbit_Border" },
-        { label = "Orbit Pixel (Legacy)", value = "pixel", pixel = true },
-    },
-    -- Indexed by the Corner Roundness slider value. `margin` is the SetTextureSliceMargins
-    -- value (= rendered corner pixel size); `mask` clips frame content to the corner curve
-    -- and is absent for Square — square corners need no clipping.
-    RoundedTiers = {
-        [0] = { margin = 6 },
-        [1] = { margin = 6,  mask = MASK_PATH .. "Orbit_Mask_1" },
-        [2] = { margin = 12, mask = MASK_PATH .. "Orbit_Mask_2" },
-        [3] = { margin = 20, mask = MASK_PATH .. "Orbit_Mask_3" },
+        { label = "Orbit", value = "orbit", pixel = true },
     },
 }
 
@@ -197,20 +179,13 @@ for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
 end
 
--- `BorderSize`/`IconBorderSize` mirror the active border's effective outline size — the Border
--- Thickness tier for the roundness-driven "Orbit" style, or the raw 0-5 Border Size slider for
--- the "Orbit Pixel (Legacy)" style. Layout math across the addon reads them rather than
--- re-deriving, so they must be re-synced whenever a border size/thickness or style changes.
+-- `BorderSize`/`IconBorderSize` mirror the active Border Size slider value; layout math across
+-- the addon reads them rather than re-deriving, so they re-sync whenever the size changes.
 function C.BorderStyle.SyncEffectiveSize(gs)
     if not gs then return end
-    local dT, dP = C.BorderStyle.DefaultThickness, C.BorderStyle.DefaultPixelSize
-    local function effective(styleKey, pixelKey, thicknessKey)
-        local entry = C.BorderStyle.Lookup[styleKey or ""]
-        if entry and entry.pixel then return gs[pixelKey] or dP end
-        return gs[thicknessKey] or dT
-    end
-    gs.BorderSize = effective(gs.BorderStyle, "PixelBorderSize", "RoundedThickness")
-    gs.IconBorderSize = effective(gs.IconBorderStyle, "IconPixelBorderSize", "IconRoundedThickness")
+    local d = C.BorderStyle.DefaultPixelSize
+    gs.BorderSize = gs.PixelBorderSize or d
+    gs.IconBorderSize = gs.IconPixelBorderSize or d
 end
 
 -- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------

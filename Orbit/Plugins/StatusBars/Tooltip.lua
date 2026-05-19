@@ -1,10 +1,11 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
+local GameTooltip = Orbit.Tooltip
 
 -- [ TOOLTIP BUILDER ]--------------------------------------------------------------------------------
--- Centralised hover-tooltip content for the three bars. Each `Show*` function adopts GameTooltip
--- at the owner anchor and writes several lines of progression + session stats.
+-- Centralised hover-tooltip content for the three bars. Each `Show*` function adopts the private
+-- Orbit tooltip at the owner anchor and writes several lines of progression + session stats.
 
 Orbit.StatusBarTooltip = {}
 local Tooltip = Orbit.StatusBarTooltip

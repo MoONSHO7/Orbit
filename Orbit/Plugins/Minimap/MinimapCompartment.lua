@@ -3,6 +3,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
+local GameTooltip = Orbit.Tooltip
 local SYSTEM_ID = "Orbit_Minimap"
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
@@ -258,7 +259,7 @@ function Plugin:ApplyCompartmentFlyoutSkin(flyout)
     flyout = flyout or self._compartmentFlyout
     if not flyout or not flyout.bg then return end
 
-    local c = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
+    local c = Orbit.Skin:GetBackgroundColor()
     flyout.bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.7)
 
     local borderSize = Orbit.db.GlobalSettings.BorderSize or 2

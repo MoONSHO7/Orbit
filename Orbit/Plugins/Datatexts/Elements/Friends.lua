@@ -2,6 +2,7 @@
 -- Friends datatext: online friends count
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 local BNET_CLIENT_NAMES = {

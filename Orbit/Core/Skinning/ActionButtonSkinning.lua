@@ -72,13 +72,12 @@ function ABS:Apply(button, settings)
 
     if not button.orbitBackdrop then
         button.orbitBackdrop = button:CreateTexture(nil, "BACKGROUND", nil, Constants.Layers.BackdropDeep)
-        local bgColor = settings.backdropColor or Constants.Colors.Background
-        button.orbitBackdrop:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
     end
     button.orbitBackdrop:SetDrawLayer("BACKGROUND", Constants.Layers.BackdropDeep)
     button.orbitBackdrop:ClearAllPoints()
     button.orbitBackdrop:SetAllPoints(button)
-    local bgColor = settings.backdropColor or Constants.Colors.Background
+    -- No per-bar override (settings.backdropColor) → fall back to the global "Background" colour.
+    local bgColor = settings.backdropColor or Skin:GetBackgroundColor()
     button.orbitBackdrop:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
     button.orbitBackdrop:Show()
     Skin:RegisterMaskedSurface(button, button.orbitBackdrop)
@@ -318,7 +317,7 @@ function ABS:Strip(button)
     if button.orbitHighlight then button.orbitHighlight:Hide() end
     if Icons.borderCache[button] then Icons.borderCache[button]:Hide() end
     local cd = button.cooldown or button.Cooldown
-    if cd then cd.orbitDesiredSwipe = nil end
+    if cd and not cd:GetName() then cd.orbitDesiredSwipe = nil end
     local icon = button.icon or button.Icon
     if icon and button.IconMask then
         button.IconMask:Show()

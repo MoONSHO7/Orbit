@@ -2,6 +2,7 @@
 -- Item level datatext: shows average equipped item level
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------

@@ -118,4 +118,4 @@ container (Frame, edit-mode handle)
     └── Value  (Frame with .Text FontString) — canvas component key `BarValue`
 ```
 
-border + backdrop come from `Orbit.Skin:SkinBorder` + `GlobalSettings.BackdropColour`; bar texture + base font come from `LSM:Fetch` on `GlobalSettings.Texture` / `GlobalSettings.Font`. per-component overrides stack on top.
+border + backdrop come from `Orbit.Skin:SkinBorder` + `Orbit.Skin:ApplyGradientBackground` on the global "Background" colour (`GlobalSettings.UnitFrameBackdropColourCurve`, Textures tab); bar texture + base font come from `LSM:Fetch` on `GlobalSettings.Texture` / `GlobalSettings.Font`. per-component overrides stack on top.

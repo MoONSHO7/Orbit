@@ -74,7 +74,7 @@ function Mixin:ApplyTexture(frame, textureName)
     Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true)
     if frame.TotalAbsorbBar then
         local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
-        frame.TotalAbsorbBar:SetStatusBarTexture(LSM:Fetch("statusbar", absorbTextureName or "Blizzard"))
+        Orbit.Skin:ApplyAbsorbTexture(frame.TotalAbsorbBar, absorbTextureName)
     end
     self:CreateBackground(frame)
 end

@@ -5,6 +5,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local C = Orbit.MinimapConstants
+local GameTooltip = Orbit.Tooltip
 
 local SYSTEM_ID = C.SYSTEM_ID
 local MASK_SQUARE = C.MASK_SQUARE

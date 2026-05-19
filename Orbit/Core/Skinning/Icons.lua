@@ -137,38 +137,41 @@ function Icons:ApplyCustom(icon, settings)
         if r.cooldown then
             r.cooldown:ClearAllPoints()
             r.cooldown:SetAllPoints(icon)
-            local desiredTexture = Skin:GetRoundedSwipeTexture(true) or Constants.Assets.SwipeCustom
-            local desiredColor = settings.cooldownSwipeColor or settings.swipeColor or { r = 0, g = 0, b = 0, a = 0.8 }
-            r.cooldown.orbitDesiredSwipe = { texture = desiredTexture, r = desiredColor.r, g = desiredColor.g, b = desiredColor.b, a = desiredColor.a }
-            r.cooldown.orbitUpdating = true
-            r.cooldown:SetSwipeTexture(desiredTexture)
-            if r.cooldown.SetSwipeColor then r.cooldown:SetSwipeColor(desiredColor.r, desiredColor.g, desiredColor.b, desiredColor.a) end
-            r.cooldown.orbitUpdating = false
             r.cooldown:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconSwipe)
-            if not r.cooldown.orbitHooked then
-                hooksecurefunc(r.cooldown, "SetSwipeTexture", function(self, texture)
-                    if self.orbitUpdating then return end
-                    local desired = self.orbitDesiredSwipe
-                    if not desired then return end
-                    if texture ~= desired.texture then
-                        self.orbitUpdating = true
-                        self:SetSwipeTexture(desired.texture)
-                        self.orbitUpdating = false
-                    end
-                end)
-                if r.cooldown.SetSwipeColor then
-                    hooksecurefunc(r.cooldown, "SetSwipeColor", function(self, cr, cg, cb, ca)
+            -- Named Cooldowns are Blizzard's (action bars, CooldownViewer); restyling them taints the frame and breaks Blizzard's secret-arg SetCooldown.
+            if not r.cooldown:GetName() then
+                local desiredTexture = Skin:GetRoundedSwipeTexture(true) or Constants.Assets.SwipeCustom
+                local desiredColor = settings.cooldownSwipeColor or settings.swipeColor or { r = 0, g = 0, b = 0, a = 0.8 }
+                r.cooldown.orbitDesiredSwipe = { texture = desiredTexture, r = desiredColor.r, g = desiredColor.g, b = desiredColor.b, a = desiredColor.a }
+                r.cooldown.orbitUpdating = true
+                r.cooldown:SetSwipeTexture(desiredTexture)
+                if r.cooldown.SetSwipeColor then r.cooldown:SetSwipeColor(desiredColor.r, desiredColor.g, desiredColor.b, desiredColor.a) end
+                r.cooldown.orbitUpdating = false
+                if not r.cooldown.orbitHooked then
+                    hooksecurefunc(r.cooldown, "SetSwipeTexture", function(self, texture)
                         if self.orbitUpdating then return end
                         local desired = self.orbitDesiredSwipe
                         if not desired then return end
-                        if cr ~= desired.r or cg ~= desired.g or cb ~= desired.b or ca ~= desired.a then
+                        if texture ~= desired.texture then
                             self.orbitUpdating = true
-                            self:SetSwipeColor(desired.r, desired.g, desired.b, desired.a)
+                            self:SetSwipeTexture(desired.texture)
                             self.orbitUpdating = false
                         end
                     end)
+                    if r.cooldown.SetSwipeColor then
+                        hooksecurefunc(r.cooldown, "SetSwipeColor", function(self, cr, cg, cb, ca)
+                            if self.orbitUpdating then return end
+                            local desired = self.orbitDesiredSwipe
+                            if not desired then return end
+                            if cr ~= desired.r or cg ~= desired.g or cb ~= desired.b or ca ~= desired.a then
+                                self.orbitUpdating = true
+                                self:SetSwipeColor(desired.r, desired.g, desired.b, desired.a)
+                                self.orbitUpdating = false
+                            end
+                        end)
+                    end
+                    r.cooldown.orbitHooked = true
                 end
-                r.cooldown.orbitHooked = true
             end
         end
         if r.flash then

@@ -2,6 +2,7 @@
 -- Mastery datatext: shows current Mastery percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local NumericOrNil = Orbit.SecretValueUtils.NumericOrNil
 local L = Orbit.L
 

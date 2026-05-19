@@ -2,6 +2,7 @@
 -- Currency display: cross-character tracking, session profit/loss, gold/hour, sparkline
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
 local L = Orbit.L

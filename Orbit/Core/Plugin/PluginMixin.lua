@@ -165,7 +165,7 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
     local db = Orbit.runtime and Orbit.runtime.Layouts
 
     -- Global Inheritance
-    if key == "Texture" or key == "Font" or key == "BorderSize" or key == "BackdropColour" then
+    if key == "Texture" or key == "Font" or key == "BorderSize" then
         local val = Orbit.db.GlobalSettings[key]
 
         return val

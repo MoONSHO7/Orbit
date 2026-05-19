@@ -824,7 +824,6 @@ function Plugin:ApplySettings(systemFrame)
     -- Pass everything to Skin
     if Orbit.Skin.CastBar and bar.orbitBar then
         local color = self:GetSetting(systemIndex, "CastBarColor")
-        local backdropColor = self:GetSetting(systemIndex, "BackdropColour")
         local globalSettings = Orbit.db.GlobalSettings or {}
 
         Orbit.Skin.CastBar:Apply(bar.orbitBar, {
@@ -836,7 +835,6 @@ function Plugin:ApplySettings(systemFrame)
             iconAtEnd = iconPos == 3,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
-            backdropColor = backdropColor,
             backdropCurve = globalSettings.UnitFrameBackdropColourCurve,
             sparkColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(systemIndex, "SparkColorCurve")) or self:GetSetting(systemIndex, "SparkColor") or { r = 1, g = 1, b = 1, a = 1 },
         })

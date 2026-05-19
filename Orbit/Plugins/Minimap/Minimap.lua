@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
+local GameTooltip = Orbit.Tooltip
 
 -- Key Bindings panel label for ORBIT_MINIMAP_TOGGLEVIEW (defined in Orbit/Bindings.xml).
 -- Header is BINDING_HEADER_ORBIT (set by Spotlight); this binding appears under "Orbit" alongside it.
@@ -744,7 +745,7 @@ function Plugin:ApplySettings()
     -- surface sits over the game world cleanly without a square backdrop bleeding through.
     local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
     if frame.bg and shape == "square" and not isHud then
-        local backdropColor = Orbit.db.GlobalSettings.BackdropColour or { r = 0.145, g = 0.145, b = 0.145, a = 0.7 }
+        local backdropColor = Orbit.Skin:GetBackgroundColor()
         frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a)
     end
 

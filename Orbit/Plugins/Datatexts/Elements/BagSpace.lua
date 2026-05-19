@@ -2,6 +2,7 @@
 -- Bag space datatext: shows free/total slots
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------

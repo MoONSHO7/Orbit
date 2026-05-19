@@ -679,7 +679,6 @@ Orbit.Profile.defaults = {
     HideBlizzardFrames = {},
     GlobalSettings = {
         OverlayTexture = "None", AbsorbTexture = "Orbit Absorb", TourComplete = false,
-        BackdropColour = { a = 0.7, r = 0.145, g = 0.145, b = 0.145 },
         UnitHealthUseGradient = false,
         BarColorCurve = {
             pins = { { color = { a = 1, b = 1, g = 1, r = 1 }, type = "class", position = 0 } },

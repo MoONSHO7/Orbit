@@ -61,7 +61,8 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         GlobalDisabledComponents = {},
         OutOfCombatFade = false, ShowOnMouseover = true,
         KeypressColor = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } },
-        IconBackdropColor = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } },
+        -- IconBackdropColor is intentionally unset: when absent the icon backdrop inherits the
+        -- global "Background" colour (Textures tab). Setting it via the Colors tab overrides per-bar.
         OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
         CooldownSwipeColor = DEFAULT_CD_SWIPE,
         ProcGlowType = Constants.Glow.Type.Medium,
@@ -200,7 +201,10 @@ function Plugin:AddSettings(dialog, systemFrame)
             default = Constants.Glow.Type.Medium,
         })
     elseif currentTab == "Colors" then
-        local DEFAULT_BACKDROP = { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
+        -- Unset IconBackdropColor inherits the global "Background" colour (Textures tab); show that
+        -- as the picker's starting value so the swatch matches what the bar actually renders.
+        local DEFAULT_BACKDROP = (Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve)
+            or { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
         local DEFAULT_KEYPRESS = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } }
         table.insert(schema.controls, { type = "colorcurve", key = "IconBackdropColor", label = L.PLU_AB_BACKDROP_COLOR, singleColor = true,
             default = DEFAULT_BACKDROP,
@@ -476,7 +480,7 @@ function Plugin:LayoutButtons(index)
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
     local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, padding = rawPadding,
         cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
-        showTimer = true, hideName = false, backdropColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "IconBackdropColor")) or { r = 0.08, g = 0.08, b = 0.08, a = 0.5 }, keypressColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "KeypressColor")) or { r = 1, g = 1, b = 1, a = 0.6 } }
+        showTimer = true, hideName = false, backdropColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "IconBackdropColor")), keypressColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "KeypressColor")) or { r = 1, g = 1, b = 1, a = 0.6 } }
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))

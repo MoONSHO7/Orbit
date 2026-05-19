@@ -165,7 +165,6 @@ function Bar:Build(plugin, record)
     frame.Selection:Hide()
 
     frame.IconBg = frame:CreateTexture(nil, "BACKGROUND")
-    frame.IconBg:SetColorTexture(0, 0, 0, 0.5)
     Orbit.Skin:RegisterMaskedSurface(frame, frame.IconBg)
 
     frame.Icon = frame:CreateTexture(nil, "ARTWORK")
@@ -180,7 +179,6 @@ function Bar:Build(plugin, record)
 
     frame.BarBg = frame.StatusBar:CreateTexture(nil, "BACKGROUND")
     frame.BarBg:SetAllPoints(frame.StatusBar)
-    frame.BarBg:SetColorTexture(0, 0, 0, 0.5)
     Orbit.Skin:RegisterMaskedSurface(frame, frame.BarBg)
 
     -- Invisible positioner whose fill edge tracks currentCharges; RechargeSegment anchors to it.
@@ -418,6 +416,11 @@ function Bar:Apply(plugin, frame, record)
     end
 
     Orbit.Skin:SkinBorder(frame, frame, Orbit.db.GlobalSettings.BorderSize or 1)
+
+    -- Icon + bar backdrops default to the global "Background" colour (Textures tab).
+    local bgColor = Orbit.Skin:GetBackgroundColor()
+    frame.IconBg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+    frame.BarBg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
 
     frame._hideOnCooldown = plugin:GetSetting(record.id, "HideOnCooldown") or false
     frame._hideOnAvailable = plugin:GetSetting(record.id, "HideOnAvailable") or false

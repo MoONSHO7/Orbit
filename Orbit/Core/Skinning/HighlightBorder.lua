@@ -33,21 +33,16 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then nineSliceStyle = nil end
     local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
 
-    local pathType
-    if nineSliceStyle and nineSliceStyle.sliceMargin then pathType = "modern"
-    elseif nineSliceStyle and nineSliceStyle.edgeFile then pathType = "legacy"
-    else pathType = "pixel" end
+    -- A LibSharedMedia edge-file border highlights via an edge-file backdrop ("legacy"); the
+    -- built-in flat "Orbit" border (nineSliceStyle nil) highlights via a flat WHITE8x8 backdrop.
+    local pathType = (nineSliceStyle and nineSliceStyle.edgeFile) and "legacy" or "pixel"
 
     local overlay = frame[storageKey]
     if overlay and overlay._hlCacheValid
         and overlay._hlBlendMode == mode
         and overlay._hlPathType == pathType
         and overlay._hlAnchorTarget == anchorTarget then
-        if pathType == "modern" then
-            if overlay._sliceTexture then overlay._sliceTexture:SetVertexColor(r, g, b, a) end
-        else
-            overlay:SetBackdropBorderColor(r, g, b, a)
-        end
+        overlay:SetBackdropBorderColor(r, g, b, a)
         if anchorTarget then
             local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
             overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
@@ -77,11 +72,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     if not hlScale or hlScale < 0.01 then hlScale = 1 end
     local borderOffset = (gs and gs.BorderOffset) or 0
 
-    if pathType == "modern" then
-        self:_RenderSliceTexture(overlay, nineSliceStyle, { r = r, g = g, b = b, a = a }, mode)
-        overlay:ClearAllPoints()
-        overlay:SetAllPoints(anchorTarget or frame)
-    elseif pathType == "legacy" then
+    if pathType == "legacy" then
         self:HideSliceTexture(overlay)
         local edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
         local adjEdge = edgeSize / ownScale

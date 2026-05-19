@@ -41,10 +41,6 @@ local DOCK_FRAME_LEVEL        = 100
 local DOCK_FRAME_STRATA       = "MEDIUM"
 local CLAMP_VISIBLE_MARGIN    = 30
 local DOCK_THICKNESS_PAD      = 2
-local BACKDROP_FALLBACK_R     = 0.145
-local BACKDROP_FALLBACK_G     = 0.145
-local BACKDROP_FALLBACK_B     = 0.145
-local BACKDROP_FALLBACK_A     = 0.7
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 local dock
@@ -171,12 +167,8 @@ local function RefreshDock()
     end
 
     if ctx.mergeBorders then
-        local c = Orbit.db.GlobalSettings.BackdropColour
-        dock.backdrop:SetVertexColor(
-            c and c.r or BACKDROP_FALLBACK_R,
-            c and c.g or BACKDROP_FALLBACK_G,
-            c and c.b or BACKDROP_FALLBACK_B,
-            c and c.a or BACKDROP_FALLBACK_A)
+        local c = Orbit.Skin:GetBackgroundColor()
+        dock.backdrop:SetVertexColor(c.r, c.g, c.b, c.a)
         dock.backdrop:Show()
     else
         dock.backdrop:Hide()

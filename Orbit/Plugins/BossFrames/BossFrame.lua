@@ -470,7 +470,7 @@ function Plugin:ApplySettings()
         if frame.Health and textureName then Orbit.Skin:SkinStatusBar(frame.Health, textureName, nil, true) end
         if frame.TotalAbsorbBar then
             local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
-            frame.TotalAbsorbBar:SetStatusBarTexture(LSM:Fetch("statusbar", absorbTextureName or "Blizzard"))
+            Orbit.Skin:ApplyAbsorbTexture(frame.TotalAbsorbBar, absorbTextureName)
         end
         if frame.Power and textureName then Orbit.Skin:SkinStatusBar(frame.Power, textureName, nil, true); if frame.Power.bg then frame.Power.bg:SetColorTexture(0, 0, 0, 0.5) end end
         Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)

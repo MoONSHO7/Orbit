@@ -3,6 +3,7 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
+local GameTooltip = Orbit.Tooltip
 
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
@@ -17,6 +18,14 @@ local ABSORB_COLOR = Constants.Colors.Absorb
 local HEAL_ABSORB_ALPHA = 0.15
 local HEAL_ABSORB_PATTERN_SIZE = 3200
 local HEAL_ABSORB_TEXCOORD = 100
+
+-- Total-absorb tiled stripe pattern. The "Orbit Absorb" texture tiles; rendered as a stretched
+-- statusbar fill its diagonal stripes shear, so it draws as a clip-masked horizTile/vertTile
+-- texture. PATTERN_SIZE is an oversized fixed square the mask crops; TILE_W/H are the texture's
+-- native dimensions, so the texcoords below show each tile at its authored size.
+local ABSORB_PATTERN_SIZE = 3200
+local ABSORB_TILE_W = 256
+local ABSORB_TILE_H = 64
 
 local TEXT_INSET = 5
 local SHADOW_OFFSET_X = 1
@@ -121,14 +130,44 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     Orbit.Skin:RegisterMaskedSurface(f, f.OtherIncomingHealBar:GetStatusBarTexture())
 
     f.TotalAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
-    local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
-    f.TotalAbsorbBar:SetStatusBarTexture(absorbTextureName and LSM:Fetch("statusbar", absorbTextureName) or LSM:Fetch("statusbar", "Blizzard"))
+    -- A placeholder fill so GetStatusBarTexture() is valid for the mask anchors below;
+    -- ApplyAbsorbTexture sets the real fill (or keeps white, for the tiled pattern) at the end.
+    f.TotalAbsorbBar:SetStatusBarTexture(WHITE_TEXTURE)
     f.TotalAbsorbBar:SetStatusBarColor(ABSORB_COLOR.r, ABSORB_COLOR.g, ABSORB_COLOR.b, ABSORB_COLOR.a)
     f.TotalAbsorbBar:SetMinMaxValues(0, 1)
     f.TotalAbsorbBar:SetValue(0)
     f.TotalAbsorbBar:SetFrameLevel(f.Health:GetFrameLevel() + 1)
     f.TotalAbsorbBar:Hide()
     Orbit.Skin:RegisterMaskedSurface(f, f.TotalAbsorbBar:GetStatusBarTexture())
+
+    -- Tiled stripe pattern for the "Orbit Absorb" texture: a horizTile/vertTile texture
+    -- MOD-multiplied over the bar's plain fill, clipped to the fill region by TotalAbsorbMask.
+    -- Skin:ApplyAbsorbTexture shows it for tiling fills and hides it for stretched ones.
+    f.TotalAbsorbMask = CreateFrame("Frame", nil, f.TotalAbsorbBar)
+    f.TotalAbsorbMask:SetClipsChildren(true)
+    f.TotalAbsorbMask:SetFrameLevel(f.TotalAbsorbBar:GetFrameLevel() + Constants.Levels.StatusBar)
+    f.TotalAbsorbMask:SetPoint("TOPLEFT", f.TotalAbsorbBar:GetStatusBarTexture(), "TOPLEFT", 0, 0)
+    f.TotalAbsorbMask:SetPoint("BOTTOMRIGHT", f.TotalAbsorbBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
+
+    f.TotalAbsorbPattern = f.TotalAbsorbMask:CreateTexture(nil, "ARTWORK")
+    f.TotalAbsorbPattern:SetSize(ABSORB_PATTERN_SIZE, ABSORB_PATTERN_SIZE)
+    f.TotalAbsorbPattern:SetPoint("TOPLEFT", f.TotalAbsorbMask, "TOPLEFT", 0, 0)
+    f.TotalAbsorbPattern:SetTexture(LSM:Fetch("statusbar", "Orbit Absorb"), "REPEAT", "REPEAT")
+    f.TotalAbsorbPattern:SetHorizTile(true)
+    f.TotalAbsorbPattern:SetVertTile(true)
+    f.TotalAbsorbPattern:SetTexCoord(0, ABSORB_PATTERN_SIZE / ABSORB_TILE_W, 0, ABSORB_PATTERN_SIZE / ABSORB_TILE_H)
+    f.TotalAbsorbPattern:SetBlendMode("MOD")
+    -- the tiled-pattern texcoords -- stamped here so ApplyAbsorbTexture can re-assert them after
+    -- swapping the texture (every tiling fill shares the same 256x64 size, so one pair fits all)
+    f.TotalAbsorbPattern.tileCoordX = ABSORB_PATTERN_SIZE / ABSORB_TILE_W
+    f.TotalAbsorbPattern.tileCoordY = ABSORB_PATTERN_SIZE / ABSORB_TILE_H
+    f.TotalAbsorbBar.TiledPattern = f.TotalAbsorbPattern
+
+    hooksecurefunc(f.TotalAbsorbBar, "Show", function() f.TotalAbsorbMask:Show() end)
+    hooksecurefunc(f.TotalAbsorbBar, "Hide", function() f.TotalAbsorbMask:Hide() end)
+
+    local absorbTextureName = Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.AbsorbTexture
+    Orbit.Skin:ApplyAbsorbTexture(f.TotalAbsorbBar, absorbTextureName)
 
     f.HealAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
     f.HealAbsorbBar:SetReverseFill(true)
@@ -217,6 +256,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     end)
     f:SetScript("OnLeave", function(self)
         self:SetMouseOver(false)
+        self.UpdateTooltip = nil
         GameTooltip:FadeOut()
     end)
 

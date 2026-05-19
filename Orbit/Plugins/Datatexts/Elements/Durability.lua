@@ -2,6 +2,7 @@
 -- Equipment durability datatext: shows lowest item durability percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------

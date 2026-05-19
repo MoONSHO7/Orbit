@@ -86,3 +86,4 @@ datatexts declare a category for ordering inside the drawer. `DatatextManager.DA
 - each datatext file is self-contained. no cross-datatext dependencies.
 - datatext state (position, enabled) is managed centrally by `DatatextManager`.
 - user-visible strings go through `Orbit.L` (`PLU_DT_*` for datatext labels and tooltips).
+- hover tooltips use the private `Orbit.Tooltip` frame, never the global `GameTooltip`. each file aliases it at the top: `local GameTooltip = Orbit.Tooltip`. owning the global tooltip from addon code taints it and breaks Blizzard's secret-handling unit-tooltip pipeline (WoW 12.0+).

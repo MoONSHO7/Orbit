@@ -2,6 +2,7 @@
 local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
+local GameTooltip = Orbit.Tooltip
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_MinimapButton"

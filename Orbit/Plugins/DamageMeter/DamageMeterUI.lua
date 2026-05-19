@@ -22,7 +22,6 @@ local TEXT_PAD_INNER = DM.TextPadInner
 local VIEW_TIMEOUT_SECONDS = DM.ViewTimeoutSeconds
 local NAME_AFTER_RANK_PAD = DM.NameAfterRankPad
 local DPS_AFTER_TOTAL_PAD = DM.DpsAfterTotalPad
-local BACKDROP_ALPHA = DM.BackdropAlpha
 local EMPTY_HOVER_ALPHA = 0.5
 
 local Plugin = Orbit:GetPlugin(DM.SystemID)
@@ -277,7 +276,6 @@ local function CreateBar(parent)
 
     bar.bg = bar:CreateTexture(nil, "BACKGROUND")
     bar.bg:SetAllPoints(bar.StatusBar)
-    bar.bg:SetColorTexture(0, 0, 0, 0.4)
     Orbit.Skin:RegisterMaskedSurface(bar.StatusBar, bar.bg)
     if parent._visibleRect then Orbit.Skin:RegisterMaskedSurface(parent._visibleRect, bar.bg) end
 
@@ -627,8 +625,13 @@ end
 
 local function RefreshBackgrounds(frame, def)
     local mode = def.background
+    -- The meter has no backdrop colour picker; per-bar and per-frame backdrops both use the
+    -- global "Background" colour (Textures tab).
+    local c = Orbit.Skin:GetBackgroundColor()
+    frame._backdrop:SetColorTexture(c.r, c.g, c.b, c.a)
     frame._backdrop:SetShown(mode == BG.Frame)
     for _, bar in ipairs(frame.bars) do
+        bar.bg:SetColorTexture(c.r, c.g, c.b, c.a)
         bar.bg:SetShown(mode == BG.PerBar)
     end
 end
@@ -824,7 +827,6 @@ local function BuildMeterFrame(id, def)
 
     frame._backdrop = frame._visibleRect:CreateTexture(nil, "BACKGROUND")
     frame._backdrop:SetAllPoints(frame._visibleRect)
-    frame._backdrop:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
     Orbit.Skin:RegisterMaskedSurface(frame._visibleRect, frame._backdrop)
 
     -- Parented to outer frame so it can render outside _visibleRect bounds; anchors track the rect.
@@ -986,7 +988,8 @@ local function BuildMeterFrame(id, def)
 
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(bar)
-        bg:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
+        local previewBg = Orbit.Skin:GetBackgroundColor()
+        bg:SetColorTexture(previewBg.r, previewBg.g, previewBg.b, previewBg.a)
         Orbit.Skin:RegisterMaskedSurface(preview, bg)
 
         local rank = preview:CreateFontString(nil, "OVERLAY")

@@ -12,6 +12,7 @@ provides the single source of truth for numeric constants, layer indices, color 
 |---|---|
 | Constants.lua | all project constants: colors, layer indices (`C.Levels`), border style definitions (`C.BorderStyle`), cooldown system indices, padding values, glow configurations, aura skin presets. |
 | Media.lua | libsharedmedia registrations for custom fonts and textures. |
+| Tooltip.lua | `Orbit.Tooltip` — a private `GameTooltipTemplate` frame (`OrbitTooltip`). Every Orbit-owned hover tooltip uses it instead of the global `GameTooltip`. Owning the global tooltip from addon code taints it, which breaks Blizzard's own secret-handling unit-tooltip pipeline (`SetWorldCursor`) in WoW 12.0+. Consumers alias it: `local GameTooltip = Orbit.Tooltip`. |
 | WhitelistedSpells.lua | Blizzard-whitelisted spell IDs where aura/cooldown fields are non-secret in combat. categorized tables (`CLASS_RESOURCES`, `HEALER_AURAS`, `RAID_BUFFS`, etc.) plus a merged `IsWhitelisted` lookup and query API (`IsSpellWhitelisted`, `IsClassResource`, `IsHealerAura`, `IsCombatRes`). consumed by `GroupAuraFilters` for exclusion lists. no executable logic beyond table construction. |
 | SecretValueUtils.lua | helpers for WoW 12.0+ secret value detection. |
 | TooltipParser.lua | tooltip scanning for active duration and cooldown duration extraction. |

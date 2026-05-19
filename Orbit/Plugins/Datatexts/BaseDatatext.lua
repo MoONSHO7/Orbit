@@ -1,6 +1,7 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local L = Orbit.L
+local GameTooltip = Orbit.Tooltip
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local DEFAULT_WIDTH = 100

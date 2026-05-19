@@ -57,7 +57,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
         showTimer = plugin:GetSetting(systemIndex, "ShowTimer"),
         showGCDSwipe = plugin:GetSetting(systemIndex, "ShowGCDSwipe"),
         baseIconSize = Constants.Skin.DefaultIconSize,
-        backdropColor = plugin:GetSetting(systemIndex, "BackdropColour"),
+        -- backdropColor omitted: ActionButtonSkinning falls back to the global "Background" colour.
         showTooltip = options.showTooltip or false,
         verticalGrowth = options.verticalGrowth,
         horizontalGrowth = options.horizontalGrowth,

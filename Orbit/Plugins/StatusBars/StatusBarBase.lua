@@ -7,7 +7,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8x8"
-local DEFAULT_BG_COLOR = { r = 0.05, g = 0.05, b = 0.05, a = 0.85 }
 local OVERLAY_FRAME_OFFSET = 1
 local BAR_FRAME_OFFSET = 2
 local TEXT_FRAME_OFFSET_LEVEL = Constants.Levels.Overlay
@@ -265,8 +264,7 @@ function StatusBarBase:ApplyTheme(container, options)
         container.Overlay:SetStatusBarColor(c.r, c.g, c.b, c.a or 0.5)
     end
 
-    local bgColor = options.bgColor or gs.BackdropColour or DEFAULT_BG_COLOR
-    container.bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.85)
+    Orbit.Skin:ApplyGradientBackground(container, gs.UnitFrameBackdropColourCurve, Constants.Colors.Background)
 
     local borderSize = gs.BorderSize or Constants.Settings.BorderSize.Default
     Orbit.Skin:SkinBorder(container, container, borderSize)

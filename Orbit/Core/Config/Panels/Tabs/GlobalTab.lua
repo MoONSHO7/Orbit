@@ -134,9 +134,7 @@ local function GetGlobalSchema()
             default = Constants.BorderStyle.Default, valueColor = borderColorValue,
             onChange = function(val)
                 GlobalPlugin:SetSetting(nil, "BorderStyle", val)
-                -- "Orbit" and "Orbit Pixel (Legacy)" derive the effective BorderSize from
-                -- different keys (thickness tier vs the 0-5 pixel slider), so the style switch
-                -- itself must re-sync before ApplySettings re-skins from the new value.
+                -- Re-sync the effective BorderSize before ApplySettings re-skins from it.
                 Constants.BorderStyle.SyncEffectiveSize(Orbit.db.GlobalSettings)
                 GlobalPlugin:ApplySettings()
                 Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
@@ -151,22 +149,10 @@ local function GetGlobalSchema()
         GlobalPlugin:ApplySettings()
         Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
     end
-    -- Both keyed by slider value. Thickness None (0) = no outline; roundness still drives the mask.
-    local thicknessLabels = {
-        [0] = L.CFG_THICKNESS_NONE, [1] = L.CFG_THICKNESS_SLIM,
-        [2] = L.CFG_THICKNESS_MEDIUM, [3] = L.CFG_THICKNESS_THICK,
-    }
-    local function thicknessFormatter(v) return thicknessLabels[v] or tostring(v) end
-    local roundnessLabels = {
-        [0] = L.CFG_ROUNDNESS_SQUARE, [1] = L.CFG_ROUNDNESS_SUBTLE,
-        [2] = L.CFG_ROUNDNESS_ROUND, [3] = L.CFG_ROUNDNESS_HEAVY,
-    }
-    local function roundnessFormatter(v) return roundnessLabels[v] or tostring(v) end
     local pixelSize = Constants.BorderStyle.PixelSize
-    if currentEntry and currentEntry.roundnessDriven then
-        tinsert(controls, { type = "slider", key = "RoundedThickness", label = L.CFG_BORDER_THICKNESS, default = Constants.BorderStyle.DefaultThickness, min = Constants.BorderStyle.Thickness.None, max = Constants.BorderStyle.Thickness.Thick, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedThickness", v) end })
-        tinsert(controls, { type = "slider", key = "RoundedCorner", label = L.CFG_BORDER_ROUNDNESS, default = Constants.BorderStyle.DefaultRoundness, min = Constants.BorderStyle.Roundness.Square, max = Constants.BorderStyle.Roundness.Heavy, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("RoundedCorner", v) end })
-    elseif currentEntry and currentEntry.pixel then
+    -- The built-in "Orbit" style is a flat pixel border (Border Size 0-5); a LibSharedMedia
+    -- border instead exposes edge-size and offset sliders.
+    if currentEntry and currentEntry.pixel then
         tinsert(controls, { type = "slider", key = "PixelBorderSize", label = L.CFG_BORDER_SIZE, default = Constants.BorderStyle.DefaultPixelSize, min = pixelSize.Min, max = pixelSize.Max, step = pixelSize.Step, updateOnRelease = true, onChange = function(v) borderSizeChanged("PixelBorderSize", v) end })
     else
         tinsert(controls, { type = "slider", key = "BorderEdgeSize", label = L.CFG_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderEdgeSize", v) end })
@@ -185,10 +171,7 @@ local function GetGlobalSchema()
         end,
     })
 
-    if currentIconEntry and currentIconEntry.roundnessDriven then
-        tinsert(controls, { type = "slider", key = "IconRoundedThickness", label = L.CFG_ICON_BORDER_THICKNESS, default = Constants.BorderStyle.DefaultThickness, min = Constants.BorderStyle.Thickness.None, max = Constants.BorderStyle.Thickness.Thick, step = 1, formatter = thicknessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedThickness", v) end })
-        tinsert(controls, { type = "slider", key = "IconRoundedCorner", label = L.CFG_ICON_BORDER_ROUNDNESS, default = Constants.BorderStyle.DefaultRoundness, min = Constants.BorderStyle.Roundness.Square, max = Constants.BorderStyle.Roundness.Heavy, step = 1, formatter = roundnessFormatter, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconRoundedCorner", v) end })
-    elseif currentIconEntry and currentIconEntry.pixel then
+    if currentIconEntry and currentIconEntry.pixel then
         tinsert(controls, { type = "slider", key = "IconPixelBorderSize", label = L.CFG_ICON_BORDER_SIZE, default = Constants.BorderStyle.DefaultPixelSize, min = pixelSize.Min, max = pixelSize.Max, step = pixelSize.Step, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconPixelBorderSize", v) end })
     else
         tinsert(controls, { type = "slider", key = "IconBorderEdgeSize", label = L.CFG_ICON_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderEdgeSize", v) end })
@@ -213,10 +196,6 @@ local function GetGlobalSchema()
                 d.IconBorderStyle = Constants.BorderStyle.Default
                 d.IconBorderEdgeSize = 16
                 d.IconBorderOffset = 0
-                d.RoundedThickness = Constants.BorderStyle.DefaultThickness
-                d.IconRoundedThickness = Constants.BorderStyle.DefaultThickness
-                d.RoundedCorner = Constants.BorderStyle.DefaultRoundness
-                d.IconRoundedCorner = Constants.BorderStyle.DefaultRoundness
                 d.PixelBorderSize = Constants.BorderStyle.DefaultPixelSize
                 d.IconPixelBorderSize = Constants.BorderStyle.DefaultPixelSize
                 Constants.BorderStyle.SyncEffectiveSize(d)

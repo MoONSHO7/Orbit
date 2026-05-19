@@ -2,6 +2,7 @@
 -- Guild datatext: online guild members count
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------

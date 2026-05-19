@@ -5,6 +5,7 @@ local OrbitEngine = Orbit.Engine
 local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0", true)
+local GameTooltip = Orbit.Tooltip
 
 -- [ DAMAGE METER COMPARISON ] -----------------------------------------------------------------------
 local DM = Constants.DamageMeter

@@ -3,6 +3,7 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
+local GameTooltip = Orbit.Tooltip
 
 Orbit.UnitAuraGridMixin = {}
 local Mixin = Orbit.UnitAuraGridMixin

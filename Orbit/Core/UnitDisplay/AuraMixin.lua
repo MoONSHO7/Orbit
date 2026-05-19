@@ -5,6 +5,7 @@
 -- (one ticker drives all healer-aura curve animations across frames).
 local _, addonTable = ...
 local Orbit = addonTable
+local GameTooltip = Orbit.Tooltip
 local pcall, type, ipairs = pcall, type, ipairs
 local math_max = math.max
 local tinsert = table.insert

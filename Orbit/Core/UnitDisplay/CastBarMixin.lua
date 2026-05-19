@@ -259,7 +259,6 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     local curveData = self:GetSetting(systemIndex, "CastBarColorCurve")
     local color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(systemIndex, "CastBarColor") or { r = 1, g = 0.7, b = 0 }
     local fontName = self:GetSetting(systemIndex, "Font")
-    local backdropColor = self:GetSetting(systemIndex, "BackdropColour")
     local sparkColor = self:GetSetting(systemIndex, "SparkColor")
 
     Orbit:SafeAction(function()
@@ -299,7 +298,7 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
             iconAtEnd = iconPos == 3,
             font = fontName,
             textColor = { r = 1, g = 1, b = 1, a = 1 },
-            backdropColor = backdropColor,
+            backdropCurve = (Orbit.db.GlobalSettings or {}).UnitFrameBackdropColourCurve,
             sparkColor = sparkColor,
         })
         if bar.Text then bar.Text:SetShown(showText ~= false) end

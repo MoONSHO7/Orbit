@@ -2,6 +2,7 @@
 -- Combat timer datatext: encounter tracking, death counter, average combat duration
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local RingBuffer = DT.Formatting.RingBuffer
 local L = Orbit.L
 

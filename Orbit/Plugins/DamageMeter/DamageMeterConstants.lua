@@ -100,7 +100,6 @@ Constants.DamageMeter = {
     NameAfterRankPad    = 22,
     DpsAfterTotalPad    = 48,
     BarFontSize         = 10,
-    BackdropAlpha       = 0.4,
 
     -- Edit Mode vertical resize bounds.
     ResizeBounds = {
