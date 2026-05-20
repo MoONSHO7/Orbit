@@ -91,30 +91,6 @@ function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides, s
     return w, h, iconSize
 end
 
--- [ SIMPLE TEXT APPLIER ] ---------------------------------------------------------------------------
-function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, componentKey, defaultAnchor, defaultOffsetX, defaultOffsetY)
-    if not textElement then
-        return
-    end
-
-    local fontPath = plugin:GetGlobalFont()
-    local baseSize = plugin:GetBaseFontSize()
-    local positions = plugin:GetComponentPositions(systemIndex)
-    local pos = positions[componentKey] or {}
-    local overrides = pos.overrides or {}
-    local defaultSize = math.max(6, baseSize)
-
-    local OverrideUtils = OrbitEngine.OverrideUtils
-    if OverrideUtils then
-        OverrideUtils.ApplyOverrides(textElement, overrides, { fontSize = defaultSize, fontPath = fontPath })
-    end
-
-    local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
-    if ApplyTextPosition then
-        ApplyTextPosition(textElement, textElement:GetParent(), pos, defaultAnchor, defaultOffsetX, defaultOffsetY)
-    end
-end
-
 -- [ CHARGE COMPLETION TRACKING ] --------------------------------------------------------------------
 -- All `_charges`/`_maxCharges`/`_knownRechargeDuration` storage sites guard against secret values,
 -- but we defend the arithmetic here too: if any field is secret we skip the tick entirely.

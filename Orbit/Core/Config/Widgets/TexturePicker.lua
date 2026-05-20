@@ -3,11 +3,12 @@ local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
 local LSM = LibStub("LibSharedMedia-3.0")
+local L = Orbit.L
 local tinsert = table.insert
 
 local ROW_HEIGHT = 22
 local MAX_HEIGHT = 300
-local NONE_LABEL = "None"
+local NONE_LABEL = L.CMN_NONE
 
 local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 

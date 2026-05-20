@@ -313,7 +313,6 @@ function ComponentDrag:Attach(component, parent, options)
         options = options,
         currentX = 0,
         currentY = 0,
-        currentAlignment = "LEFT",
         isFontString = options.isFontString or (component.IsObjectType and component:IsObjectType("FontString")) or false,
         isAuraContainer = options.isAuraContainer or false,
         sourceOverride = options.sourceOverride or nil,
@@ -398,11 +397,6 @@ function ComponentDrag:SetEnabledForFrame(parent, enabled)
     if not shouldEnable then
         self:DeselectComponent()
     end
-end
-
-function ComponentDrag:GetAlignment(component)
-    local data = registeredComponents[component]
-    return data and data.currentAlignment or "LEFT"
 end
 
 -- Check if a component is disabled via Canvas Mode

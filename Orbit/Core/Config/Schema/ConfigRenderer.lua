@@ -1,4 +1,5 @@
 local _, Orbit = ...
+local L = Orbit.L
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 
@@ -283,7 +284,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
                 if Orbit._pluginSettingsCategoryID then
                     Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
                 else
-                    Orbit:Print("Plugin Manager not yet loaded.")
+                    Orbit:Print(L.MSG_PLUGIN_MGR_NOT_LOADED)
                 end
             end)
         end)

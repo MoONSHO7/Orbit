@@ -11,6 +11,7 @@ local GC = Orbit.Engine.GlowController
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_ICON_SIZE = 34
+local BUTTON_SIZE = 32                                              -- spell-flyout button size (matches sibling ActionBars*.lua convention; S19-C1)
 local PET_BAR_INDEX = 9
 local STANCE_BAR_INDEX = 10
 local POSSESS_BAR_INDEX = 11
@@ -48,6 +49,7 @@ local BAR_CONFIG = {
 
 
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
+    displayName = L.PLG_NAME_ACTION_BARS,
     defaults = {
         IconSize = 34, IconPadding = 2, Rows = 1, NumIcons = 12,
         Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
@@ -150,9 +152,9 @@ function Plugin:AddSettings(dialog, systemFrame)
         return
     end
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local tabs = { "Layout", "Glow", "Colors" }
-    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, "Layout")
-    if currentTab == "Layout" then
+    local tabs = { L.PLU_AB_TAB_LAYOUT, L.PLU_AB_TAB_GLOW, L.PLU_AB_TAB_COLORS }
+    local currentTab = SB:AddSettingsTabs(schema, dialog, tabs, L.PLU_AB_TAB_LAYOUT)
+    if currentTab == L.PLU_AB_TAB_LAYOUT then
         table.insert(schema.controls, { type = "slider", key = "NumActionBars", label = "|cFFFFD100" .. L.PLU_AB_NUM_BARS .. "|r", min = 1, max = 8, step = 1, default = 4,
             getValue = function() return self:GetSetting(1, "NumActionBars") end,
             onChange = function(val)
@@ -194,13 +196,13 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = L.PLU_AB_HIDE_EMPTY, default = false }) end
-    elseif currentTab == "Glow" then
+    elseif currentTab == L.PLU_AB_TAB_GLOW then
         SB:AddGlowSettings(self, schema, 1, dialog, systemFrame, {
             prefix = "ProcGlow",
             label = L.PLU_AB_PROC_GLOW,
             default = Constants.Glow.Type.Medium,
         })
-    elseif currentTab == "Colors" then
+    elseif currentTab == L.PLU_AB_TAB_COLORS then
         -- Unset IconBackdropColor inherits the global "Background" colour (Textures tab); show that
         -- as the picker's starting value so the swatch matches what the bar actually renders.
         local DEFAULT_BACKDROP = (Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve)
@@ -247,6 +249,7 @@ function Plugin:OnLoad()
     for index, container in pairs(self.containers) do
         self:ReparentButtons(index)
         OrbitEngine.Frame:RestorePosition(container, self, index)
+        self:RefreshSkinSettings(index)
         self:LayoutButtons(index)
         if MasqueBridge then
             local config = BAR_CONFIG[index]
@@ -298,7 +301,7 @@ function Plugin:OnLoad()
         if self.petDebounce then self.petDebounce:Cancel() end
         self.petDebounce = C_Timer.NewTimer(0.05, function()
             self.petDebounce = nil
-            if self.containers[PET_BAR_INDEX] then self:LayoutButtons(PET_BAR_INDEX) end
+            if self.containers[PET_BAR_INDEX] then self:LayoutButtonPositions(PET_BAR_INDEX) end
         end)
     end
 
@@ -307,7 +310,7 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("PET_UI_UPDATE", RefreshPetBar, self)
     Orbit.EventBus:On("UPDATE_VEHICLE_ACTIONBAR", RefreshPetBar, self)
     Orbit.EventBus:On("PLAYER_CONTROL_GAINED", RefreshPetBar, self)
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", RefreshPetBar, self)
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", RefreshPetBar, self)
     local function HideFlyoutBackground()
         local bg = SpellFlyoutBackgroundEnd
         if not bg then return end
@@ -347,14 +350,19 @@ function Plugin:OnLoad()
         if self.cursorTimer then self.cursorTimer:Cancel() end
         self.cursorTimer = C_Timer.NewTimer(0.05, function()
             if InCombatLockdown() then return end
-            for index in pairs(self.containers) do self:LayoutButtons(index) end
+            for index in pairs(self.containers) do self:LayoutButtonPositions(index) end
         end)
     end, self)
     -- [ SPELL STATE EVENTS ]-------------------------------------------------------------------------
     local function RefreshAll() RefreshAllManagedButtons(self) end
     Orbit.EventBus:On("PLAYER_TARGET_CHANGED", RefreshAll, self)
     Orbit.EventBus:On("ACTIONBAR_UPDATE_USABLE", RefreshAll, self)
-    Orbit.EventBus:On("SPELL_UPDATE_USABLE", RefreshAll, self)
+    -- S19-L2: SPELL_UPDATE_USABLE is a high-frequency in-combat event; RefreshAllManagedButtons
+    -- does 5 C-calls × ~100 buttons per fire. Throttle (leading-edge) keeps the first fire snappy
+    -- and drops the bursts that follow within 100ms.
+    Orbit.EventBus:On("SPELL_UPDATE_USABLE", function()
+        Orbit.Async:Throttle("ActionBars_RefreshAll", RefreshAll, 0.1)
+    end, self)
     local plugin = self
     -- [ PROC GLOW HOOKS ]----------------------------------------------------------------------------
     if ActionButtonSpellAlertManager then
@@ -424,14 +432,7 @@ function Plugin:InitializeContainers()
     end
 end
 
-function Plugin:ReparentAllButtons()
-    if InCombatLockdown() then return end
-    for _, config in ipairs(BAR_CONFIG) do ABC:ReparentButtons(self, config.index, BAR_CONFIG) end
-end
-
 function Plugin:ReparentButtons(index) ABC:ReparentButtons(self, index, BAR_CONFIG) end
-function Plugin:SetupCanvasPreview(container, systemIndex) ABPreview:Setup(self, container, systemIndex) end
-function Plugin:ApplyTextSettings(button, systemIndex) ABText:Apply(self, button, systemIndex) end
 
 local _abDisabledHashCache = setmetatable({}, { __mode = "k" })
 
@@ -455,7 +456,32 @@ end
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end
 
 -- [ BUTTON LAYOUT AND SKINNING ] --------------------------------------------------------------------
-function Plugin:LayoutButtons(index)
+-- S19-C3: cache the per-bar skinSettings + 4 ColorCurve resolves on settings/Masque change so
+-- pet/cursor/combat-end LayoutButtons calls don't rebuild + re-resolve every time. Stays in step
+-- via ApplySettings (settings, profile switch, COLORS_CHANGED) and the Masque RegisterDisableCallback
+-- (which routes back through ApplySettings).
+function Plugin:RefreshSkinSettings(index)
+    self._skinSettings = self._skinSettings or {}
+    self._skinSettings[index] = {
+        style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1,
+        borderSize = Orbit.db.GlobalSettings.BorderSize,
+        iconBorder = true,
+        padding = self:GetSetting(index, "IconPadding") or 2,
+        cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
+        showTimer = true, hideName = false,
+        backdropColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "IconBackdropColor")),
+        keypressColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "KeypressColor")) or { r = 1, g = 1, b = 1, a = 0.6 },
+    }
+end
+
+-- S19-L1: cheap path for pet / CURSOR_CHANGED / combat-end relayouts. Position + visibility only;
+-- skips ActionButtonSkin:Apply (LibStub + region scans + nine-slice rebuild) and ABText:Apply
+-- (font resolution + 4 OverrideUtils calls per button) which are only needed on actual skin changes.
+function Plugin:LayoutButtonPositions(index)
+    self:LayoutButtons(index, true)
+end
+
+function Plugin:LayoutButtons(index, positionOnly)
     if InCombatLockdown() then return end
     local container = self.containers[index]
     local buttons = self.buttons[index]
@@ -478,9 +504,12 @@ function Plugin:LayoutButtons(index)
     local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
-    local skinSettings = { style = 1, aspectRatio = "1:1", zoom = 8, borderStyle = 1, borderSize = Orbit.db.GlobalSettings.BorderSize, iconBorder = true, padding = rawPadding,
-        cooldownSwipeColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "CooldownSwipeColor")) or { r = 0, g = 0, b = 0, a = 0.8 },
-        showTimer = true, hideName = false, backdropColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "IconBackdropColor")), keypressColor = OrbitEngine.ColorCurve:GetFirstColorFromCurve(self:GetSetting(index, "KeypressColor")) or { r = 1, g = 1, b = 1, a = 0.6 } }
+    -- Lazy first-build covers any callsite that skipped RefreshSkinSettings (defensive); steady-state
+    -- the cache is populated by RefreshSkinSettings from ApplySettings/OnLoad/Masque-callback.
+    if not positionOnly and (not self._skinSettings or not self._skinSettings[index]) then
+        self:RefreshSkinSettings(index)
+    end
+    local skinSettings = self._skinSettings and self._skinSettings[index]
     local totalEffective = math.min(#buttons, numIcons)
     local limitPerLine
     if orientation == 0 then limitPerLine = math.max(1, math.ceil(totalEffective / rows))
@@ -532,8 +561,12 @@ function Plugin:LayoutButtons(index)
                 if button.orbitHidden and not InCombatLockdown() then button:SetParent(container) end
                 button.orbitHidden = false; button:Show(); button:SetSize(w, h)
                 if useMasque then MasqueBridge:AddActionButton(masqueGroup, button) end
-                if not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup) then Orbit.Skin.ActionButtonSkin:Apply(button, skinSettings) end
-                ABText:Apply(self, button, index)
+                -- S19-C3 / S19-L1: skip the per-button re-skin entirely on cheap paths AND on Masque-
+                -- owned bars (Masque owns the visual stack; ActionButtonSkin:Apply would just thrash it).
+                if not positionOnly and skinSettings and (not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup)) then
+                    Orbit.Skin.ActionButtonSkin:Apply(button, skinSettings)
+                end
+                if not positionOnly then ABText:Apply(self, button, index) end
                 button:ClearAllPoints()
                 local pos = cachedPositions[i]
                 button:SetPoint("TOPLEFT", container, "TOPLEFT", pos.x, pos.y)
@@ -558,12 +591,21 @@ function Plugin:LayoutButtons(index)
     local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
     if rawPadding == 0 then Orbit.Skin:ApplyIconGroupBorder(container, iconNineSlice)
     else Orbit.Skin:ClearIconGroupBorder(container) end
-    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+    -- S19-L2: per-bar fire is suppressed during ApplyAll (`_suppressBorderEvent` flag); ApplyAll
+    -- coalesces all 12 bars into a single border-relayout event at the tail. Direct LayoutButtons
+    -- callers (pet event, CURSOR_CHANGED, settings) still fire per-call — that's the correct shape
+    -- because they only touch one bar.
+    if not self._suppressBorderEvent then
+        Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
+    end
 end
 
 -- [ SETTINGS APPLICATION ] --------------------------------------------------------------------------
 function Plugin:ApplyAll()
+    self._suppressBorderEvent = true
     for index, container in pairs(self.containers) do self:ApplySettings(container) end
+    self._suppressBorderEvent = false
+    Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
 end
 
 function Plugin:ApplySettings(frame)
@@ -616,6 +658,7 @@ function Plugin:ApplySettings(frame)
     local enableHover = self:GetSetting(index, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(actualFrame, self, index, "OutOfCombatFade", enableHover) end
     self:ApplyMouseOver(actualFrame, index)
+    self:RefreshSkinSettings(index)
     self:LayoutButtons(index)
     OrbitEngine.Frame:RestorePosition(actualFrame, self, index)
     if self.buttons[index] then

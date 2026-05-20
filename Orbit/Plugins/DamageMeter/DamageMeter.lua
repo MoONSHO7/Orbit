@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local Constants = Orbit.Constants
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
@@ -11,6 +12,7 @@ local DEFAULT_METER_TYPE = DM.MeterType.Dps
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 -- ComponentPositions MUST match Default*Pos fallbacks in DamageMeterUI or Reset Positions drifts.
 local Plugin = Orbit:RegisterPlugin("Damage Meter", SYSTEM_ID, {
+    displayName = L.PLG_NAME_DAMAGE_METER,
     defaults = {
         MeterDefs   = {},
         DisabledComponents = {},
@@ -451,7 +453,7 @@ function Plugin:OnLoad()
     }, self)
 
     -- Blizzard_DamageMeter can load after our OnLoad, so re-prime the pipeline on each world entry.
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         EnsureBlizzardAddonLoaded()
         EnsureCvarDisabled()
         C_Timer.After(0.5, function() self:DisableBlizzardMeter() end)

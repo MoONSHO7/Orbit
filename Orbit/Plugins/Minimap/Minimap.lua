@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local GameTooltip = Orbit.Tooltip
@@ -8,10 +9,20 @@ local GameTooltip = Orbit.Tooltip
 -- Header is BINDING_HEADER_ORBIT (set by Spotlight); this binding appears under "Orbit" alongside it.
 _G.BINDING_NAME_ORBIT_MINIMAP_TOGGLEVIEW = Orbit.L.PLU_MINIMAP_BINDING_TOGGLE_VIEW
 
+local PVP_TYPE_LABELS = {
+    sanctuary = L.PLU_MINIMAP_PVP_SANCTUARY,
+    arena     = L.PLU_MINIMAP_PVP_ARENA,
+    friendly  = L.PLU_MINIMAP_PVP_FRIENDLY,
+    contested = L.PLU_MINIMAP_PVP_CONTESTED,
+    hostile   = L.PLU_MINIMAP_PVP_HOSTILE,
+    combat    = L.PLU_MINIMAP_PVP_COMBAT,
+}
+
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_Minimap"
 
 local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
+    displayName = L.PLG_NAME_MINIMAP,
     canvasMode = true,
     canvasDefaultZoom = 1.0,
     defaults = {
@@ -106,7 +117,7 @@ function Plugin:OnLoad()
     -- Match Blizzard's MinimapCluster strata so third-party buttons parented to Minimap land where they expect.
     self.frame:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Minimap"
+    self.frame.editModeName = self.displayName
     -- Edit Mode drag-resize handle. The minimap is square, so square=true locks aspect and drives
     -- the single Size setting; bounds match the Size slider's range (clamped, can't exceed it).
     self.frame.orbitResizeBounds = { minW = C.MIN_SIZE, maxW = C.MAX_SIZE, widthKey = "Size", heightKey = "Size", square = true }
@@ -125,9 +136,13 @@ function Plugin:OnLoad()
             local scale = minimapSurface:GetEffectiveScale()
             minimapSurface:SetSize(OrbitEngine.Pixel:Snap(w, scale), OrbitEngine.Pixel:Snap(h, scale))
         end
-        -- Re-apply the border ring so it tracks the new container size (Edit Mode drag, slider, etc.).
+        -- S22-L1.a: surface size stays synchronous (must track the frame during drag), but the
+        -- ring re-apply is debounced — EditMode drag fires OnSizeChanged at 60Hz, and ApplyBorderRing
+        -- resolves color + rebuilds the ring on every fire. 50ms is well under EditMode drag-end latency.
         if self.ApplyBorderRing then
-            self:ApplyBorderRing(self:GetResolvedBorderColor())
+            Orbit.Async:Debounce("Minimap_RingResize", function()
+                if self.ApplyBorderRing then self:ApplyBorderRing(self:GetResolvedBorderColor()) end
+            end, 0.05)
         end
     end)
 
@@ -203,14 +218,14 @@ function Plugin:OnLoad()
         local pvpType, _, factionName = GetZonePVPInfo()
         if pvpType and pvpType ~= "" then
             local color = self.ZonePVPColors and self.ZonePVPColors[pvpType] or { r = 1, g = 1, b = 1 }
-            local label = pvpType:sub(1, 1):upper() .. pvpType:sub(2)
+            local label = PVP_TYPE_LABELS[pvpType] or (pvpType:sub(1, 1):upper() .. pvpType:sub(2))
             if factionName and factionName ~= "" then
                 GameTooltip:AddLine(label .. " (" .. factionName .. ")", color.r, color.g, color.b)
             else
                 GameTooltip:AddLine(label, color.r, color.g, color.b)
             end
         end
-        GameTooltip:AddLine("Click to open World Map", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine(L.PLU_MINIMAP_TIP_WORLD_MAP, 0.5, 0.5, 0.5)
         GameTooltip:Show()
     end)
     self.frame.ZoneText:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -242,11 +257,11 @@ function Plugin:OnLoad()
     self.frame.Clock:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
         GameTooltip:SetText(TIMEMANAGER_TITLE or "Clock", 1, 1, 1)
-        GameTooltip:AddLine("Left-click: Time Manager", 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("Right-click: Calendar", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_MINIMAP_TIP_TIME_MANAGER, 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_MINIMAP_TIP_CALENDAR, 0.7, 0.7, 0.7)
         local pending = C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0
         if pending > 0 then
-            GameTooltip:AddLine(string.format("%d pending calendar invite(s)", pending), 1, 0.82, 0)
+            GameTooltip:AddLine(L.PLU_MINIMAP_PENDING_INVITES_F:format(pending), 1, 0.82, 0)
         end
         GameTooltip:Show()
     end)
@@ -254,8 +269,9 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("CALENDAR_UPDATE_PENDING_INVITES", function() self:UpdateCalendarInvites() end, self)
 
-    -- Reapply border/ring tint when the user re-pins their class color (class pin only — flat colors are unaffected).
-    Orbit.EventBus:On("COLORS_CHANGED", function() if self.frame then self:ApplyShape() end end, self)
+    -- S22-L2: ORBIT_COLORS_CHANGED already routes through PluginMixin's debounced ApplySettings
+    -- (which calls ApplyShape). The previously-plugin-local listener fired ApplyShape twice per
+    -- repin — once immediately, once on the next debounce tick.
 
     -- [ Coords component ] — wrapper frame holds the FontString so ComponentDrag can move it
     self.frame.Coords = CreateFrame("Frame", nil, self.frame.Overlay)
@@ -401,7 +417,7 @@ function Plugin:OnLoad()
     -- If Blizzard_HybridMinimap is already loaded, ApplyShape will handle it on PLAYER_ENTERING_WORLD.
     -- If it loads later (demand-loaded on first map open), reapply shape so CircleMask is correct.
     -- Force a map tile update after login/reload to ensure the inner graphics scale correctly to the container
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         C_Timer.After(0.5, function()
             local minimap = self:GetBlizzardMinimap()
             if minimap then
@@ -515,7 +531,8 @@ function Plugin:SetAddonIconsShown(shown)
         end
     end
     if Minimap and Minimap.GetChildren then
-        for _, child in ipairs({ Minimap:GetChildren() }) do
+        -- S22-C6: select-vararg avoids the {GetChildren()} temp-table alloc per HUD toggle.
+        local function HandleChild(child)
             local name = child.GetName and child:GetName() or ""
             local isAddonButton = name:match("^LibDBIcon10_") or (child.IsObjectType and child:IsObjectType("Button") and not name:lower():find("^minimap"))
             if isAddonButton then
@@ -526,6 +543,10 @@ function Plugin:SetAddonIconsShown(shown)
                 end
             end
         end
+        local function ScanChildren(...)
+            for i = 1, select("#", ...) do HandleChild(select(i, ...)) end
+        end
+        ScanChildren(Minimap:GetChildren())
     end
 end
 

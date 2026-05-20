@@ -58,6 +58,7 @@ local SYSTEM_ID = "Orbit_PlayerPower"
 local SYSTEM_INDEX = 1
 
 local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
+    displayName = L.PLG_NAME_PLAYER_POWER,
     liveToggle = true,
     canvasMode = true,
     defaults = {
@@ -181,6 +182,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             tooltip = L.PLU_PPOWER_SMOOTH_TT,
             onChange = function(val)
                 self:SetSetting(systemIndex, "SmoothAnimation", val)
+                self:RefreshPerfCache()                                 -- cache stays coherent with the toggle
             end,
         })
         table.insert(schema.controls, {
@@ -348,12 +350,24 @@ function Plugin:RefreshFrequentUpdates()
     end
 end
 
-function Plugin:RefreshOnUpdate()
+-- S12a-C1: snapshot spec + smoothing on the boundaries that already re-apply (ApplySettings runs on
+-- PLAYER_SPECIALIZATION_CHANGED via the event handler; RefreshOnUpdate runs alongside). The 20Hz
+-- Aug-Evoker OnUpdate ticker now reads only cached fields, avoiding a per-tick GetSpecialization +
+-- GetSetting("SmoothAnimation") (the latter walks the PluginMixin override chain).
+-- Deferred follow-up: per-power-type curve native-resolution cache (UpdateAll's non-Aug path
+-- currently still resolves curveData/ToNativeColorCurve on event-driven calls — lower priority since
+-- those are event-driven not 20Hz; left for a separate PR).
+function Plugin:RefreshPerfCache()
+    self._cachedSmoothing = (self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false) and SMOOTH_ANIM or nil
     local _, class = UnitClass("player")
     local spec = GetSpecialization()
     local specID = spec and GetSpecializationInfo(spec)
-    local needsTicker = (class == "EVOKER" and specID == AUGMENTATION_SPEC_ID)
-    Frame:SetScript("OnUpdate", needsTicker and function(_, elapsed)
+    self._cachedIsAugEvoker = (class == "EVOKER" and specID == AUGMENTATION_SPEC_ID)
+end
+
+function Plugin:RefreshOnUpdate()
+    self:RefreshPerfCache()
+    Frame:SetScript("OnUpdate", self._cachedIsAugEvoker and function(_, elapsed)
         Frame.elapsed = (Frame.elapsed or 0) + elapsed
         if Frame.elapsed >= UPDATE_INTERVAL then
             Frame.elapsed = 0
@@ -395,6 +409,7 @@ function Plugin:ApplySettings()
         return
     end
 
+    self:RefreshPerfCache()
     local systemIndex = SYSTEM_INDEX
     local width = self:GetSetting(systemIndex, "Width")
     local height = self:GetSetting(systemIndex, "Height")
@@ -477,18 +492,15 @@ function Plugin:UpdateAll()
         return
     end
 
-    -- Check for Augmentation Evoker Ebon Might (takes priority over normal power)
-    local _, class = UnitClass("player")
-    local spec = GetSpecialization()
-    local specID = spec and GetSpecializationInfo(spec)
-
-    if class == "EVOKER" and specID == AUGMENTATION_SPEC_ID then
+    -- Aug Evoker Ebon Might bar takes priority. _cachedIsAugEvoker is refreshed on
+    -- PLAYER_SPECIALIZATION_CHANGED + ApplySettings; never call GetSpecialization() in this hot path.
+    if self._cachedIsAugEvoker then
         -- GetEbonMightState returns (number, EBON_MIGHT_MAX_DURATION) unconditionally
         -- (0 when the buff is inactive). Aug Evoker always renders the ebon-might bar
         -- in place of the normal power bar, so no gating check is needed.
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
         PowerBar:SetMinMaxValues(0, max)
-        local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+        local smoothing = self._cachedSmoothing
         PowerBar:SetValue(current, smoothing)
         OrbitEngine.TickMixin:Update(Frame, current, max, smoothing)
 
@@ -509,7 +521,7 @@ function Plugin:UpdateAll()
     local max = UnitPowerMax("player", powerType)
 
     PowerBar:SetMinMaxValues(0, max)
-    local smoothing = self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false and SMOOTH_ANIM or nil
+    local smoothing = self._cachedSmoothing
     PowerBar:SetValue(cur, smoothing)
     OrbitEngine.TickMixin:Update(Frame, cur, max, smoothing)
     if TICK_ALPHA_CURVE and CanUseUnitPowerPercent then

@@ -105,4 +105,4 @@ local function GetColorsSchema()
 end
 
 -- [ REGISTRATION ]-----------------------------------------------------------------------------------
-Panel.Tabs["Textures"] = { plugin = ColorsPlugin, schema = GetColorsSchema }
+Panel.Tabs[L.CFG_TAB_TEXTURES] = { plugin = ColorsPlugin, schema = GetColorsSchema }

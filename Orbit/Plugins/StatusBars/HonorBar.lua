@@ -18,6 +18,7 @@ local WOW_EVENTS = { "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Honor Bar", SYSTEM_ID, {
+    displayName = L.PLG_NAME_HONOR_BAR,
     liveToggle = true,
     canvasMode = true,
     defaults = {

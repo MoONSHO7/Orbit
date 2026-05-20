@@ -21,6 +21,7 @@ local DEFAULT_BOSS_OFFSET_Y = 100
 local SYSTEM_ID = "Orbit_BossFrames"
 
 local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
+    displayName = L.PLG_NAME_BOSS_FRAMES,
     defaults = {
         Width = 120, Height = 25, Scale = 100, Spacing = 40,
         Orientation = 0,
@@ -48,9 +49,6 @@ local Plugin = Orbit:RegisterPlugin("Boss Frames", SYSTEM_ID, {
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.BossFramePreviewMixin, Orbit.AuraMixin, Orbit.StatusIconMixin)
 Plugin.canvasMode = true
 Plugin.supportsPandemicGlow = true
-
--- [ CAST BAR FACADE ]--------------------------------------------------------------------------------
-function Plugin:PositionCastBar(castBar, parent) CB:Position(castBar, parent, self) end
 
 -- [ POWER BAR ] -------------------------------------------------------------------------------------
 local function UpdateFrameLayout(frame, borderSize)
@@ -208,8 +206,8 @@ function Plugin:AddSettings(dialog, systemFrame)
     local SB = OrbitEngine.SchemaBuilder
     local schema = { hideNativeSettings = true, controls = {} }
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout" }, "Layout", self)
-    if currentTab == "Layout" then
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_BOSS_TAB_LAYOUT }, L.PLU_BOSS_TAB_LAYOUT, self)
+    if currentTab == L.PLU_BOSS_TAB_LAYOUT then
         table.insert(schema.controls, {
             type = "dropdown", key = "Orientation", label = L.PLU_GRP_ORIENTATION, default = 0,
             options = { { text = L.PLU_GRP_ORIENT_VERTICAL, value = 0 }, { text = L.PLU_GRP_ORIENT_HORIZONTAL, value = 1 } },
@@ -289,16 +287,16 @@ function Plugin:OnLoad()
             })
         end
     end
+    -- Replaces the previous Dialog.Open monkey-patch with the sanctioned hook API.
     local dialog = OrbitEngine.CanvasModeDialog or Orbit.CanvasModeDialog
-    if dialog and not self.canvasModeHooked then
+    if dialog and dialog.RegisterOnBeforeOpen and not self.canvasModeHooked then
         self.canvasModeHooked = true
-        local originalOpen = dialog.Open
-        dialog.Open = function(dlg, frame, plugin, systemIndex)
+        dialog:RegisterOnBeforeOpen(function(frame)
             if frame == self.container or frame == self.frames[1] then self:PrepareIconsForCanvasMode() end
-            local result = originalOpen(dlg, frame, plugin, systemIndex)
+        end)
+        dialog:RegisterOnAfterOpen(function(frame)
             if frame == self.container or frame == self.frames[1] then self:SchedulePreviewUpdate() end
-            return result
-        end
+        end)
     end
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, 1)
     if not self.container:GetPoint() then self.container:SetPoint("RIGHT", UIParent, "RIGHT", DEFAULT_BOSS_OFFSET_X, DEFAULT_BOSS_OFFSET_Y) end
@@ -307,7 +305,6 @@ function Plugin:OnLoad()
         if InCombatLockdown() or Orbit:IsEditMode() then return end
         RegisterStateDriver(self.container, "visibility", BOSS_BASE_DRIVER)
     end
-    self.UpdateVisibilityDriver = function() UpdateVisibilityDriver() end
     UpdateVisibilityDriver()
     self.container:Show()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(self.container, self, 1) end
@@ -318,10 +315,25 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
     eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    eventFrame:RegisterEvent("UNIT_TARGETABLE_CHANGED")
-    eventFrame:SetScript("OnEvent", function(_, event)
-        if event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" or event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "UNIT_TARGETABLE_CHANGED" then
-            for _, frame in ipairs(self.frames) do if frame.UpdateAll then frame:UpdateAll(); UpdatePowerBar(frame); frame._auraSnapshot = self:BuildAuraSnapshot(frame.unit); UpdateDebuffs(frame, self); UpdateBuffs(frame, self); frame._auraSnapshot = nil end end
+    -- S14-C3: UNIT_TARGETABLE_CHANGED is a unit-scoped event but was previously registered
+    -- globally — that fired the full 5-frame aura rebuild on every zone-wide targetable change
+    -- (e.g. Echo-of-Neltharion phase adds). Register per-boss-unit so the OnEvent path can
+    -- dispatch a rebuild to JUST the changed frame.
+    eventFrame:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", "boss1", "boss2", "boss3", "boss4", "boss5")
+    local function RebuildFrame(frame)
+        if not frame.UpdateAll then return end
+        frame:UpdateAll(); UpdatePowerBar(frame)
+        frame._auraSnapshot = self:BuildAuraSnapshot(frame.unit)
+        UpdateDebuffs(frame, self); UpdateBuffs(frame, self)
+        frame._auraSnapshot = nil
+    end
+    eventFrame:SetScript("OnEvent", function(_, event, unit)
+        if event == "UNIT_TARGETABLE_CHANGED" then
+            local idx = unit and tonumber(unit:match("^boss(%d+)$"))
+            local frame = idx and self.frames[idx]
+            if frame then RebuildFrame(frame) end
+        elseif event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" or event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            for _, frame in ipairs(self.frames) do RebuildFrame(frame) end
         end
         if not InCombatLockdown() then self:UpdateContainerSize() end
     end)
@@ -458,6 +470,20 @@ function Plugin:ApplySettings()
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
     local reactionColour = self:GetSetting(1, "ReactionColour")
     local textSize = 12
+    -- S14-L2: resolve plugin-level cast-bar config + subcomponent positions ONCE before the
+    -- per-frame loop. ApplySubPos was previously re-closured per frame even though it only reads
+    -- plugin-level state (frame is captured via upvalue inside the loop body).
+    local castBarDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar")
+    local componentPositions = self:GetComponentPositions(1)
+    local castData = componentPositions.CastBar or {}
+    local subComps = castData.subComponents or {}
+    local cbTextSize = 10
+    local fontPath = LSM:Fetch("font", fontName)
+    local fontOutline = Orbit.Skin:GetFontOutline()
+    local cbTextDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Text")
+    local cbTimerDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Timer")
+    local textSubPos = subComps.Text or { anchorX = "LEFT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "LEFT" }
+    local timerSubPos = subComps.Timer or { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "RIGHT" }
     for _, frame in ipairs(self.frames) do
         Orbit.AuraMixin:InvalidateContainerLayout(frame)
         frame.borderSize = borderSize
@@ -477,20 +503,16 @@ function Plugin:ApplySettings()
         Orbit.Skin:ApplyUnitFrameText(frame.HealthText, "RIGHT", nil, textSize)
         if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
         if frame.CastBar then
-            local castBarDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar")
             if castBarDisabled then frame.CastBar:Hide()
             else
                 frame.CastBar:SetSize(castBarWidth + castBarHeight, castBarHeight)
                 CB:Position(frame.CastBar, frame, self)
                 if frame.CastBar.SetBorder then frame.CastBar:SetBorder(borderSize) end
                 if frame.CastBar.Bar and textureName then Orbit.Skin:SkinStatusBar(frame.CastBar.Bar, textureName, nil, true) end
-                local cbTextSize = 10
-                local fontPath = LSM:Fetch("font", fontName)
-                if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
-                if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, Orbit.Skin:GetFontOutline()) end
-                local componentPositions = self:GetComponentPositions(1)
-                local castData = componentPositions.CastBar or {}
-                local subComps = castData.subComponents or {}
+                if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, fontOutline) end
+                if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, fontOutline) end
+                -- The closure body reads `frame` via upvalue (set per loop iteration), so the
+                -- closure itself is hoisted out (S14-L2) only for the cost of the resolves above.
                 local function ApplySubPos(element, subPos, defaultJustify)
                     if not element or not subPos then return end
                     element:ClearAllPoints()
@@ -509,10 +531,10 @@ function Plugin:ApplySettings()
                     element:SetPoint(selfAnchor, frame.CastBar.Bar or frame.CastBar, anchor, fX, fY)
                     element:SetJustifyH(jH)
                 end
-                ApplySubPos(frame.CastBar.Text, subComps.Text or { anchorX = "LEFT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "LEFT" }, "LEFT")
-                ApplySubPos(frame.CastBar.Timer, subComps.Timer or { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "RIGHT" }, "RIGHT")
-                if frame.CastBar.Text then frame.CastBar.Text:SetShown(not (self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Text"))) end
-                if frame.CastBar.Timer then frame.CastBar.Timer:SetShown(not (self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Timer"))) end
+                ApplySubPos(frame.CastBar.Text, textSubPos, "LEFT")
+                ApplySubPos(frame.CastBar.Timer, timerSubPos, "RIGHT")
+                if frame.CastBar.Text then frame.CastBar.Text:SetShown(not cbTextDisabled) end
+                if frame.CastBar.Timer then frame.CastBar.Timer:SetShown(not cbTimerDisabled) end
             end
         end
         frame:UpdateAll(); UpdatePowerBar(frame); UpdateDebuffs(frame, self); UpdateBuffs(frame, self); self:UpdateMarkerIcon(frame, self)
@@ -522,9 +544,3 @@ function Plugin:ApplySettings()
     if self.isPreviewActive then self:SchedulePreviewUpdate() end
 end
 
-function Plugin:UpdateVisuals()
-    if not self.frames then return end
-    for _, frame in ipairs(self.frames) do
-        if not frame.preview and frame.unit and frame.UpdateAll then frame:UpdateAll(); UpdatePowerBar(frame); UpdateDebuffs(frame, self); UpdateBuffs(frame, self); self:UpdateMarkerIcon(frame, self) end
-    end
-end

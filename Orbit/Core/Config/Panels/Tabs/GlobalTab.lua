@@ -17,15 +17,15 @@ local GlobalPlugin = CreateGlobalSettingsPlugin("OrbitGlobal")
 local function RebuildGlobalTab()
     local dialog = Orbit.SettingsDialog
     if dialog and dialog.OrbitPanel and dialog.OrbitPanel.Tabs then
-        local oldTab = dialog.OrbitPanel.Tabs["Global"]
+        local oldTab = dialog.OrbitPanel.Tabs[L.CFG_TAB_GLOBAL]
         if oldTab then
             Layout:Reset(oldTab)
             oldTab:Hide()
         end
-        dialog.OrbitPanel.Tabs["Global"] = nil
+        dialog.OrbitPanel.Tabs[L.CFG_TAB_GLOBAL] = nil
     end
     Panel.lastTab = nil
-    Panel:Open("Global")
+    Panel:Open(L.CFG_TAB_GLOBAL)
 end
 
 local function GetBorderStyleOptions()
@@ -209,4 +209,4 @@ local function GetGlobalSchema()
 end
 
 -- [ REGISTRATION ]-----------------------------------------------------------------------------------
-Panel.Tabs["Global"] = { plugin = GlobalPlugin, schema = GetGlobalSchema }
+Panel.Tabs[L.CFG_TAB_GLOBAL] = { plugin = GlobalPlugin, schema = GetGlobalSchema }

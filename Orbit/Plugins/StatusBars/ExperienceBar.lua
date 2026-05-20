@@ -36,6 +36,7 @@ local WOW_EVENTS = {
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Experience Bar", SYSTEM_ID, {
+    displayName = L.PLG_NAME_EXPERIENCE_BAR,
     liveToggle = true,
     canvasMode = true,
     defaults = {

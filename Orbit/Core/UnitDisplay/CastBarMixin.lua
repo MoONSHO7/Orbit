@@ -4,6 +4,11 @@ local Orbit = addonTable
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
+-- S09b-L4: hoist LibStub("LibSharedMedia-3.0") to a file-local upvalue. ApplyBaseSettings runs on
+-- every ApplySettings (settings tweak, profile switch); the LibStub lookup is a table walk through
+-- registered libraries every call. The handle is stable for the session.
+local LSM = LibStub("LibSharedMedia-3.0")
+
 ---@class OrbitCastBarMixin
 Orbit.CastBarMixin = {}
 local Mixin = Orbit.CastBarMixin
@@ -47,12 +52,6 @@ function Mixin:ApplyCastColor(bar, state)
         color = OrbitEngine.ColorCurve:GetFirstColorFromCurve(curveData) or self:GetSetting(1, "CastBarColor") or DEFAULT_CAST_COLOR
     end
     bar.orbitBar:SetStatusBarColor(color.r, color.g, color.b)
-end
-
-function Mixin:UpdateInterruptState(bar, notInterruptible)
-    if not bar then return end
-    bar.notInterruptible = notInterruptible
-    self:ApplyCastColor(bar, notInterruptible and "NON_INTERRUPTIBLE" or "INTERRUPTIBLE")
 end
 
 -- [ FRAME CREATION ]---------------------------------------------------------------------------------
@@ -150,7 +149,7 @@ function Mixin:RegisterEditModeCallbacks(bar)
 end
 
 function Mixin:RegisterWorldEvent(bar, debounceKey)
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         Orbit.Async:Debounce(debounceKey .. "_Init", function()
             self:ApplySettings()
             if not (Orbit:IsEditMode()) and not bar.casting and not bar.channeling then
@@ -158,7 +157,7 @@ function Mixin:RegisterWorldEvent(bar, debounceKey)
             end
         end, 0.5)
     end, self)
-    Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
+    Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
 end
 
 function Mixin:RestorePositionDebounced(bar, debounceKey)
@@ -306,7 +305,6 @@ function Mixin:ApplyBaseSettings(bar, systemIndex, isAnchored)
     end
     -- Sync protected overlay texture and color
     if bar.protectedOverlay then
-        local LSM = LibStub("LibSharedMedia-3.0")
         local texPath = LSM:Fetch("statusbar", texture or "Blizzard")
         bar.protectedOverlay:SetStatusBarTexture(texPath)
         local pColor = self:ResolveProtectedColor()
@@ -351,7 +349,7 @@ function Mixin:ShowPreview()
     targetBar:SetMinMaxValues(0, 3)
     targetBar:SetValue(1.5)
     if bar.protectedOverlay then bar.protectedOverlay:SetAlpha(0) end
-    if bar.Text then bar.Text:SetText(self.previewText or "Preview Cast") end
+    if bar.Text then bar.Text:SetText(self.previewText or L.PLU_CASTBAR_PREVIEW) end
     if bar.Icon then bar.Icon:SetTexture(136243) end
     if bar.Timer then bar.Timer:SetText("1.5") end
     bar:Show()

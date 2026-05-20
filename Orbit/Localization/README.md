@@ -44,7 +44,7 @@ local LOCALE_STRINGS = {
     },
     deDE = {
         CMN_CANCEL = "Abbrechen",
-        -- partial is fine; missing keys fall back to enUS
+        -- the runtime falls back per-key to enUS, but policy is full parity — see "adding a string"
     },
     -- frFR = {},
 }
@@ -57,6 +57,22 @@ Orbit.Localization.Install(LOCALE_STRINGS, "Common")
 ## load order
 
 `Orbit.toc` loads `Localization\Localization.xml` between `Core\Libs\Libs.xml` and `Core\Init.lua`. this guarantees `Orbit.L` exists when plugin schema `label = L.KEY` fields are evaluated at table-construction time during file load.
+
+## locale override (testing)
+
+`Boot.lua` resolves the active locale from `GetLocale()` unless a dev/test override is stored at `OrbitDB.AccountSettings.LocaleOverride`, which takes precedence. `SavedVariables` are restored before an addon's files run, so `Boot.lua` reads `OrbitDB` ahead of the domain files installing — the override applies on the very next load, including schema `label = L.KEY` fields baked at file-load time.
+
+switch with the in-game command:
+
+```
+/orbit lang            -- show the active locale and list available locales
+/orbit lang deDE       -- write a deDE override (then /reload manually to apply)
+/orbit lang auto       -- clear the override (then /reload manually)
+```
+
+`/orbit lang` writes the override to `OrbitDB.AccountSettings.LocaleOverride` and prints "Please Reload UI". The reload is **not** triggered automatically: `ReloadUI()` is protected and the user-action context is lost once the slash-command body returns, so a deferred call would be blocked with `ADDON_ACTION_BLOCKED`. The user types `/reload` themselves; `Boot.lua` reads the override on the next load.
+
+the command is intentionally absent from `/orbit help` — it is a translation-testing tool, not a player feature.
 
 ## key naming convention
 
@@ -80,20 +96,24 @@ Orbit:Print(L.MSG_PLUGIN_RESET_F:format(pluginName))
 
 `Install` validates at load time that every locale's `_F` value has the same number of `%` placeholders as enUS. a translator who drops or adds a placeholder logs a warning via `geterrorhandler()` and the key falls back to enUS, so the runtime `:format()` call never throws.
 
+this check counts placeholders — it does **not** check their order. when a locale's grammar needs the arguments in a different order than enUS, use positional specifiers (`%1$s`, `%2$s`, `%1$d`, ...), which wow's `string.format` supports. a translation that reorders bare `%s`/`%d` without positional specifiers will silently bind the wrong argument to each slot, and neither the lint nor `Install` will catch it.
+
 ## adding a string
 
 1. decide which domain it belongs to by its prefix.
 2. add the key to that domain file's `enUS` table.
 3. use `L.NEW_KEY` at the call site.
-4. other locales fall back to enUS automatically until translated.
+4. add the key to **every** non-English locale block too — see "adding a translation" below.
 5. run `.scripts/check-localization.py` to catch typos before commit.
+
+> all eight non-English locales are currently at full key parity with `enUS`. the per-key enUS fallback (step 4 of "adding a translation") still works, but relying on it for a new key leaves a visible English gap for non-English players and quietly regresses that parity. translate new keys into every locale; if you genuinely cannot, call the untranslated key out in your pr so a translator picks it up.
 
 ## adding a translation
 
 1. open the domain file you want to translate (e.g. `Domains/Common.lua`).
 2. add a locale block (e.g. `deDE = { ... }`) or extend an existing one.
 3. copy the keys from `enUS` and translate the values.
-4. partial translations are valid — missing keys fall back to `enUS` per-key.
+4. the runtime supports partial translations (missing keys fall back to `enUS` per-key), but the **policy is full parity** across all 8 non-English locales — see the note under "adding a string". prefer to ship every key in every locale; the fallback is a safety net, not a workflow.
 5. submit a pr with just your locale additions.
 
 ## supported locales

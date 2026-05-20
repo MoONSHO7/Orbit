@@ -11,6 +11,7 @@ local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
 local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
 
 local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
+    displayName = L.PLG_NAME_TARGET_FRAME,
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 160,
@@ -48,7 +49,7 @@ local function ToggleControl(plugin, key, label, default)
         type = "checkbox", key = key, label = label, default = default,
         onChange = function(val)
             plugin:SetSetting(TARGET_FRAME_INDEX, key, val)
-            Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_TARGET_SETTINGS_CHANGED")
         end,
     }
 end
@@ -119,7 +120,7 @@ function Plugin:OnLoad()
         if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
         self.frame.HealthDamageBar = nil
     end
-    self.frame.editModeName = "Target Frame"
+    self.frame.editModeName = self.displayName
     self.frame.systemIndex = TARGET_FRAME_INDEX
     self.frame.showFilterTabs = true
 
@@ -207,8 +208,8 @@ function Plugin:OnLoad()
         end,
     }, self)
 
-    Orbit.EventBus:On("PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
-    Orbit.EventBus:On("FOCUS_SETTINGS_CHANGED", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
+    Orbit.EventBus:On("ORBIT_FOCUS_SETTINGS_CHANGED", function()
         if self:GetSyncSource(TARGET_FRAME_INDEX) == FOCUS_FRAME_INDEX then self:ApplySettings(self.frame) end
     end, self)
 
@@ -267,13 +268,7 @@ function Plugin:ApplySettings(frame)
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
 
-    Orbit.EventBus:Fire("TARGET_SETTINGS_CHANGED")
+    Orbit.EventBus:Fire("ORBIT_TARGET_SETTINGS_CHANGED")
     self._applying = false
 end
 
-function Plugin:UpdateVisuals(frame)
-    if frame and frame.UpdateAll then
-        frame:UpdateAll()
-        self:UpdateVisualsExtended(frame, TARGET_FRAME_INDEX)
-    end
-end

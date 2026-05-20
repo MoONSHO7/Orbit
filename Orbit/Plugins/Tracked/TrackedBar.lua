@@ -353,7 +353,6 @@ function Bar:Build(plugin, record)
     frame.StatusBar:HookScript("OnSizeChanged", function() Bar:LayoutChargesGeometry(frame) end)
 
     Bar:StartCursorWatcher(plugin, frame)
-    Bar:StartUpdateTicker(plugin, frame)
     Bar:StartChargeEventWatcher(plugin, frame)
     Bar:StartCastWatcher(plugin, frame)
     return frame
@@ -1026,7 +1025,7 @@ function Bar:OnReceiveDrag(plugin, frame)
 
     -- Two-step gate: clear existing payload first before assigning a new one.
     if record.payload and record.payload.id then
-        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
+        Orbit:Print(L.MSG_TRK_CLEAR_PAYLOAD_FIRST)
         return
     end
 
@@ -1045,7 +1044,7 @@ function Bar:OnCooldownSettingsDrop(plugin, frame, spellID)
     local record = plugin:GetContainerRecord(frame.recordId)
     if not record then return end
     if record.payload and record.payload.id then
-        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
+        Orbit:Print(L.MSG_TRK_CLEAR_PAYLOAD_FIRST)
         return
     end
     record.payload = DragDrop:BuildTrackedBarPayload("spell", spellID)
@@ -1067,12 +1066,19 @@ function Bar:HandleShiftRightClick(plugin, frame)
 end
 
 -- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
--- Polls ShouldShowDropHints; triggers RefreshSpellState when hint visibility flips.
+-- S18-C2: 20Hz throttle + frame-visibility gate matches the sibling Container watcher; previously
+-- every TrackedBar (all specs' records, off-spec included) ran the full closure body 60Hz for life.
+local CURSOR_WATCHER_INTERVAL = 0.05
 function Bar:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
     local watcher = CreateFrame("Frame")
     watcher._wasShowing = false
-    watcher:SetScript("OnUpdate", function(self)
+    watcher._cursorAccum = 0
+    watcher:SetScript("OnUpdate", function(self, elapsed)
+        self._cursorAccum = self._cursorAccum + elapsed
+        if self._cursorAccum < CURSOR_WATCHER_INTERVAL then return end
+        self._cursorAccum = 0
+        if not frame:IsShown() then return end
         local record = plugin:GetContainerRecord(frame.recordId)
         if not record then return end
         local p = Orbit.Profiler
@@ -1100,9 +1106,6 @@ function Bar:_EnsureTicker(plugin, frame)
             frame._updateTicker = nil
         end
     end)
-end
-
-function Bar:StartUpdateTicker(plugin, frame)
 end
 
 -- [ CHARGE EVENT WATCHER ] --------------------------------------------------------------------------

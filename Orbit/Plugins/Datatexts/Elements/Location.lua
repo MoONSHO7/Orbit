@@ -21,7 +21,7 @@ local function GetPvPColor()
 end
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Location")
+local W = DT.BaseDatatext:New("Location", L.PLU_DT_LOCATION_NAME)
 
 function W:Update()
     local zone = GetSubZoneText()
@@ -93,7 +93,6 @@ function W:Init()
     self:RegisterEvent("ZONE_CHANGED")
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self:RegisterEvent("ZONE_CHANGED_INDOORS")
-    self:SetCategory("WORLD")
     self:Register()
     self:Update()
 end

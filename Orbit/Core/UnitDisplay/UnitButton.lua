@@ -4,6 +4,7 @@ local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
 local GameTooltip = Orbit.Tooltip
+local L = Orbit.L
 
 Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
@@ -221,7 +222,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.Name:SetShadowColor(0, 0, 0, 1)
     f.Name:SetWordWrap(false)
     f.Name:SetNonSpaceWrap(false)
-    f.Name:SetText("Unit Name")
+    f.Name:SetText(L.CFG_CM_PREVIEW_NAME)
 
     f.HealthText = f.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.HealthText:SetPoint("RIGHT", -textInset, 0)

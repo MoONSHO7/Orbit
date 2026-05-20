@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
@@ -25,22 +26,22 @@ do
     local Schema = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.SettingsSchema
     if Schema and Schema.KEY_SCHEMAS then
         Schema.KEY_SCHEMAS[COMP_KEY_LEVEL] = { controls = {
-            { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+            { type = "font", key = "Font", label = L.CMN_FONT },
+            { type = "slider", key = "FontSize", label = L.CMN_SIZE, min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = L.CMN_COLOR, singleColor = true },
         } }
         Schema.KEY_SCHEMAS[COMP_KEY_VALUE] = { controls = {
-            { type = "dropdown", key = "ValueMode", label = "Value", plugin = true,
+            { type = "dropdown", key = "ValueMode", label = L.PLU_SB_VALUE, plugin = true,
               options = {
-                  { text = "Percentage",      value = "percent" },
-                  { text = "Current / Max",   value = "currentmax" },
-                  { text = "Remaining",       value = "tolevel" },
-                  { text = "Per Hour",        value = "perhour" },
-                  { text = "Time to Level",   value = "eta" },
+                  { text = L.PLU_SB_VAL_PERCENT,   value = "percent" },
+                  { text = L.PLU_SB_VAL_CURMAX,    value = "currentmax" },
+                  { text = L.PLU_SB_VAL_REMAINING, value = "tolevel" },
+                  { text = L.PLU_SB_VAL_PERHOUR,   value = "perhour" },
+                  { text = L.PLU_SB_VAL_ETA,       value = "eta" },
               }, default = "percent" },
-            { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+            { type = "font", key = "Font", label = L.CMN_FONT },
+            { type = "slider", key = "FontSize", label = L.CMN_SIZE, min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = L.CMN_COLOR, singleColor = true },
         } }
     end
 end

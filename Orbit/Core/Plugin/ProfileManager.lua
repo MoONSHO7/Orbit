@@ -1,6 +1,7 @@
 -- [ PROFILE MANAGER ]--------------------------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 
 ---@class OrbitProfileManager
 Orbit.Profile = Orbit.Profile or {}
@@ -74,7 +75,7 @@ end
 local function SafeApplyPlugin(plugin)
     local success, err = pcall(function() plugin:ApplySettings(nil) end)
     if not success then
-        Orbit:Print("Error refreshing plugin " .. (plugin.name or "?") .. ": " .. tostring(err))
+        Orbit:Print(L.MSG_PLUGIN_REFRESH_ERROR_F:format(plugin.name or "?", tostring(err)))
     end
 end
 
@@ -312,9 +313,9 @@ function Orbit.Profile:SetActiveProfile(name)
 
     if needsReload then
         StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] = StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] or {
-            text = "Some plugin changes require a UI reload to take effect.",
-            button1 = "Reload Now",
-            button2 = "Later",
+            text = L.MSG_PROFILE_RELOAD_REQUIRED,
+            button1 = L.CMN_RELOAD,
+            button2 = L.CMN_LATER,
             OnAccept = function() ReloadUI() end,
             timeout = 0,
             whileDead = true,

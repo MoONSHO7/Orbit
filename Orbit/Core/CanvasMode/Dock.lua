@@ -18,8 +18,11 @@ local DOCK_ICON_ALPHA = 0.7
 local DOCK_TEXT_KEYS = { Missions = true } -- keys that have no reliable dock icon; show text label instead
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
-local HealerReg = Orbit.HealerAuraRegistry
-local function DisplayName(key) return HealerReg and HealerReg:GetSlotLabel(key) or key end
+local function DisplayName(key)
+    local Schema = CanvasMode and CanvasMode.SettingsSchema
+    if Schema and Schema.ResolveTitle then return Schema.ResolveTitle(key) end
+    return key
+end
 -- [ DOCK FRAME ] ------------------------------------------------------------------------------------
 Dialog.DisabledDock = CreateFrame("Frame", nil, Dialog)
 Dialog.DisabledDock:SetPoint("TOPLEFT", Dialog.PreviewContainer, "BOTTOMLEFT", DOCK_OFFSET_X, DOCK_OFFSET_Y)
@@ -32,6 +35,12 @@ Dialog.DisabledDock.EmptyHint = Dialog.DisabledDock:CreateFontString(nil, "OVERL
 Dialog.DisabledDock.EmptyHint:SetPoint("CENTER", Dialog.DisabledDock, "CENTER", 0, 0)
 Dialog.DisabledDock.EmptyHint:SetText(L.TOUR_CM_DOCK_HINT)
 Dialog.DisabledDock.EmptyHint:SetTextColor(1, 1, 1, 0.3)
+
+if Orbit.EventBus then
+    Orbit.EventBus:On("ORBIT_LOCALE_REBUILT", function()
+        Dialog.DisabledDock.EmptyHint:SetText(L.TOUR_CM_DOCK_HINT)
+    end)
+end
 
 -- Container for dock component icons (horizontal row)
 Dialog.DisabledDock.IconContainer = CreateFrame("Frame", nil, Dialog.DisabledDock)

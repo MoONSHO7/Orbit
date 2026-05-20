@@ -118,11 +118,3 @@ function Skin:ClearHighlightBorder(frame, storageKey)
     if overlay then overlay:Hide() end
 end
 
--- Invalidate highlight caches when border settings change
-function Skin:InvalidateHighlightCaches(frame)
-    if not frame then return end
-    for _, key in ipairs({ "_selectionBorderOverlay", "_aggroHighlightOverlay", "_aggroBorderOverlay" }) do
-        local overlay = frame[key]
-        if overlay then overlay._hlCacheValid = nil end
-    end
-end

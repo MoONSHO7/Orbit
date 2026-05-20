@@ -8,7 +8,7 @@ local L = Orbit.L
 
 local CR_MASTERY = 26
 
-local W = DT.BaseDatatext:New("Mastery")
+local W = DT.BaseDatatext:New("Mastery", L.PLU_DT_MASTERY_NAME)
 W.showPercentage = true
 
 function W:Update()
@@ -53,7 +53,6 @@ function W:Init()
     self:RegisterUnitEvent("UNIT_AURA", "player")
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetCategory("CHARACTER")
     self.leftClickHint = L.PLU_DT_STAT_TOGGLE
     self:Register()
     self:Update()

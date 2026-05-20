@@ -563,7 +563,7 @@ TOUR_STOPS = {
       check = function() return true end,
       onEnter = function()
           if Orbit.OptionsPanel then
-              Orbit.OptionsPanel:Open("Global")
+              Orbit.OptionsPanel:Open(L.CFG_TAB_GLOBAL)
               C_Timer.After(0.05, ShowOptionsBlocker)
           end
       end,
@@ -576,7 +576,7 @@ TOUR_STOPS = {
       check = function() return true end,
       onEnter = function()
           if Orbit.OptionsPanel then
-              Orbit.OptionsPanel:Open("Global")
+              Orbit.OptionsPanel:Open(L.CFG_TAB_GLOBAL)
               C_Timer.After(0.05, ShowOptionsBlocker)
           end
       end,
@@ -603,18 +603,18 @@ UpdateHierarchyLabels = function()
     if not frameA or not frameB then return end
     local parent = GetParentFrame()
     if parent == frameA then
-        frameA.label:SetText("A (Parent)")
-        frameB.label:SetText("B (Child)")
+        frameA.label:SetText(L.TOUR_EM_FRAME_A_PARENT)
+        frameB.label:SetText(L.TOUR_EM_FRAME_B_CHILD)
     elseif parent == frameB then
-        frameB.label:SetText("B (Parent)")
-        frameA.label:SetText("A (Child)")
+        frameB.label:SetText(L.TOUR_EM_FRAME_B_PARENT)
+        frameA.label:SetText(L.TOUR_EM_FRAME_A_CHILD)
     end
 end
 
 ResetHierarchyLabels = function()
     local frameA, frameB = GetFrameA(), GetFrameB()
-    if frameA then frameA.label:SetText("A") end
-    if frameB then frameB.label:SetText("B") end
+    if frameA then frameA.label:SetText(L.TOUR_EM_FRAME_A) end
+    if frameB then frameB.label:SetText(L.TOUR_EM_FRAME_B) end
 end
 
 -- [ ANCHOR TRACKING ] -------------------------------------------------------------------------------

@@ -17,19 +17,19 @@ local PLUGIN_GROUPS = {
     { header = L.PLG_UNIT_FRAMES, names = {
         "Player Frame", "Player Power", "Player Cast Bar", "Player Resources", "Pet Frame",
         "Player Buffs", "Player Debuffs",
-        { label = "Target Frame", plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
-        { label = "Focus Frame",  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
+        { label = L.PLG_NAME_TARGET_FRAME, plugins = { "Target Frame", "Target Power", "Target Cast Bar", "Target Buffs", "Target Debuffs", "Target of Target" } },
+        { label = L.PLG_NAME_FOCUS_FRAME,  plugins = { "Focus Frame", "Focus Power", "Focus Cast Bar", "Focus Buffs", "Focus Debuffs", "Target of Focus" }, triState = true },
     }},
     { header = L.PLG_GROUP_FRAMES, names = { "Group Frames", "Boss Frames", "Raid Panel" } },
-    { header = L.PLG_COMBAT,       names = { "Action Bars", "Cooldown Manager", { label = "Tracked Cooldowns", plugins = { "Tracked Items" } }, "Damage Meter" } },
+    { header = L.PLG_COMBAT,       names = { "Action Bars", "Cooldown Manager", { label = L.PLG_NAME_TRACKED_COOLDOWNS, plugins = { "Tracked Items" } }, "Damage Meter" } },
     { header = L.PLG_UI,           names = {
-        { label = "Menu Bar", plugins = { "Menu Bar" }, triState = true },
-        { label = "Bag Bar",  plugins = { "Bag Bar" },  triState = true },
+        { label = L.PLG_NAME_MENU_BAR, plugins = { "Menu Bar" }, triState = true },
+        { label = L.PLG_NAME_BAG_BAR,  plugins = { "Bag Bar" },  triState = true },
         "Queue Status",
-        { label = "Talking Head", plugins = { "Talking Head" }, triState = true },
+        { label = L.PLG_NAME_TALKING_HEAD, plugins = { "Talking Head" }, triState = true },
         "Minimap", "Minimap Button", "Datatexts",
-        { label = "Experience Bar", plugins = { "Experience Bar" }, triState = true },
-        { label = "Honor Bar",      plugins = { "Honor Bar" },      triState = true },
+        { label = L.PLG_NAME_EXPERIENCE_BAR, plugins = { "Experience Bar" }, triState = true },
+        { label = L.PLG_NAME_HONOR_BAR,      plugins = { "Honor Bar" },      triState = true },
     }},
 }
 
@@ -213,7 +213,9 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
                 if type(entry) == "table" then
                     yOffset, col = AddWidget(body, pluginMap, entry.label, entry.plugins, yOffset, col, colWidth, entry.triState)
                 else
-                    yOffset, col = AddWidget(body, pluginMap, entry, { entry }, yOffset, col, colWidth, false)
+                    local p = pluginMap[entry]
+                    local displayName = (p and p.displayName) or entry
+                    yOffset, col = AddWidget(body, pluginMap, displayName, { entry }, yOffset, col, colWidth, false)
                 end
             end
             if col > 0 then yOffset = yOffset - CHECKBOX_HEIGHT end

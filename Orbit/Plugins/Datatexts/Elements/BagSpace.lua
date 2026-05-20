@@ -11,7 +11,7 @@ local SPACE_LOW = 5
 local SPACE_MED = 15
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("BagSpace")
+local W = DT.BaseDatatext:New("BagSpace", L.PLU_DT_BAGSPACE_NAME)
 
 function W:Update()
     local free, total = 0, 0
@@ -49,7 +49,6 @@ function W:Init()
     self:SetClickFunc(function() ToggleAllBags() end)
     self.leftClickHint = L.PLU_DT_BAG_OPEN_BAGS
     self:RegisterEvent("BAG_UPDATE")
-    self:SetCategory("CHARACTER")
     self:Register()
     self:Update()
 end

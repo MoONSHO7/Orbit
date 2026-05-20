@@ -18,9 +18,10 @@ local BaseDatatext = {}
 BaseDatatext.__index = BaseDatatext
 DT.BaseDatatext = BaseDatatext
 
-function BaseDatatext:New(name)
+function BaseDatatext:New(name, displayName)
     return setmetatable({
         name = name,
+        displayName = displayName or name,
         events = {},
         unitEvents = {},
         isEnabled = false,
@@ -81,7 +82,7 @@ function BaseDatatext:CreateFrame(width, height)
     f.overlay:SetScript("OnEnter", function()
         GameTooltip:SetOwner(f, "ANCHOR_TOP")
         GameTooltip:ClearLines()
-        GameTooltip:AddLine(self.name .. " (" .. L.PLU_DT_EDIT_MODE .. ")", 1, 0.82, 0)
+        GameTooltip:AddLine(self.displayName .. " (" .. L.PLU_DT_EDIT_MODE .. ")", 1, 0.82, 0)
         GameTooltip:AddLine(L.PLU_DT_HINT_DRAG, 0.7, 0.7, 0.7)
         GameTooltip:AddLine(L.PLU_DT_HINT_RETURN_DRAWER, 0.7, 0.7, 0.7)
         GameTooltip:Show()
@@ -208,6 +209,7 @@ function BaseDatatext:Register()
     if not self.frame then self:CreateFrame() end
     DT.DatatextManager:Register(self.name, {
         name = self.name,
+        displayName = self.displayName,
         frame = self.frame,
         category = self.category,
         onEnable = function() self:Enable() end,
@@ -217,7 +219,6 @@ function BaseDatatext:Register()
 end
 
 -- [ SETTERS ] ---------------------------------------------------------------------------------------
-function BaseDatatext:SetCategory(category) self.category = category end
 function BaseDatatext:SetUpdateFunc(func) self.updateFunc = func end
 function BaseDatatext:SetTooltipFunc(func) self.tooltipFunc = func end
 function BaseDatatext:SetClickFunc(func) self.clickFunc = func end
@@ -320,7 +321,7 @@ function BaseDatatext:BuildTooltip()
     GameTooltip:Show()
 end
 
-function BaseDatatext:PopulateTooltip(tooltip) tooltip:AddLine(self.name, 1, 0.82, 0) end
+function BaseDatatext:PopulateTooltip(tooltip) tooltip:AddLine(self.displayName, 1, 0.82, 0) end
 
 -- [ INTERACTION ] -----------------------------------------------------------------------------------
 function BaseDatatext:UpdateTooltip()

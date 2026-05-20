@@ -19,7 +19,7 @@ decouples color logic from rendering. plugins and skinning ask "what color shoul
 1. create a new resolver file in this directory
 2. implement it as a stateless function: `input -> { r, g, b, a }`
 3. register it in the appropriate consumer (skinning or unitdisplay)
-4. add to `Orbit.toc` in the color section
+4. add a `<Script file="..."/>` entry to `Core/Color/Color.xml` in dependency order — never list individual `.lua` files in `Orbit.toc` for a module that has its own XML bundle
 
 ## rules
 

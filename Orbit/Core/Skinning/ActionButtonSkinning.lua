@@ -310,27 +310,3 @@ function ABS:Apply(button, settings)
 
 end
 
-function ABS:Strip(button)
-    if not button then return end
-    button.orbitHideBorder = false
-    if button.orbitBackdrop then button.orbitBackdrop:Hide() end
-    if button.orbitHighlight then button.orbitHighlight:Hide() end
-    if Icons.borderCache[button] then Icons.borderCache[button]:Hide() end
-    local cd = button.cooldown or button.Cooldown
-    if cd and not cd:GetName() then cd.orbitDesiredSwipe = nil end
-    local icon = button.icon or button.Icon
-    if icon and button.IconMask then
-        button.IconMask:Show()
-        if icon.AddMaskTexture then icon:AddMaskTexture(button.IconMask) end
-    end
-end
-
-function ABS:StripMasque(button)
-    if not button then return end
-    local cfg = button._MSQ_CFG
-    if not cfg then return end
-    for _, key in ipairs(MASQUE_REGION_KEYS) do
-        local region = cfg[key]
-        if region and region.Hide then region:SetTexture(); region:Hide() end
-    end
-end

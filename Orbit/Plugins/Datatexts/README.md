@@ -14,7 +14,7 @@ Datatexts/
   Datatexts.xml         -- load order bundle
   BaseDatatext.lua      -- base class (frame creation, drag, tooltip, click, events)
   DatatextManager.lua   -- registry, position persistence, update scheduler, category metadata
-  DrawerUI.lua          -- corner triggers, animated sliding drawer panel, lock/unlock
+  DrawerUI.lua          -- corner triggers, animated sliding drawer panel, lock/unlock. sorts datatexts alphabetically.
   Util/
     Formatting.lua      -- number / money / time formatting, RingBuffer
     Graph.lua           -- sparkline line graph for tooltips
@@ -39,7 +39,7 @@ Datatexts/
     Friends.lua         -- online friends count
     Guild.lua           -- online guild members
     ItemLevel.lua       -- equipped item level
-    Spec.lua            -- specialization display
+    Spec.lua            -- specialization display (all specs with loadout menu and flipbook FX)
     Quest.lua           -- quest log count
 ```
 
@@ -58,25 +58,12 @@ Datatexts/
 
 datatext positions are stored in `OrbitDB.Profiles[activeProfile].Orbit_Datatexts.datatextPositions`. positions travel with profile switches.
 
-## categories
-
-datatexts declare a category for ordering inside the drawer. `DatatextManager.DATATEXT_CATEGORIES`:
-
-| key | order |
-|---|---|
-| `SYSTEM` | 1 |
-| `CHARACTER` | 2 |
-| `SOCIAL` | 3 |
-| `GAMEPLAY` | 4 |
-| `WORLD` | 5 |
-| `UTILITY` | 6 |
-
 ## adding a new datatext
 
 1. create a new lua file in `Elements/`
 2. extend `DT.BaseDatatext:New("DatatextName")`
-3. implement `Init()` with `CreateFrame()`, `SetUpdateFunc()`, `SetCategory()`, and `Register()`
-4. add a `<Script>` line to `Elements/Elements.xml` in the appropriate category block
+3. implement `Init()`: create the frame, set an update func, set any click/scroll handlers, then call `Register()`
+4. add a `<Script file="Elements/YourDatatext.lua"/>` line to `Elements/Elements.xml`
 
 ## rules
 

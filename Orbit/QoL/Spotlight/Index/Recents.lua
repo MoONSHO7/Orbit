@@ -39,6 +39,3 @@ function Recents:GetBoostIndex()
     return boost
 end
 
-function Recents:BuildKey(kind, id) return MakeKey(kind, id) end
-
-function Recents:MaxEntries() return MAX_ENTRIES end

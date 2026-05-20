@@ -260,7 +260,7 @@ function Drag:OnDragStart(selectionOverlay)
             local root = oldAxis and oldParent and Engine.FrameAnchor:GetRootParent(oldParent) or nil
 
             Engine.FrameAnchor:BreakAnchor(parent, true, true)
-            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
 
             if root then
                 Engine.FrameAnchor:SyncChildren(root)
@@ -388,9 +388,9 @@ local function CommitDrop(parent, decision)
 
     if decision.kind == "anchor" then
         Engine.FrameAnchor:CreateAnchor(parent, decision.target, decision.edge, decision.padding, nil, decision.align)
-        -- Ordering is load-bearing: the anchor must exist before BORDER_LAYOUT_CHANGED and before
+        -- Ordering is load-bearing: the anchor must exist before ORBIT_BORDER_LAYOUT_CHANGED and before
         -- the callback, which reads FrameAnchor.anchors[parent].
-        Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+        Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
         if cb then cb(parent, "ANCHORED", decision.target, decision.edge) end
         return
     end

@@ -6,27 +6,26 @@ local OrbitEngine = Orbit.Engine
 
 local InCombatLockdown = InCombatLockdown
 local ipairs = ipairs
-local math_min = math.min
 local math_max = math.max
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_RaidPanel"
 
 local Plugin = Orbit:RegisterPlugin("Raid Panel", SYSTEM_ID, {
+    displayName = L.PLG_NAME_RAID_PANEL,
     defaults = {
         IconSize     = 24,
         Spacing      = 5,
         DisplayMode  = 3,
         DisplayShape = 1,
         Compactness  = 0,
-        FadeEffect   = 0,
         Position     = { y = 0, x = 200, point = "LEFT" },
         Anchor       = false,
     },
 })
 
 -- [ DISPLAY MODE CONSTANTS ] ------------------------------------------------------------------------
-local DISPLAY_HIDE    = 1
+local DISPLAY_ALWAYS  = 1
 local DISPLAY_MARKERS = 2
 local DISPLAY_ALL     = 3
 
@@ -51,7 +50,9 @@ local ctx = { isEditModeActive = false, pendingRefresh = false }
 local function GetActiveSlots()
     local PD = Orbit.RaidPanelData
     local mode = Plugin:GetSetting(1, "DisplayMode") or DISPLAY_ALL
-    if mode == DISPLAY_MARKERS then
+    local markersOnly = mode == DISPLAY_MARKERS
+        or (mode == DISPLAY_ALWAYS and not Orbit.RaidPanelVisibility.IsRaidLeaderTier())
+    if markersOnly then
         local filtered = {}
         for _, key in ipairs(PD.SLOT_ORDER) do
             if key == "CLEAR_MARKERS" or key:sub(1, 7) == "MARKER_" then
@@ -64,19 +65,8 @@ local function GetActiveSlots()
 end
 
 -- [ ORIENTATION ] -----------------------------------------------------------------------------------
-local function DetectOrientation()
-    if not dock then return "LEFT" end
-    local sw, sh = GetScreenWidth(), GetScreenHeight()
-    local cx = dock:GetLeft() + (dock:GetWidth() / 2)
-    local cy = dock:GetBottom() + (dock:GetHeight() / 2)
-    local distLeft, distRight = cx, sw - cx
-    local distTop, distBottom = sh - cy, cy
-    local m = math_min(distLeft, distRight, distTop, distBottom)
-    if m == distLeft then return "LEFT" end
-    if m == distRight then return "RIGHT" end
-    if m == distTop then return "TOP" end
-    return "BOTTOM"
-end
+-- S15-C2: orientation math lives in OrbitEngine.FrameOrientation:DetectOrientation (stricter
+-- nil-guards). The previous file-local was a line-for-line reimplementation.
 
 local function IsHorizontal()
     return currentOrientation == "TOP" or currentOrientation == "BOTTOM"
@@ -115,9 +105,8 @@ local function RefreshDock()
     local baseSize    = Plugin:GetSetting(1, "IconSize")
     local spacing     = Plugin:GetSetting(1, "Spacing")
     local compactness = (Plugin:GetSetting(1, "Compactness") or 0) / 100
-    local fadeAmount  = Plugin:GetSetting(1, "FadeEffect") or 0
 
-    currentOrientation = DetectOrientation()
+    currentOrientation = OrbitEngine.FrameOrientation:DetectOrientation(dock)
     local activeSlots = GetActiveSlots()
     local count = #activeSlots
 
@@ -137,7 +126,6 @@ local function RefreshDock()
         end
         IconModule.Configure(Plugin, icon, PD.SLOTS[slotKey], ctx, baseSize)
         PositionIcon(icon, axialPositions[i], arcOffsets[i], baseSize)
-        icon:SetAlpha(Layout.EdgeAlphaForIndex(i - 1, count, fadeAmount))
         icon:Show()
     end
 
@@ -196,9 +184,11 @@ local function CreateDock()
     dock:SetMovable(true)
     dock:RegisterForDrag("LeftButton")
     dock.orbitAutoOrient = true
-    dock.editModeName = "Raid Panel"
+    -- CreateDock is a file-local function, not a Plugin method — use the Plugin upvalue directly.
+    -- Previously read `self.displayName` which resolved to the nil global, leaving editModeName
+    -- unset (EditMode then couldn't identify the frame for click/drag).
+    dock.editModeName = Plugin.displayName
     dock.systemIndex = 1
-    dock.orbitNoSnap = true
     return dock
 end
 
@@ -215,7 +205,8 @@ function Plugin:OnLoad()
     OrbitEngine.Frame:AttachSettingsListener(dock, self, 1)
     OrbitEngine.Frame:RegisterOrientationCallback(dock, function(orientation)
         if currentOrientation == orientation then return end
-        currentOrientation = orientation
+        -- S15-L5: dead-write removed (`currentOrientation = orientation`); RefreshDock
+        -- unconditionally re-resolves currentOrientation via DetectOrientation immediately.
         RefreshDock()
     end)
     OrbitEngine.Frame:RestorePosition(dock, self, 1)
@@ -252,7 +243,7 @@ function Plugin:UpdateVisibility()
     if InCombatLockdown() then ctx.pendingRefresh = true; return end
     ctx.isEditModeActive = Orbit:IsEditMode()
     local mode = Plugin:GetSetting(1, "DisplayMode") or DISPLAY_ALL
-    local userWantsShow = mode ~= DISPLAY_HIDE and Orbit.RaidPanelVisibility.ShouldShow()
+    local userWantsShow = mode == DISPLAY_ALWAYS or Orbit.RaidPanelVisibility.ShouldShow()
     if ctx.isEditModeActive or userWantsShow then
         dock:Show()
         RefreshDock()
@@ -289,7 +280,7 @@ end
 
 -- [ SETTINGS UI ] -----------------------------------------------------------------------------------
 local DISPLAY_LABELS = {
-    [DISPLAY_HIDE]    = L.PLU_RAIDPANEL_DISPLAY_HIDE,
+    [DISPLAY_ALWAYS]  = L.PLU_RAIDPANEL_DISPLAY_ALWAYS,
     [DISPLAY_MARKERS] = L.PLU_RAIDPANEL_DISPLAY_MARKERS,
     [DISPLAY_ALL]     = L.PLU_RAIDPANEL_DISPLAY_ALL,
 }
@@ -310,11 +301,6 @@ function Plugin:AddSettings(dialog, systemFrame)
         type = "slider", key = "DisplayMode", label = L.PLU_RAIDPANEL_DISPLAY,
         min = 1, max = 3, step = 1, default = DISPLAY_ALL,
         formatter = function(v) return DISPLAY_LABELS[v] or "" end,
-    })
-    table.insert(schema.controls, {
-        type = "slider", key = "FadeEffect", label = L.PLU_PORTAL_FADE_EFFECT,
-        min = 0, max = 100, step = 5, default = 0,
-        formatter = function(v) return v == 0 and L.PLU_PORTAL_FADE_OFF or L.PLU_PORTAL_FADE_PCT_F:format(v) end,
     })
     table.insert(schema.controls, { type = "slider", key = "IconSize",    label = L.PLU_PORTAL_ICON_SIZE,    min = 15, max = 30,  step = 1, default = 24 })
     table.insert(schema.controls, { type = "slider", key = "Spacing",     label = L.PLU_PORTAL_ICON_PADDING, min = 0,  max = 20,  step = 1, default = 5  })

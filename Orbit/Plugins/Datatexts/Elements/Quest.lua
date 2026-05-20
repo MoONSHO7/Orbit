@@ -11,7 +11,7 @@ local QUEST_LOW = 25
 local QUEST_HIGH = 30
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Quests")
+local W = DT.BaseDatatext:New("Quests", L.PLU_DT_QUEST_NAME)
 W.activeCount = 0
 
 function W:Update()
@@ -65,7 +65,6 @@ function W:Init()
     self:SetClickFunc(function() ToggleQuestLog() end)
     self.leftClickHint = L.PLU_DT_QUEST_TITLE
     self:RegisterEvent("QUEST_LOG_UPDATE")
-    self:SetCategory("GAMEPLAY")
     self:Register()
     self:Update()
 end

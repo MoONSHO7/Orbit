@@ -54,4 +54,3 @@ tabs are parented to `UIParent`, **not** `CooldownViewerSettings`. the `hooksecu
 - no settings, no persistent state, no spec data
 - no live toggle — `liveToggle = false`. you cannot disable this plugin from the orbit panel; it's pure infrastructure
 - does not register tabs on its own — every tab comes from another plugin
-- does not bridge drags out of the cooldown viewer. tracked accepts drops from the spellbook and bags only (via the normal cursor path). dragging an icon out of the cooldown viewer settings panel is a no-op.

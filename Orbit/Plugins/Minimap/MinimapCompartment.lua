@@ -15,6 +15,9 @@ local FLYOUT_BUTTON_SPACING = 2     -- Spacing between buttons in the grid
 local FLYOUT_COLUMNS = 6            -- Number of columns in the flyout grid
 local FLYOUT_GAP = 4                -- Pixel gap between flyout and minimap edge
 local FLYOUT_CLOSE_DELAY = 0.35     -- Seconds of mouse-outside before auto-closing
+-- S22-L1.c: gate the per-frame IsMouseOver / GameTooltip / IsDropdownMenuVisible checks behind a
+-- 0.1s poll accumulator. Well under FLYOUT_CLOSE_DELAY so the outsideTimer still resolves accurately.
+local FLYOUT_POLL_INTERVAL = 0.1
 local FADE_IN_DURATION = 0.15
 local FADE_OUT_DURATION = 0.3
 local HOLDER_OFFSCREEN = -500       -- Offscreen position for hidden button holder
@@ -24,16 +27,6 @@ local PRESSED_ALPHA = 0.6
 
 -- No-op function used to block addons from repositioning their buttons
 local function doNothing() end
-
--- True while any context/dropdown menu is open — covers both the modern Menu system and legacy UIDropDownMenu.
--- Used by the flyout auto-close timer to keep the flyout alive while the user is interacting with a menu
--- that was spawned from a proxy (e.g. right-click context menu); closing the flyout would orphan the menu's anchor.
-local function IsAnyMenuOpen()
-    if Menu and Menu.GetManager and Menu.GetManager():IsAnyMenuOpen() then return true end
-    if DropDownList1 and DropDownList1:IsShown() then return true end
-    if DropDownList2 and DropDownList2:IsShown() then return true end
-    return false
-end
 
 -- Blizzard-owned Minimap children that must never be collected into the compartment.
 -- Names without a "Minimap"/"MiniMap" prefix won't be caught by the generic prefix filter
@@ -105,8 +98,6 @@ end
 
 -- Store references to raw frame methods before they are overridden on individual collected buttons.
 local FrameSetParent      = UIParent.SetParent
-local FrameClearAllPoints = UIParent.ClearAllPoints
-local FrameSetPoint       = UIParent.SetPoint
 
 -- [ COMPARTMENT BUTTON ]-----------------------------------------------------------------------------
 function Plugin:CreateCompartmentButton()
@@ -144,8 +135,8 @@ function Plugin:CreateCompartmentButton()
     btn:SetScript("OnClick", function() self:ToggleCompartmentFlyout() end)
     btn:SetScript("OnEnter", function(b)
         GameTooltip:SetOwner(b, "ANCHOR_LEFT")
-        GameTooltip:SetText("Addon Buttons", 1, 1, 1)
-        GameTooltip:AddLine("Click to expand addon buttons", 0.7, 0.7, 0.7)
+        GameTooltip:SetText(L.PLU_MINIMAP_ADDON_BUTTONS, 1, 1, 1)
+        GameTooltip:AddLine(L.PLU_MINIMAP_TIP_EXPAND_ADDONS, 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function(b)
@@ -186,9 +177,14 @@ function Plugin:CreateCompartmentFlyout()
 
     -- Auto-close via OnUpdate polling when mouse leaves the flyout + minimap area.
     local outsideTimer = 0
+    local pollAccum = 0
 
     flyout:SetScript("OnUpdate", function(f, elapsed)
         if not f:IsShown() then return end
+        pollAccum = pollAccum + elapsed
+        if pollAccum < FLYOUT_POLL_INTERVAL then return end
+        local effective = pollAccum
+        pollAccum = 0
 
         local mouseOverFlyout = f:IsMouseOver()
         local mouseOverBtn = self._compartmentButton and self._compartmentButton:IsMouseOver()
@@ -206,7 +202,7 @@ function Plugin:CreateCompartmentFlyout()
         if mouseOverFlyout or mouseOverBtn or mouseOverMinimap or tooltipShown or f._tooltipForwardActive or f._menuActive then
             outsideTimer = 0
         else
-            outsideTimer = outsideTimer + elapsed
+            outsideTimer = outsideTimer + effective
             if outsideTimer >= FLYOUT_CLOSE_DELAY then
                 outsideTimer = 0
                 self:HideCompartmentFlyout()
@@ -214,8 +210,8 @@ function Plugin:CreateCompartmentFlyout()
         end
     end)
 
-    flyout:SetScript("OnShow", function(f) outsideTimer = 0; f._tooltipForwardActive = false; f._menuActive = false end)
-    flyout:SetScript("OnHide", function(f) outsideTimer = 0; f._tooltipForwardActive = false; f._menuActive = false end)
+    flyout:SetScript("OnShow", function(f) outsideTimer = 0; pollAccum = 0; f._tooltipForwardActive = false; f._menuActive = false end)
+    flyout:SetScript("OnHide", function(f) outsideTimer = 0; pollAccum = 0; f._tooltipForwardActive = false; f._menuActive = false end)
 
     self._compartmentFlyout = flyout
 end
@@ -504,48 +500,53 @@ function Plugin:LayoutButtonsInFlyout()
 end
 
 -- [ BUTTON COLLECTION ]------------------------------------------------------------------------------
+-- S22-C6: select-vararg pass-through avoids the {GetChildren()} temp-table alloc on every
+-- debounced ADDON_LOADED rescan (which can rebuild a large compartment-button collection).
+local function ProcessScannedChild(self, child, collected, seen, seenSignatures, seenNames)
+    if seen[child] then return end
+    local frameName = child:GetName()
+    local isButton = child:IsObjectType("Button")
+    local isLibDBFrame = (not isButton) and frameName and frameName:match("^LibDBIcon10_")
+    if not (isButton or isLibDBFrame) then return end
+
+    local isBlizzard = false
+    if frameName then
+        local lower = frameName:lower()
+        isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName]
+            or lower:find("^minimap") ~= nil
+    end
+    local isPin = IsPinFrame(frameName)
+    local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
+    local isProtected = child:IsProtected()
+    local isHidden = not child:IsShown()
+    if isBlizzard or isPin or tooSmall or isProtected or isHidden then return end
+
+    -- Require a discoverable icon on the button itself (icon/Icon field, direct region, dataObject, or NormalTexture).
+    -- Addons that nest their icon on a child frame don't follow the standard pattern and are intentionally skipped.
+    local icon = GetProxyIcon(child)
+    if not icon then return end
+    local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
+    local signature = BuildCollectedButtonSignature(displayName, icon)
+    if (not signature or not seenSignatures[signature]) and not seenNames[displayName] then
+        collected[#collected + 1] = {
+            name = displayName,
+            button = child,
+            icon = icon,
+            source = "legacy_child",
+        }
+    end
+    if signature then seenSignatures[signature] = true end
+    seenNames[displayName] = true
+    seen[child] = true
+end
+
 function Plugin:ScanParentChildren(parent, collected, seen, seenSignatures, seenNames)
-    for _, child in ipairs({ parent:GetChildren() }) do
-        if not seen[child] then
-            local frameName = child:GetName()
-            local isButton = child:IsObjectType("Button")
-            local isLibDBFrame = (not isButton) and frameName and frameName:match("^LibDBIcon10_")
-
-            if isButton or isLibDBFrame then
-                local isBlizzard = false
-                if frameName then
-                    local lower = frameName:lower()
-                    isBlizzard = BLIZZARD_MINIMAP_CHILDREN[frameName]
-                        or lower:find("^minimap") ~= nil
-                end
-                local isPin = IsPinFrame(frameName)
-                local tooSmall = (child:GetWidth() or 0) < MIN_BUTTON_SIZE
-                local isProtected = child:IsProtected()
-                local isHidden = not child:IsShown()
-
-                if not isBlizzard and not isPin and not tooSmall and not isProtected and not isHidden then
-                    -- Require a discoverable icon on the button itself (icon/Icon field, direct region, dataObject, or NormalTexture).
-                    -- Addons that nest their icon on a child frame don't follow the standard pattern and are intentionally skipped.
-                    local icon = GetProxyIcon(child)
-                    if icon then
-                        local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
-                        local signature = BuildCollectedButtonSignature(displayName, icon)
-                        if (not signature or not seenSignatures[signature]) and not seenNames[displayName] then
-                            collected[#collected + 1] = {
-                                name = displayName,
-                                button = child,
-                                icon = icon,
-                                source = "legacy_child",
-                            }
-                        end
-                        if signature then seenSignatures[signature] = true end
-                        seenNames[displayName] = true
-                        seen[child] = true
-                    end
-                end
-            end
+    local function Iterate(...)
+        for i = 1, select("#", ...) do
+            ProcessScannedChild(self, select(i, ...), collected, seen, seenSignatures, seenNames)
         end
     end
+    Iterate(parent:GetChildren())
 end
 
 function Plugin:CollectAddonButtons()

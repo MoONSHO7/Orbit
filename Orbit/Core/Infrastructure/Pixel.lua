@@ -9,14 +9,20 @@ local WOW_REFERENCE_HEIGHT = 768
 local SCREEN_SCALE = 1
 
 -- [ MATH ]-------------------------------------------------------------------------------------------
+-- S03-L1: PLAYER_ENTERING_WORLD fires on every loading screen; Init.lua:176 re-ApplySettings on
+-- every plugin in response to ORBIT_DISPLAY_SIZE_CHANGED. Suppress the fire when the resolved scale
+-- is unchanged so cross-zone transitions don't trigger a global per-plugin relayout.
 local function UpdateScreenScale()
     local physicalWidth, physicalHeight = GetPhysicalScreenSize()
+    local newScale
     if not physicalHeight or physicalHeight == 0 then
-        SCREEN_SCALE = WOW_REFERENCE_HEIGHT / 1080
+        newScale = WOW_REFERENCE_HEIGHT / 1080
     else
-        SCREEN_SCALE = WOW_REFERENCE_HEIGHT / physicalHeight
+        newScale = WOW_REFERENCE_HEIGHT / physicalHeight
     end
 
+    if SCREEN_SCALE == newScale then return end
+    SCREEN_SCALE = newScale
     Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED", SCREEN_SCALE)
 end
 

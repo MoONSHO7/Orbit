@@ -1,5 +1,6 @@
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 
 -- [ ORBIT API ]--------------------------------------------------------------------------------------
 -- Public-facing methods for troubleshooting, automation, and advanced usage.
@@ -26,7 +27,7 @@ end
 -- @return boolean: Success
 function API:ResetProfile(profileName)
     if InCombatLockdown() then
-        Orbit:Print("Cannot reset profiles in combat.")
+        Orbit:Print(L.MSG_NO_RESET_IN_COMBAT)
         return false
     end
 
@@ -42,7 +43,7 @@ function API:ResetProfile(profileName)
         pm:Initialize()
     end
 
-    Orbit:Print("Resetting profile: " .. profileName)
+    Orbit:Print(L.MSG_RESETTING_PROFILE_F:format(profileName))
 
     -- 1. Nuke existing data using raw DB access (bypass "Active" check in DeleteProfile)
     Orbit.db.profiles[profileName] = nil
@@ -56,7 +57,7 @@ function API:ResetProfile(profileName)
         pm:SetActiveProfile(profileName)
     end
 
-    Orbit:Print("Profile '" .. profileName .. "' has been reset to defaults.")
+    Orbit:Print(L.MSG_PROFILE_RESET_DONE_F:format(profileName))
     return true
 end
 
@@ -70,7 +71,7 @@ function API:HardReset()
     -- Wipe SavedVariables
     OrbitDB = nil
 
-    Orbit:Print("|cFFFF0000FACTORY RESET INITIATED.|r Reloading UI...")
+    Orbit:Print(L.MSG_FACTORY_RESET_INITIATED)
     ReloadUI()
 end
 
@@ -78,7 +79,7 @@ end
 -- Resets all known plugin frames to the center of the screen
 function API:UnlockFrames()
     if InCombatLockdown() then
-        Orbit:Print("Cannot move frames in combat.")
+        Orbit:Print(L.MSG_NO_MOVE_IN_COMBAT)
         return
     end
 
@@ -142,8 +143,9 @@ function API:DumpDebugInfo()
 
     -- Error Log
     table.insert(parts, "[ ERROR LOG ]")
-    if Orbit.db and Orbit.db.ErrorLog and #Orbit.db.ErrorLog > 0 then
-        for i, entry in ipairs(Orbit.db.ErrorLog) do
+    local log = OrbitErrorLogDB and OrbitErrorLogDB.entries
+    if log and #log > 0 then
+        for i, entry in ipairs(log) do
             table.insert(parts, string.format("#%d [%s] %s: %s", i, entry.time or "?", entry.source or "?", entry.error or "?"))
         end
     else

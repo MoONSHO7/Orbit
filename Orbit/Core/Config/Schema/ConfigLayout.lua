@@ -1,6 +1,7 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
+local L = Orbit.L
 
 ---@class OrbitLayout
 Engine.Layout = {}
@@ -607,7 +608,7 @@ function Layout:InitializeWidgetTypes()
                 eye.active = false
                 eye:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    GameTooltip:SetText(self.active and "Stop Preview Animation" or "Start Preview Animation")
+                    GameTooltip:SetText(self.active and L.CFG_PREVIEW_ANIM_STOP or L.CFG_PREVIEW_ANIM_START)
                     GameTooltip:Show()
                 end)
                 eye:SetScript("OnLeave", function() GameTooltip:Hide() end)

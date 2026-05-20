@@ -167,6 +167,7 @@ TIER_DEFAULTS.World = setmetatable({
 local SYSTEM_ID = "Orbit_GroupFrames"
 
 local Plugin = Orbit:RegisterPlugin("Group Frames", SYSTEM_ID, {
+    displayName = L.PLG_NAME_GROUP_FRAMES,
     defaults = {
         Tiers = TIER_DEFAULTS,
         _EditTier = nil,
@@ -409,7 +410,7 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
         local oldTier = plugin._currentTier
         plugin:CheckTierChange()
         if plugin._currentTier ~= oldTier then
-            Orbit.EventBus:Fire("GROUP_ROSTER_SETTLED")
+            Orbit.EventBus:Fire("ORBIT_GROUP_ROSTER_SETTLED")
             return
         end
         if not InCombatLockdown() then 
@@ -430,7 +431,7 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
             end
             SchedulePrivateAuraReanchor(plugin) 
         end
-        Orbit.EventBus:Fire("GROUP_ROSTER_SETTLED")
+        Orbit.EventBus:Fire("ORBIT_GROUP_ROSTER_SETTLED")
     end)
 end
 
@@ -667,21 +668,20 @@ function Plugin:OnLoad()
         end, self)
     end
 
-    -- Canvas Mode dialog hook
+    -- Canvas Mode dialog hook (sanctioned API; replaces the previous Dialog.Open monkey-patch).
     local dialog = OrbitEngine.CanvasModeDialog or Orbit.CanvasModeDialog
-    if dialog and not self.canvasModeHooked then
+    if dialog and dialog.RegisterOnBeforeOpen and not self.canvasModeHooked then
         self.canvasModeHooked = true
-        local originalOpen = dialog.Open
-        dialog.Open = function(dlg, frame, pluginArg, systemIndex)
+        dialog:RegisterOnBeforeOpen(function(frame)
             if frame == self.container or frame == self.frames[1] then
                 self:PrepareIconsForCanvasMode()
             end
-            local result = originalOpen(dlg, frame, pluginArg, systemIndex)
+        end)
+        dialog:RegisterOnAfterOpen(function(frame)
             if frame == self.container or frame == self.frames[1] then
                 self:SchedulePreviewUpdate()
             end
-            return result
-        end
+        end)
     end
 end
 
@@ -1046,15 +1046,6 @@ function Plugin:ApplySettings()
 
     if self.frames[1] and self.frames[1].preview then
         self:SchedulePreviewUpdate()
-    end
-end
-
-function Plugin:UpdateVisuals()
-    for _, frame in ipairs(self.frames) do
-        if not frame.preview and frame.unit and frame.UpdateAll then
-            frame:UpdateAll()
-            UpdatePowerBar(frame, self)
-        end
     end
 end
 

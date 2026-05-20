@@ -4,6 +4,7 @@ local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
 local GameTooltip = Orbit.Tooltip
+local L = Orbit.L
 
 Orbit.UnitAuraGridMixin = {}
 local Mixin = Orbit.UnitAuraGridMixin
@@ -37,8 +38,8 @@ Mixin.playerDebuffDefaults = {
 
 local BASE_ICON_SIZE = 34
 local ASPECT_RATIOS = {
-    { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
-    { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
+    { text = L.PLU_AURA_ASPECT_SQUARE, value = "1:1" }, { text = L.PLU_AURA_ASPECT_LANDSCAPE_169, value = "16:9" },
+    { text = L.PLU_AURA_ASPECT_LANDSCAPE_43, value = "4:3" }, { text = L.PLU_AURA_ASPECT_ULTRAWIDE, value = "21:9" },
 }
 
 local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
@@ -79,7 +80,7 @@ local function CreateCollapseArrow(frame, plugin)
         self.tex:SetAlpha(0.6)
         GameTooltip:Hide()
     end)
-    btn.tooltipText = plugin:GetSetting(1, "Collapsed") and "My Buffs" or "All Buffs"
+    btn.tooltipText = plugin:GetSetting(1, "Collapsed") and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
     btn:Show()
     return btn
 end
@@ -89,7 +90,7 @@ local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
     local onLeft = (growthX == "RIGHT")
     local baseRot = onLeft and math.rad(180) or 0
     btn.tex:SetRotation(collapsed and (math.pi - baseRot) or baseRot)
-    btn.tooltipText = collapsed and "My Buffs" or "All Buffs"
+    btn.tooltipText = collapsed and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
     btn:ClearAllPoints()
     local parent = btn:GetParent()
     local scale = parent:GetEffectiveScale() or 1
@@ -352,7 +353,7 @@ function Mixin:CreateAuraGridPlugin(config)
     -- are current by the time UpdateAuras reads them. Player grids only — non-player auras
     -- have no rounded grid border.
     if config.showIconLimit then
-        Orbit.EventBus:On("BORDER_LAYOUT_CHANGED", function()
+        Orbit.EventBus:On("ORBIT_BORDER_LAYOUT_CHANGED", function()
             Orbit.Async:Debounce("AuraGridMask_" .. tostring(Frame), function()
                 if Frame:IsShown() then self:UpdateAuras() end
             end, 0.1)

@@ -11,6 +11,7 @@ local FOCUS_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Focus or 3
 local TARGET_FRAME_INDEX = Enum.EditModeUnitFrameSystemIndices.Target
 
 local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
+    displayName = L.PLG_NAME_FOCUS_FRAME,
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         ReactionColour = false,
@@ -45,7 +46,7 @@ local function ToggleControl(plugin, key, label, default)
         type = "checkbox", key = key, label = label, default = default,
         onChange = function(val)
             plugin:SetSetting(FOCUS_FRAME_INDEX, key, val)
-            Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_FOCUS_SETTINGS_CHANGED")
         end,
     }
 end
@@ -113,7 +114,7 @@ function Plugin:OnLoad()
         if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
         self.frame.HealthDamageBar = nil
     end
-    self.frame.editModeName = "Focus Frame"
+    self.frame.editModeName = self.displayName
     self.frame.systemIndex = FOCUS_FRAME_INDEX
     self.frame.showFilterTabs = true
 
@@ -201,13 +202,12 @@ function Plugin:OnLoad()
         end,
     }, self)
 
-    -- Also listen for Focus Changed to re-apply if needed (mostly for ensuring visual state)
-    Orbit.EventBus:On("PLAYER_FOCUS_CHANGED", function()
-        self:ApplySettings(self.frame)
-    end, self)
+    -- S12b-L1: the frame's own OnEvent (line 121/136 RegisterEvent + dispatch) already handles
+    -- PLAYER_FOCUS_CHANGED with the light update; the EventBus listener fired a redundant full
+    -- ApplySettings every focus change. TargetFrame has no equivalent listener — drop it to match.
 
-    Orbit.EventBus:On("PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
-    Orbit.EventBus:On("TARGET_SETTINGS_CHANGED", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
+    Orbit.EventBus:On("ORBIT_TARGET_SETTINGS_CHANGED", function()
         if self:GetSyncSource(FOCUS_FRAME_INDEX) == TARGET_FRAME_INDEX then self:ApplySettings(self.frame) end
     end, self)
 end
@@ -262,15 +262,8 @@ function Plugin:ApplySettings(frame)
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
 
-    Orbit.EventBus:Fire("FOCUS_SETTINGS_CHANGED")
+    Orbit.EventBus:Fire("ORBIT_FOCUS_SETTINGS_CHANGED")
     self._applying = false
-end
-
-function Plugin:UpdateVisuals(frame)
-    if frame and frame.UpdateAll then
-        frame:UpdateAll()
-        self:UpdateVisualsExtended(frame, FOCUS_FRAME_INDEX)
-    end
 end
 
 -- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------

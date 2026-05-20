@@ -10,6 +10,7 @@
 local _, Orbit = ...
 Orbit._AC = Orbit._AC or {}
 local Pixel = Orbit.Engine.Pixel
+local L = Orbit.L
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local PADDING = 16
@@ -73,7 +74,7 @@ local function CreatePluginPanel()
     local frame = CreateFrame("Frame", "OrbitPluginManagerPanel")
     frame:Hide()
 
-    local TAB_NAMES = { "Plugin Manager", "Visibility Engine", "Quality of Life" }
+    local TAB_NAMES = { L.CFG_TAB_PLUGIN_MANAGER, L.CFG_TAB_VISIBILITY_ENGINE, L.CFG_TAB_QUALITY_OF_LIFE }
     local activeTab = TAB_NAMES[1]
 
     -- Content containers
@@ -81,7 +82,7 @@ local function CreatePluginPanel()
     pluginContent:SetAllPoints()
     local veContent = Orbit._AC.CreateVEContent(frame)
     local qolContent = Orbit._AC.CreateQoLContent(frame)
-    local contentFrames = { ["Plugin Manager"] = pluginContent, ["Visibility Engine"] = veContent, ["Quality of Life"] = qolContent }
+    local contentFrames = { [L.CFG_TAB_PLUGIN_MANAGER] = pluginContent, [L.CFG_TAB_VISIBILITY_ENGINE] = veContent, [L.CFG_TAB_QUALITY_OF_LIFE] = qolContent }
 
     -- Tab bar
     local tabBar
@@ -92,7 +93,7 @@ local function CreatePluginPanel()
         end
         if tabBar then tabBar:SetActiveTab(tabName) end
     end
-    Orbit._openVETab = function() SwitchTab("Visibility Engine") end
+    Orbit._openVETab = function() SwitchTab(L.CFG_TAB_VISIBILITY_ENGINE) end
     tabBar = CreateTabBar(frame, TAB_NAMES, SwitchTab)
 
     -- Plugin Manager content

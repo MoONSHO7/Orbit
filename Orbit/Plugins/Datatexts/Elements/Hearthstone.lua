@@ -77,7 +77,7 @@ local function GetAvailableHearthstones()
 end
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Hearthstone")
+local W = DT.BaseDatatext:New("Hearthstone", L.PLU_DT_HEARTHSTONE_NAME)
 W.availableCache = nil
 
 function W:Update()
@@ -158,7 +158,6 @@ function W:Init()
     self:RegisterEvent("BAG_UPDATE_COOLDOWN")
     self:RegisterEvent("BAG_UPDATE", function() self:RebuildCache() end)
     self:RegisterEvent("TOYS_UPDATED", function() self:RebuildCache() end)
-    self:SetCategory("GAMEPLAY")
     self:Register()
     self:RebuildCache()
     self:Update()

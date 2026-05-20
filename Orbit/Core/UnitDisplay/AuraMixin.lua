@@ -6,6 +6,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 local GameTooltip = Orbit.Tooltip
+local L = Orbit.L
 local pcall, type, ipairs = pcall, type, ipairs
 local math_max = math.max
 local tinsert = table.insert
@@ -14,7 +15,7 @@ local tinsert = table.insert
 Orbit.AuraMixin = {}
 local Mixin = Orbit.AuraMixin
 
-Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
     Orbit.Engine.GlowController:PreLoad("Pixel", 40)
 end)
 
@@ -748,7 +749,7 @@ function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, ic
             icon:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
                 GameTooltip:SetSpellByID(self._missingSpellId)
-                GameTooltip:AddLine("|cffff4444Missing|r", 1, 0, 0)
+                GameTooltip:AddLine("|cffff4444" .. L.PLU_AURA_MISSING .. "|r", 1, 0, 0)
                 GameTooltip:Show()
             end)
             icon:SetScript("OnLeave", AuraIcon_OnLeave)

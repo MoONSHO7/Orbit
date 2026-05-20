@@ -46,19 +46,6 @@ function Formatting:FormatTimeShort(seconds)
     return string.format("%d:%02d:%02d", math.floor(seconds / SECONDS_PER_HOUR), math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE), math.floor(seconds % SECONDS_PER_MINUTE))
 end
 
-function Formatting:GetColor(value, max, inverse)
-    local pct = (value / max) * 100
-    if inverse then
-        if pct < 50 then return "|cff00ff00" end
-        if pct < 80 then return "|cffffa500" end
-        return "|cffff0000"
-    else
-        if pct < 20 then return "|cffff0000" end
-        if pct < 50 then return "|cffffa500" end
-        return "|cff00ff00"
-    end
-end
-
 function Formatting:FormatMemory(kb)
     if kb > MEM_DISPLAY_THRESHOLD_KB then return string.format("%.2f MB", kb / MEM_DISPLAY_THRESHOLD_KB) end
     return string.format("%.0f KB", kb)

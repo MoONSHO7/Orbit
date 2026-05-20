@@ -70,15 +70,10 @@ end)
 
 -- Deferred one-shot: all addons are loaded by PLAYER_ENTERING_WORLD; reconcile if borders are stale.
 C_Timer.After(0, function()
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         C_Timer.After(1, RefreshBordersIfNeeded)
     end)
 end)
-
--- [ UTILITIES ]--------------------------------------------------------------------------------------
-function Skin:GetPixelScale()
-    return Engine.Pixel:GetScale()
-end
 
 -- [ ICON SKINNING ]----------------------------------------------------------------------------------
 function Skin:SkinIcon(icon, settings)

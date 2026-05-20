@@ -166,8 +166,3 @@ function Mixin:ApplySettings()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, vePlugin, veIndex, "OutOfCombatFade", enableHover) end
 end
 
-function Mixin:UpdateVisuals(frame)
-    if frame and frame.UpdateAll and (self:IsEnabled() or (EditModeManagerFrame and EditModeManagerFrame:IsShown())) then
-        frame:UpdateAll()
-    end
-end

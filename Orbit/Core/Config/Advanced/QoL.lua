@@ -43,19 +43,28 @@ end
 -- Each builder receives the body frame and returns the computed content height.
 
 local function BuildMoveMore(body)
+    local desc = Layout:CreateDescription(body, GetAccountSetting("MoveMoreSavePositions", false) and L.PLU_MM_DESC_SAVE or L.PLU_MM_DESC_RESET, A.MUTED)
+    Layout:AddControl(body, desc)
+
     local cb = Layout:CreateCheckbox(body, L.PLU_MM_ENABLE, nil, GetAccountSetting("MoveMore", false), function(checked)
         SetAccountSetting("MoveMore", checked)
         if checked then Orbit.MoveMore:Enable() else Orbit.MoveMore:Disable() end
     end)
     Layout:AddControl(body, cb)
-    SetAccountSetting("MoveMoreSavePositions", false)
-    if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then Orbit.MoveMore:ClearSavedPositions() end
-    local desc
-    local saveCb = Layout:CreateCheckbox(body, L.PLU_MM_SAVE_POSITIONS, nil, false, function() end)
-    if saveCb.SetEnabled then saveCb:SetEnabled(false) end
+
+    local saveCb = Layout:CreateCheckbox(body, L.PLU_MM_SAVE_POSITIONS, nil, GetAccountSetting("MoveMoreSavePositions", false), function(checked)
+        SetAccountSetting("MoveMoreSavePositions", checked)
+        if desc and desc.text then desc.text:SetText(checked and L.PLU_MM_DESC_SAVE or L.PLU_MM_DESC_RESET) end
+    end)
     Layout:AddControl(body, saveCb)
-    desc = Layout:CreateDescription(body, L.PLU_MM_DESC_RESET, A.MUTED)
-    Layout:AddControl(body, desc)
+
+    local resetBtn = Layout:CreateButton(body, L.PLU_MM_RESET_ALL, function()
+        if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then
+            Orbit.MoveMore:ClearSavedPositions()
+        end
+    end)
+    Layout:AddControl(body, resetBtn)
+
     return Layout:Stack(body, 0, STACK_GAP)
 end
 
@@ -122,16 +131,22 @@ local function BuildMouse(body)
     Layout:AddControl(body, cb)
     local desc = Layout:CreateDescription(body, L.PLU_MOUSE_DESC, A.MUTED)
     Layout:AddControl(body, desc)
+    -- After each SavedVariables write, refresh the Mouse module's cached snapshot so the slider
+    -- change applies live (the cached fields drive the per-frame OnUpdate; CVAR_UPDATE doesn't fire
+    -- for SavedVariables, only for actual CVars).
     local s1 = Layout:CreateSlider(body, L.PLU_MOUSE_SCALE, 0.1, 2.0, 0.01, FmtDecimal, GetAccountSetting("CustomCursorScale", 0.55), function(val)
         SetAccountSetting("CustomCursorScale", val)
+        Orbit.Mouse:RefreshSnapshot()
     end)
     Layout:AddControl(body, s1)
     local s2 = Layout:CreateSlider(body, L.PLU_MOUSE_X_OFFSET, -5, 5, 0.1, FmtDecimal, GetAccountSetting("CustomCursorX", 2.10), function(val)
         SetAccountSetting("CustomCursorX", val)
+        Orbit.Mouse:RefreshSnapshot()
     end)
     Layout:AddControl(body, s2)
     local s3 = Layout:CreateSlider(body, L.PLU_MOUSE_Y_OFFSET, -5, 5, 0.1, FmtDecimal, GetAccountSetting("CustomCursorY", 1.40), function(val)
         SetAccountSetting("CustomCursorY", val)
+        Orbit.Mouse:RefreshSnapshot()
     end)
     Layout:AddControl(body, s3)
     local cursorMap = { [0] = "32px", [1] = "48px", [2] = "64px", [3] = "96px", [4] = "128px" }
@@ -419,11 +434,11 @@ local function BuildColors(body)
 
     local RC = Orbit.Engine.ReactionColor
     local reactions = { "HOSTILE", "NEUTRAL", "FRIENDLY" }
+    local reactionLabels = { HOSTILE = L.PLU_COLORS_HOSTILE, NEUTRAL = L.PLU_COLORS_NEUTRAL, FRIENDLY = L.PLU_COLORS_FRIENDLY }
     for i, reaction in ipairs(reactions) do
         local colorData = RC:GetOverride(reaction)
-        local locReaction = reaction:sub(1,1) .. reaction:sub(2):lower()
         local picker
-        picker = Layout:CreateColorPicker(body, locReaction, colorData, function(c)
+        picker = Layout:CreateColorPicker(body, reactionLabels[reaction], colorData, function(c)
             RC:SetOverride(reaction, c)
             if not c then
                 local res = RC:GetOverride(reaction)
@@ -448,7 +463,7 @@ local function BuildColors(body)
     yPos = yPos - 30
 
     local repEntries = { "RENOWN", "PARAGON", "PARAGON_REWARD" }
-    local repLabels = { RENOWN = "Renown", PARAGON = "Paragon", PARAGON_REWARD = "Paragon Reward" }
+    local repLabels = { RENOWN = L.PLU_COLORS_RENOWN, PARAGON = L.PLU_COLORS_PARAGON, PARAGON_REWARD = L.PLU_COLORS_PARAGON_REWARD }
     for i, key in ipairs(repEntries) do
         local colorData = RC:GetOverride(key)
         local picker
@@ -481,7 +496,7 @@ local function BuildColors(body)
             local c = entry.type == "class" and CC:GetOverrides(entry.key) or RC:GetOverride(entry.key)
             entry.picker:SetColorQuiet(c.r, c.g, c.b, c.a)
         end
-        Orbit.EventBus:Fire("COLORS_CHANGED")
+        Orbit.EventBus:Fire("ORBIT_COLORS_CHANGED")
     end)
     Layout:AddControl(body, resetBtn)
     resetBtn:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
@@ -496,10 +511,10 @@ function Orbit._AC.CreateQoLContent(parent)
     content:SetAllPoints()
     content:Hide()
     -- Title + subtitle (fixed, non-scrolling)
-    local header = Layout:CreateSectionHeader(content, "Quality of Life")
+    local header = Layout:CreateSectionHeader(content, L.PLU_QOL_TITLE)
     header:SetPoint("TOPLEFT", A.PADDING, A.TITLE_Y)
     header:SetPoint("TOPRIGHT", -A.PADDING, A.TITLE_Y)
-    local desc = Layout:CreateDescription(content, "Miscellaneous quality-of-life improvements.", A.MUTED)
+    local desc = Layout:CreateDescription(content, L.PLU_QOL_DESC, A.MUTED)
     desc:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
     desc:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -4)
 
@@ -555,7 +570,7 @@ function Orbit._AC.CreateQoLContent(parent)
                 section.searchName = table.concat(parts, " ")
             end
         else
-            local placeholder = Layout:CreateDescription(body, "No settings yet.", A.MUTED)
+            local placeholder = Layout:CreateDescription(body, L.PLU_QOL_NO_SETTINGS, A.MUTED)
             Layout:AddControl(body, placeholder)
             section:SetContentHeight(Layout:Stack(body, 0, STACK_GAP))
         end

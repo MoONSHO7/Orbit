@@ -236,6 +236,15 @@ local function SafeGetValue(fn)
     return type(val) == "number" and val or nil
 end
 
+-- S09b-L4: closureless variant — call sites pass the already-resolved value rather than a thunk,
+-- so GetNameAvailableWidth stops allocating 7 closures per call. Nil-guards at the callsites
+-- already cover the "self.X is missing" case that the pcall in SafeGetValue was masking.
+local function FilterNumeric(val)
+    if val == nil then return nil end
+    if issecretvalue and issecretvalue(val) then return nil end
+    return type(val) == "number" and val or nil
+end
+
 local function VerticalRangesOverlap(topA, bottomA, topB, bottomB)
     return bottomA < (topB + VERTICAL_OVERLAP_TOLERANCE) and bottomB < (topA + VERTICAL_OVERLAP_TOLERANCE)
 end
@@ -250,21 +259,21 @@ function TextMixin:EstimateHealthTextWidth()
 end
 
 function TextMixin:GetNameAvailableWidth()
-    local frameWidth = SafeGetValue(function() return self:GetWidth() end)
+    local frameWidth = FilterNumeric(self:GetWidth())
     if not frameWidth or frameWidth <= 0 then return nil end
 
     if not self.HealthText or not self.HealthText:IsShown() then
         return frameWidth - (EDGE_PADDING * 2)
     end
 
-    local nameLeft = SafeGetValue(function() return self.Name:GetLeft() end)
-    local healthLeft = SafeGetValue(function() return self.HealthText:GetLeft() end)
+    local nameLeft = FilterNumeric(self.Name:GetLeft())
+    local healthLeft = FilterNumeric(self.HealthText:GetLeft())
 
     if nameLeft and healthLeft and healthLeft > nameLeft then
-        local nameTop = SafeGetValue(function() return self.Name:GetTop() end)
-        local nameBot = SafeGetValue(function() return self.Name:GetBottom() end)
-        local healthTop = SafeGetValue(function() return self.HealthText:GetTop() end)
-        local healthBot = SafeGetValue(function() return self.HealthText:GetBottom() end)
+        local nameTop = FilterNumeric(self.Name:GetTop())
+        local nameBot = FilterNumeric(self.Name:GetBottom())
+        local healthTop = FilterNumeric(self.HealthText:GetTop())
+        local healthBot = FilterNumeric(self.HealthText:GetBottom())
         local sameRow = not nameTop or not nameBot or not healthTop or not healthBot or VerticalRangesOverlap(nameTop, nameBot, healthTop, healthBot)
         return sameRow and (healthLeft - nameLeft - EDGE_PADDING) or (frameWidth - (EDGE_PADDING * 2))
     end
@@ -289,36 +298,52 @@ function TextMixin:ConstrainNameWidth()
     if not name then return end
     if issecretvalue and issecretvalue(name) then return end
     if type(name) ~= "string" or #name == 0 then return end
-    self.Name:SetText(name)
 
     local available = self:GetNameAvailableWidth()
     if not available then return end
     available = math.max(available, MIN_NAME_WIDTH)
 
-    local textWidth = SafeGetValue(function() return self.Name:GetStringWidth() end)
-    if not textWidth or textWidth <= available then return end
+    -- S09b-L4: skip the binary search (multiple SetText + GetStringWidth iterations per call) when
+    -- (name, available) is unchanged. Non-resize relayouts repeat the same width across calls;
+    -- EditMode drag-resize is the only path that genuinely needs the search per fire.
+    if self._lastConstrainName == name and self._lastConstrainAvailable == available then
+        if self._lastConstrainResult then self.Name:SetText(self._lastConstrainResult) end
+        return
+    end
+
+    self.Name:SetText(name)
+    local textWidth = FilterNumeric(self.Name:GetStringWidth())
+    if not textWidth or textWidth <= available then
+        self._lastConstrainName, self._lastConstrainAvailable, self._lastConstrainResult = name, available, name
+        return
+    end
 
     if not self._hasNickname then
         local lastWord = string.match(name, "(%S+)$")
         if lastWord and lastWord ~= name then
             self.Name:SetText(lastWord)
-            local newWidth = SafeGetValue(function() return self.Name:GetStringWidth() end)
-            if not newWidth or newWidth <= available then return end
+            local newWidth = FilterNumeric(self.Name:GetStringWidth())
+            if not newWidth or newWidth <= available then
+                self._lastConstrainName, self._lastConstrainAvailable, self._lastConstrainResult = name, available, lastWord
+                return
+            end
             name = lastWord
         end
     end
 
     local lo, hi = 1, #name
     self.Name:SetText(TRUNCATION_SUFFIX)
-    local suffixWidth = SafeGetValue(function() return self.Name:GetStringWidth() end) or 0
+    local suffixWidth = FilterNumeric(self.Name:GetStringWidth()) or 0
     local trimTarget = available - suffixWidth
     while lo < hi do
         local mid = math.ceil((lo + hi) / 2)
         self.Name:SetText(string.sub(name, 1, mid))
-        local w = SafeGetValue(function() return self.Name:GetStringWidth() end)
+        local w = FilterNumeric(self.Name:GetStringWidth())
         if not w or w <= trimTarget then lo = mid else hi = mid - 1 end
     end
-    self.Name:SetText(string.sub(name, 1, lo) .. TRUNCATION_SUFFIX)
+    local final = string.sub(name, 1, lo) .. TRUNCATION_SUFFIX
+    self.Name:SetText(final)
+    self._lastConstrainName, self._lastConstrainAvailable, self._lastConstrainResult = name, available, final
 end
 
 -- [ TEXT COLOR ] ------------------------------------------------------------------------------------

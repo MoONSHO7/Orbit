@@ -60,7 +60,7 @@ Config/
 
 ## adding settings to a plugin
 
-1. in your plugin, implement `AddSettings(schema, systemIndex)` or use `WL:AddSettingsTabs`
+1. in your plugin, implement `function Plugin:AddSettings(dialog, systemFrame)` — receives the settings dialog and the system frame to populate; use `SchemaBuilder:AddSettingsTabs(dialog, systemFrame, schema)` to wire the standard tabs
 2. use `SchemaBuilder` methods to declare controls
 3. the config system handles rendering, persistence, and live preview automatically
 

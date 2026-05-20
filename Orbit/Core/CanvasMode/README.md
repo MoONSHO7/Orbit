@@ -13,14 +13,14 @@ graph LR
     SV[(SavedVariables)] -->|read settings| dialog[Canvas Mode Dialog]
     dialog -->|user adjusts| buffer[Pending Overrides]
     buffer -->|staged| txn[Settings Transaction Cache]
-    txn -->|CANVAS_SETTINGS_CHANGED| preview[Edit Mode Preview]
+    txn -->|ORBIT_CANVAS_SETTINGS_CHANGED| preview[Edit Mode Preview]
     txn -->|Apply| SV
     txn -->|Cancel/ESC| discard((Discard))
     SV -->|ApplySettings| live[Live Frames]
     SV -->|ApplySettings| preview
 ```
 
-canvas mode reads the same settings as live frames and edit mode. all changes are buffered as pending overrides and staged into the settings transaction cache. the transaction fires `CANVAS_SETTINGS_CHANGED` on each edit, allowing preview frames to live-update without touching saved variables. when the user hits "apply," the transaction commits to saved variables and triggers `ApplySettings` on both live frames and edit mode previews. cancel discards the transaction and restores preview frames to their pre-edit state.
+canvas mode reads the same settings as live frames and edit mode. all changes are buffered as pending overrides and staged into the settings transaction cache. the transaction fires `ORBIT_CANVAS_SETTINGS_CHANGED` on each edit, allowing preview frames to live-update without touching saved variables. when the user hits "apply," the transaction commits to saved variables and triggers `ApplySettings` on both live frames and edit mode previews. cancel discards the transaction and restores preview frames to their pre-edit state.
 
 ## directory structure
 

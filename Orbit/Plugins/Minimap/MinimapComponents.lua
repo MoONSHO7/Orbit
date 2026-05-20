@@ -3,6 +3,7 @@
 
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local C = Orbit.MinimapConstants
 local GameTooltip = Orbit.Tooltip
@@ -146,15 +147,15 @@ function Plugin:ApplyBorderRing(color)
         if not (trackingFacing or opt.spinSeconds) then ring:SetRotation(0) end
         if not opt.pulse then ring:SetAlpha(1) end
         ring:Show()
-        self:EnsureBorderRingDriver()
+        self:SetRingDriverEnabled(trackingFacing or opt.spinSeconds or opt.pulse)
     else
         ring:Hide()
+        self:SetRingDriverEnabled(false)
     end
 end
 
--- Always-on OnUpdate driver, created lazily once. Re-checks conditions every frame so toggling
--- ring options / RotateMinimap takes effect without needing to start/stop the driver. Runs every
--- frame for smooth rotation tracking (SetRotation is cheap). Drives three animation hooks:
+-- OnUpdate driver, created lazily; the script is attached/detached by SetRingDriverEnabled based
+-- on whether the current ring option actually needs animation. Animation hooks:
 --   * rotatable: track GetPlayerFacing when RotateMinimap is on (Blizzard)
 --   * spinSeconds: continuous spin, one revolution per N seconds (Void)
 --   * pulse: alpha oscillates between pulse.min and pulse.max over pulse.period seconds (Void)
@@ -163,7 +164,7 @@ function Plugin:EnsureBorderRingDriver()
     local plugin = self
     local TAU = 2 * math.pi
     self._ringRotationDriver = CreateFrame("Frame")
-    self._ringRotationDriver:SetScript("OnUpdate", function()
+    local function driverOnUpdate()
         local ring = plugin.frame and plugin.frame.BorderRing
         if not ring or not ring:IsShown() then return end
         local opt = plugin._cachedRingOpt
@@ -183,7 +184,23 @@ function Plugin:EnsureBorderRingDriver()
             local phase = (GetTime() % period) / period * TAU
             ring:SetAlpha((minA + maxA) / 2 + (maxA - minA) / 2 * math.sin(phase))
         end
-    end)
+    end
+    self._ringRotationDriver._onUpdate = driverOnUpdate            -- stored for re-attach by SetRingDriverEnabled
+    self._ringRotationDriver:SetScript("OnUpdate", driverOnUpdate)
+end
+
+-- S22-L1: tear down the OnUpdate when no animated ring option is active (default ring option has
+-- no animation — without this the driver runs a per-frame closure for the whole session for every
+-- user). Re-attaches the stored closure when an animated option is selected later.
+function Plugin:SetRingDriverEnabled(enabled)
+    if enabled then
+        self:EnsureBorderRingDriver()
+        if self._ringRotationDriver:GetScript("OnUpdate") == nil then
+            self._ringRotationDriver:SetScript("OnUpdate", self._ringRotationDriver._onUpdate)
+        end
+    elseif self._ringRotationDriver then
+        self._ringRotationDriver:SetScript("OnUpdate", nil)
+    end
 end
 
 -- [ ZONE TEXT ]--------------------------------------------------------------------------------------
@@ -385,7 +402,7 @@ function Plugin:CreateZoomButtons()
     end)
     zoomIn:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
-        GameTooltip:SetText("Zoom In")
+        GameTooltip:SetText(L.PLU_MINIMAP_ZOOM_IN)
         GameTooltip:Show()
     end)
     zoomIn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -412,7 +429,7 @@ function Plugin:CreateZoomButtons()
     end)
     zoomOut:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
-        GameTooltip:SetText("Zoom Out")
+        GameTooltip:SetText(L.PLU_MINIMAP_ZOOM_OUT)
         GameTooltip:Show()
     end)
     zoomOut:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -512,7 +529,7 @@ function Plugin:CreateTrackingButton()
     btn:SetScript("OnEnter", function(b)
         GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
         GameTooltip:SetText(Orbit.L.PLU_MINIMAP_ACT_TRACK, 1, 1, 1)
-        GameTooltip:AddLine("Click to open tracking menu", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L.PLU_MINIMAP_TIP_TRACKING_MENU, 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)

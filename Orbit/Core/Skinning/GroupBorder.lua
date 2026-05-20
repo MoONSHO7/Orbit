@@ -440,11 +440,11 @@ function Skin:ResumeMergeGroup(members)
 end
 
 function Skin:DeferGroupBorderRefresh()
-    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+    Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
 end
 
 -- Debounced listener: coalesces all border layout events into a single refresh
-Orbit.EventBus:On("BORDER_LAYOUT_CHANGED", function()
+Orbit.EventBus:On("ORBIT_BORDER_LAYOUT_CHANGED", function()
     Orbit.Async:Debounce("GroupBorderRefresh", function()
         Skin:RefreshAllGroupBorders()
     end, 0)
@@ -459,7 +459,7 @@ Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function()
 end)
 
 -- Refresh group borders after plugins finish loading
-Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
     Orbit.Async:Debounce("GroupBorderRefresh", function()
         Skin:RefreshAllGroupBorders()
     end, 1)

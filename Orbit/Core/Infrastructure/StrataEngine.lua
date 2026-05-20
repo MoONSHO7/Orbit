@@ -69,7 +69,7 @@ function Engine:GetFrameLevel(scopeID, entityID)
 end
 
 -- [ BUMPING ] ---------------------------------------------------------------------------------------
--- Swap entity with its neighbor. Fires STRATA_UPDATED so plugins re-apply.
+-- Swap entity with its neighbor. Fires ORBIT_STRATA_UPDATED so plugins re-apply.
 function Engine:BumpUp(scopeID, entityID)
     local scope = self:GetScopeData(scopeID)
     local index
@@ -115,7 +115,7 @@ function Engine:BumpAbove(scopeID, entityID, targetEntityID)
 end
 
 function Engine:_NotifyScope(scopeID)
-    Orbit.EventBus:Fire("STRATA_UPDATED", scopeID)
+    Orbit.EventBus:Fire("ORBIT_STRATA_UPDATED", scopeID)
 end
 
 -- [ STARTUP POPULATION ] ----------------------------------------------------------------------------

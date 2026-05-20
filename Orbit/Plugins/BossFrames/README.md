@@ -1,6 +1,6 @@
 # boss frames
 
-unit frames for boss encounters (boss1-boss8).
+unit frames for boss encounters (boss1-boss5).
 
 ## purpose
 
@@ -17,7 +17,7 @@ displays boss health bars, cast bars, and auras during encounters. uses the shar
 
 ## how it works
 
-boss frames are created on demand when `INSTANCE_ENCOUNTER_ENGAGE_UNIT` fires. they use `UnitButton` from core/unitdisplay for secure targeting and `CastBarMixin` for cast bar updates.
+5 boss frames (boss1-boss5) are created eagerly in `OnLoad` via `for i = 1, MAX_BOSS_FRAMES` (`MAX_BOSS_FRAMES = 5` at `BossFrame.lua:12`). they use `UnitButton` from core/unitdisplay for secure targeting.
 
 ## adding a new boss frame feature
 
@@ -28,6 +28,6 @@ boss frames are created on demand when `INSTANCE_ENCOUNTER_ENGAGE_UNIT` fires. t
 ## rules
 
 - boss frames share the aura `AnchorToPosition` helper via `BossFrameHelpers` for canvas-mode preview parity
-- cast bar logic must not duplicate `CastBarMixin` — extend the mixin if needed
+- new cast bar features must use `CastBarMixin`. **known divergence:** `BossFrameCastBar.lua` predates the consolidation rule and currently reimplements the cast-bar update loop. Consolidating into `CastBarMixin` is tracked technical debt — until then, treat the rule as "new cast bars MUST use CastBarMixin; existing reimplementations are technical debt."
 - boss cast bar uses the unified border pattern (single border wrapping icon + bar via `UpdateBarInsets`) matching the target/focus style from `Skin.CastBar`
-- boss frame count is dynamic (1-8), driven by encounter data
+- boss frame count is 5 (`MAX_BOSS_FRAMES = 5`); frames are allocated eagerly, not on demand

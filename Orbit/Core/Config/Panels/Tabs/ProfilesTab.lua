@@ -287,7 +287,7 @@ local ProfilesPlugin = {
             Orbit.Profile:SetActiveProfile(value)
             if Orbit.OptionsPanel then
                 Orbit.OptionsPanel.lastTab = nil
-                Orbit.OptionsPanel:Open("Profiles")
+                Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES)
             end
         elseif key == "UseSpecProfiles" then
             Orbit.Profile:SetSpecProfilesEnabled(value)
@@ -296,14 +296,14 @@ local ProfilesPlugin = {
             else
                 if Orbit.db.specMappings then wipe(Orbit.db.specMappings) end
             end
-            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel.currentTab = nil; Orbit.OptionsPanel:Open("Profiles") end
+            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel.currentTab = nil; Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES) end
         elseif key == "CreateProfile" then
             Orbit.Profile._selectedToCreate = value
         elseif key == "ExportProfile" then
             exportSelectedProfile = value
             local str = Orbit.Profile:ExportSingleProfile(value)
             exportString = str or ""
-            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel:Open("Profiles") end
+            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES) end
         elseif key == "ExportString" then
             exportString = value or ""
         elseif key == "ImportString" then
@@ -337,7 +337,7 @@ local function GetProfileOptions()
 end
 
 local function GetProfileOptionsWithDefault()
-    local opts = { { text = "Global", value = "Global" } }
+    local opts = { { text = L.CFG_PROFILE_GLOBAL, value = "Global" } }
     for _, n in ipairs(Orbit.Profile:GetProfiles()) do
         if n ~= "Global" then
             table.insert(opts, { text = n, value = n })
@@ -380,7 +380,7 @@ local function ReopenProfiles()
     if Orbit.OptionsPanel then
         Orbit.OptionsPanel.lastTab = nil
         Orbit.OptionsPanel.currentTab = nil
-        Orbit.OptionsPanel:Open("Profiles")
+        Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES)
     end
 end
 
@@ -595,4 +595,4 @@ local function GetProfilesSchema()
 end
 
 -- [ REGISTRATION ]-----------------------------------------------------------------------------------
-Panel.Tabs["Profiles"] = { plugin = ProfilesPlugin, schema = GetProfilesSchema }
+Panel.Tabs[L.CFG_TAB_PROFILES] = { plugin = ProfilesPlugin, schema = GetProfilesSchema }

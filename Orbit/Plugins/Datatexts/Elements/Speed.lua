@@ -9,7 +9,7 @@ local L = Orbit.L
 local BASE_SPEED = 7
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Speed")
+local W = DT.BaseDatatext:New("Speed", L.PLU_DT_SPEED_NAME)
 
 function W:Update()
     local speed = GetUnitSpeed("player")
@@ -42,7 +42,6 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetUpdateTier("FAST")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetCategory("CHARACTER")
     self:Register()
     self:Update()
 end

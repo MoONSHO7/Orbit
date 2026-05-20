@@ -1,7 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 
 local Plugin = Orbit:RegisterPlugin("Focus Debuffs", "Orbit_FocusDebuffs", {
+    displayName = L.PLG_NAME_FOCUS_DEBUFFS,
     liveToggle = true,
     defaults = Orbit.UnitAuraGridMixin.sharedDebuffDefaults,
 })
@@ -19,7 +21,7 @@ function Plugin:AddSettings(dialog, systemFrame) self:AddAuraGridSettings(dialog
 function Plugin:OnLoad()
     self:CreateAuraGridPlugin({
         unit = "focus", auraFilter = "HARMFUL|PLAYER", isHarmful = true,
-        frameName = "OrbitFocusDebuffsFrame", editModeName = "Focus Debuffs",
+        frameName = "OrbitFocusDebuffsFrame", editModeName = self.displayName,
         anchorParent = "OrbitFocusFrame", anchorGap = -50,
         defaultX = -200, defaultY = -240, initialWidth = 200, initialHeight = 40,
         changeEvent = "PLAYER_FOCUS_CHANGED", maxRowsMax = 6,
@@ -27,5 +29,5 @@ function Plugin:OnLoad()
         exposeMountedConfig = true,
         vePluginName = "Focus Frame",
     })
-    Orbit.EventBus:On("FOCUS_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
+    Orbit.EventBus:On("ORBIT_FOCUS_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

@@ -10,6 +10,7 @@ local DEFAULT_POSITION_Y = 40
 local EDIT_MODE_FRAME_LEVEL = 50 -- selection = level+100; must beat minimap (~2+100=102)
 
 local Plugin = Orbit:RegisterPlugin("Queue Status", SYSTEM_ID, {
+    displayName = L.PLG_NAME_QUEUE_STATUS,
     defaults = {
         Scale = 100,
         Opacity = 100,
@@ -58,7 +59,7 @@ function Plugin:OnLoad()
     self.frame:SetFrameLevel(EDIT_MODE_FRAME_LEVEL)
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Queue Status"
+    self.frame.editModeName = self.displayName
     self.frame.anchorOptions = { horizontal = true, vertical = true }
     self.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, SYSTEM_ID)
@@ -94,17 +95,11 @@ function Plugin:OnLoad()
 end
 
 -- [ LOGIC ]------------------------------------------------------------------------------------------
+local NATIVE_PARENTS = {}
 function Plugin:CaptureButton(button)
     if not button then return end
-    local parent = button:GetParent()
-    -- Only capture from native Blizzard parents, never from another addon's container
-    if parent ~= self.frame and parent ~= MicroMenu and parent ~= MicroMenuContainer and parent ~= UIParent then
-        self.conflicted = true
-        return
-    end
-    if parent ~= self.frame then
-        button:SetParent(self.frame)
-    end
+    NATIVE_PARENTS[1], NATIVE_PARENTS[2], NATIVE_PARENTS[3] = MicroMenu, MicroMenuContainer, UIParent
+    if not self:CaptureFromNativeParent(button, NATIVE_PARENTS) then return end
     button:ClearAllPoints()
     button:SetPoint("CENTER", self.frame, "CENTER")
 end

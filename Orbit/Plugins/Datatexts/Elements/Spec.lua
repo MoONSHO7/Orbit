@@ -12,7 +12,7 @@ local RING_SIZE = 25
 local PADDING = 2
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Spec")
+local W = DT.BaseDatatext:New("Spec", L.PLU_DT_SPEC_NAME)
 
 function W:Update()
     local currentSpec = GetSpecialization()
@@ -224,7 +224,6 @@ function W:Init()
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
-    self:SetCategory("CHARACTER")
     self:Register()
     self:Update()
 end

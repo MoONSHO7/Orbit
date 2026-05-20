@@ -41,17 +41,6 @@ function GC:Hide(frame, glowKey)
     state.active[glowKey] = nil
 end
 
-function GC:StopAll(frame)
-    if not frame or not LCG then return end
-    local state = frame._orbitGlow
-    if not state then return end
-    for glowKey, entry in pairs(state.active) do
-        LCG.Hide(frame, entry.typeName, glowKey)
-    end
-    wipe(state.active)
-    state.suppressNative = nil
-end
-
 function GC:IsActive(frame, glowKey)
     local state = frame and frame._orbitGlow
     if not state then return false end

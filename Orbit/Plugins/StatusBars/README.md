@@ -47,7 +47,8 @@ per-component font / size / color live in each component's canvas dock (not in t
 
 ## default component positions
 
-configured in `Core/Plugin/DefaultProfile.lua`:
+configured inline in each plugin's `RegisterPlugin` `defaults = { ComponentPositions = { ... } }`
+block (`DefaultProfile.lua` is a saved-layout snapshot, not the schema-default site):
 
 ```
 Name     → LEFT edge,   offset  +5, justify LEFT
@@ -74,7 +75,7 @@ bar fill goes through `StatusBar` sinks guarded with `issecretvalue()` in `Statu
 | experience | `PLAYER_XP_UPDATE`, `UPDATE_EXHAUSTION`, `PLAYER_LEVEL_UP`, `DISABLE_XP_GAIN`, `ENABLE_XP_GAIN`, `UPDATE_FACTION`, `QUEST_FINISHED`, `MAJOR_FACTION_UNLOCKED` |
 | honor | `HONOR_XP_UPDATE`, `HONOR_LEVEL_UPDATE`, `ZONE_CHANGED_NEW_AREA` |
 
-both also inherit `RegisterStandardEvents` (apply on `PLAYER_ENTERING_WORLD`, colours changed, edit mode enter/exit) and `RegisterVisibilityEvents` (hide in pet battles / vehicles). `canvasMode = true` auto-subscribes to `CANVAS_SETTINGS_CHANGED` for live preview.
+both also inherit `RegisterStandardEvents` (apply on `PLAYER_ENTERING_WORLD`, colours changed, edit mode enter/exit) and `RegisterVisibilityEvents` (hide in pet battles / vehicles). `canvasMode = true` auto-subscribes to `ORBIT_CANVAS_SETTINGS_CHANGED` for live preview.
 
 ## edit-mode integration & taint
 

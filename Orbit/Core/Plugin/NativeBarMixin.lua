@@ -7,18 +7,6 @@ local math_max = math.max
 Orbit.NativeBarMixin = {}
 local Mixin = Orbit.NativeBarMixin
 
--- [ SCALE APPLICATION ]------------------------------------------------------------------------------
-function Mixin:ApplyScale(frame, systemIndex, sizeKey)
-    if not frame then
-        return
-    end
-    local scaleFactor = math_max(0.1, (self:GetSetting(systemIndex, sizeKey or "Size") or 100) / 100)
-    OrbitEngine.NativeFrame:Modify(frame, { scale = scaleFactor })
-    if frame.SetNormalScale then
-        frame:SetNormalScale(scaleFactor)
-    end
-end
-
 -- [ MOUSE-OVER FADE ]--------------------------------------------------------------------------------
 function Mixin:ApplyMouseOver(frame, systemIndex)
     if not frame then return end
@@ -48,46 +36,22 @@ function Mixin:TriggerLayout(frame)
     end
 end
 
--- [ COMPLETE APPLY SETTINGS HELPER ]-----------------------------------------------------------------
-function Mixin:ApplyNativeBarSettings(frame, systemIndex, options)
-    if not frame then
-        return
+-- [ NATIVE-PARENT CAPTURE ] -------------------------------------------------------------------------
+-- Consolidates the BagBar / MicroMenu / QueueStatus capture pattern: only reparent the button when
+-- it's currently parented to a native Blizzard container (or already to us); set `self.conflicted`
+-- and bail when another addon has claimed it. Combat-lockdown guard stays at the caller (this helper
+-- is pure parent-juggling).
+function Mixin:CaptureFromNativeParent(button, allowedParents)
+    if not button or not self.frame then return false end
+    local parent = button:GetParent()
+    if parent == self.frame then return true end
+    for _, allowed in ipairs(allowedParents) do
+        if parent == allowed then
+            button:SetParent(self.frame)
+            return true
+        end
     end
-    options = options or {}
-    self:ApplyScale(frame, systemIndex, options.sizeKey or "Size")
-    if options.additionalScaleKey and options.targetMethod and frame[options.targetMethod] then
-        frame[options.targetMethod](frame, (self:GetSetting(systemIndex, options.additionalScaleKey) or 100) / 100)
-    end
-    self:ApplyMouseOver(frame, systemIndex)
-    self:TriggerLayout(frame)
+    self.conflicted = true
+    return false
 end
 
--- [ SMART ALIGNMENT ]--------------------------------------------------------------------------------
-function Mixin:EnableSmartAlignment(frame, textElement, paddingH)
-    if not frame or not textElement then
-        return
-    end
-    paddingH = paddingH or 2
-    frame.OnAnchorChanged = function(_, parent, edge, padding)
-        self:UpdateAlignment(frame, textElement, edge, paddingH)
-    end
-    self:UpdateAlignment(frame, textElement, nil, paddingH)
-end
-
-function Mixin:UpdateAlignment(frame, textElement, edge, paddingH)
-    if not frame or not textElement then
-        return
-    end
-    textElement:ClearAllPoints()
-    local scale = textElement:GetEffectiveScale()
-    if edge == "LEFT" then
-        textElement:SetPoint("RIGHT", OrbitEngine.Pixel:Multiple(-paddingH, scale), 0)
-        textElement:SetJustifyH("RIGHT")
-    elseif edge == "RIGHT" then
-        textElement:SetPoint("LEFT", OrbitEngine.Pixel:Multiple(paddingH, scale), 0)
-        textElement:SetJustifyH("LEFT")
-    else
-        textElement:SetPoint("CENTER", 0, 0)
-        textElement:SetJustifyH("CENTER")
-    end
-end

@@ -18,7 +18,7 @@ Core/
   Color/            -- color resolution (class colors, reaction colors, curve engine)
   Skinning/         -- visual rendering (borders, textures, icons, cast bars, action buttons)
   UnitDisplay/      -- unit frame mixins (health bars, auras, cast bars, status icons)
-  EditMode/         -- edit mode engine (dragging, anchoring, positioning, preview frames)
+  EditMode/         -- edit mode engine (dragging, anchoring, positioning, selection)
   CanvasMode/       -- canvas mode dialog (intra-frame component editor, overrides, creators)
   Config/           -- settings ui (schema builder, renderer, widgets, options panel)
   Onboarding/       -- first-run guided tour (edit mode playground, canvas / drawer hints)

@@ -4,14 +4,14 @@ dock-style raid-leader panel: difficulty (shows current), ready check, role poll
 
 ## purpose
 
-one-click access to the raid-management actions a leader uses constantly. circular icons with dark-grey background fill and silver border. arc-wrap and edge-fade tunable from settings, same controls portal exposes.
+one-click access to the raid-management actions a leader uses constantly. circular icons with dark-grey background fill and silver border. arc-wrap tunable from settings, same control portal exposes.
 
 ## layout
 
 ```
 Plugins/RaidPanel/
   RaidPanelData.lua          slot definitions, marker sprite mapping, difficulty/ping option lists, GetCurrentDifficultyAtlas()
-  RaidPanelLayout.lua        pure arc-wrap and edge-fade math (mirrors PortalLayout)
+  RaidPanelLayout.lua        pure arc-wrap math (mirrors PortalLayout)
   RaidPanelVisibility.lua    ShouldShow() — in-group AND (leader or assist)
   RaidPanelMenus.lua         MenuUtil dropdowns: Difficulty (dungeon/raid) + Ping Restriction
   RaidPanelIcon.lua          circular icon factory; PostClick opens menus / runs actions, secure attrs bind raidtarget & worldmarker dispatch
@@ -68,10 +68,13 @@ markers use a raw texture file (no atlas) so they don't get automatic 2x. every 
 ## visibility
 
 ```
-ShouldShow = IsInGroup() and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player"))
+Visible = DisplayMode == Always Show
+       OR (IsInGroup() and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")))    -- Visibility.ShouldShow()
 ```
 
-re-evaluated on `GROUP_ROSTER_UPDATE`, `PARTY_LEADER_CHANGED`, `PLAYER_ENTERING_WORLD`, and after combat (`PLAYER_REGEN_ENABLED`).
+`DisplayMode == Always Show` bypasses the in-group + lead/assist gate entirely — the slot set (markers-only vs all) is then driven by `Visibility.IsRaidLeaderTier()` instead. See the `DisplayMode` section under **settings**.
+
+re-evaluated on `GROUP_ROSTER_UPDATE`, `PARTY_LEADER_CHANGED`, `PLAYER_ENTERING_WORLD`, and after combat (`PLAYER_REGEN_ENABLED`). `GROUP_ROSTER_UPDATE` also covers raid ↔ party transitions and main-tank reassignment, both of which can flip Always-Show's slot set.
 
 **edit mode** overrides ShouldShow — the dock is always shown while `Orbit:IsEditMode()` is true, regardless of party state. Icons follow the standard Orbit edit-mode pattern (mouse disabled, secure attributes cleared) so the SelectionOverlay / anchor guides / snap previews fire unobstructed; clicking icons does nothing in edit mode. `UpdateVisibility` and `RefreshDock` both read `Orbit:IsEditMode()` directly each call — no cached sticky flag — so a `/reload` mid-edit-session and the `EditMode.Exit` transition both correctly hide the dock when nothing else demands it.
 
@@ -96,8 +99,7 @@ auto-detected from the dock's centre relative to the four screen edges (`LEFT/RI
 | key | type | default |
 |---|---|---|
 | `DisplayShape` | slider 1..2 (Circle / Square) | 1 (Circle) |
-| `DisplayMode`  | slider 1..3 (Hide / Markers / All) — labelled "Marker Display" in UI | 3 (All) |
-| `FadeEffect`   | slider 0..100 | 0 (off) |
+| `DisplayMode`  | slider 1..3 (Always Show / Markers / All) — labelled "Marker Display" in UI | 3 (All) |
 | `IconSize`     | slider 15..30 | 24 (base size; per-slot multipliers below) |
 | `Spacing`      | slider 0..20  | 5  |
 | `Compactness`  | slider 0..100 | 0 (linear; 100 wraps the chain onto a circle) |
@@ -118,15 +120,13 @@ Both shapes share the same `Orbit.Skin:GetBackgroundColor()` source for the per-
 
 Same convention as ActionBars / CooldownLayout / TrackedContainer — `padding == 0` flips per-icon → group border. Switching back to `Spacing > 0` calls `Skin:ClearIconGroupBorder(dock)`, hides the dock backdrop, and reapplies per-icon borders + per-icon background.
 
-**DisplayMode** filters which slots render (edit mode preview respects the selected mode):
+**DisplayMode** controls both visibility and which slots render (edit mode preview respects the selected mode):
 
-- `1` **Hide** — the dock is hidden entirely, edit mode included.
-- `2` **Markers** — only Markers 1..8 and Clear Markers render (9 slots). Difficulty / Ready Check / Role Poll / Restrict Pings filtered out.
-- `3` **All** — all 13 slots render.
+- `1` **Always Show** — dock is always visible regardless of group state. Slot set adapts to the player's raid role: in a raid with lead / assist / main tank → all 13 slots; otherwise (in raid without promotion, in a party, or solo) → markers-only (Markers 1..8 + Clear Markers, 9 slots). `Visibility.IsRaidLeaderTier()` resolves the role check.
+- `2` **Markers** — visibility gated by `Visibility.ShouldShow()` (in-group + lead/assist). Renders 9 slots: Markers 1..8 + Clear Markers.
+- `3` **All** — visibility gated by `Visibility.ShouldShow()`. Renders all 13 slots.
 
-FadeEffect is applied identically in edit mode and at runtime, so the user is positioning what they'll actually see.
-
-reuses portal's `PLU_PORTAL_*` labels for Fade / IconSize / Spacing / Compactness because the strings are identical.
+reuses portal's `PLU_PORTAL_*` labels for IconSize / Spacing / Compactness because the strings are identical.
 
 per-slot **inner-image** multiplier — the Button shell (background fill, silver border, hitbox, dock spacing) is always `IconSize × IconSize`; only the inner glyph texture is scaled:
 

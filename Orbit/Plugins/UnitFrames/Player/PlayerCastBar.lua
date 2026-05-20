@@ -6,6 +6,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Player Cast Bar", "Orbit_PlayerCastBar", {
+    displayName = L.PLG_NAME_PLAYER_CAST_BAR,
     defaults = {
         CastBarColor = { r = 1, g = 0.7, b = 0 },
         CastBarColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.7, b = 0, a = 1 } } } },
@@ -94,7 +95,7 @@ local function SampleColorCurve(curveData, position)
 end
 
 -- Alpha-only visibility: cast bar is protected when secure frames anchor to it.
--- Fire BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
+-- Fire ORBIT_BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
 local VE_KEY = "PlayerCastBar"
 local function GetVEAlpha()
     local VE = Orbit.VisibilityEngine
@@ -107,13 +108,13 @@ local function ShowBar(bar)
     bar:SetAlpha(alpha)
     if bar.orbitBar then bar.orbitBar:SetAlpha(alpha) end
     if bar.Icon then bar.Icon:SetAlpha(alpha) end
-    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+    Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
 end
 local function HideBar(bar)
     bar:SetAlpha(0)
     if bar.orbitBar then bar.orbitBar:SetAlpha(0) end
     if bar.Icon then bar.Icon:SetAlpha(0) end
-    Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+    Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
 end
 
 local function HideChannelTicks(bar)
@@ -261,7 +262,7 @@ function Plugin:OnLoad()
     -- Edit Mode metadata
     CastBar.systemIndex = 1
     CastBar.orbitName = "Player Cast Bar"
-    CastBar.editModeName = "Player Cast Bar"
+    CastBar.editModeName = self.displayName
     CastBar.orbitPlugin = self
 
     -- Cast state
@@ -421,7 +422,7 @@ function Plugin:OnLoad()
     end
 
     -- Apply settings on login
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         Orbit.Async:Debounce("CastBar_Init", function()
             self:ApplySettings()
             -- Hide bar until needed (not in Edit Mode, not in combat)
@@ -430,7 +431,7 @@ function Plugin:OnLoad()
             end
         end, 0.5)
     end, self)
-    Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
+    Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
 end
 
 -- [ MOUNTED VISIBILITY ]-----------------------------------------------------------------------------

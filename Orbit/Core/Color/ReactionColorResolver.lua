@@ -33,7 +33,7 @@ end
 
 function RC:SetOverride(reactionType, colorTable)
     SetAccountSetting("ReactionColor_" .. reactionType, colorTable)
-    Orbit.EventBus:Fire("COLORS_CHANGED")
+    Orbit.EventBus:Fire("ORBIT_COLORS_CHANGED")
 end
 
 function RC:GetReactionColor(reaction)

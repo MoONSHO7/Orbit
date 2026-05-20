@@ -17,10 +17,10 @@ captures and reskins blizzard's native utility bars. uses `NativeBarMixin` from 
 ## adding a new menu item plugin
 
 1. create a new lua file in this directory
-2. register via `Orbit:RegisterPlugin("Orbit_NewItem", { ... })`
+2. register via `Orbit:RegisterPlugin("New Item", SYSTEM_ID, { defaults = { ... }, OnLoad = function(self) ... end })`
 3. use `NativeBarMixin` if capturing native blizzard buttons
-4. add default settings in `DefaultProfile.lua`
-5. add to `Orbit.toc`
+4. declare plugin schema defaults inline in the `defaults = { ... }` block of the options table passed to `RegisterPlugin`. Do not edit `DefaultProfile.lua` — that file is a saved-layout snapshot owned by ProfileManager, not the plugin-schema default site.
+5. add the new file to `Plugins/MenuItems/MenuItems.xml` as a `<Script file="NewFile.lua"/>` entry; ensure it loads after its dependencies
 
 ## rules
 

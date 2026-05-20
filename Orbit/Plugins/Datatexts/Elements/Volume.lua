@@ -11,7 +11,7 @@ local VOLUME_MIN = 0
 local VOLUME_MAX = 1
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Volume")
+local W = DT.BaseDatatext:New("Volume", L.PLU_DT_VOLUME_NAME)
 
 function W:Update()
     local vol = tonumber(GetCVar("Sound_MasterVolume")) or 0
@@ -55,7 +55,6 @@ function W:Init()
         SetCVar("Sound_MasterVolume", tostring(vol))
         self:Update()
     end)
-    self:SetCategory("UTILITY")
     self:Register()
     self:Update()
 end

@@ -45,7 +45,7 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 2. define it as `Orbit.NewBehaviorMixin = {}`
 3. implement methods that accept `(self, frame, settings)` — where self is the mixin, frame is the unit frame, settings is the plugin config
 4. plugins call the mixin in their `ApplySettings`
-5. add to `Orbit.toc` in the unitdisplay section
+5. add the new file to `Core/UnitDisplay/UnitDisplay.xml` as a `<Script file="NewFile.lua"/>` entry; ensure it loads after its dependencies
 
 ## rules
 
