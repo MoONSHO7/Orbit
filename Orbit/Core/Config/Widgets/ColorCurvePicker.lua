@@ -60,6 +60,7 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 forceSingleColor = self.singleColorMode,
                 hasDesaturation = self.hasDesaturation,
                 recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,
+                anchor = Layout.GetPickerAnchor(self),
                 onOpen = function(picker)
                     local as = Orbit.db and Orbit.db.AccountSettings
                     if as and not as.ColorPickerTourComplete then

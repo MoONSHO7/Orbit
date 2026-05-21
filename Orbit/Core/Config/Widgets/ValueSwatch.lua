@@ -19,10 +19,14 @@ local function ResolvePreviewColor(curveMode, value)
         for i = 2, #pins do
             if pins[i].position < first.position then first = pins[i] end
         end
+        if first.type == "class" then
+            local r, g, b = Engine.ClassColor:GetCurrentClassColorUnpacked()
+            return r, g, b, (first.color and first.color.a) or 1
+        end
         local c = first.color or {}
         return c.r or 1, c.g or 1, c.b or 1, c.a or 1
     end
-    return value.r or 1, value.g or 1, value.b or 1, value.a or 1
+    return Engine.ClassColor:ResolveValueUnpacked(value)
 end
 
 -- cfg fields: curve (single color vs gradient), initialValue, enabled, callback(value), tooltip.
@@ -73,6 +77,7 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
         else
             local v = swatch.value or {}
             initialData = { r = v.r or 1, g = v.g or 1, b = v.b or 1, a = v.a or 1 }
+            if v.type then initialData.type = v.type end
         end
 
         lib:Open({
@@ -80,6 +85,7 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
             hasOpacity = true,
             forceSingleColor = not swatch.curveMode,
             recentColorsDb = as and as.RecentColors,
+            anchor = Layout.GetPickerAnchor(swatch),
             onOpen = function(picker)
                 if as and not as.ColorPickerTourComplete then
                     as.ColorPickerTourComplete = true
@@ -96,7 +102,10 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
                     end
                 else
                     local pin = result.pins and result.pins[1]
-                    newValue = pin and pin.color
+                    if pin and pin.color then
+                        newValue = { r = pin.color.r, g = pin.color.g, b = pin.color.b, a = pin.color.a or 1 }
+                        if pin.type then newValue.type = pin.type end
+                    end
                 end
                 if not newValue then return end
                 swatch.value = newValue

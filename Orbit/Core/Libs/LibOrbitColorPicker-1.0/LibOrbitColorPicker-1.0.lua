@@ -831,6 +831,9 @@ function lib:CreatePickerFrame()
     if self.ui.frame then return self.ui.frame end
 
     local f = CreateFrame("Frame", nil, UIParent)
+    -- Hide before any OnHide script is attached: frames are created shown by default, and a
+    -- post-script :Hide() would fire OnHide, consuming the callback before the user clicks Apply.
+    f:Hide()
     f:SetSize(PICKER_WIDTH, PICKER_HEIGHT)
     f:SetPoint("CENTER")
     f:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -887,7 +890,6 @@ function lib:CreatePickerFrame()
         lib.callback = nil
     end)
 
-    f:Hide()
     self.ui.frame = f
     return f
 end
@@ -1738,7 +1740,12 @@ function lib:Open(options)
     if self.info.button then self.info.button:Show() end
 
     self.ui.frame:ClearAllPoints()
-    self.ui.frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 375, -75)
+    local a = options.anchor
+    if a and a.frame then
+        self.ui.frame:SetPoint(a.point or "TOPLEFT", a.frame, a.relativePoint or "TOPRIGHT", a.x or 0, a.y or 0)
+    else
+        self.ui.frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 375, -75)
+    end
     self.ui.frame:Show()
 
     C_Timer.After(REFRESH_DELAY, function()

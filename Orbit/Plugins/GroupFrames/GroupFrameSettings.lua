@@ -268,7 +268,9 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
                 valueColor = {
                     initialValue = colorByAuraColor,
                     callback = function(c)
-                        plugin:SetTierSetting("ColorByAuraColor", { r = c.r, g = c.g, b = c.b, a = c.a or 1 }, editTier)
+                        local saved = { r = c.r, g = c.g, b = c.b, a = c.a or 1 }
+                        if c.type then saved.type = c.type end
+                        plugin:SetTierSetting("ColorByAuraColor", saved, editTier)
                         colorByAuraRefresh()
                     end,
                 },
