@@ -3,7 +3,6 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local Constants = Orbit.Constants
-local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 Engine.UnitButton = Engine.UnitButton or {}
@@ -238,13 +237,15 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f:SetScript("OnEvent", f.OnEvent)
     f:OnLoad(skipEventRegistration)
 
-    -- Helper function based on the Blizzard UnitFrame_UpdateTooltip method
-    -- without the Right-Click instruction line
     local function OrbitUnitFrame_UpdateTooltip(frame)
+        local unit = frame.unit
+        if not unit or unit == "" or not UnitExists(unit) then
+            frame.UpdateTooltip = nil
+            return
+        end
         GameTooltip_SetDefaultAnchor(GameTooltip, frame)
-        if GameTooltip:SetUnit(frame.unit) then
+        if GameTooltip:SetUnit(unit) then
             GameTooltip:Show()
-
             frame.UpdateTooltip = OrbitUnitFrame_UpdateTooltip
         else
             frame.UpdateTooltip = nil

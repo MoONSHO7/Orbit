@@ -16,11 +16,31 @@ local APPLY_DELAY = 0.5
 -- [ APPLY ]------------------------------------------------------------------------------------------
 -- Below CVAR_FLOOR, the CVar clamps but UIParent:SetScale honors the lower value — that's how addons
 -- like ElvUI break Blizzard's 0.65 floor for pixel-perfect rendering on 1440p+ monitors.
+
+-- UIParent:SetScale skips UI_SCALE_CHANGED, leaving EditMode's magnetism cache and the absolute
+-- grid-line positions baked at registration stale — both must be shifted by the uiParentCenter delta.
+local function ResyncEditModeMagnetism()
+    local mgr = EditModeMagnetismManager
+    if not mgr or not mgr.UpdateUIParentPoints then return end
+    local oldCX, oldCY = mgr.uiParentCenterX, mgr.uiParentCenterY
+    mgr:UpdateUIParentPoints()
+    local gridLines = mgr.magneticGridLines
+    if not gridLines or not oldCX or not oldCY then return end
+    local dx, dy = mgr.uiParentCenterX - oldCX, mgr.uiParentCenterY - oldCY
+    if dx ~= 0 and gridLines.vertical then
+        for line, v in pairs(gridLines.vertical) do gridLines.vertical[line] = v + dx end
+    end
+    if dy ~= 0 and gridLines.horizontal then
+        for line, v in pairs(gridLines.horizontal) do gridLines.horizontal[line] = v + dy end
+    end
+end
+
 local function Apply(scale)
     local cvarValue = scale < CVAR_FLOOR and CVAR_FLOOR or scale
     SetCVar("useUiScale", "1")
     SetCVar("uiScale", tostring(cvarValue))
     UIParent:SetScale(scale)
+    ResyncEditModeMagnetism()
     Orbit.EventBus:Fire("ORBIT_DISPLAY_SIZE_CHANGED")
 end
 
