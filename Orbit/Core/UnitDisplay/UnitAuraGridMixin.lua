@@ -344,14 +344,9 @@ function Mixin:CreateAuraGridPlugin(config)
 
     self.frame = Frame
     self._agFrame = Frame
-    -- The aura grid masks its own child icons (see _applyGridGroupBorder); GroupBorder's group
-    -- layer must skip this frame's _maskedSurfaces — GroupManagesMask checks this flag.
+    -- _auraGridFrame flag tells GroupManagesMask to skip — grid masks its own icons via _applyGridGroupBorder.
     Frame._auraGridFrame = true
-    -- The merged-state group mask is stamped during UpdateAuras. Re-run it when the merge
-    -- topology changes so a merge forming while auras are static doesn't leave icons stale.
-    -- Debounced past GroupBorder's own 0-delay refresh so _groupBorderActive / _groupRoundedMask
-    -- are current by the time UpdateAuras reads them. Player grids only — non-player auras
-    -- have no rounded grid border.
+    -- Re-stamp the merged-state group mask on merge-topology change; debounced past GroupBorder's 0-delay refresh so flags are current when UpdateAuras reads them.
     if config.showIconLimit then
         Orbit.EventBus:On("ORBIT_BORDER_LAYOUT_CHANGED", function()
             Orbit.Async:Debounce("AuraGridMask_" .. tostring(Frame), function()
@@ -492,8 +487,7 @@ function Mixin:CreateAuraGridPlugin(config)
     end
 
     if config.useBlizzardButtons then
-        -- Hook Blizzard's BuffFrame update cycle instead of our own events
-        -- Defer to clean context: hooksecurefunc runs in tainted context where all API returns are secret
+        -- Hook BuffFrame:Update + defer to clean context (hooksecurefunc runs tainted, where all API returns are secret).
         local blizzFrame = config.blizzardFrame
         if blizzFrame then
             hooksecurefunc(blizzFrame, "Update", function()
@@ -720,8 +714,7 @@ end
 local function ClearGridRoundedMask(frame, activeIcons)
     local mask = frame._gridGroupRoundedMask
     if not mask then return end
-    -- Owner-guarded clear via _SetSurfaceMask: only surfaces carrying the grid mask are detached,
-    -- so a per-icon _roundedMask (spacing > 0) is left intact.
+    -- Owner-guarded clear — only surfaces carrying the grid mask detach; per-icon _roundedMask (spacing > 0) stays intact.
     for _, icon in ipairs(activeIcons) do
         Orbit.Skin:ClearMaskFromSurfaces(icon._maskedSurfaces, mask)
     end
@@ -733,12 +726,7 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
         ClearGridRoundedMask(Frame, activeIcons)
         return
     end
-    -- Merged: the grid Frame is a member of a GroupBorder cross-merge. The group draws the
-    -- outline and owns the mask; the grid draws no outline of its own, but every aura icon must
-    -- still take the GROUP mask. The group layer can't reach icons acquired from the pool since
-    -- its last refresh, so the grid stamps the group mask onto its own icons here, every
-    -- UpdateAuras cycle. groupMask is nil for a Square group (or before the group refresh has
-    -- run) — _SetSurfaceMask(tex, nil) then correctly leaves the icon unmasked.
+    -- Merged into a GroupBorder cross-merge: group owns outline + mask, but grid stamps the group mask onto pool-acquired icons each UpdateAuras (group layer can't reach them). groupMask nil for Square groups → icons unmasked.
     if Frame._groupBorderActive then
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         local groupMask = Frame._groupBorderRoot and Frame._groupBorderRoot._groupRoundedMask
@@ -795,8 +783,7 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
             overlay:Hide()
         end
 
-        -- The mask uses the SAME `style` as the outline above.
-        -- Square carries no mask: no content clipping needed.
+        -- Mask uses the same `style` as the outline; Square style has no mask (no content clipping needed).
         if style.mask then
             local mask = Skin:EnsureSliceMask(Frame, "_gridGroupRoundedMask", style, function(m)
                 m:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
@@ -808,8 +795,7 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
                         if t.RemoveMaskTexture then t:RemoveMaskTexture(icon._roundedMask) end
                     end
                 end
-                -- Route through _SetSurfaceMask so tex._orbitRoundedMask tracks the grid mask —
-                -- a later merge then cleanly swaps grid mask → group mask with no stacking.
+                -- _SetSurfaceMask tracks the grid mask in tex._orbitRoundedMask so a later merge swaps grid → group cleanly without stacking.
                 for _, t in ipairs(icon._maskedSurfaces or {}) do
                     Orbit.Skin:_SetSurfaceMask(t, mask)
                 end

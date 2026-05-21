@@ -1,7 +1,5 @@
 -- [ HEALER AURA REGISTRY ] --------------------------------------------------------------------------
--- Slot-based spell-ID mapping for healer buffs/HoTs and raid buffs (10 slots + RaidBuff per spec).
--- The `label` fields below are developer-facing comments; GetSlotLabel resolves the rendered name
--- via C_Spell.GetSpellName(spellId) so the WoW client returns the player's locale.
+-- `label` fields are dev-facing only; GetSlotLabel resolves the rendered name via C_Spell.GetSpellName for player locale.
 local _, Orbit = ...
 local L = Orbit.L
 

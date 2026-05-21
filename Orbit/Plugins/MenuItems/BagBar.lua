@@ -158,8 +158,7 @@ function Plugin:ReparentAll()
         end)
         return
     end
-    -- §4.4: native-parent capture via the shared mixin helper (BagsBar may be parented to UIParent
-    -- or MicroMenuContainer depending on Blizzard's flow; both are sanctioned native parents).
+    -- BagsBar parent shifts between UIParent and MicroMenuContainer per Blizzard's flow; both are sanctioned native parents.
     if not self:CaptureFromNativeParent(BagsBar, { UIParent, MicroMenuContainer }) then return end
     BagsBar:ClearAllPoints()
     BagsBar:SetPoint("CENTER", self.frame, "CENTER", 0, 0)

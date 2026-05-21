@@ -4,10 +4,7 @@ local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 -- [ VALUE-COLUMN CONTROLS ]--------------------------------------------------------------------------
--- Shared helpers for the value column of a 3-column widget row: ApplyValueColorSwatch (a color
--- swatch) and ApplyValueCheckbox (a toggle). Both right-align off Constants.Widget.ValueInset, so
--- every value-column control lines up regardless of which widget hosts it.
-
+-- Both right-align off Constants.Widget.ValueInset so all value-column controls line up regardless of host widget.
 local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 
 local function ResolvePreviewColor(curveMode, value)
@@ -29,9 +26,7 @@ local function ResolvePreviewColor(curveMode, value)
     return Engine.ClassColor:ResolveValueUnpacked(value)
 end
 
--- cfg fields: curve (single color vs gradient), initialValue, enabled, callback(value), tooltip.
--- initialValue and enabled accept a value or a getter function; getters are resolved on every
--- (re)render so the swatch tracks current SavedVariables even when its schema was built earlier.
+-- initialValue + enabled accept a getter; resolved on every render so the swatch tracks current SavedVariables.
 function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
     local enabled = cfg.enabled
     if type(enabled) == "function" then enabled = enabled() end
@@ -132,8 +127,7 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
 end
 
 -- [ VALUE-COLUMN CHECKBOX ]--------------------------------------------------------------------------
--- cfg fields: initialValue (value or getter), callback(checked), tooltip. tooltip is a string, or
--- a function(checked) -> title, subtext that re-resolves live as the box is toggled.
+-- tooltip is a string OR `function(checked) → title, subtext` that re-resolves live as the box is toggled.
 function Layout:ApplyValueCheckbox(frame, cfg, anchorX)
     if not frame.ValueCheckbox then
         frame.ValueCheckbox = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
@@ -150,8 +144,7 @@ function Layout:ApplyValueCheckbox(frame, cfg, anchorX)
     if type(initial) == "function" then initial = initial() end
     vcb:SetChecked(initial or false)
 
-    -- A function tooltip re-resolves against the live checked state; rendering it from OnClick as
-    -- well as OnEnter keeps the title/sub-line tracking the toggle while the cursor lingers.
+    -- Render from OnClick too so a function-tooltip re-resolves against the live checked state while the cursor lingers.
     local function RenderTooltip(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         local tt = cfg.tooltip

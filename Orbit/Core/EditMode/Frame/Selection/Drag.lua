@@ -95,11 +95,7 @@ local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
 end
 
 -- [ FRAME MOVE ]-------------------------------------------------------------------------------------
--- The drag's move lifecycle: BeginMove -> UpdateMove (per frame) -> EndMove. Two modes —
---   native: WoW's StartMoving drives the frame.
---   manual: StartMoving failed to re-latch a follow point (an Orbit rounded-corner MaskTexture
---           bound onto the frame can cause this), so UpdateMove tracks the cursor by hand instead.
--- drag.manual selects the mode: BeginMove sets it, EndMove clears it.
+-- Manual mode (drag.manual) is the fallback when StartMoving fails to re-latch a follow point — UpdateMove then tracks the cursor by hand instead of via WoW's native move.
 local function BeginMove(parent)
     local drag = parent._drag
     local preL, preB = parent:GetLeft(), parent:GetBottom()
@@ -107,9 +103,7 @@ local function BeginMove(parent)
     drag.manual = nil
     if parent:GetNumPoints() > 0 then return end
 
-    -- StartMoving failed to set a follow point but may still have flagged the frame as "moving"
-    -- in WoW's internal state. Clear that — left set, it fights the manual SetPoints below and
-    -- makes the StopMovingOrSizing on drag-stop strip the frame's point (frame lands at 0,0).
+    -- Clear WoW's internal "moving" flag — left set, it fights the manual SetPoints and the drag-stop StopMovingOrSizing strips the frame's point (lands at 0,0).
     parent:StopMovingOrSizing()
 
     local scale = parent:GetEffectiveScale()
@@ -205,10 +199,7 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         selectionOverlay.lastAnchorAlign = nil
     end
 
-    -- An active Orbit anchor line suppresses Blizzard's red snap preview so the two never compete
-    -- visually. Drag.lua orchestrates both — Selection.lua and the Blizzard tap-in stay unaware of
-    -- each other. The unconditional clear while the line is showing also covers the shift-release
-    -- tick, where the precision-mode block above re-enables the preview before this runs.
+    -- Orbit anchor line suppresses Blizzard's red snap preview so they don't compete visually; unconditional clear also covers the shift-release tick where precision-mode re-enabled preview above.
     local hasAnchorLine = selectionOverlay.lastAnchorTarget ~= nil
     if hasAnchorLine then
         SetBlizzardSnapPreview(parent, false)
@@ -240,19 +231,14 @@ function Drag:OnDragStart(selectionOverlay)
 
     if parent:IsMovable() and not parent.orbitNoDrag then
         parent.orbitIsDragging = true
-        -- All transient drag-internal state lives in one table for the drag's lifetime; created
-        -- here, destroyed in OnDragStop. (orbitIsDragging stays a separate frame flag — external
-        -- code reads it.)
+        -- Transient drag state in one table, destroyed in OnDragStop; orbitIsDragging stays a separate flag external code reads.
         parent._drag = {}
         parent._drag.mergeSuspendGroup = Orbit.Skin:SuspendMergeGroup(parent)
 
         local anchor = Engine.FrameAnchor.anchors[parent]
         parent._drag.prevAnchor = anchor and { parent = anchor.parent, edge = anchor.edge, padding = anchor.padding } or nil
         if anchor then
-            -- Capture visual center before break. BreakAnchor fires
-            -- OnAnchorChanged which may resize the frame (e.g. TrackedBar
-            -- reverts from synced width to its saved width). Repositioning
-            -- after break keeps the visual center stable under the cursor.
+            -- Capture visual center pre-break: BreakAnchor fires OnAnchorChanged which may resize (e.g. TrackedBar reverts to saved width); repositioning after break holds the center under the cursor.
             local preCX = (parent:GetLeft() + parent:GetRight()) / 2
             local preCY = (parent:GetBottom() + parent:GetTop()) / 2
             local oldParent = anchor.parent
@@ -273,8 +259,7 @@ function Drag:OnDragStart(selectionOverlay)
             parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(preCX - postW / 2, scale), Engine.Pixel:Snap(preCY - postH / 2, scale))
         end
 
-        -- Snapshot the resolved pre-drag position. If the drop can't otherwise resolve where the
-        -- frame lands, OnDragStop restores this instead of dumping the frame to screen origin.
+        -- Pre-drag snapshot — OnDragStop restores this if the drop can't otherwise resolve a point, instead of dumping the frame to screen origin.
         local rPoint, _, _, rX, rY = parent:GetPoint(1)
         parent._drag.restorePoint = rPoint and { point = rPoint, x = rX, y = rY } or nil
 
@@ -326,8 +311,7 @@ local function TeardownDrag(selectionOverlay, parent)
     end
 end
 
--- Read-only: the symmetric partner's current anchor padding, or nil. Does NOT re-anchor the
--- partner — re-anchoring the partner is OnMouseWheel's responsibility, not the drop's.
+-- Read-only — partner re-anchoring is OnMouseWheel's responsibility, not the drop's.
 local function SymmetricPartnerPadding(parent)
     local partnerName = Engine.FrameSelection:GetSymmetricPartner(parent:GetName())
     local partner = partnerName and _G[partnerName]
@@ -335,16 +319,14 @@ local function SymmetricPartnerPadding(parent)
     return pAnchor and (pAnchor.padding or 0) or nil
 end
 
--- A drop that resolved no point falls back to the pre-drag snapshot, so it never dumps the
--- frame to screen origin just because resolution transiently failed.
+-- Falls back to the pre-drag snapshot so a transiently-unresolved drop never dumps the frame to screen origin.
 local function FallbackPoint(parent, point, x, y)
     local s = parent._drag.restorePoint
     if point or not s then return point, x, y end
     return s.point, s.x, s.y
 end
 
--- Decides what a drop does. Returns { kind = "anchor" | "free" | "precision", ... }. Runs snap
--- detection (which snaps the frame as a side effect); CommitDrop then applies the decision.
+-- Runs snap detection (which snaps the frame as a side effect) and returns a decision { kind = "anchor" | "free" | "precision", ... } for CommitDrop to apply.
 local function ResolveDrop(parent)
     local Selection = Engine.FrameSelection
 
@@ -360,8 +342,7 @@ local function ResolveDrop(parent)
 
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
     if anchorTarget and anchorEdge and anchoringEnabled and Selection.selections[anchorTarget] then
-        -- Re-dropping onto the same target keeps the user's existing gap (e.g. a deliberate 0);
-        -- failing that, inherit a symmetric partner's gap; failing that, CreateAnchor's default.
+        -- Re-drop onto same target keeps user's existing gap; else inherit symmetric partner's gap; else CreateAnchor's default.
         local padding
         local prev = parent._drag.prevAnchor
         if prev and prev.parent == anchorTarget and prev.edge == anchorEdge then
@@ -381,15 +362,12 @@ local function ResolveDrop(parent)
     return { kind = "free", point = point, x = x, y = y }
 end
 
--- Applies a ResolveDrop decision: anchors or positions the frame, persists it via the drag
--- callback, refreshes group borders.
 local function CommitDrop(parent, decision)
     local cb = Engine.FrameSelection.dragCallbacks[parent]
 
     if decision.kind == "anchor" then
         Engine.FrameAnchor:CreateAnchor(parent, decision.target, decision.edge, decision.padding, nil, decision.align)
-        -- Ordering is load-bearing: the anchor must exist before ORBIT_BORDER_LAYOUT_CHANGED and before
-        -- the callback, which reads FrameAnchor.anchors[parent].
+        -- Ordering: anchor must exist before the event and the callback, both of which read FrameAnchor.anchors[parent].
         Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
         if cb then cb(parent, "ANCHORED", decision.target, decision.edge) end
         return
@@ -414,8 +392,7 @@ end
 function Drag:OnDragStop(selectionOverlay)
     Drag.isDragging = false
     local parent = selectionOverlay.parent
-    -- OnDragStop can fire without a matching OnDragStart (WoW fires it for any drag gesture);
-    -- ensure the drag table exists so the teardown/resolve below is nil-safe.
+    -- WoW fires OnDragStop for any drag gesture, so it can run without a matching OnDragStart — nil-safe defaulting.
     parent._drag = parent._drag or {}
 
     TeardownDrag(selectionOverlay, parent)
@@ -429,8 +406,7 @@ function Drag:OnDragStop(selectionOverlay)
         return
     end
 
-    -- BreakAnchor is deliberately in the commit tier, not teardown: don't detach a frame's anchor
-    -- unless the commit below can then re-place it.
+    -- Deliberately in the commit tier — don't detach the anchor unless the commit below can re-place it.
     Engine.FrameAnchor:BreakAnchor(parent, true)
 
     CommitDrop(parent, ResolveDrop(parent))

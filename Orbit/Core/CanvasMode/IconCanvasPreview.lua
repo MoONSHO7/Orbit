@@ -1,7 +1,4 @@
 -- [ ICON CANVAS PREVIEW ] ---------------------------------------------------------------------------
--- Shared builder for single-icon Canvas Mode previews.
--- Used by Action Bars, Cooldown Manager (Essential/Utility/BuffIcon), and Tracked Abilities.
-
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
@@ -11,8 +8,6 @@ local IconCanvasPreview = {}
 OrbitEngine.IconCanvasPreview = IconCanvasPreview
 
 -- [ CREATE ] ----------------------------------------------------------------------------------------
--- Creates a BackdropTemplate preview frame with icon texture and border.
--- sourceFrame=anchor, parent=viewport parent, width/height=raw icon dimensions, iconTexture=texture path
 function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTexture)
     local preview = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     OrbitEngine.Pixel:Enforce(preview)

@@ -1,7 +1,5 @@
 -- [ STRATA ENGINE ] ---------------------------------------------------------------------------------
--- root-container Z-index only; sub-component levels stay in Constants.Levels, strata in Constants.Strata.
--- new plugins MUST be added to PopulateDefaults() and call GetFrameLevel("Global_HUD", "Orbit_PluginName") in OnLoad to participate in bumping. baseFrameLevel offsets are session-only.
-
+-- Root-container Z-index only; new plugins must be added to PopulateDefaults() and call GetFrameLevel("Global_HUD", "Orbit_PluginName") in OnLoad. Session-only offsets.
 local _, Orbit = ...
 local C = Orbit.Constants
 
@@ -41,8 +39,7 @@ function Engine:Register(scopeID, entityID, defaultIndex)
 end
 
 -- [ QUERY ] -----------------------------------------------------------------------------------------
--- Returns the absolute frame level for a registered entity.
--- Formula: baseFrameLevel + (entityIndex * StrataBlockReserve)
+-- absoluteLevel = baseFrameLevel + (entityIndex × StrataBlockReserve).
 function Engine:GetFrameLevel(scopeID, entityID)
     assert(self._volatileBase[scopeID], "StrataEngine: Uninitialized scope: " .. tostring(scopeID))
     local scope = self:GetScopeData(scopeID)
@@ -105,8 +102,7 @@ function Engine:_NotifyScope(scopeID)
 end
 
 -- [ STARTUP POPULATION ] ----------------------------------------------------------------------------
--- Seeds the Global_HUD scope with all root-level containers in default order.
--- Called once during Orbit:OnLoad(), before any plugin initializes.
+-- Called once during Orbit:OnLoad before any plugin initializes.
 function Engine:PopulateDefaults()
     self:InitializeScope("Global_HUD", 1)
     local defaults = {

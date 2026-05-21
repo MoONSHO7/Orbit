@@ -7,8 +7,7 @@ local string_lower = string.lower
 local string_gsub = string.gsub
 
 -- [ FOLD ]-------------------------------------------------------------------------------------------
--- Lowercase and strip common diacritics so "Corrupción" matches "corrupcion".
--- Caller invokes once at index time; per-search path only touches the precomputed lowerName.
+-- Lowercase + strip diacritics so "Corrupción" matches "corrupcion"; computed once at index time.
 local DIACRITIC_MAP = {
     ["à"]="a",["á"]="a",["â"]="a",["ã"]="a",["ä"]="a",["å"]="a",
     ["è"]="e",["é"]="e",["ê"]="e",["ë"]="e",

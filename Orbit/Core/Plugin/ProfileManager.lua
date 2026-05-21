@@ -41,10 +41,7 @@ local function CopyTable(src, dest)
     return dest
 end
 
--- One-shot border-style consolidation: the former "Orbit Squared" (flat) and "Orbit Rounded"
--- (rounded) styles merged into one "orbit" style with orthogonal Corner Roundness + Border
--- Thickness sliders. Idempotent — only legacy "flat"/"rounded" keys and the interim None=-1
--- roundness are rewritten; a settled "orbit" profile passes through untouched.
+-- Idempotent migration: legacy "flat"/"rounded" keys and interim None=-1 roundness rewrite to the unified "orbit" style.
 local function NormalizeBorderStyle(gs)
     if not gs then return end
     local entries = {
@@ -300,8 +297,7 @@ function Orbit.Profile:SetActiveProfile(name)
             for _, plugin in ipairs(Orbit.Engine.systems) do
                 if plugin.ApplySettings then SafeApplyPlugin(plugin) end
             end
-            -- Batched so duplicate "reconcile everything" requests from other
-            -- systems reacting to the same profile switch coalesce into one pass.
+            -- Coalesce duplicate reconcile requests from sibling systems reacting to the same switch.
             if Orbit.Engine.FrameAnchor then
                 Orbit.Engine.FrameAnchor:ScheduleReconcileAll()
             end

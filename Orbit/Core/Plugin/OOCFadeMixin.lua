@@ -53,9 +53,7 @@ local function GetVESettings(data)
     return opacity, oocFade, true, true, false
 end
 
--- S04-C3: snapshot the 5 VE settings (+hideMounted) onto the frame on Apply / ORBIT_VISIBILITY_CHANGED.
--- The SetAlpha hook fires every render-frame during UIFrameFadeIn/Out animations; without the
--- snapshot it would resolve 5 (or 6) VE lookups per fire × every managed frame.
+-- Snapshot 5 VE settings (+ hideMounted) onto the frame; SetAlpha fires every render-frame during UIFrameFadeIn/Out — snapshot avoids 5-6 VE lookups per fire × frame.
 local function RefreshVESnapshot(frame, data)
     local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(data)
     frame._veOpacity        = opacity
@@ -98,8 +96,7 @@ end
 
 local function SyncMinimapChildrenAlpha(frame, alpha)
     if not frame or not frame.orbitOpacityExternal then return end
-    -- S04-C2: select-vararg pass-through avoids the {GetChildren()} temp-table alloc per call;
-    -- SyncMinimapChildrenAlpha runs on the SetAlpha hot path so even small allocs accumulate.
+    -- select-vararg avoids {GetChildren()} temp-table alloc on the SetAlpha hot path.
     local function ApplyChildAlpha(a, ...)
         for i = 1, select("#", ...) do
             select(i, ...):SetAlpha(a)
@@ -207,9 +204,7 @@ EventFrame:SetScript("OnEvent", function(self, event)
     if p then p:End("Orbit_OOCFade", event, s) end
 end)
 
--- Re-evaluate all managed frames after mount/dismount to restore mouse state.
--- S04-C3: ORBIT_VISIBILITY_CHANGED (fired by VE:SetFrameSetting) drives the snapshot refresh —
--- the snapshot is the per-frame cache the SetAlpha hook and UpdateFrameVisibility read from.
+-- ORBIT_VISIBILITY_CHANGED drives the snapshot refresh (the per-frame cache SetAlpha/UpdateFrameVisibility read from).
 C_Timer.After(0, function()
     if not Orbit.EventBus then return end
     Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() C_Timer.After(0.1, UpdateAllFrames) end)
@@ -225,8 +220,7 @@ if EventRegistry then
     EventRegistry:RegisterCallback("EditMode.Exit",  function() C_Timer.After(0.1, UpdateAllFrames) end, Mixin)
 end
 
--- Hook CooldownViewerSettings + PlayerSpellsFrame show/hide. Both frames are load-on-demand
--- (Blizzard_CooldownViewer, Blizzard_PlayerSpells), so hook via ADDON_LOADED.
+-- Hook via ADDON_LOADED — both Blizzard_CooldownViewer and Blizzard_PlayerSpells are load-on-demand.
 local function HookCooldownViewer()
     local cvs = CooldownViewerSettings
     if cvs and not cvs._orbitOOCHooked then
@@ -304,9 +298,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             local p = Orbit.Profiler
             local s = p and p:Begin()
 
-            -- S04-C3: snapshot reads — refreshed on ApplyOOCFade / ORBIT_VISIBILITY_CHANGED. The
-            -- hook fires every UIFrameFadeIn/Out tick (60Hz); each saved GetVESettings call removes
-            -- 5 VE lookups, and the hideMounted snapshot removes one more per fire while mounted.
+            -- Read from snapshot — hook fires 60Hz during fades, each cached field removes a VE lookup per fire.
             local opacity, oocFade, mouseOver, showWithTarget, alphaLock =
                 self._veOpacity, self._veOocFade, self._veMouseOver, self._veShowWithTarget, self._veAlphaLock
             local maxAlpha = self.orbitOpacityExternal and 1 or (opacity or 100) / 100

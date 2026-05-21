@@ -1,7 +1,4 @@
 -- [ CANVAS MODE - VIEWPORT ] ------------------------------------------------------------------------
--- Viewport with zoom/pan controls for Canvas Mode
--- Row layout: Title > Viewport (Dock | Preview) > Override > Footer
-
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode

@@ -179,8 +179,7 @@ function Plugin:OnLoad()
 
     self:RegisterStandardEvents() -- Handle PEW and Edit Mode
 
-    -- Edit Mode Visibility: Show frame even without target for positioning
-    -- Use "player" as preview unit so we can see colors/name/health
+    -- Edit Mode: show even without target; "player" as preview unit for visible colors/name/health.
     OrbitEngine.EditMode:RegisterCallbacks({
         Enter = function()
             if self.frame and not InCombatLockdown() then
@@ -255,8 +254,7 @@ function Plugin:ApplySettings(frame)
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
 
-    -- Component positions + style overrides (positions, font, color, scale)
-    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    -- Unconditional — must run after ApplyBaseVisuals resets text overrides.
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)

@@ -65,8 +65,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
 end
 
 -- [ TEXT COLOR APPLIER ] ----------------------------------------------------------------------------
--- Delegates to OverrideUtils.ApplyTextColor (which handles overrides + global FontColorCurve fallback).
--- remainingPercent: optional 0-1 value for progress-aware curve sampling (1=full, 0=expired)
+-- remainingPercent: optional 0-1 for curve sampling (1=full, 0=expired).
 function CooldownUtils:ApplyTextColor(textElement, overrides, remainingPercent)
     if not textElement or not textElement.SetTextColor then
         return
@@ -92,8 +91,7 @@ function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides, s
 end
 
 -- [ CHARGE COMPLETION TRACKING ] --------------------------------------------------------------------
--- All `_charges`/`_maxCharges`/`_knownRechargeDuration` storage sites guard against secret values,
--- but we defend the arithmetic here too: if any field is secret we skip the tick entirely.
+-- Defence-in-depth: skip the tick entirely if any cached charge field is somehow still secret.
 function CooldownUtils:OnChargeCast(obj)
     if issecretvalue(obj._charges) or issecretvalue(obj._knownRechargeDuration) then return end
     if not obj._charges or obj._charges <= 0 then

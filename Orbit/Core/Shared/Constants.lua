@@ -158,10 +158,7 @@ C.Settings = {
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
--- One built-in border style: "Orbit" — a flat WHITE8x8 outline sized by the Border Size slider
--- (0-5). `pixel = true` routes it to the pixel render path: ResolveStyle returns nil for it, and
--- a nil styleEntry is the pipeline-wide signal for flat-border mode. LibSharedMedia edge-file
--- borders also resolve (via the `lsm:` key) and render through the legacy edge-file path.
+-- Built-in "orbit" style → nil styleEntry → flat-border path; `lsm:`-keyed styles render via edge-file path.
 C.BorderStyle = {
     Default = "orbit",
     Offset = 6,
@@ -179,8 +176,7 @@ for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
 end
 
--- `BorderSize`/`IconBorderSize` mirror the active Border Size slider value; layout math across
--- the addon reads them rather than re-deriving, so they re-sync whenever the size changes.
+-- Layout reads BorderSize/IconBorderSize; re-sync after the slider changes so callers don't re-derive.
 function C.BorderStyle.SyncEffectiveSize(gs)
     if not gs then return end
     local d = C.BorderStyle.DefaultPixelSize
@@ -263,8 +259,7 @@ C.Cooldown = {
     },
 }
 
--- Tracked plugin uses globally-unique counter ids for system indices.
--- Container records live in a flat global table; ids are sparse and never reused.
+-- Global counter ids; container records are sparse in a flat global table and never reused.
 C.Tracked = {
     MaxIconContainers = 10, -- Per-spec cap on icon containers
     MaxBars = 10, -- Per-spec cap on single-spell bars
@@ -358,8 +353,7 @@ C.Colors = {
     Background = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
     Absorb = { r = 0.4, g = 0.75, b = 1.0, a = 0.85 },
 
-    -- Power Type Colors (for boss frames, etc.)
-    -- Keys correspond to Enum.PowerType
+    -- Power Type colors, keyed by Enum.PowerType.
     PowerType = {
         [0] = { r = 0, g = 0, b = 1 }, -- Mana
         [1] = { r = 1, g = 0, b = 0 }, -- Rage

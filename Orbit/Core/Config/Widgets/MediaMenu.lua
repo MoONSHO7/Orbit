@@ -27,8 +27,7 @@ local function SortNames(items)
 end
 
 -- [ FACTORY ]----------------------------------------------------------------------------------------
--- owner = the picker's preview control (popup anchors below it; closes when it hides)
--- opts  = { rowHeight, maxHeight, firstItem?, createRow(parent), renderRow(row, name, sel), onSelect(name) }
+-- opts: { rowHeight, maxHeight, firstItem?, createRow(parent), renderRow(row, name, sel), onSelect(name) }
 function MediaMenu:Create(owner, opts)
     local rowHeight = opts.rowHeight
 
@@ -71,9 +70,7 @@ function MediaMenu:Create(owner, opts)
     content:SetPoint("TOPLEFT", searchStrip, "BOTTOMLEFT", 0, -PAD)
     content:SetPoint("TOPRIGHT", searchStrip, "BOTTOMRIGHT", 0, -PAD)
 
-    -- visibleSlots caps how many rows render at once (and how many row frames are pooled): the
-    -- lesser of what maxHeight allows and the MAX_VISIBLE_ROWS hard cap. The popup itself is sized
-    -- to the filtered entry count by ResizeToContent, so a short list never shows an empty box.
+    -- visibleSlots caps row-frame pool (min of maxHeight fit and MAX_VISIBLE_ROWS); ResizeToContent sizes the popup to filtered count.
     local fitByHeight = math_max(1, math_floor((opts.maxHeight - SEARCH_HEIGHT - PAD * 3) / rowHeight))
     local visibleSlots = math_min(MAX_VISIBLE_ROWS, fitByHeight)
 
@@ -133,8 +130,7 @@ function MediaMenu:Create(owner, opts)
         end
     end
 
-    -- Size the popup to the filtered entry count, clamped to visibleSlots -- a 3-item list
-    -- yields a 3-row popup, not an empty maxHeight box.
+    -- Clamp popup height to filtered count so a 3-item list renders 3 rows, not an empty maxHeight box.
     local function ResizeToContent()
         local rows = math_max(1, math_min(#popup.filtered, visibleSlots))
         content:SetHeight(rows * rowHeight)

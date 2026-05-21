@@ -9,10 +9,7 @@ local CROSS_TEX = "Interface\\RAIDFRAME\\ReadyCheck-NotReady"
 local TRISTATE_YELLOW = { r = 1, g = 0.82, b = 0 }
 
 -- [ CHECKBOX WIDGET ]--------------------------------------------------------------------------------
--- Supports two layout modes:
---   Standard (default): 3-column settings layout via EditModeSettingCheckboxTemplate.
---   Compact (opts.compact=true): Grid-friendly [icon][label] via UICheckButtonTemplate.
--- Supports tri-state (opts.triState=true): unchecked(0) → checked(1) → cross(2).
+-- opts.compact → [icon][label] via UICheckButtonTemplate; opts.triState → unchecked(0)→checked(1)→cross(2).
 function Layout:CreateCheckbox(parent, label, tooltip, initialValue, callback, opts)
     opts = opts or {}
     local frame

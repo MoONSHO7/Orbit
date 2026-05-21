@@ -65,8 +65,6 @@ local function GetActiveSlots()
 end
 
 -- [ ORIENTATION ] -----------------------------------------------------------------------------------
--- S15-C2: orientation math lives in OrbitEngine.FrameOrientation:DetectOrientation (stricter
--- nil-guards). The previous file-local was a line-for-line reimplementation.
 
 local function IsHorizontal()
     return currentOrientation == "TOP" or currentOrientation == "BOTTOM"
@@ -184,9 +182,7 @@ local function CreateDock()
     dock:SetMovable(true)
     dock:RegisterForDrag("LeftButton")
     dock.orbitAutoOrient = true
-    -- CreateDock is a file-local function, not a Plugin method — use the Plugin upvalue directly.
-    -- Previously read `self.displayName` which resolved to the nil global, leaving editModeName
-    -- unset (EditMode then couldn't identify the frame for click/drag).
+    -- file-local function, not a Plugin method — use the Plugin upvalue directly (self would be nil here).
     dock.editModeName = Plugin.displayName
     dock.systemIndex = 1
     return dock
@@ -205,8 +201,7 @@ function Plugin:OnLoad()
     OrbitEngine.Frame:AttachSettingsListener(dock, self, 1)
     OrbitEngine.Frame:RegisterOrientationCallback(dock, function(orientation)
         if currentOrientation == orientation then return end
-        -- S15-L5: dead-write removed (`currentOrientation = orientation`); RefreshDock
-        -- unconditionally re-resolves currentOrientation via DetectOrientation immediately.
+        -- RefreshDock re-resolves currentOrientation via DetectOrientation; no manual write needed.
         RefreshDock()
     end)
     OrbitEngine.Frame:RestorePosition(dock, self, 1)

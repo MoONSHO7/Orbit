@@ -210,11 +210,7 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
 end
 
 -- [ SPEC-SCOPED STORAGE ] ---------------------------------------------------------------------------
--- Per-character, per-spec storage layered under Orbit.db.SpecData[charKey][specID][systemIndex][key].
--- Used by plugins whose settings must differ between specs (Tracked's items/positions,
--- CooldownManager's injected icons). Plugins that override GetSetting/SetSetting to redirect
--- individual keys into this store (e.g. TrackedPlugin.SPEC_SCOPED_KEYS) get spec scoping for free;
--- callers that only need a handful of keys can hit these methods directly.
+-- Orbit.db.SpecData[charKey][specID][systemIndex][key]. Plugins overriding GetSetting/SetSetting to redirect keys get spec scoping for free (e.g. TrackedPlugin.SPEC_SCOPED_KEYS).
 function Orbit.PluginMixin:GetCurrentSpecID()
     local specIndex = GetSpecialization()
     return specIndex and GetSpecializationInfo(specIndex)

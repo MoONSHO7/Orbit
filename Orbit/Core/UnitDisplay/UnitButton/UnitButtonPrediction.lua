@@ -6,9 +6,7 @@ Engine.UnitButton = Engine.UnitButton or {}
 local UnitButton = Engine.UnitButton
 local DEFAULT_HEAL_VALUE = 0
 
--- UnitGetIncomingHeals / UnitGetTotalAbsorbs / UnitGetTotalHealAbsorbs are secret in combat;
--- `v or 0` would throw. Forward the value as-is (StatusBar:SetValue is a C++ sink that accepts
--- secret numerics) and only substitute DEFAULT_HEAL_VALUE when we can prove v is plainly nil.
+-- UnitGetIncomingHeals/TotalAbsorbs/TotalHealAbsorbs are secret in combat — forward to the C++ sink and substitute DEFAULT only when v is plainly nil.
 local function SafeHealValue(v)
     if issecretvalue(v) then return v end
     return v or DEFAULT_HEAL_VALUE

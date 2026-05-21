@@ -16,9 +16,6 @@ Panel.Tabs = {}
 Panel.TabOrder = TAB_ORDER
 
 -- [ SHARED HELPERS ]---------------------------------------------------------------------------------
--- Exposed on Panel._helpers so tab files can build Global-scoped settings plugins without
--- duplicating the GetSetting/SetSetting/ApplySettings wiring.
-
 local function RefreshAllPreviews()
     for _, plugin in ipairs(OrbitEngine.systems) do
         if plugin.ApplyPreviewVisuals then plugin:ApplyPreviewVisuals() end
@@ -26,9 +23,7 @@ local function RefreshAllPreviews()
 end
 
 -- [ FONT EVENT BROADCAST ]---------------------------------------------------------------------------
--- Resolves the current GlobalSettings font state and broadcasts it via Blizzard's shared
--- EventRegistry so external addons (e.g. Orbit-Talents) can mirror Orbit's font choices
--- without reading Orbit's tables directly. Payload is resolved (LSM path, not font name).
+-- Broadcast resolved (LSM path) font state via EventRegistry so external addons (e.g. Orbit-Talents) can mirror without reading Orbit tables.
 local FONT_KEYS = { Font = true, FontOutline = true, FontShadow = true }
 
 local function FireFontChanged()

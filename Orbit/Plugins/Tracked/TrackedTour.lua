@@ -1,6 +1,4 @@
 -- [ TRACKED - COOLDOWN SETTINGS HINT ] --------------------------------------------------------------
--- Single-shot tooltip pinned alongside the Tracked Icons / Tracked Bars side
--- tabs the first time the user opens Blizzard's CooldownViewerSettings frame.
 local _, Orbit = ...
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------

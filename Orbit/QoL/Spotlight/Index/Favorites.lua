@@ -5,8 +5,7 @@ Orbit.Spotlight.Index.Favorites = Favorites
 
 local SUPPORTED = { mounts = true, pets = true, toys = true }
 
--- C_MountJournal.SetIsFavorite is index-based on the displayed list (filter-dependent), not mountID.
--- canFavorite is false for restricted mounts (e.g. faction-specific on the wrong faction).
+-- SetIsFavorite is filter-dependent display-index, not mountID; canFavorite=false for restricted mounts.
 local function ToggleMount(entry, value)
     for i = 1, C_MountJournal.GetNumDisplayedMounts() do
         local _, _, _, _, _, _, _, _, _, _, _, mountID = C_MountJournal.GetDisplayedMountInfo(i)

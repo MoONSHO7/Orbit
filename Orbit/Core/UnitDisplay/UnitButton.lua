@@ -19,10 +19,7 @@ local HEAL_ABSORB_ALPHA = 0.15
 local HEAL_ABSORB_PATTERN_SIZE = 3200
 local HEAL_ABSORB_TEXCOORD = 100
 
--- Total-absorb tiled stripe pattern. The "Orbit Absorb" texture tiles; rendered as a stretched
--- statusbar fill its diagonal stripes shear, so it draws as a clip-masked horizTile/vertTile
--- texture. PATTERN_SIZE is an oversized fixed square the mask crops; TILE_W/H are the texture's
--- native dimensions, so the texcoords below show each tile at its authored size.
+-- Stretched statusbar fill would shear the diagonal stripes — draw as a clip-masked horizTile/vertTile instead; PATTERN_SIZE is the oversized square the mask crops, TILE_W/H are native dims for texcoords.
 local ABSORB_PATTERN_SIZE = 3200
 local ABSORB_TILE_W = 256
 local ABSORB_TILE_H = 64
@@ -119,8 +116,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealthDamageTexture:SetPoint("BOTTOMRIGHT", f.HealthDamageBar:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
     Orbit.Skin:RegisterMaskedSurface(f, f.HealthDamageTexture)
 
-    -- Pre-create the (hidden) health overlay so it can inherit the rounded mask; SkinStatusBar
-    -- fills or hides it per the OverlayTexture setting.
+    -- Pre-create the (hidden) overlay so it inherits the rounded mask; SkinStatusBar fills or hides per OverlayTexture.
     Orbit.Skin:AddOverlay(f.Health)
     if f.Health.Overlay then Orbit.Skin:RegisterMaskedSurface(f, f.Health.Overlay) end
 
@@ -130,8 +126,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     Orbit.Skin:RegisterMaskedSurface(f, f.OtherIncomingHealBar:GetStatusBarTexture())
 
     f.TotalAbsorbBar = CreateFrame("StatusBar", nil, f.Health)
-    -- A placeholder fill so GetStatusBarTexture() is valid for the mask anchors below;
-    -- ApplyAbsorbTexture sets the real fill (or keeps white, for the tiled pattern) at the end.
+    -- Placeholder so GetStatusBarTexture() is valid for the mask anchors below; ApplyAbsorbTexture sets the real fill at the end.
     f.TotalAbsorbBar:SetStatusBarTexture(WHITE_TEXTURE)
     f.TotalAbsorbBar:SetStatusBarColor(ABSORB_COLOR.r, ABSORB_COLOR.g, ABSORB_COLOR.b, ABSORB_COLOR.a)
     f.TotalAbsorbBar:SetMinMaxValues(0, 1)
@@ -140,9 +135,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.TotalAbsorbBar:Hide()
     Orbit.Skin:RegisterMaskedSurface(f, f.TotalAbsorbBar:GetStatusBarTexture())
 
-    -- Tiled stripe pattern for the "Orbit Absorb" texture: a horizTile/vertTile texture
-    -- MOD-multiplied over the bar's plain fill, clipped to the fill region by TotalAbsorbMask.
-    -- Skin:ApplyAbsorbTexture shows it for tiling fills and hides it for stretched ones.
+    -- MOD-blended tiled pattern, clipped to the fill by TotalAbsorbMask; Skin:ApplyAbsorbTexture toggles it per tiling/stretched fill.
     f.TotalAbsorbMask = CreateFrame("Frame", nil, f.TotalAbsorbBar)
     f.TotalAbsorbMask:SetClipsChildren(true)
     f.TotalAbsorbMask:SetFrameLevel(f.TotalAbsorbBar:GetFrameLevel() + Constants.Levels.StatusBar)
@@ -157,8 +150,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.TotalAbsorbPattern:SetVertTile(true)
     f.TotalAbsorbPattern:SetTexCoord(0, ABSORB_PATTERN_SIZE / ABSORB_TILE_W, 0, ABSORB_PATTERN_SIZE / ABSORB_TILE_H)
     f.TotalAbsorbPattern:SetBlendMode("MOD")
-    -- the tiled-pattern texcoords -- stamped here so ApplyAbsorbTexture can re-assert them after
-    -- swapping the texture (every tiling fill shares the same 256x64 size, so one pair fits all)
+    -- Stamp tileCoord so ApplyAbsorbTexture re-asserts them after texture swap (all tiling fills share 256x64).
     f.TotalAbsorbPattern.tileCoordX = ABSORB_PATTERN_SIZE / ABSORB_TILE_W
     f.TotalAbsorbPattern.tileCoordY = ABSORB_PATTERN_SIZE / ABSORB_TILE_H
     f.TotalAbsorbBar.TiledPattern = f.TotalAbsorbPattern

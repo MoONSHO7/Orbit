@@ -39,7 +39,6 @@ local FRAME_NAMES = {
 local FRAME_NAMES_HASH = {}
 for _, name in ipairs(FRAME_NAMES) do FRAME_NAMES_HASH[name] = true end
 
--- SetScale taints UIWidget arithmetic on widget-hosting frames (BlizzMove issue #181). Drag only.
 local NO_SCALE = {
     WorldMapFrame = true, FlightMapFrame = true,
     GarrisonLandingPage = true, ExpansionLandingPage = true,
@@ -142,8 +141,7 @@ local function ApplySavedScale(frame)
 end
 
 -- [ DRAG HANDLERS ]----------------------------------------------------------------------------------
--- `_mmDragging` sentinel: a click-and-release without our StartMoving would still fire OnDragStop,
--- and StopMovingOrSizing on a protected frame in combat trips ADDON_ACTION_BLOCKED.
+-- _mmDragging sentinel — a click-and-release without StartMoving still fires OnDragStop, and StopMovingOrSizing on a protected frame in combat trips ADDON_ACTION_BLOCKED.
 local function OnDragStart(frame)
     if InCombatLockdown() then return end
     frame._mmDragging = true

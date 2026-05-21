@@ -51,8 +51,7 @@ local function CreateGlowEdge(parent, point1, point2, isVertical, l, r, t, b, cr
 end
 
 -- [ SHARED VISIBILITY GATE ] ------------------------------------------------------------------------
--- Weak-keyed so a garbage-collected glow falls out of the registry; gateTicker
--- stays alive once started (one ticker for every glow in the session).
+-- Weak-keyed so a GC'd glow falls out; gateTicker stays alive once started (one for all glows).
 local gatedGlows = setmetatable({}, { __mode = "k" })
 local gateTicker
 
@@ -70,8 +69,7 @@ local function UpdateGatedGlows()
 end
 
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------
--- `outset` is either a number (static) or a function returning a number (re-evaluated on every
--- glow Show, so callers can depend on live settings like GlobalSettings.BorderSize).
+-- `outset` accepts a function — re-evaluated on every Show so it tracks live settings like GlobalSettings.BorderSize.
 function DropZoneGlow:Attach(zoneFrame, r, g, b, outset)
     local glow = CreateFrame("Frame", nil, UIParent)
     glow:SetFrameStrata(Orbit.Constants.Strata.Background)

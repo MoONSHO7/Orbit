@@ -78,8 +78,7 @@ function Transaction:GetPending(key)
     return pending
 end
 
--- Effective read: pending if set, else falls back to the plugin's saved setting. Used during the
--- transaction to surface the currently-effective value (saved + any pending overlay).
+-- Effective read: pending overlay if set, else falls through to saved setting.
 function Transaction:Get(key)
     if not active then return nil end
     local pending = pendingSettings[key]

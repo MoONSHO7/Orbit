@@ -1,7 +1,4 @@
 -- [ ORBIT FRAME SELECTION (CORE) ] ------------------------------------------------------------------
--- This is the refactored core module. Drag/Nudge/Tooltip/NativeHook
--- have been extracted into separate files in Selection/ subdirectory.
-
 local _, Orbit = ...
 local L = Orbit.L
 local Engine = Orbit.Engine
@@ -148,9 +145,7 @@ end
 function Selection:GetSnapTargets(excludeFrame)
     local targets = {}
 
-    -- Unified Dependency Check (BFS)
-    -- Checks if target depends on root via ANY combination of Orbit Anchors or UI Parentage.
-    -- This prevents circular dependencies even in complex interleaved chains.
+    -- BFS through Orbit anchors AND UI parentage — catches circular deps across interleaved chains.
     local function IsDependent(target, root)
         if not target or not root then
             return false
@@ -188,13 +183,7 @@ function Selection:GetSnapTargets(excludeFrame)
         return false
     end
 
-    -- Skip frames that are skipped in the AnchorGraph (virtual = content-empty,
-    -- or disabled = off-spec / plugin off). Snapping to a skipped frame would
-    -- create an anchor that ReconcileChain immediately promotes away, which
-    -- is confusing UX (the visual drop point isn't where the frame ends up).
-    -- Empty Tracked containers are the canonical case: they stay visible and
-    -- selectable in edit mode but must not be valid anchor targets until they
-    -- have content.
+    -- Skip AnchorGraph-skipped frames (virtual/disabled) — ReconcileChain would promote the anchor away from the drop point. Empty Tracked containers are the canonical case.
     local Graph = Engine.AnchorGraph
     for f in pairs(self.selections) do
         if f ~= excludeFrame and not f:IsForbidden() and f:IsVisible() and not Graph:IsSkipped(f) then

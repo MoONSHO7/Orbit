@@ -110,8 +110,7 @@ local METRIC_ENTRIES = {
     { value = DM.MeterType.Deaths,                labelKey = "PLU_DM_METRIC_DEATHS" },
 }
 
--- Guard on entry: seconds is a C_DamageMeter-owned number and is secret-in-combat. Caller must
--- check issecretvalue() before handing it in, so we never arithmetic on a tainted value here.
+-- Caller must issecretvalue-guard `seconds` before calling — C_DamageMeter values are secret-in-combat.
 local function FormatDuration(seconds)
     if not seconds or seconds <= 0 then return "" end
     seconds = math.floor(seconds + 0.5)
@@ -231,8 +230,7 @@ local function PickHistoryAtlas(entry)
     return HISTORY_ATLAS_NORMAL
 end
 
--- entry.durationSeconds is a C_DamageMeter return (secret-in-combat). Route through SetMinMaxValues
--- + SetValue sinks (which accept secret numbers) and skip Lua-side formatting when tainted.
+-- durationSeconds is secret-in-combat — route through Set{MinMax,Value} sinks, skip Lua-side formatting when tainted.
 local function PaintHistoryBar(bar, rank, entry, maxDuration, isSelected, playerClass)
     bar._source = nil
     bar._historyEntry = entry
@@ -337,8 +335,7 @@ end
 
 local TEXT_COMPONENT_KEYS = { "Rank", "Name", "DPS", "DamageDone" }
 
--- Canvas Dock writes disabledComponents as an array; NormalizeMeterDefs rewrites persisted form to a
--- hash. Normalize txn-staged arrays to hash at read time so consumers always see { [key] = true }.
+-- Canvas Dock writes an array; persisted form is a hash. Normalize staged arrays to hash at read time.
 local function AsHashSet(list)
     if type(list) ~= "table" then return {} end
     if list[1] == nil then return list end
@@ -625,8 +622,7 @@ end
 
 local function RefreshBackgrounds(frame, def)
     local mode = def.background
-    -- The meter has no backdrop colour picker; per-bar and per-frame backdrops both use the
-    -- global "Background" colour (Textures tab).
+    -- Per-bar and per-frame backdrops both pull the global "Background" colour (Textures tab) — no per-meter colour picker.
     local c = Orbit.Skin:GetBackgroundColor()
     frame._backdrop:SetColorTexture(c.r, c.g, c.b, c.a)
     frame._backdrop:SetShown(mode == BG.Frame)
@@ -642,9 +638,7 @@ local function LayoutBars(frame, def)
     local width = GetEffectiveWidth(frame, def)
     local frameScale = frame:GetEffectiveScale()
     local stride = def.barHeight + def.barGap
-    -- S20-L1.b: hoist LSM:Fetch + font/outline resolves out of the per-bar loop. The 0.5s UITicker
-    -- iterates up-to-40-bars × up-to-5-meters; each GetBarTexture/GetFont is a LibSharedMedia table
-    -- walk through registered statusbars / fonts.
+    -- Hoist LSM:Fetch out of the per-bar loop — UITicker iterates ≤40 bars × ≤5 meters every 0.5s, each Get* walks LSM's registered table.
     local barTexture = GetBarTexture()
     local titleFont = GetFont()
     local titleOutline = GetFontOutline()
@@ -671,8 +665,7 @@ local function LayoutBars(frame, def)
 end
 
 -- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
--- Divisor pair multiplies to the order of magnitude (e.g. 10 * 100 = 1000 for "K"); fractionDivisor=100 gives 2 decimals.
--- Breakpoint=0 is the catch-all so sub-1 floats can't fall through to raw tostring.
+-- significandDivisor * fractionDivisor = order of magnitude (10×100=1000 → "K"); breakpoint=0 catches sub-1 floats so nothing falls through to raw tostring.
 local SHORT_BREAKPOINTS = {
     { breakpoint = 1000000000000, abbreviation = "T", significandDivisor = 10000000000, fractionDivisor = 100, abbreviationIsGlobal = false },
     { breakpoint = 1000000000,    abbreviation = "B", significandDivisor = 10000000,    fractionDivisor = 100, abbreviationIsGlobal = false },
@@ -682,11 +675,7 @@ local SHORT_BREAKPOINTS = {
 }
 local SHORT_OPTIONS = { breakpointData = SHORT_BREAKPOINTS }
 
--- Declared above BuildMeterFrame: CreateCanvasPreview closure captures this upvalue at parse time.
--- DamageMeterCombatSource totalAmount/amountPerSecond are secret in combat per
--- DamageMeterDocumentation.lua:204-205 (no NeverSecret on those fields; getter is SecretWhenInCombat).
--- issecretvalue-guard first; on the secret path the `not value` empty-text branch is skipped
--- (Abbreviate/BreakUpLargeNumbers accept secret args; SetFormattedText is a C-sink).
+-- Hoisted above BuildMeterFrame for the CreateCanvasPreview closure. value (totalAmount/amountPerSecond) is secret-in-combat; Abbreviate/BreakUpLargeNumbers accept secret args, SetFormattedText is a C-sink.
 local function WriteNumberField(fs, value, overrides)
     if not issecretvalue(value) and not value then fs:SetText(""); return end
     local format = overrides and overrides.Format
@@ -713,9 +702,7 @@ local function BuildMeterFrame(id, def)
     frame.systemIndex = id
     frame.editModeName = L.PLU_DM_EDIT_MODE_NAME_F:format(id)
     frame.orbitPlugin = Plugin
-    -- Any-edge anchoring: DM stack can snap T/B (width propagates via orbitWidthSync) or L/R
-    -- (plain anchor, no cross-axis sync). Height is intentionally NOT synced — DM's height
-    -- derives from barCount × barHeight + gaps and must not be overwritten by a parent.
+    -- Any-edge anchor; only width syncs because height is derived from barCount × barHeight + gaps and must not be overwritten by a parent.
     frame.anchorOptions = {
         horizontal   = true,
         vertical     = true,
@@ -1180,8 +1167,7 @@ local function PaintBar(bar, rank, source, maxAmount, iconPosition, positions, m
     end
     bar.StatusBar:GetStatusBarTexture():SetVertexColor(ResolveBarColor(source.classFilename, meterType))
     bar.Rank:SetFormattedText("%d.", rank)
-    -- GetPlayerInfoByGUID is AllowedWhenTainted and returns name/realmName separately (combat-safe).
-    -- No == "" check: returned name may be secret, truthy check is the only legal inspection.
+    -- GetPlayerInfoByGUID is AllowedWhenTainted; returned name may be secret so truthy check is the only legal inspection (no `~= ""`).
     local displayName
     if source.sourceGUID then
         local _, _, _, _, _, name = GetPlayerInfoByGUID(source.sourceGUID)
@@ -1244,8 +1230,7 @@ function RenderFrame(id)
 
     if def.viewMode == "history" then
         local entries = BuildHistoryEntries()
-        -- Comparing durationSeconds in Lua would throw on secret values in combat. Skip the scan
-        -- when any entry is tainted; bars render at full width (1.0 denom) until combat ends.
+        -- Lua-side `>` on durationSeconds throws in combat — skip the scan if any entry is tainted; bars render full-width (1.0 denom) until combat ends.
         local maxDuration = 0
         local anySecret = false
         for _, e in ipairs(entries) do
@@ -1302,10 +1287,7 @@ function RenderFrame(id)
             if spell then
                 local details = spell.combatSpellDetails
                 local rowName, rowClass, iconID
-                -- spell.spellID (DamageMeterDocumentation.lua:219) and details.unitName (:235) lack
-                -- NeverSecret; secret in combat. hasSpellID is a non-throwing presence test (a secret
-                -- value is non-nil by definition); the rowName "" normalization is skipped on the
-                -- secret path so the FontString sink receives the value directly.
+                -- spell.spellID and details.unitName are secret-in-combat — hasSpellID is a non-throwing presence test (secret values are non-nil by definition); rowName "" normalization skips the secret path.
                 local spellID = spell.spellID
                 local hasSpellID = issecretvalue(spellID) or (spellID ~= nil)
                 if isHostileParent then
@@ -1369,8 +1351,7 @@ function Plugin:RebuildAllMeters()
     self:EnsureSeedMeter()
     -- Partial-def self-heal: fill in any missing styling fields BEFORE LayoutBars reads them.
     self:NormalizeMeterDefs()
-    -- Child self-heal: any def whose anchor.target no longer resolves to a live meter
-    -- has its anchor cleared (and visual position snapshotted) BEFORE frames are laid out.
+    -- Clear stale anchors (and snapshot visual position) before LayoutBars reads them.
     self:ScrubStaleAnchors()
 
     local defs = self:GetMeterDefs()
@@ -1406,9 +1387,7 @@ function Plugin:RebuildAllMeters()
 
     self:RenderAllMeters()
 
-    -- Frames created mid-Edit-Mode have a Selection overlay (from Attach) but it hasn't been
-    -- Shown yet — OnEditModeEnter runs a single pass on Edit Mode enter, and our new frame missed it.
-    -- Re-fire it so the new meter becomes selectable without requiring an exit/re-enter.
+    -- Re-fire OnEditModeEnter so a meter created mid-Edit-Mode becomes selectable without an exit/re-enter (OnEditModeEnter runs only at enter).
     if InEditMode() then OrbitEngine.Frame:OnEditModeEnter() end
 end
 
@@ -1477,9 +1456,7 @@ end
 function Plugin:InitUI()
     RegisterComponentSchemas()
 
-    -- Coalesce CurrentUpdated/SessionUpdated bursts into a single render per UITicker cycle.
-    -- Blizzard's session updater fires both signals many times per second during combat; the
-    -- ticker collapses them at DM.UITickerSeconds cadence, dropping ~35k renders/min to ~120.
+    -- Coalesce CurrentUpdated/SessionUpdated bursts (~many/sec in combat) into one render per UITicker cycle — ~35k renders/min → ~120.
     Orbit.EventBus:On(SIGNAL.CurrentUpdated, function() self._renderDirty = true end, self)
     Orbit.EventBus:On(SIGNAL.SessionUpdated, function() InvalidateHistoryCache(); self._renderDirty = true end, self)
     Orbit.EventBus:On(SIGNAL.SessionReset, function()

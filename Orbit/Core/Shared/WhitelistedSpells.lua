@@ -22,8 +22,7 @@ W.CLASS_RESOURCES = {
 }
 
 -- [ HEALER HOTS & SHIELDS ]--------------------------------------------------------------------------
--- Full aura data (name, spellId, applications, duration, expirationTime) is non-secret.
--- HealerAuraRegistry.lua also references these; keep in sync.
+-- HealerAuraRegistry.lua mirrors this list — keep in sync.
 W.HEALER_AURAS = {
     -- Preservation Evoker
     [364343] = "Echo",

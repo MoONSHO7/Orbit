@@ -79,9 +79,7 @@ function Mixin:_updateBlizzardBuffs()
     local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
     if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY) end
 
-    -- When collapsed, build a set of HELPFUL indices that are player-cast and not excluded
-    -- auraInstanceID is the ONLY non-secret field; use C-side filter HELPFUL|PLAYER to identify player auras
-    -- spellId may be non-secret from clean context; use issecretvalue guard
+    -- HELPFUL|PLAYER C-filter identifies player auras (auraInstanceID is the only reliably non-secret field); spellId guarded via issecretvalue.
     local showIndices
     if collapsed then
         local excludedSpells = Orbit.GroupAuraFilters and Orbit.GroupAuraFilters.AlwaysExcluded or {}
@@ -185,8 +183,7 @@ function Mixin:_updateBlizzardBuffs()
                         local nb = b.border
                         if nb then
                             local wasShown = nb:IsShown()
-                            -- Proactively force the border rendering on if the button metadata confirms it is a TempEnchant,
-                            -- completely bypassing Blizzard's notoriously deferred `TempEnchantBorder:Show()` pool delay (which causes 3-5s visual pop-in on /load)
+                            -- Force-render TempEnchantBorder on metadata match — bypasses Blizzard's deferred pool delay that causes 3-5s pop-in on /load.
                             if b.key == "_orbitTempEnchantBorder" and btn.buttonInfo and btn.buttonInfo.isTempEnchant then
                                 wasShown = true
                             end

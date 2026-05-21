@@ -24,10 +24,7 @@ local function GetActiveSpellID(spellID)
 end
 
 -- [ COOLDOWN VALIDATION ] ---------------------------------------------------------------------------
--- True when the given spell/item has any form of cooldown, charge system, or
--- tooltip-declared duration. Guards secret-value boundaries on
--- GetSpellBaseCooldown and C_Spell.GetSpellCharges so the comparison/boolean
--- test never throws in combat.
+-- issecretvalue-guards on GetSpellBaseCooldown / C_Spell.GetSpellCharges so the comparisons never throw in combat.
 function DragDrop:HasCooldown(itemType, id)
     if itemType == "spell" then
         local activeId = GetActiveSpellID(id)
@@ -44,8 +41,7 @@ function DragDrop:HasCooldown(itemType, id)
 end
 
 -- [ CURSOR RESOLUTION ] -----------------------------------------------------------------------------
--- Cursor → (itemType, actualId). Unwraps spellbook subType for book-slot spells
--- so the caller always gets a real spellID, never a book-slot index.
+-- Unwraps spellbook subType so the caller always gets a real spellID, never a book-slot index.
 function DragDrop:ResolveCursorInfo()
     local cursorType, id, subType, spellID = GetCursorInfo()
     if cursorType == "spell" then
@@ -73,9 +69,7 @@ function DragDrop:ResolveSpellFromCursor()
     return actualId
 end
 
--- True when the cursor currently holds a spell/item with a cooldown or charge
--- system. pcall wraps HasCooldown because any of the underlying API calls can
--- throw on a secret-value boundary if a new API version starts returning one.
+-- pcall guards HasCooldown — any underlying API can start throwing on a secret-value boundary in a future patch.
 function DragDrop:IsDraggingCooldownAbility()
     local itemType, actualId = self:ResolveCursorInfo()
     if not itemType then return false end
@@ -84,8 +78,7 @@ function DragDrop:IsDraggingCooldownAbility()
 end
 
 -- [ CHARGE SPELL VALIDATION ] -----------------------------------------------------------------------
--- Returns (isChargeSpell, chargeInfo). ci.maxCharges is secret in combat so the
--- check must be guarded or the boolean test itself would throw.
+-- ci.maxCharges is secret in combat — the boolean test itself would throw without the issecretvalue guard.
 function DragDrop:IsChargeSpell(spellId)
     if not spellId then return false, nil end
     local ci = C_Spell.GetSpellCharges(spellId)
@@ -94,9 +87,7 @@ function DragDrop:IsChargeSpell(spellId)
 end
 
 -- [ EQUIPMENT SLOT RESOLUTION ] ---------------------------------------------------------------------
--- Returns the inventory slot id (13 or 14) if the item is currently equipped
--- in a trinket slot, otherwise nil. Used by ViewerInjection to track trinkets
--- by slot so the injected icon follows gear swaps automatically.
+-- ViewerInjection tracks trinkets by slot so the injected icon follows gear swaps automatically.
 function DragDrop:ResolveEquipmentSlot(itemId)
     for _, slotId in ipairs(EQUIPMENT_SLOTS) do
         local equippedId = GetInventoryItemID("player", slotId)
@@ -106,8 +97,6 @@ function DragDrop:ResolveEquipmentSlot(itemId)
 end
 
 -- [ CURSOR TEXTURE ] --------------------------------------------------------------------------------
--- Resolves the cursor's current payload to an icon textureID. Returns nil when
--- the cursor is empty or holding a non-spell/item payload.
 function DragDrop:GetCursorTexture()
     local itemType, id = self:ResolveCursorInfo()
     if not itemType then return nil end
@@ -121,10 +110,7 @@ function DragDrop:GetCursorTexture()
 end
 
 -- [ SAVED-DATA BUILDERS ] ---------------------------------------------------------------------------
--- Build the per-slot entry stored under a `TrackedItems[key]` table. Captures
--- active duration, cooldown duration, useSpellId (items only), and equipment
--- slotId so a consumer can render the icon and timer without a second API
--- lookup.
+-- Captures durations + useSpellId + slotId so the consumer renders without a second API lookup.
 function DragDrop:BuildTrackedItemEntry(itemType, itemId, x, y)
     if not (itemType and itemId) then return nil end
     local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
@@ -144,9 +130,7 @@ function DragDrop:BuildTrackedItemEntry(itemType, itemId, x, y)
     }
 end
 
--- Build the per-viewer entry stored under `InjectedItems`. Captures the
--- insertion-order metadata (afterNativeIndex) that the consumer uses to
--- interleave injected frames with the native cooldown viewer icons.
+-- afterNativeIndex lets the consumer interleave injected frames with native cooldown viewer icons.
 function DragDrop:BuildInjectedItemEntry(itemType, itemId, afterNativeIndex)
     if not (itemType and itemId) then return nil end
     local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
@@ -163,13 +147,7 @@ function DragDrop:BuildInjectedItemEntry(itemType, itemId, afterNativeIndex)
     }
 end
 
--- Build the payload stored on a TrackedBar record. Captures everything the bar
--- needs to pick a render mode (charges / active+cd / cd-only) and drive it
--- without a second API or tooltip lookup. maxCharges is spell-only and is
--- captured at drop time outside combat (the boundary is guarded by
--- IsChargeSpell's secret check). Items don't get a maxCharges field — per
--- product decision, charges mode is for spells/abilities only; items render
--- as cd-only or active+cd via TooltipParser durations.
+-- maxCharges is spell-only and captured at drop time outside combat (IsChargeSpell's secret check); items use cd-only/active+cd via TooltipParser durations.
 function DragDrop:BuildTrackedBarPayload(itemType, id)
     if not (itemType and id) then return nil end
     local parseId = (itemType == "spell") and GetActiveSpellID(id) or id

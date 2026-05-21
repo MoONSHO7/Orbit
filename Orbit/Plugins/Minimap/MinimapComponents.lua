@@ -22,9 +22,7 @@ local ZOOM_FADE_OUT = C.ZOOM_FADE_OUT
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
 -- [ SHAPE ] -----------------------------------------------------------------------------------------
--- The active BorderRing option can override the round mask with its own shipped texture file —
--- e.g. Blizzard uses Orbit_BlizzMinimap.tga which has cardinal spike protrusions matching the ring atlas.
--- Other options fall back to Orbit_Circle.tga (MASK_ROUND).
+-- BorderRing option can override the round mask with a shipped texture (e.g. Blizzard's cardinal-spike mask); others fall back to MASK_ROUND.
 function Plugin:GetRoundMaskSource()
     -- HUD view and the Splatter shape both render through the Orbit_Splatter.tga mask.
     if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then return C.MASK_HUD end
@@ -67,16 +65,14 @@ function Plugin:ApplyShape()
         Orbit.Skin:ClearNineSliceBorder(frame)
         Orbit.Skin:SkinBorder(frame, frame, 0, bc, false, true)
     else
-        -- Square shape keeps a square border even under a rounded global Border Style: the
-        -- Minimap render surface can't be given matching rounded corners (SetMaskTexture stretches).
+        -- Square stays square even under a rounded global Border Style — SetMaskTexture stretches, can't round Minimap corners to match.
         Orbit.Skin:SkinBorder(frame, frame, borderSize, bc, false, true)
     end
     self:ApplyBorderRing(bc)
 end
 
 -- [ BORDER COLOR ] ----------------------------------------------------------------------------------
--- Resolves the stored BorderColor (which may be a class-pin sentinel { type = "class", a = ... })
--- to a flat {r,g,b,a} suitable for SkinBorder / SetVertexColor / SetColorTexture.
+-- Resolves the class-pin sentinel (`{ type = "class", a = ... }`) to a flat {r,g,b,a}.
 function Plugin:GetResolvedBorderColor()
     local raw = self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR
     if raw.type == "class" and OrbitEngine.ClassColor then
@@ -141,8 +137,7 @@ function Plugin:ApplyBorderRing(color)
         ring:SetSize(size * (opt.ratioX or 1) + padding, size * (opt.ratioY or 1) + padding)
         ring:SetPoint("CENTER", self.frame, "CENTER", ox, oy)
         ring:SetVertexColor(color.r, color.g, color.b, color.a or 1)
-        -- Reset rotation/alpha when the new option doesn't drive them, so we don't inherit
-        -- residual state from a previously-selected animated option.
+        -- Reset rotation/alpha so a non-animated option doesn't inherit residual state from a previously-selected animated one.
         local trackingFacing = opt.rotatable and self:GetSetting(SYSTEM_ID, "RotateMinimap")
         if not (trackingFacing or opt.spinSeconds) then ring:SetRotation(0) end
         if not opt.pulse then ring:SetAlpha(1) end
@@ -154,11 +149,7 @@ function Plugin:ApplyBorderRing(color)
     end
 end
 
--- OnUpdate driver, created lazily; the script is attached/detached by SetRingDriverEnabled based
--- on whether the current ring option actually needs animation. Animation hooks:
---   * rotatable: track GetPlayerFacing when RotateMinimap is on (Blizzard)
---   * spinSeconds: continuous spin, one revolution per N seconds (Void)
---   * pulse: alpha oscillates between pulse.min and pulse.max over pulse.period seconds (Void)
+-- Lazy OnUpdate driver, attached/detached by SetRingDriverEnabled — handles rotatable/spinSeconds/pulse animation modes.
 function Plugin:EnsureBorderRingDriver()
     if self._ringRotationDriver then return end
     local plugin = self
@@ -189,9 +180,7 @@ function Plugin:EnsureBorderRingDriver()
     self._ringRotationDriver:SetScript("OnUpdate", driverOnUpdate)
 end
 
--- S22-L1: tear down the OnUpdate when no animated ring option is active (default ring option has
--- no animation — without this the driver runs a per-frame closure for the whole session for every
--- user). Re-attaches the stored closure when an animated option is selected later.
+-- Tear down OnUpdate when no animated ring option is active so the driver isn't a per-frame closure for the default (non-animated) ring.
 function Plugin:SetRingDriverEnabled(enabled)
     if enabled then
         self:EnsureBorderRingDriver()
@@ -260,9 +249,7 @@ do
     end)
 end
 
--- Format time using the cached military-time flag instead of re-reading the CVar.
--- GameTime_GetFormattedTime always calls GetCVarBool("timeMgrUseMilitaryTime") internally,
--- so if anything else flips that CVar the clock format can desync from the user's preference.
+-- Use the cached military-time flag — GameTime_GetFormattedTime re-reads the CVar internally so the clock can desync if anything flips it.
 local function FormatClockTime(hour, minute)
     if _clockUseMilitary then
         return format(TIMEMANAGER_TICKER_24HOUR, hour, minute)
@@ -291,8 +278,7 @@ end
 
 function Plugin:StartClockTicker()
     if self._clockTicker then return end
-    -- Warmup: poll every 0.1s until the minute boundary flips, then lock to 60s intervals.
-    -- This ensures the clock is never more than ~0.1s stale regardless of when the addon loaded.
+    -- Warmup polls 0.1s until the minute flips, then locks to 60s — keeps the clock fresh regardless of load time.
     local lastMin = -1
     local function onTick()
         self:UpdateClock()

@@ -22,8 +22,6 @@ local TITLE_CLR = { r = ACCENT.r, g = ACCENT.g, b = ACCENT.b }
 local FONT = "GameFontNormalSmall"
 
 -- [ LOCALIZATION ] ----------------------------------------------------------------------------------
--- Strings live in Localization/Domains/Tours.lua (TOUR_CM_* keys) and Common.lua
--- (CMN_NEXT / CMN_DONE).
 local L = Orbit.L
 
 -- CJK needs wider tooltips for multi-byte glyphs

@@ -244,9 +244,7 @@ do
 end
 
 -- [ HOOK API ] --------------------------------------------------------------------------------------
--- Sanctioned before/after-open hooks replace the previous BossFrame + GroupFrame monkey-patches on
--- Dialog.Open (the worst anti-pattern in the duplication cluster: a plugin overwriting an engine
--- method). Callbacks run inside ErrorHandler:Wrap so a buggy plugin can't break the dialog open path.
+-- Sanctioned before/after-open callbacks; run inside ErrorHandler:Wrap so a buggy plugin can't break the open path.
 Dialog._beforeOpenCallbacks = Dialog._beforeOpenCallbacks or {}
 Dialog._afterOpenCallbacks  = Dialog._afterOpenCallbacks  or {}
 

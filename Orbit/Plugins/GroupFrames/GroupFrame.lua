@@ -248,8 +248,7 @@ end
 local PluginMixin_GetSetting = Orbit.PluginMixin.GetSetting
 local PluginMixin_SetSetting = Orbit.PluginMixin.SetSetting
 
--- Position/Anchor are tier-scoped even though they don't appear in TIER_DEFAULTS — Persistence's
--- drag-time auto-save calls plugin:SetSetting(1, "Position", ...) and must land in Tiers[tier].
+-- Position/Anchor are tier-scoped though absent from TIER_DEFAULTS — Persistence's drag-time writes must land in Tiers[tier].
 local TIER_KEYS = { ComponentPositions = true, DisabledComponents = true, Position = true, Anchor = true }
 for _, defaults in pairs(TIER_DEFAULTS) do
     for k in pairs(defaults) do TIER_KEYS[k] = true end
@@ -417,9 +416,7 @@ local function ScheduleDebouncedRosterUpdate(plugin, updateVisibility)
         if not InCombatLockdown() then 
             plugin:UpdateFrameUnits() 
         else 
-            -- IN COMBAT: We cannot add/remove secure frames. But WoW silently shifts
-            -- players between unit tokens (e.g. raid4 becomes raid3). We MUST force
-            -- the *visible* frames to instantly pull the new underlying player's Health/Name.
+            -- In combat we can't add/remove secure frames, but WoW silently shifts unit tokens — force visible frames to pull the new player's Health/Name.
             if plugin.frames then
                 for _, frame in ipairs(plugin.frames) do
                     if not frame.preview and frame.unit and frame:IsShown() then
@@ -810,8 +807,7 @@ function Plugin:AssignPartyUnits()
             local unit = sortedUnits[i]
             if unit then
                 local currentUnit = frame:GetAttribute("unit")
-                -- UnitGUID can return a secret in combat. Check issecretvalue BEFORE any `or nil`
-                -- or boolean test — those would throw.
+                -- issecretvalue BEFORE any nil/boolean test — UnitGUID is secret in combat.
                 local newGuid = UnitGUID(unit)
                 if issecretvalue(newGuid) then newGuid = nil end
 
@@ -866,8 +862,7 @@ function Plugin:AssignRaidUnits()
             if unitData then
                 local token = unitData.token
                 local currentUnit = frame:GetAttribute("unit")
-                -- UnitGUID can return a secret in combat. Check issecretvalue BEFORE any `or nil`
-                -- or boolean test — those would throw.
+                -- issecretvalue BEFORE any nil/boolean test — UnitGUID is secret in combat.
                 local newGuid = token and UnitGUID(token)
                 if issecretvalue(newGuid) then newGuid = nil end
 

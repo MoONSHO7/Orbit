@@ -8,15 +8,13 @@ local PET_BANK = Enum.SpellBookSpellBank.Pet
 
 local Spellbook = {
     kind = "spellbook",
-    -- UNIT_PET covers pet summon/dismiss transitions so the index picks up hunter/warlock pet abilities
-    -- once the pet is out and the pet spellbook is populated.
+    -- UNIT_PET picks up hunter/warlock pet spellbook once the pet is summoned.
     events = { "SPELLS_CHANGED", "PLAYER_SPECIALIZATION_CHANGED", "UNIT_PET" },
     persistent = false,
 }
 Sources.spellbook = Spellbook
 
--- Adds an entry for a single spell. Shared by the top-level spellbook walk and the flyout-slot walk so
--- inner flyout spells (Portals, Summon Demon destinations, etc.) appear as their own searchable rows.
+-- Shared by top-level + flyout-slot walks so inner flyout spells (Portals, Summon destinations) appear as searchable rows.
 local function AppendSpellEntry(entries, name, spellID, passive)
     if not name or not spellID then return end
     entries[#entries + 1] = {
@@ -30,8 +28,7 @@ local function AppendSpellEntry(entries, name, spellID, passive)
     }
 end
 
--- Pet bank is a flat list indexed 1..numPetSpells. No skill-line traversal, no flyouts, no off-spec.
--- Enumerated only when C_SpellBook.HasPetSpells reports a non-zero count (hunter/warlock with pet out).
+-- Flat 1..numPetSpells; only enumerated when HasPetSpells reports a non-zero count.
 local function AppendPetSpells(entries)
     if not C_SpellBook.HasPetSpells then return end
     local numPetSpells = C_SpellBook.HasPetSpells()
@@ -50,8 +47,7 @@ function Spellbook:Build()
 
     for lineIdx = 1, numLines do
         local lineInfo = C_SpellBook.GetSpellBookSkillLineInfo(lineIdx)
-        -- shouldHide fences off entire skill lines (other specs' trees). Respect it so we never expose
-        -- abilities from non-active specs via Spotlight.
+        -- shouldHide fences off other specs' trees — never expose non-active-spec abilities.
         if lineInfo and not lineInfo.shouldHide then
             local offset = lineInfo.itemIndexOffset or 0
             local count = lineInfo.numSpellBookItems or 0

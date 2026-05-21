@@ -28,8 +28,7 @@ function Recents:Record(entry)
     while #list > MAX_ENTRIES do table.remove(list) end
 end
 
--- Returns a map { [key] = position } where position is the 1-based rank (1 = most recent). The matcher
--- uses the position to scale the recency bonus so the very latest entry out-ranks older recents.
+-- { [key] = rank } where 1 = most recent — matcher scales recency bonus so latest out-ranks older.
 function Recents:GetBoostIndex()
     local list = GetList()
     local boost = {}

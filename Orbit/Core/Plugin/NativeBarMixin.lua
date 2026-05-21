@@ -37,10 +37,7 @@ function Mixin:TriggerLayout(frame)
 end
 
 -- [ NATIVE-PARENT CAPTURE ] -------------------------------------------------------------------------
--- Consolidates the BagBar / MicroMenu / QueueStatus capture pattern: only reparent the button when
--- it's currently parented to a native Blizzard container (or already to us); set `self.conflicted`
--- and bail when another addon has claimed it. Combat-lockdown guard stays at the caller (this helper
--- is pure parent-juggling).
+-- Reparent only from a native Blizzard container; sets self.conflicted and bails when another addon has claimed it.
 function Mixin:CaptureFromNativeParent(button, allowedParents)
     if not button or not self.frame then return false end
     local parent = button:GetParent()

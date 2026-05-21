@@ -382,8 +382,6 @@ function Plugin:ApplySettings(frame)
     end
     local systemIndex = PLAYER_FRAME_INDEX
 
-    -- 1. Apply Base Settings via Mixin (Handling Size, Visuals, RestorePosition)
-    -- Note: UpdateTextLayout runs here but only applies defaults if no custom positions
     self:ApplyUnitFrameSettings(frame, systemIndex)
 
     -- 2. Apply Player Specific Logic
@@ -396,8 +394,7 @@ function Plugin:ApplySettings(frame)
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
     
-    -- Component positions + style overrides (positions, font, color, scale)
-    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    -- Unconditional — must run after ApplyBaseVisuals resets text overrides.
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)
@@ -415,9 +412,6 @@ function Plugin:ApplySettings(frame)
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
     Orbit.EventBus:Fire("ORBIT_PLAYER_SETTINGS_CHANGED")
 end
-
--- Icon update functions (UpdateCombatIcon, UpdateRoleIcon, UpdateLeaderIcon, UpdateMarkerIcon, UpdateGroupPosition)
--- are now provided by StatusIconMixin (mixed in above)
 
 function Plugin:UpdateRestingIcon(frame)
     frame = frame or self.frame

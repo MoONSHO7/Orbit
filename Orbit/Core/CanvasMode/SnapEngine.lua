@@ -1,7 +1,4 @@
 -- [ CANVAS MODE - SNAP ENGINE ]----------------------------------------------------------------------
--- Unified edge-magnet and grid-round logic for component positioning.
--- Used by ComponentRegistry, CanvasModeDrag, and CastBarCreator.
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local CanvasMode = Engine.CanvasMode
@@ -27,8 +24,6 @@ end
 local function GridRound(value, gridSize) return math.floor(value / gridSize + 0.5) * gridSize end
 
 -- [ SNAP AXIS ]--------------------------------------------------------------------------------------
--- Performs edge-magnet then grid-round on a single axis.
--- Returns: snappedValue, guideHint ("LEFT"/"RIGHT"/"CENTER"/"TOP"/"BOTTOM" or nil)
 local GUIDE_X = { pos = "RIGHT", neg = "LEFT", center = "CENTER" }
 local GUIDE_Y = { pos = "TOP", neg = "BOTTOM", center = "CENTER" }
 
@@ -48,12 +43,6 @@ function Snap:SnapAxis(relPos, halfParent, compHalf, guideMap, options)
 end
 
 -- [ SNAP POSITION ]----------------------------------------------------------------------------------
--- Full 2-axis snap: edge-magnet + grid-round.
--- @param relX, relY: center-relative position
--- @param halfW, halfH: half parent dimensions
--- @param compHalfW, compHalfH: half component dimensions
--- @param options: { precisionMode, edgeThreshold, gridSize, edgeOnly }
--- @return snappedX, snappedY, guideX, guideY
 function Snap:Calculate(relX, relY, halfW, halfH, compHalfW, compHalfH, options)
     local snapX, guideX = self:SnapAxis(relX, halfW, compHalfW, GUIDE_X, options)
     local snapY, guideY = self:SnapAxis(relY, halfH, compHalfH, GUIDE_Y, options)

@@ -1,6 +1,4 @@
 -- [ ORBIT GROUP BORDER ]-----------------------------------------------------------------------------
--- Extracted from Skin.lua — group border merging for anchored frames.
--- Methods remain on Orbit.Skin for call-site compatibility.
 local _, addonTable = ...
 local Orbit = addonTable
 local Skin = Orbit.Skin
@@ -9,9 +7,7 @@ local Constants = Orbit.Constants
 
 
 -- [ GROUP BORDER ] ----------------------------------------------------------------------------------
--- Snapshot lets RefreshAllGroupBorders Phase 4 reach ex-members whose anchors moved out of the
--- merge chain — Phase 1's walk only sees frames still anchored, so without this they'd retain
--- _groupBorderActive=true and a stale group mask attached to their surfaces.
+-- Snapshot lets Phase 4 reach ex-members whose anchors left the chain — Phase 1's walk only sees still-anchored frames.
 Skin._groupMembers = setmetatable({}, { __mode = "k" })
 
 function Skin:UpdateGroupBorder(rootFrame)
@@ -34,10 +30,7 @@ function Skin:UpdateGroupBorder(rootFrame)
             if a and a.padding == 0 then
                 local pOpts = GetFrameOptions(frame)
                 local cOpts = GetFrameOptions(child)
-                -- GetAlpha may return a secret when alpha is driven by a range curve;
-                -- `> 0` would throw. Treat secret alpha as "visible" — OOC-hidden
-                -- state is tracked explicitly via _oocFadeHidden, so the other branch
-                -- of the OR still catches the intentional-hide case.
+                -- GetAlpha is secret when alpha is curve-driven; `> 0` would throw. Treat secret as visible — _oocFadeHidden catches the intentional-hide case via the other OR branch.
                 local childAlpha = child:GetAlpha()
                 local alphaVisible = issecretvalue(childAlpha) or (childAlpha > 0)
                 local merged = ShouldMergeBorders(pOpts, a.edge) and ShouldMergeBorders(cOpts, a.edge)
@@ -58,8 +51,7 @@ function Skin:UpdateGroupBorder(rootFrame)
         return
     end
 
-    -- Icon containers are explicitly flagged via ApplyIconGroupBorder;
-    -- check ALL frames in the chain — any icon container makes the whole group icon-styled
+    -- Any icon container in the chain makes the whole group icon-styled (flag set by ApplyIconGroupBorder).
     local isIconStyle = false
     for _, frame in ipairs(allFrames) do
         if frame._isIconContainer then isIconStyle = true; break end
@@ -69,8 +61,6 @@ function Skin:UpdateGroupBorder(rootFrame)
     local styleEntry
     if isIconStyle then styleEntry = self:GetActiveIconBorderStyle()
     else styleEntry = self:GetActiveBorderStyle() end
-    -- The built-in "Orbit" border resolves to nil — the pixel-mode signal. Only an LSM
-    -- edge-file border yields a non-nil styleEntry.
     local isPixelMode = (styleEntry == nil)
 
     -- Mark all merged frames and hide their individual borders
@@ -90,9 +80,7 @@ function Skin:UpdateGroupBorder(rootFrame)
         if frame._gridGroupBorder then frame._gridGroupBorder:Hide() end
     end
 
-    -- Icon containers: boost above the highest child button level.
-    -- Unit frames: border sits just above status textures (root level + Border offset),
-    -- leaving canvas components (text, status icons) above the border.
+    -- Icon containers boost above the highest child button; unit frames sit at root+Border so canvas text/icons stay above the border.
     local overlayLevel
     if isIconStyle then
         local maxLevel = rootFrame:GetFrameLevel()
@@ -116,8 +104,7 @@ function Skin:UpdateGroupBorder(rootFrame)
 
 
 
-    -- Calculate bounding box from anchor edge data (deterministic, no screen coords needed).
-    -- Each frame's position relative to rootFrame TOPLEFT is derived from its anchor edge.
+    -- Bounding box from anchor edges (deterministic, no screen coords) — each frame's position relative to rootFrame TOPLEFT.
     local positions = {}
     positions[rootFrame] = { x = 0, y = 0 }
     local function computePositions(frame)
@@ -257,8 +244,7 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
     end
 
-    -- Hook visibility changes so merges update immediately when frames show/hide
-    -- (e.g. target frame via RegisterUnitWatch). Hooks are persistent and debounced.
+    -- Visibility hooks so merges update immediately on show/hide (e.g. target frame via RegisterUnitWatch); persistent and debounced.
     for _, frame in ipairs(allFrames) do
         if not frame._mergeVisHooked then
             frame:HookScript("OnShow", function() Skin:DeferGroupBorderRefresh() end)
@@ -268,20 +254,13 @@ function Skin:UpdateGroupBorder(rootFrame)
     end
 end
 
--- A frame's masked surfaces are group-managed UNLESS:
---  - it is a per-icon icon container (Icon Padding > 0): each child icon owns its own mask via
---    Icons:ApplyCustom. ClearIconGroupBorder leaves _activeBorderMode nil; a container-bordered
---    (padding 0) icon container keeps _activeBorderMode set.
---  - it is the player aura grid: UnitAuraGridMixin masks its own child icons on the UNIT_AURA
---    cycle (it must, to catch pool-acquired icons), so the group layer must not fight it.
+-- Group-manages surfaces unless: per-icon container (Icon Padding > 0; child icons own their masks via Icons:ApplyCustom) or aura grid (UnitAuraGridMixin masks per-icon on UNIT_AURA).
 local function GroupManagesMask(frame)
     if frame._auraGridFrame then return false end
     return (not frame._isIconContainer) or frame._activeBorderMode ~= nil
 end
 
--- Clears whatever Orbit mask sits on each surface — per-frame or any group's — not just
--- rootFrame's, so a frame that hopped groups or fell back to pixel/legacy leaves no residue.
--- No style produces a mask any more; this only sweeps away masks left by an ex-rounded profile.
+-- Sweep whatever Orbit mask sits on each surface (not just rootFrame's), so a hopped-group or pixel-fallback frame leaves no residue from an ex-rounded profile.
 function Skin:_ClearGroupRoundedMask(rootFrame, frames)
     if not frames then return end
     for _, frame in ipairs(frames) do
@@ -291,9 +270,7 @@ function Skin:_ClearGroupRoundedMask(rootFrame, frames)
             end
         end
     end
-    -- Detach the group mask from the member frames it was SetPoint-anchored to. A MaskTexture
-    -- left cross-anchored onto a frame blocks that frame's StartMoving from re-latching a
-    -- follow point — it must be fully unanchored when the group is torn down.
+    -- A MaskTexture cross-anchored onto a member frame blocks that frame's StartMoving from re-latching — must be fully unanchored at teardown.
     if rootFrame and rootFrame._groupRoundedMask then
         rootFrame._groupRoundedMask:ClearAllPoints()
     end
@@ -324,10 +301,6 @@ function Skin:ClearGroupBorder(rootFrame)
     end
     walk(rootFrame)
     self:_ClearGroupRoundedMask(rootFrame, walked)
-    -- Restore each member's own mask now the group mask is gone. restoreFrame cleared
-    -- _groupBorderActive above, so ApplyRoundedMaskToSurfaces rebuilds the per-frame mask.
-    -- Container-bordered icon containers take the ICON border style; per-icon containers
-    -- (Icon Padding > 0) are skipped — their per-icon masks were never group-touched.
     for _, frame in ipairs(walked) do
         if GroupManagesMask(frame) then
             if frame._isIconContainer then
@@ -347,8 +320,6 @@ function Skin:_RestoreExMergeMember(frame)
     frame._groupBorderHiddenPixels = nil
     if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
     if frame.SetBorderHidden then frame:SetBorderHidden(false) end
-    -- Restore the ex-member's own mask. Container-bordered icon containers take the icon border
-    -- style; per-icon containers (Icon Padding > 0) are skipped — their per-icon masks stand.
     if GroupManagesMask(frame) then
         if frame._isIconContainer then
             self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
@@ -412,11 +383,7 @@ function Skin:RefreshAllGroupBorders()
 end
 
 -- [ MERGE SUSPENSION ] ------------------------------------------------------------------------------
--- Drag disables border merging for the dragged frame's whole group: every member shows its own
--- border for the drag, one rebuild runs on drop. The teardown must be synchronous — the group
--- overlay and group mask are anchored to member frames, so a deferred teardown lets both chase
--- the dragged frame until the refresh lands. ClearGroupBorder restores each member's own
--- self-anchored border + mask before the drag moves anything.
+-- Synchronous teardown: group overlay and mask are anchored to member frames, so a deferred teardown lets both chase the dragged frame until the next refresh lands.
 function Skin:SuspendMergeGroup(frame)
     if not frame then return end
     local members = {}
@@ -450,10 +417,7 @@ Orbit.EventBus:On("ORBIT_BORDER_LAYOUT_CHANGED", function()
     end, 0)
 end)
 
--- A border style / size change must also rebuild merged group borders: the per-frame re-skin
--- from GlobalSettings' ApplySettings updates each member's own overlay but never touches the
--- group overlay. Without this a merged group keeps showing the pre-change border until the
--- next merge/unmerge/drag.
+-- Rebuild merged group borders on style/size change — per-frame re-skin updates each member's overlay but never touches the group overlay.
 Orbit.EventBus:On("ORBIT_BORDER_SIZE_CHANGED", function()
     Skin:DeferGroupBorderRefresh()
 end)

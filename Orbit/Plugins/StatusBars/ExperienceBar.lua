@@ -181,10 +181,7 @@ function Plugin:OnLoad()
 end
 
 -- [ EVENT ROUTER ]-----------------------------------------------------------------------------------
--- UpdateBar is always deferred one tick so secret-adjacent reads (UnitXP, C_Reputation.*, etc.)
--- never run inside Blizzard's synchronous edit-mode callback chain. Side-effect work that must
--- observe the pre-deferral state (session boundary on level up, auto-watched faction scan) stays
--- on the event's own frame.
+-- Defer UpdateBar one tick so secret-adjacent reads don't run inside Blizzard's synchronous edit-mode callback chain; pre-deferral work stays on the event frame.
 function Plugin:OnEvent(event, arg1)
     if event == "PLAYER_LEVEL_UP" then
         Orbit.StatusBarSession:OnResetBoundary("Orbit_ExperienceBar_XP", UnitXPMax("player") or 0)
@@ -201,8 +198,7 @@ function Plugin:OnEvent(event, arg1)
     end)
 end
 
--- Auto-watch the faction whose reputation just changed. Detected by scanning recent rep for a
--- delta. Only triggers when setting enabled.
+-- Scans recent rep for a delta and picks the gained faction; gated on the setting.
 function Plugin:OnFactionUpdate()
     if not self:GetSetting(SYSTEM_ID, "AutoWatchFaction") then return end
     if not C_Reputation or not C_Reputation.GetFactionDataByIndex then return end

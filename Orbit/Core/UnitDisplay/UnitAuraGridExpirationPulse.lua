@@ -20,9 +20,7 @@ swipeCurve:SetType(Enum.LuaCurveType.Linear)
 swipeCurve:AddPoint(0, 1) -- At 0% remaining (end), 100% alpha
 swipeCurve:AddPoint(1, 0) -- At 100% remaining (start), 0% alpha
 
--- S09a-C1: shared mutating curve — ExpirationPulseTick fires ~15Hz per icon-near-expiry; the
--- previous implementation allocated a fresh CreateCurve userdata + 2× AddPoint per tick. Mutate
--- the same curve in place via ClearPoints + AddPoint (cheap operations on existing object).
+-- Shared mutating curve — ExpirationPulseTick fires ~15Hz per icon, so ClearPoints + AddPoint avoids per-tick userdata allocation.
 local _expirationCurve = C_CurveUtil.CreateCurve()
 _expirationCurve:SetType(Enum.LuaCurveType.Step)
 

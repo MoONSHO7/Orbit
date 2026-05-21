@@ -12,11 +12,7 @@ local GROUP_POSITION_FONT_SIZE = 10
 Orbit.StatusIconMixin = {}
 local Mixin = Orbit.StatusIconMixin
 
--- S09c-C1 reverted: the per-batch frame-stashed snapshot leaked `_statusBatchPositions` if any
--- inner Update method threw (the cleanup write at the tail of UpdateAllStatusIcons never ran),
--- starving subsequent individual Update*Icon calls of fresh positions. Roster-update icons
--- (leader/main-tank/group-number) stopped re-evaluating overrides in raid. Direct GetSetting per
--- call is what the rest of the codebase does and is the safe baseline.
+-- Direct GetSetting per call — a frame-stashed snapshot leaked _statusBatchPositions when an inner Update threw, starving subsequent calls.
 local function GetBatchedPositions(_frame, plugin)
     return plugin and plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or nil
 end

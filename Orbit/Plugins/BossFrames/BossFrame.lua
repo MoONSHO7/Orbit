@@ -68,8 +68,7 @@ local function CreatePowerBar(parent, unit)
     power.bg:SetAllPoints()
     local globalSettings = Orbit.db.GlobalSettings or {}
     Orbit.Skin:ApplyGradientBackground(power, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
-    -- Register the power bar's surfaces so the rounded border mask clips them too; without this
-    -- the power bar keeps square corners and sits outside the rounded border (matches GroupFrames).
+    -- Register power surfaces so the rounded border mask clips them (matches GroupFrames).
     Orbit.Skin:RegisterMaskedSurface(parent, power.bg)
     Orbit.Skin:RegisterMaskedSurface(parent, power:GetStatusBarTexture())
     return power
@@ -315,10 +314,7 @@ function Plugin:OnLoad()
     eventFrame:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
     eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    -- S14-C3: UNIT_TARGETABLE_CHANGED is a unit-scoped event but was previously registered
-    -- globally — that fired the full 5-frame aura rebuild on every zone-wide targetable change
-    -- (e.g. Echo-of-Neltharion phase adds). Register per-boss-unit so the OnEvent path can
-    -- dispatch a rebuild to JUST the changed frame.
+    -- Per-boss-unit so the OnEvent path rebuilds just the changed frame, not all 5 on every zone-wide targetable change.
     eventFrame:RegisterUnitEvent("UNIT_TARGETABLE_CHANGED", "boss1", "boss2", "boss3", "boss4", "boss5")
     local function RebuildFrame(frame)
         if not frame.UpdateAll then return end
@@ -470,9 +466,7 @@ function Plugin:ApplySettings()
     local fontName = self:GetSetting(1, "Font") or self:GetPlayerSetting("Font")
     local reactionColour = self:GetSetting(1, "ReactionColour")
     local textSize = 12
-    -- S14-L2: resolve plugin-level cast-bar config + subcomponent positions ONCE before the
-    -- per-frame loop. ApplySubPos was previously re-closured per frame even though it only reads
-    -- plugin-level state (frame is captured via upvalue inside the loop body).
+    -- Hoist plugin-level cast-bar config out of the per-frame loop — only `frame` varies per iteration.
     local castBarDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar")
     local componentPositions = self:GetComponentPositions(1)
     local castData = componentPositions.CastBar or {}
@@ -511,8 +505,7 @@ function Plugin:ApplySettings()
                 if frame.CastBar.Bar and textureName then Orbit.Skin:SkinStatusBar(frame.CastBar.Bar, textureName, nil, true) end
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, fontOutline) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, fontOutline) end
-                -- The closure body reads `frame` via upvalue (set per loop iteration), so the
-                -- closure itself is hoisted out (S14-L2) only for the cost of the resolves above.
+                -- `frame` is captured per-iteration via upvalue so the closure can still be hoisted.
                 local function ApplySubPos(element, subPos, defaultJustify)
                     if not element or not subPos then return end
                     element:ClearAllPoints()

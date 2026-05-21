@@ -117,9 +117,7 @@ end
 Plugin.GetBlizzardMinimap = GetBlizzardMinimap
 
 -- [ BLIZZARD ART STRIPPING ]-------------------------------------------------------------------------
--- Hidden parent for Blizzard's compass/backdrop art. Reparenting (rather than :Hide() or SetAlpha(0))
--- ensures the original ring can't reappear when WoW redraws on rotateMinimap toggle, zone change, or
--- any other internal trigger that mutates the original parent's visibility state.
+-- Reparent (vs :Hide()/SetAlpha(0)) so the original ring can't reappear on rotateMinimap toggle, zone change, or other internal mutations.
 local _hiddenHolder
 local function GetHiddenHolder()
     if not _hiddenHolder then
@@ -197,8 +195,7 @@ function Plugin:ReparentBlizzardComponents()
         difficulty:ClearAllPoints()
         difficulty:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
         
-        -- Hide the Blizzard guild-banner Background and Border art on every sub-frame;
-        -- we only want the difficulty icon texture, not the decorative chrome.
+        -- Strip Blizzard guild-banner Background/Border chrome — keep only the difficulty icon texture.
         for _, sub in ipairs({ difficulty.Default, difficulty.Guild, difficulty.ChallengeMode }) do
             if sub then
                 if sub.Background then sub.Background:SetAlpha(0) end
@@ -254,8 +251,7 @@ function Plugin:ReparentBlizzardComponents()
         missions:ClearAllPoints()
         missions:SetPoint("CENTER", self.frame, "BOTTOMLEFT", 20, 20)
         missions:SetSize(MISSIONS_BASE_SIZE, MISSIONS_BASE_SIZE)
-        -- Must be sized to MISSIONS_BASE_SIZE so CyclingAtlas creator's GetSourceSize
-        -- returns the correct dimensions for the crossfade preview.
+        -- Size to MISSIONS_BASE_SIZE so CyclingAtlas's GetSourceSize feeds correct dimensions to the crossfade preview.
         if not missions.Icon then
             missions.Icon = missions:CreateTexture(nil, "ARTWORK")
             missions.Icon:SetPoint("CENTER")
@@ -273,8 +269,7 @@ function Plugin:ReparentBlizzardComponents()
         mail:ClearAllPoints()
         mail:SetPoint("CENTER", self.frame, "TOPRIGHT", -20, -20)
         mail:Show()
-        -- Call via mixin so flipbook animations (NewMailAnim, MailReminderAnim) play correctly.
-        -- Never manually set MailIcon visibility — that bypasses the animations.
+        -- Call via mixin so NewMailAnim/MailReminderAnim flipbook animations play — manual MailIcon visibility bypasses them.
         if mail.TryPlayMailNotification and HasNewMail and HasNewMail() then mail:TryPlayMailNotification() end
         if not mail.Icon then
             mail.Icon = mail:CreateTexture(nil, "ARTWORK")
@@ -293,8 +288,7 @@ function Plugin:ReparentBlizzardComponents()
         craftingOrder:ClearAllPoints()
         craftingOrder:SetPoint("CENTER", self.frame, "TOPRIGHT", -20, -38)
         
-        -- The native texture has a baked-in border and scales tightly, becoming low-res.
-        -- We hide it and use a borderless high-rez anvil atlas instead.
+        -- Native texture has a baked-in border + tight scaling → low-res; hide it and use a borderless high-res anvil atlas.
         if MiniMapCraftingOrderIcon then
             MiniMapCraftingOrderIcon:SetAlpha(0)
         end
@@ -341,12 +335,9 @@ function Plugin:CaptureBlizzardMinimap()
     OrbitEngine.FrameGuard:Protect(minimap, host)
     OrbitEngine.FrameGuard:UpdateProtection(minimap, host, function() self:ApplySettings() end, { enforceShow = true })
 
-    -- Click actions are handled by OrbitMinimapClickCapture (created in OnLoad),
-    -- a MEDIUM-strata Button with SetPropagateMouseClicks(true) that covers the whole
-    -- minimap area, sitting above the Minimap surface but below HIGH-strata plugin frames. No per-frame hook needed.
+    -- Clicks are handled by OrbitMinimapClickCapture (created in OnLoad) — a MEDIUM-strata propagating Button above the surface but below HIGH-strata plugin frames.
 
-    -- FarmHud integration: register our container and hook show/hide to suspend
-    -- FrameGuard protection so FarmHud can reparent the minimap surface freely.
+    -- FarmHud hook suspends FrameGuard protection so FarmHud can freely reparent the minimap surface.
     self:HookFarmHud()
 
     -- Update zoom button state after scroll-wheel zoom

@@ -110,12 +110,13 @@ function Mixin:GetSortedRuneOrder()
     return result
 end
 
--- Progress for the filling essence is rendered by piping UnitPartialPower (0-1000) into the
--- StatusBar C++ sink in DiscreteBarRenderer; never compute a fraction in Lua — GetPowerRegenForPowerType
--- returns secret under SecretWhenUnitStatsRestricted and SetFraction's comparisons would throw.
-function Mixin:GetEssenceState(essenceIndex, currentEssence, maxEssence)
-    if not self._essenceState then self._essenceState = { nextTick = nil, lastEssence = 0, tickDuration = nil } end
-    local essenceState = self._essenceState
+-- UnitPartialPower (0-1000) is piped into the StatusBar C++ sink; never compute a fraction in Lua — GetPowerRegenForPowerType is secret under SecretWhenUnitStatsRestricted.
+function Mixin:GetEssenceState(frame, essenceIndex, currentEssence, maxEssence)
+    local essenceState = frame._essenceState
+    if not essenceState then
+        essenceState = { nextTick = nil, lastEssence = 0, tickDuration = nil }
+        frame._essenceState = essenceState
+    end
     local regen = GetPowerRegenForPowerType(Enum.PowerType.Essence)
     if regen ~= nil and not issecretvalue(regen) and regen > 0 then
         essenceState.tickDuration = 1 / regen
@@ -188,8 +189,7 @@ function Mixin:GetContinuousResourceForPlayer()
     return nil
 end
 
--- Curve mapping remaining-percent [0,1] -> seconds [0, EBON_MIGHT_MAX_DURATION].
--- Evaluated via DurationObject so we never do Lua arithmetic on secret expiration times.
+-- Remaining-percent [0,1] → seconds curve; evaluated via DurationObject to avoid Lua arithmetic on secret expirationTimes.
 local EBON_MIGHT_SECONDS_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     local c = C_CurveUtil.CreateCurve()
     c:AddPoint(0.0, 0)
