@@ -1,0 +1,9 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="BagCategoryStore.lua"/>
+    <Script file="BagContextMenu.lua"/>
+    <Script file="BagHider.lua"/>
+    <Script file="BagGrid.lua"/>
+    <Script file="BagFrame.lua"/>
+    <Script file="BagPlugin.lua"/>
+    <Script file="BagSettings.lua"/>
+</Ui>
