@@ -248,8 +248,9 @@ end
 local PluginMixin_GetSetting = Orbit.PluginMixin.GetSetting
 local PluginMixin_SetSetting = Orbit.PluginMixin.SetSetting
 
--- Build tier-key lookup from defaults so GetSetting/SetSetting auto-route
-local TIER_KEYS = { ComponentPositions = true, DisabledComponents = true }
+-- Position/Anchor are tier-scoped even though they don't appear in TIER_DEFAULTS — Persistence's
+-- drag-time auto-save calls plugin:SetSetting(1, "Position", ...) and must land in Tiers[tier].
+local TIER_KEYS = { ComponentPositions = true, DisabledComponents = true, Position = true, Anchor = true }
 for _, defaults in pairs(TIER_DEFAULTS) do
     for k in pairs(defaults) do TIER_KEYS[k] = true end
 end
@@ -716,7 +717,7 @@ function Plugin:RestoreTierPosition(tier)
     if not self.container or InCombatLockdown() then return end
     local pos = self:GetTierSetting("Position", tier)
     if not pos or not pos.point then
-        local legacy = self:GetSetting(1, "Position")
+        local legacy = PluginMixin_GetSetting(self, 1, "Position")
         if legacy and legacy.point then
             pos = legacy
             self:SetTierSetting("Position", pos, tier)

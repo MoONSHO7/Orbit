@@ -5,9 +5,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 local mediaPath = "Interface\\AddOns\\" .. addonName .. "\\Core\\assets\\"
 
--- Flat name → true hash of every Orbit-bundled LSM asset. MediaMenu reads it to bucket Orbit
--- media at the top of pickers (statusbars sort by the "^Orbit" prefix; fonts don't, so the
--- hash is what keeps the bundled fonts above the user's other LSM fonts).
+-- MediaMenu reads OwnedMedia to bucket Orbit-bundled assets above the user's other LSM media.
 Orbit.OwnedMedia = {}
 local function Reg(mediaType, name, path)
     LSM:Register(mediaType, name, path)
