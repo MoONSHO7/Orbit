@@ -81,7 +81,10 @@ function PredictionMixin:UpdateHealPrediction()
             self.TotalAbsorbBar:Show()
             local gs = Orbit.db.GlobalSettings
             local ac = gs and gs.AbsorbColor
-            if ac then self.TotalAbsorbBar:SetStatusBarColor(ac.r, ac.g, ac.b, ac.a or 1) end
+            if ac then
+                local r, g, b, a = Engine.ClassColor:ResolveValueUnpacked(ac)
+                self.TotalAbsorbBar:SetStatusBarColor(r, g, b, a)
+            end
             if gs and gs.AlwaysShowAbsorb then
                 self.TotalAbsorbBar:SetReverseFill(true)
                 self.TotalAbsorbBar:ClearAllPoints()

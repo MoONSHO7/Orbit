@@ -42,9 +42,9 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
 
     local color = GetValue(prefix .. "Color") or defaultColor
     if not color then color = Constants.Glow.DefaultColor end
-    
-    -- Ensure color uses standard r,g,b,a fields or unpacks RGBA cleanly for the library
-    local colorArr = { color.r, color.g, color.b, color.a or 1 }
+
+    local cr, cg, cb, ca = Engine.ClassColor:ResolveValueUnpacked(color)
+    local colorArr = { cr, cg, cb, ca }
     
     local options = { color = colorArr, key = key, frameLevel = Constants.Levels.IconGlow }
     local typeName = ""

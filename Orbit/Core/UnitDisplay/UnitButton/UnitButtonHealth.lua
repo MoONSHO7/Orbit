@@ -45,10 +45,11 @@ function HealthMixin:ApplyHealthColor()
             REUSE_COLOR_L:SetRGBA(1, 1, 1, 1)
             tex:SetGradient("HORIZONTAL", REUSE_COLOR_L, REUSE_COLOR_L)
         end
+        local r, g, b, a = Engine.ClassColor:ResolveValueUnpacked(override)
         if tex then
-            tex:SetVertexColor(override.r, override.g, override.b, override.a or 1)
+            tex:SetVertexColor(r, g, b, a)
         else
-            self.Health:SetStatusBarColor(override.r, override.g, override.b, override.a or 1)
+            self.Health:SetStatusBarColor(r, g, b, a)
         end
         return
     end

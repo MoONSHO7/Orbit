@@ -71,20 +71,17 @@ end
 
 -- [ SWIPE COLOR APPLIER ] ---------------------------------------------------------------------------
 function IconItem:ApplySwipeColor(plugin, icon, systemIndex)
+    local CCE = OrbitEngine.ColorCurve
     local colorCurve = plugin:GetSetting(systemIndex, "CooldownSwipeColorCurve")
-    if colorCurve and colorCurve.pins and colorCurve.pins[1] then
-        local c = colorCurve.pins[1].color
-        if c and icon.Cooldown then icon.Cooldown:SetSwipeColor(c.r or 0, c.g or 0, c.b or 0, c.a or 0.8) end
-    end
+    local c = CCE:GetFirstColorFromCurve(colorCurve)
+    if c and icon.Cooldown then icon.Cooldown:SetSwipeColor(c.r or 0, c.g or 0, c.b or 0, c.a or 0.8) end
     local activeCurve = plugin:GetSetting(systemIndex, "ActiveSwipeColorCurve")
-    if activeCurve and activeCurve.pins and activeCurve.pins[1] then
-        local ac = activeCurve.pins[1].color
-        if ac and icon.ActiveCooldown then
-            local swipeTex = Constants.Assets and Constants.Assets.SwipeCustom
-            if swipeTex then icon.ActiveCooldown:SetSwipeTexture(swipeTex) end
-            icon.ActiveCooldown:SetSwipeColor(ac.r or 0, ac.g or 0, ac.b or 0, ac.a or 0.7)
-            icon.ActiveCooldown:SetReverse(true)
-        end
+    local ac = CCE:GetFirstColorFromCurve(activeCurve)
+    if ac and icon.ActiveCooldown then
+        local swipeTex = Constants.Assets and Constants.Assets.SwipeCustom
+        if swipeTex then icon.ActiveCooldown:SetSwipeTexture(swipeTex) end
+        icon.ActiveCooldown:SetSwipeColor(ac.r or 0, ac.g or 0, ac.b or 0, ac.a or 0.7)
+        icon.ActiveCooldown:SetReverse(true)
     end
 end
 

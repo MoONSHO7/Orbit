@@ -18,6 +18,20 @@ Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
 
+-- [ PICKER ANCHOR ]----------------------------------------------------------------------------------
+-- LibOrbitColorPicker is opened from value swatches, schema color rows, and curve previews; in every
+-- case the picker should sit 25px to the right of the dialog it was launched from. Walk to the
+-- nearest top-level frame (parent is UIParent) and return the anchor table the lib expects.
+local PICKER_ANCHOR_PADDING = 25
+
+function Layout.GetPickerAnchor(frame)
+    local owner = frame
+    while owner:GetParent() and owner:GetParent() ~= UIParent do
+        owner = owner:GetParent()
+    end
+    return { frame = owner, point = "TOPLEFT", relativePoint = "TOPRIGHT", x = PICKER_ANCHOR_PADDING, y = 0 }
+end
+
 -- [ SHARED BACKDROP ]--------------------------------------------------------------------------------
 Layout.ORBIT_INPUT_BACKDROP = {
     bgFile = "Interface\\ChatFrame\\ChatFrameBackground",

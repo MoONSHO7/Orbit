@@ -68,6 +68,26 @@ function CC:ResolveClassColorPinUnpacked(pin)
     return pin.color.r, pin.color.g, pin.color.b, pin.color.a or 1
 end
 
+-- Flat-value variants for single-color valueColor swatches stored as { r, g, b, a, type? }.
+function CC:ResolveValue(raw)
+    if not raw then return nil end
+    if raw.type == "class" then
+        local c = self:GetCurrentClassColor()
+        c.a = raw.a or 1
+        return c
+    end
+    return raw
+end
+
+function CC:ResolveValueUnpacked(raw)
+    if not raw then return 1, 1, 1, 1 end
+    if raw.type == "class" then
+        local r, g, b = self:GetCurrentClassColorUnpacked()
+        return r, g, b, raw.a or 1
+    end
+    return raw.r or 1, raw.g or 1, raw.b or 1, raw.a or 1
+end
+
 function CC:GetClassColorForUnit(unit)
     if not unit or not UnitExists(unit) then
         if unit and (unit:match("^boss") or unit:match("^arena")) then return { r = 1, g = 0.1, b = 0.1, a = 1 } end

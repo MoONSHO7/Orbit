@@ -71,7 +71,8 @@ end
 
 local function FlashIcon(icon, color)
     if not icon.orbitCDMFlash then return end
-    icon.orbitCDMFlashTex:SetColorTexture(color.r, color.g, color.b, color.a or 0.4)
+    local r, g, b, a = OrbitEngine.ClassColor:ResolveValueUnpacked(color)
+    icon.orbitCDMFlashTex:SetColorTexture(r, g, b, a or 0.4)
     icon.orbitCDMFlash:SetAlpha(1)
     icon.orbitCDMFlash:Show()
     icon.orbitCDMFlashFade:Play()

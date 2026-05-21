@@ -59,6 +59,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
                 hasOpacity = true,
                 forceSingleColor = true,
                 recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,
+                anchor = Layout.GetPickerAnchor(frame),
                 onOpen = function(picker)
                     local as = Orbit.db and Orbit.db.AccountSettings
                     if as and not as.ColorPickerTourComplete then

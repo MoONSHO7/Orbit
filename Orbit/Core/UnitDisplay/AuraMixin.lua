@@ -2,7 +2,6 @@
 -- module-level scratch (`_RecycledSnapshot`, `_RecycledAuraDisplayList`) avoids per-call allocation in hot aura paths; `_curveTicker` is a singleton driving all healer-aura curve animations — same pattern as UnitAuraGridExpirationPulse.
 local _, addonTable = ...
 local Orbit = addonTable
-local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 local pcall, type, ipairs = pcall, type, ipairs
 local math_max = math.max

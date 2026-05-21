@@ -146,6 +146,22 @@ function Plugin:CreateCompartmentButton()
     self._compartmentButton = btn
 end
 
+function Plugin:ShowCompartmentButtonHover()
+    local btn = self._compartmentButton
+    if not btn or not btn:IsShown() then return end
+    UIFrameFadeIn(btn, FADE_IN_DURATION, btn:GetAlpha(), 1)
+end
+
+function Plugin:HideCompartmentButtonIfIdle()
+    local btn = self._compartmentButton
+    if not btn or not btn:IsShown() then return end
+    if btn:IsMouseOver() then return end
+    if Minimap and Minimap:IsMouseOver() then return end
+    if self.frame and self.frame:IsMouseOver() then return end
+    if self._compartmentFlyout and self._compartmentFlyout:IsShown() then return end
+    UIFrameFadeOut(btn, FADE_OUT_DURATION, btn:GetAlpha(), 0)
+end
+
 -- [ HIDDEN BUTTON HOLDER ]---------------------------------------------------------------------------
 function Plugin:GetOrCreateButtonHolder()
     if self._buttonHolder then return self._buttonHolder end
@@ -211,7 +227,11 @@ function Plugin:CreateCompartmentFlyout()
     end)
 
     flyout:SetScript("OnShow", function(f) outsideTimer = 0; pollAccum = 0; f._tooltipForwardActive = false; f._menuActive = false end)
-    flyout:SetScript("OnHide", function(f) outsideTimer = 0; pollAccum = 0; f._tooltipForwardActive = false; f._menuActive = false end)
+    flyout:SetScript("OnHide", function(f)
+        outsideTimer = 0; pollAccum = 0; f._tooltipForwardActive = false; f._menuActive = false
+        -- No OnLeave fires when the auto-close timer hides us, so re-evaluate the button fade here.
+        self:HideCompartmentButtonIfIdle()
+    end)
 
     self._compartmentFlyout = flyout
 end
@@ -424,11 +444,10 @@ function Plugin:LayoutButtonsInFlyout()
     local cellSize = FLYOUT_BUTTON_SIZE + FLYOUT_BUTTON_SPACING
     local paddingTotal = FLYOUT_BUTTON_SPACING + (COMPARTMENT_PADDING * 2)
 
-    -- Unconstrained size — used only to pick which side of the minimap the flyout anchors to.
-    local unconstrainedCols = math.min(FLYOUT_COLUMNS, n)
-    local unconstrainedRows = math.ceil(n / unconstrainedCols)
-    local unconstrainedW = (unconstrainedCols * cellSize) + paddingTotal
-    local unconstrainedH = (unconstrainedRows * cellSize) + paddingTotal
+    local cols = math.min(FLYOUT_COLUMNS, n)
+    local rows = math.ceil(n / cols)
+    local flyoutWidth = (cols * cellSize) + paddingTotal
+    local flyoutHeight = (rows * cellSize) + paddingTotal
 
     local mmFrame = self.frame
     local scale = mmFrame:GetEffectiveScale()
@@ -445,27 +464,12 @@ function Plugin:LayoutButtonsInFlyout()
     local spaceBelow = mmBottom
 
     local anchor  -- "below" | "above" | "left" | "right"
-    if spaceBelow >= unconstrainedH * scale + FLYOUT_GAP then anchor = "below"
-    elseif spaceAbove >= unconstrainedH * scale + FLYOUT_GAP then anchor = "above"
-    elseif spaceLeft >= unconstrainedW * scale + FLYOUT_GAP then anchor = "left"
-    elseif spaceRight >= unconstrainedW * scale + FLYOUT_GAP then anchor = "right"
+    if spaceBelow >= flyoutHeight * scale + FLYOUT_GAP then anchor = "below"
+    elseif spaceAbove >= flyoutHeight * scale + FLYOUT_GAP then anchor = "above"
+    elseif spaceLeft >= flyoutWidth * scale + FLYOUT_GAP then anchor = "left"
+    elseif spaceRight >= flyoutWidth * scale + FLYOUT_GAP then anchor = "right"
     else anchor = "below" end
 
-    -- Match minimap dimension on the stacked axis so the drawer visually spans the minimap.
-    local mmWidth = mmFrame:GetWidth()
-    local mmHeight = mmFrame:GetHeight()
-    local flyoutWidth, flyoutHeight, cols, rows
-    if anchor == "below" or anchor == "above" then
-        flyoutWidth = math.max(mmWidth, cellSize + paddingTotal)
-        cols = math.max(1, math.floor((flyoutWidth - paddingTotal) / cellSize))
-        rows = math.ceil(n / cols)
-        flyoutHeight = (rows * cellSize) + paddingTotal
-    else
-        flyoutHeight = math.max(mmHeight, cellSize + paddingTotal)
-        rows = math.max(1, math.floor((flyoutHeight - paddingTotal) / cellSize))
-        cols = math.ceil(n / rows)
-        flyoutWidth = (cols * cellSize) + paddingTotal
-    end
     local flyoutScale = flyout:GetEffectiveScale()
     flyout:SetSize(Orbit.Engine.Pixel:Snap(flyoutWidth, flyoutScale), Orbit.Engine.Pixel:Snap(flyoutHeight, flyoutScale))
 
@@ -711,26 +715,16 @@ function Plugin:ApplyAddonCompartment()
         if useClickAction then btn:Hide() else btn:Show() end
 
         if not frame._compartmentHoverHooked then
-            local minimap = Minimap
-            local function ShowCompartmentButton()
-                if not btn:IsShown() then return end
-                UIFrameFadeIn(btn, FADE_IN_DURATION, btn:GetAlpha(), 1)
+            local function showBtn() self:ShowCompartmentButtonHover() end
+            local function hideBtn() self:HideCompartmentButtonIfIdle() end
+            frame:HookScript("OnEnter", showBtn)
+            frame:HookScript("OnLeave", hideBtn)
+            if Minimap then
+                Minimap:HookScript("OnEnter", showBtn)
+                Minimap:HookScript("OnLeave", hideBtn)
             end
-            local function HideCompartmentButton()
-                if not btn:IsShown() then return end
-                if btn:IsMouseOver() then return end
-                if minimap and minimap:IsMouseOver() then return end
-                if self._compartmentFlyout and self._compartmentFlyout:IsShown() then return end
-                UIFrameFadeOut(btn, FADE_OUT_DURATION, btn:GetAlpha(), 0)
-            end
-            frame:HookScript("OnEnter", ShowCompartmentButton)
-            frame:HookScript("OnLeave", HideCompartmentButton)
-            if minimap then
-                minimap:HookScript("OnEnter", ShowCompartmentButton)
-                minimap:HookScript("OnLeave", HideCompartmentButton)
-            end
-            btn:HookScript("OnEnter", ShowCompartmentButton)
-            btn:HookScript("OnLeave", HideCompartmentButton)
+            btn:HookScript("OnEnter", showBtn)
+            btn:HookScript("OnLeave", hideBtn)
             frame._compartmentHoverHooked = true
         end
 
