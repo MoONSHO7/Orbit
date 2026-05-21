@@ -1,5 +1,3 @@
--- Graph.lua
--- Lightweight line graph renderer for datatext tooltip sparklines
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local RingBuffer = DT.Formatting.RingBuffer

@@ -123,8 +123,6 @@ local function IsSpellExcluded(plugin, sid)
     return false
 end
 
-function Orbit.GroupAuraFilters:InvalidateCache() end
-
 local _RecycledFilterList = {}
 
 -- Creates a debuff post-filter; cfg.raidFilterFn returns the filter string.

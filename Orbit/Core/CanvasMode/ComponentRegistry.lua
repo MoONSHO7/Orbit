@@ -1,12 +1,5 @@
 -- [ COMPONENT REGISTRY ]-----------------------------------------------------------------------------
--- Registers internal frame components (Name, HealthText, Level, etc.)
--- and restores their positions from saved ComponentPositions data.
--- Component positioning is managed exclusively through Canvas Mode.
--- Usage:
---   Engine.ComponentDrag:Attach(component, parentFrame, {
---       key = "Name",
---       onPositionChange = function(component, alignment, x, y) end
---   })
+-- usage: `Engine.ComponentDrag:Attach(component, parentFrame, { key = "Name", onPositionChange = function(component, alignment, x, y) end })`.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -313,7 +306,6 @@ function ComponentDrag:Attach(component, parent, options)
         options = options,
         currentX = 0,
         currentY = 0,
-        currentAlignment = "LEFT",
         isFontString = options.isFontString or (component.IsObjectType and component:IsObjectType("FontString")) or false,
         isAuraContainer = options.isAuraContainer or false,
         sourceOverride = options.sourceOverride or nil,
@@ -398,11 +390,6 @@ function ComponentDrag:SetEnabledForFrame(parent, enabled)
     if not shouldEnable then
         self:DeselectComponent()
     end
-end
-
-function ComponentDrag:GetAlignment(component)
-    local data = registeredComponents[component]
-    return data and data.currentAlignment or "LEFT"
 end
 
 -- Check if a component is disabled via Canvas Mode

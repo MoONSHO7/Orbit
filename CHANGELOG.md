@@ -1,16 +1,19 @@
 [start]
 
 ### Updates
-- Added "Orbit Rounded" border style with adjustable Corner Roundness and Thickness (Global tab)
-- Rounded borders apply to frames and icons alike
-- Renamed the "Orbit Pixel" border style to "Orbit Squared"
-- Added "Faded Circle" Minimap border option
-- Added a Dispel Icon to Group frames showing the debuff type — positionable in Canvas Mode
+- New bar fills: Orbit Solid, four directional Gradients, Orbit Absorb, Orbit Honeycomb Absorb — absorb fills tile so the pattern doesn't shear with bar length
+- New bar overlays: Gloss, Frost, Galaxy, Starfield — layered on top of any fill via the dedicated Overlay Texture picker
+- Border styles consolidated to a single "Orbit" with a Size 0–5 slider; LibSharedMedia borders sit below a divider in the dropdown
+- Default statusbar texture is now "Orbit Gradient Top-Bottom"
+- Inline color swatches in the Global tab; Font color is now a curve picker
+- Reworked media pickers — bigger swatch previews on font, texture, and border menus
+- MoveMore: drag the bottom-right handle to scale any movable Blizzard frame; scale persists alongside saved position
+- MoveMore adds Barbershop, Soulbinds, Runeforge, House Editor, and the Settings panel to the movable list
+- Raid Panel: "Always Show" replaces "Hide" — dock stays visible and adapts its slot set to your raid role (lead/assist/main-tank → all 13, otherwise markers-only)
+- Edit Mode drag: hold Shift while moving for precision mode (other overlays hide)
+- Tooltips and labels across Minimap, Raid Panel, Action Bars, Cast Bars, and Status Bars are now fully localized in all eight supported languages
+- Added new font: Changa One
 
-### Bugfixes
-- Anchored frames no longer drift off-screen when their anchor target is hidden or disabled
-- Frames now keep their anchored position after switching profiles
-- Action bars now reliably reveal while the Cooldown Manager settings panel is open
 
 ### Hints
 You can always open this window again by typing `/orbit whatsnew`

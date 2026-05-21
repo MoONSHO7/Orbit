@@ -92,9 +92,3 @@ function Session:GetStats(trackerKey)
     return s.gained or 0, rate, elapsed
 end
 
--- ETA to reach `remaining` at current rate. Returns math.huge if rate is 0.
-function Session:GetETA(trackerKey, remaining)
-    local _, rate = self:GetStats(trackerKey)
-    if not rate or rate <= 0 or not remaining or remaining <= 0 then return math.huge end
-    return (remaining / rate) * 3600
-end

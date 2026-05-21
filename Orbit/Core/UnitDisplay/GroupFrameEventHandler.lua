@@ -275,3 +275,6 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
     return eventFrame
 end
 
+-- GroupFrameMixin is extended by this file (CreateEventHandler / CreateOnShowHandler / CreateGlobalEventHandler), so the freeze lives at the end of the last extending file in the load chain, not in GroupFrameMixin.lua.
+if table.freeze then table.freeze(GroupFrameMixin) end
+

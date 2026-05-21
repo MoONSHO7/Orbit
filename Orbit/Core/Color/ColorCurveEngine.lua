@@ -148,16 +148,6 @@ function CCE:ToNativeColorCurve(curveData)
     return curve
 end
 
-function CCE:FromNativeColorCurve(nativeCurve)
-    if not nativeCurve or not nativeCurve.GetPoints then return nil end
-    local pins = {}
-    for _, point in ipairs(nativeCurve:GetPoints()) do
-        local color = point.y
-        tinsert(pins, { position = point.x, color = { r = color.r, g = color.g, b = color.b, a = color.a or 1 } })
-    end
-    return { pins = pins }
-end
-
 function CCE:InvalidateNativeCurveCache(curveData)
     if curveData then
         nativeCurveCache[curveData] = nil

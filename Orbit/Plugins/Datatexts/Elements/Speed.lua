@@ -1,14 +1,13 @@
--- Speed.lua
--- Movement speed datatext: shows current speed percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local BASE_SPEED = 7
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Speed")
+local W = DT.BaseDatatext:New("Speed", L.PLU_DT_SPEED_NAME)
 
 function W:Update()
     local speed = GetUnitSpeed("player")
@@ -41,7 +40,6 @@ function W:Init()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetUpdateTier("FAST")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetCategory("CHARACTER")
     self:Register()
     self:Update()
 end

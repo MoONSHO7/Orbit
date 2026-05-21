@@ -1,9 +1,11 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 
 local TOT_FRAME_INDEX = 100
 
 local Plugin = Orbit:RegisterPlugin("Target of Target", "Orbit_TargetOfTargetFrame", {
+    displayName = L.PLG_NAME_TARGET_OF_TARGET,
     canvasMode = true,
     defaults = Orbit.SecondaryUnitFrameMixin.sharedDefaults,
 })
@@ -20,12 +22,12 @@ function Plugin:AddSettings(dialog, systemFrame) self:AddSecondarySettings(dialo
 function Plugin:OnLoad()
     self:CreateSecondaryPlugin({
         unit = "targettarget", parentUnit = "target",
-        frameName = "OrbitTargetOfTargetFrame", editModeName = "Target of Target",
+        frameName = "OrbitTargetOfTargetFrame", editModeName = self.displayName,
         frameIndex = TOT_FRAME_INDEX,
         nativeFrame = TargetFrameToT,
         changeEvent = "PLAYER_TARGET_CHANGED",
         defaultX = 200, defaultY = -180,
         vePluginName = "Target Frame",
     })
-    Orbit.EventBus:On("TARGET_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
+    Orbit.EventBus:On("ORBIT_TARGET_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

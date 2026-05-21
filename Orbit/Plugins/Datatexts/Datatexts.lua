@@ -1,4 +1,5 @@
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
@@ -10,6 +11,7 @@ Orbit.Datatexts = Orbit.Datatexts or {}
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Datatexts", SYSTEM_ID, {
+    displayName = L.PLG_NAME_DATATEXTS,
     liveToggle = true,
     defaults = {
         datatextPositions = {},

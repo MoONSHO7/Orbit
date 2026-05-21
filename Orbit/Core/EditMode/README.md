@@ -26,7 +26,7 @@ EditMode/
   MountedVisibility.lua -- hide frames while mounted
   NativeFrame.lua       -- park/hide blizzard frames without tainting them (12.0.5-safe)
   Frame/
-    EditFrame.lua       -- edit mode frame facade (public api)
+    EditFrame.lua       -- thin pass-through over FrameAnchor/FrameSnap/FrameSelection (deprecation pending refactor)
     EditFrame.xml       -- xml script bundle
     Factory.lua         -- frame factory
     Snap.lua            -- snap-to-grid and snap-to-frame
@@ -43,14 +43,13 @@ EditMode/
     Selection/
       Drag.lua          -- drag-to-move interaction
       Nudge.lua         -- arrow-key pixel nudge
-      Resize.lua        -- drag-to-resize handle (width/height settings)
+      Resize.lua        -- drag-to-resize handle (width/height settings; square mode for aspect-locked frames)
       Tooltip.lua       -- selection tooltip display
+      PeekHide.lua      -- transient hide of the selection overlay during tooltip peek
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)
   Preview/
-    PreviewFrame.lua    -- edit mode preview rendering
-    PreviewHandle.lua   -- preview resize handles
-    PreviewController.lua -- preview lifecycle
+    PreviewFrame.lua    -- live preview-frame construction (`Create`, `CreateBasePreview`) consumed by Tracked, PlayerPower, PlayerCastBar, and DamageMeterUI
 ```
 
 ## canvas mode delegation
@@ -193,7 +192,7 @@ Use `Park(frame)` for: PlayerFrame, TargetFrame, FocusFrame, BuffFrame, DebuffFr
 
 `Unpark` clears the `parked` flag so the re-claim hooks fall through. Use for live toggles like `HideBlizzardRaidPanel`. The hooks remain installed but become no-ops.
 
-Remaining `NativeFrame` ops (less common): `:Hide(frame, options)` does a full reparent + event/script teardown with `Restore` support — used for MinimapCluster (events left intact via `unregisterEvents = false`). `:SecureHide(frame)` uses `RegisterStateDriver(frame, "visibility", "hide")` — kept for action bars / status tracking bars where the driver path is the documented contract. `:Modify(frame, options)` / `:RestoreModified` apply non-tainting alpha/scale/strata changes for frames Orbit already owns.
+Remaining `NativeFrame` ops (less common): `NativeFrame:Hide` (used by MinimapCapture) tears down events/scripts and hides; restoration requires `/reload`. There is no `Restore` round-trip. `:SecureHide(frame)` uses `RegisterStateDriver(frame, "visibility", "hide")` — kept for action bars / status tracking bars where the driver path is the documented contract. `:Modify(frame, options)` applies non-tainting alpha/scale/strata changes for frames Orbit already owns.
 
 `:KeepAliveHidden(frame)` is a softer variant for the case where Orbit reuses Blizzard's own children — e.g. PlayerBuffs/PlayerDebuffs hooks `BuffFrame:Update` and reparents the live aura buttons (`BuffFrame.auraFrames`) into Orbit's grid. The native frame must keep receiving events so its update loop keeps populating `auraFrames`. `KeepAliveHidden` does only `SafeHide(frame)` plus `hooksecurefunc(Show/SetShown)` re-hide hooks — no `UnregisterAllEvents`, no `SetParent`. Combat-guarded. Use when your plugin scrapes button state from a Blizzard manager frame and the manager must keep updating.
 

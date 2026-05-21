@@ -249,6 +249,19 @@ Dialog.SyncToggle.label:SetPoint("RIGHT", Dialog.SyncToggle, "LEFT", -OrbitEngin
 Dialog.SyncToggle.label:SetText(L.CFG_CM_SYNC)
 Dialog.SyncToggle.label:SetTextColor(SYNC_LABEL_COLOR.r, SYNC_LABEL_COLOR.g, SYNC_LABEL_COLOR.b, SYNC_LABEL_COLOR.a)
 
+if Orbit.EventBus then
+    Orbit.EventBus:On("ORBIT_LOCALE_REBUILT", function()
+        FILTER_TAB_LABELS.All   = L.CFG_CM_FILTER_ALL
+        FILTER_TAB_LABELS.Text  = L.CFG_CM_FILTER_TEXT
+        FILTER_TAB_LABELS.Icons = L.CFG_CM_FILTER_ICONS
+        FILTER_TAB_LABELS.Auras = L.CFG_CM_FILTER_AURAS
+        for _, btn in ipairs(Dialog.filterTabButtons or {}) do
+            btn:SetText(FILTER_TAB_LABELS[btn.filterName] or btn.filterName)
+        end
+        Dialog.SyncToggle.label:SetText(L.CFG_CM_SYNC)
+    end)
+end
+
 Dialog.SyncToggle.isSynced = true
 
 function Dialog.SyncToggle:UpdateVisual()

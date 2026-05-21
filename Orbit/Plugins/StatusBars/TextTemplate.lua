@@ -58,7 +58,3 @@ function TextTemplate:Render(template, ctx)
     end))
 end
 
--- Default templates by plugin for fresh installs.
-TextTemplate.DEFAULT_XP    = "{pct}"
-TextTemplate.DEFAULT_REP   = "{pct}"
-TextTemplate.DEFAULT_HONOR = "{pct}"

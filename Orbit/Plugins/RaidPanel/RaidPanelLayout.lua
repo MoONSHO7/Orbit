@@ -1,14 +1,7 @@
--- RaidPanelLayout.lua: Pure arc-wrap and edge-fade math with per-icon variable sizes.
+-- RaidPanelLayout.lua: Pure arc-wrap math with per-icon variable sizes.
 
 local _, Orbit = ...
 
--- [ CONSTANTS ] -------------------------------------------------------------------------------------
-local MIN_FADE_ALPHA  = 0.05
-local FADE_CURVE_UNIT = 20
-
-local math_abs = math.abs
-local math_min = math.min
-local math_max = math.max
 local math_sin = math.sin
 local math_cos = math.cos
 local math_pi  = math.pi
@@ -62,15 +55,4 @@ function Layout.ComputeLayout(sizes, spacing, compactness)
         if arcOffsets[i] > maxPerp then maxPerp = arcOffsets[i] end
     end
     return axialPositions, arcOffsets, maxAxial, maxPerp
-end
-
-function Layout.EdgeAlphaForIndex(iconIndex, count, fadeAmount)
-    if not fadeAmount or fadeAmount <= 0 then return 1 end
-    local visualCenterIndex = (count + 1) / 2
-    local distFromVisualCenter = math_abs((iconIndex + 1) - visualCenterIndex)
-    local halfSpan = math_max(1, (count - 1) / 2)
-    local normDist = math_max(0, math_min(1, distFromVisualCenter / halfSpan))
-    local base = math_cos(normDist * math_pi / 2)
-    local power = fadeAmount / FADE_CURVE_UNIT
-    return math_max(MIN_FADE_ALPHA, base ^ power)
 end

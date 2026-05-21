@@ -14,6 +14,7 @@ local OFFSCREEN_OFFSET = 9000
 -- Let's use our own ID and specific "Micro Menu" label.
 
 local Plugin = Orbit:RegisterPlugin("Menu Bar", SYSTEM_ID, {
+    displayName = L.PLG_NAME_MENU_BAR,
     defaults = {
         Padding = 0,
         Rows = 1,
@@ -126,7 +127,7 @@ function Plugin:OnLoad()
     -- Create Container
     self.frame = CreateFrame("Frame", "OrbitMicroMenuContainer", UIParent)
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Menu Bar"
+    self.frame.editModeName = self.displayName
     self.frame:SetSize(300, 40) -- Initial size
     self.frame:SetClampedToScreen(true) -- Prevent dragging off-screen
 
@@ -177,18 +178,11 @@ function Plugin:OnLoad()
 end
 
 -- [ LOGIC ]------------------------------------------------------------------------------------------
+local NATIVE_PARENTS = {}
 function Plugin:CaptureButton(button)
     if not button or InCombatLockdown() or button == QueueStatusButton then return end
-    local parent = button:GetParent()
-    -- Only capture from native Blizzard parents, never from another addon's container
-    if parent ~= self.frame and parent ~= MicroMenu and parent ~= MicroMenuContainer and parent ~= UIParent then
-        self.conflicted = true
-        return
-    end
-    if parent ~= self.frame then
-        button:SetParent(self.frame)
-        button:Show()
-    end
+    NATIVE_PARENTS[1], NATIVE_PARENTS[2], NATIVE_PARENTS[3] = MicroMenu, MicroMenuContainer, UIParent
+    if self:CaptureFromNativeParent(button, NATIVE_PARENTS) then button:Show() end
 end
 
 function Plugin:ReparentAll()

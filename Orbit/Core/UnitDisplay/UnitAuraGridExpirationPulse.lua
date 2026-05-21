@@ -1,12 +1,5 @@
 -- [ UNIT AURA GRID EXPIRATION PULSE ]----------------------------------------------------------------
--- Shared expiration pulse ticker for UnitAuraGridMixin. When an aura icon is within
--- EXPIRATION_THRESHOLD of expiry, pulses its alpha between EXPIRATION_ALPHA_MIN and 1 at
--- EXPIRATION_PULSE_SPEED. The ticker is lazy: it starts only when the first icon registers and
--- cancels itself once the pulse list drains.
---
--- Extracted from UnitAuraGridMixin.lua so the shared pulse list does not sit as module-level
--- state on a mixin file (mixins must be stateless per CLAUDE.md). The state now lives inside
--- this module and is reached only through Orbit.UnitAuraGridMixin._RegisterExpirationPulse.
+-- lives outside the mixin file so the pulse list isn't module-level state on a stateless mixin. lazy ticker — starts on first register, cancels on drain.
 
 local _, Orbit = ...
 local Mixin = Orbit.UnitAuraGridMixin
@@ -27,6 +20,12 @@ swipeCurve:SetType(Enum.LuaCurveType.Linear)
 swipeCurve:AddPoint(0, 1) -- At 0% remaining (end), 100% alpha
 swipeCurve:AddPoint(1, 0) -- At 100% remaining (start), 0% alpha
 
+-- S09a-C1: shared mutating curve — ExpirationPulseTick fires ~15Hz per icon-near-expiry; the
+-- previous implementation allocated a fresh CreateCurve userdata + 2× AddPoint per tick. Mutate
+-- the same curve in place via ClearPoints + AddPoint (cheap operations on existing object).
+local _expirationCurve = C_CurveUtil.CreateCurve()
+_expirationCurve:SetType(Enum.LuaCurveType.Step)
+
 -- [ TICKER ]-----------------------------------------------------------------------------------------
 local _pulseIcons = {}
 local _pulseTicker
@@ -38,12 +37,11 @@ local function ExpirationPulseTick()
         return
     end
 
-    -- Rebuild the target curve per-tick. C_CurveUtil handles secret evaluation natively.
     local wave = 1 - (1 - EXPIRATION_ALPHA_MIN) * math_abs(math_sin(GetTime() * EXPIRATION_PULSE_SPEED))
-    local expirationCurve = C_CurveUtil.CreateCurve()
-    expirationCurve:SetType(Enum.LuaCurveType.Step)
-    expirationCurve:AddPoint(0, wave)
-    expirationCurve:AddPoint(EXPIRATION_THRESHOLD, 1)
+    _expirationCurve:ClearPoints()
+    _expirationCurve:AddPoint(0, wave)
+    _expirationCurve:AddPoint(EXPIRATION_THRESHOLD, 1)
+    local expirationCurve = _expirationCurve
 
     local i = 1
     while i <= n do

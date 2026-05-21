@@ -1,6 +1,5 @@
 -- [ SECONDARY UNIT FRAME MIXIN ]---------------------------------------------------------------------
--- Shared mixin for TargetOfTarget and TargetOfFocus plugins.
--- Consumer files Mixin(Plugin, UnitFrameMixin) first, then Mixin(Plugin, SecondaryUnitFrameMixin).
+-- consumers must Mixin(Plugin, UnitFrameMixin) FIRST, then Mixin(Plugin, SecondaryUnitFrameMixin) — order matters.
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -166,8 +165,4 @@ function Mixin:ApplySettings()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, vePlugin, veIndex, "OutOfCombatFade", enableHover) end
 end
 
-function Mixin:UpdateVisuals(frame)
-    if frame and frame.UpdateAll and (self:IsEnabled() or (EditModeManagerFrame and EditModeManagerFrame:IsShown())) then
-        frame:UpdateAll()
-    end
-end
+if table.freeze then table.freeze(Orbit.SecondaryUnitFrameMixin) end

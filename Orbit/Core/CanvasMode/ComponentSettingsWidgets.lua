@@ -1,6 +1,7 @@
 -- [ CANVAS MODE - COMPONENT SETTINGS WIDGETS ] ------------------------------------------------------
 -- Widget creation helpers for component override settings.
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local CanvasMode = OrbitEngine.CanvasMode
@@ -41,7 +42,7 @@ function Widgets.CreateFontPicker(parent, control, currentValue, callback)
     SnapHeight(frame, WIDGET_HEIGHT)
     frame.Label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     frame.Label:SetPoint("LEFT", frame, "LEFT", 0, 0)
-    frame.Label:SetText(control.label .. ": " .. (currentValue or "Default"))
+    frame.Label:SetText(control.label .. ": " .. (currentValue or L.CMN_DEFAULT))
     return frame
 end
 

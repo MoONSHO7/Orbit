@@ -1,5 +1,3 @@
--- Menu.lua
--- Context menu helper for datatext right-click menus
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 

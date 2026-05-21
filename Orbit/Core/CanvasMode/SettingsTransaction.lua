@@ -1,7 +1,4 @@
 -- [ CANVAS MODE - SETTINGS TRANSACTION ]-------------------------------------------------------------
--- Transactional cache for Canvas Mode edits.
--- Buffers all changes until Apply (commit) or Cancel (rollback).
--- Fires CANVAS_SETTINGS_CHANGED so preview frames can live-update.
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
@@ -73,19 +70,23 @@ function Transaction:Set(key, value)
     self:FireChanged()
 end
 
-function Transaction:Get(key)
-    if not active then return plugin and plugin:GetSetting(systemIndex, key) end
-    local pending = pendingSettings[key]
-    if pending ~= nil then return pending ~= NIL_SENTINEL and pending or nil end
-    return plugin:GetSetting(systemIndex, key)
-end
-
 -- Read pending state only — no fallback to GetSetting (avoids recursion from PluginMixin:GetSetting)
 function Transaction:GetPending(key)
     if not active then return nil end
     local pending = pendingSettings[key]
     if pending == NIL_SENTINEL then return nil end
     return pending
+end
+
+-- Effective read: pending if set, else falls back to the plugin's saved setting. Used during the
+-- transaction to surface the currently-effective value (saved + any pending overlay).
+function Transaction:Get(key)
+    if not active then return nil end
+    local pending = pendingSettings[key]
+    if pending == NIL_SENTINEL then return nil end
+    if pending ~= nil then return pending end
+    if plugin then return plugin:GetSetting(systemIndex, key) end
+    return nil
 end
 
 -- [ POSITIONS ] -------------------------------------------------------------------------------------
@@ -143,38 +144,12 @@ end
 
 function Transaction:ClearPositions() wipe(pendingPositions) end
 
--- Writes all pending settings and positions to SavedVariables.
--- NOTE: Unused — Dialog:Apply() writes directly because it needs sync/global
--- routing and rebuilds positions from preview component state.
-function Transaction:Commit()
-    if not active or not plugin then return end
-
-    -- Write pending settings to SavedVariables
-    for key, value in pairs(pendingSettings) do
-        local writeVal = value ~= NIL_SENTINEL and value or nil
-        plugin:SetSetting(systemIndex, key, writeVal)
-    end
-
-    -- Write merged positions to SavedVariables
-    if next(pendingPositions) then
-        local merged = self:GetPositions()
-        plugin:SetSetting(systemIndex, "ComponentPositions", merged)
-    end
-
-    local savedPlugin = plugin
-    self:Clear()
-    Orbit.EventBus:Fire("CANVAS_TRANSACTION_ENDED", savedPlugin, "commit")
-
-    -- Trigger live frame + preview refresh
-    if savedPlugin.OnCanvasApply then savedPlugin:OnCanvasApply() end
-end
-
 -- [ ROLLBACK ] --------------------------------------------------------------------------------------
 function Transaction:Rollback()
     if not active then return end
     local savedPlugin = plugin
     self:Clear()
-    Orbit.EventBus:Fire("CANVAS_TRANSACTION_ENDED", savedPlugin, "rollback")
+    Orbit.EventBus:Fire("ORBIT_CANVAS_TRANSACTION_ENDED", savedPlugin, "rollback")
     -- Restore all frames to their pre-edit state (live + preview)
     if savedPlugin and savedPlugin.ApplySettings then savedPlugin:ApplySettings() end
     if savedPlugin and savedPlugin.SchedulePreviewUpdate then savedPlugin:SchedulePreviewUpdate() end
@@ -198,6 +173,6 @@ function Transaction:FireChanged()
     local p = plugin
     fireTimer = C_Timer.NewTimer(FIRE_DEBOUNCE, function()
         fireTimer = nil
-        if active and p then Orbit.EventBus:Fire("CANVAS_SETTINGS_CHANGED", p) end
+        if active and p then Orbit.EventBus:Fire("ORBIT_CANVAS_SETTINGS_CHANGED", p) end
     end)
 end

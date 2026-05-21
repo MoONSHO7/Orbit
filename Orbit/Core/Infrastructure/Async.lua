@@ -69,15 +69,3 @@ function Async:ClearThrottle(key)
     lastRun[key] = nil
 end
 
-function Async:ClearAll()
-    for _, timer in pairs(timers) do
-        if timer then
-            timer:Cancel()
-        end
-    end
-    timers, lastRun = {}, {}
-    if cleanupTicker then
-        cleanupTicker:Cancel()
-        cleanupTicker = nil
-    end
-end

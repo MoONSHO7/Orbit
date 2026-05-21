@@ -1,11 +1,10 @@
--- Guild.lua
--- Guild datatext: online guild members count
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Guild")
+local W = DT.BaseDatatext:New("Guild", L.PLU_DT_GUILD_NAME)
 
 function W:Update()
     if not IsInGuild() then self:SetText(L.PLU_DT_GUILD_OFFLINE); return end
@@ -73,7 +72,6 @@ function W:Init()
     self.leftClickHint = L.PLU_DT_GUILD_ROSTER
     self:RegisterEvent("GUILD_ROSTER_UPDATE")
     self:RegisterEvent("PLAYER_GUILD_UPDATE")
-    self:SetCategory("SOCIAL")
     self:Register()
     C_GuildInfo.GuildRoster()
     self:Update()

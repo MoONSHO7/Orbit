@@ -2,6 +2,7 @@
 -- Main dialog operations for Canvas Mode (Open, Apply, Cancel, Reset)
 
 local _, Orbit = ...
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -37,9 +38,17 @@ Dialog.FooterDivider:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-Online
 Dialog.FooterDivider:SetPoint("TOP", Dialog.Footer, "TOP", 0, FC.DividerOffset)
 
 -- Create buttons
-Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, "Cancel", function() Dialog:Cancel() end)
-Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, "Reset", function() Dialog:ResetPositions() end)
-Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, "Apply", function() Dialog:Apply() end)
+Dialog.CancelButton = Layout:CreateButton(Dialog.Footer, L.CMN_CANCEL, function() Dialog:Cancel() end)
+Dialog.ResetButton = Layout:CreateButton(Dialog.Footer, L.CMN_RESET, function() Dialog:ResetPositions() end)
+Dialog.ApplyButton = Layout:CreateButton(Dialog.Footer, L.CMN_APPLY, function() Dialog:Apply() end)
+
+if Orbit.EventBus then
+    Orbit.EventBus:On("ORBIT_LOCALE_REBUILT", function()
+        Dialog.CancelButton:SetText(L.CMN_CANCEL)
+        Dialog.ResetButton:SetText(L.CMN_RESET)
+        Dialog.ApplyButton:SetText(L.CMN_APPLY)
+    end)
+end
 
 function Dialog:LayoutFooterButtons()
     local buttons = { self.CancelButton, self.ResetButton, self.ApplyButton }
@@ -234,6 +243,18 @@ do
     end
 end
 
+-- [ HOOK API ] --------------------------------------------------------------------------------------
+-- Sanctioned before/after-open hooks replace the previous BossFrame + GroupFrame monkey-patches on
+-- Dialog.Open (the worst anti-pattern in the duplication cluster: a plugin overwriting an engine
+-- method). Callbacks run inside ErrorHandler:Wrap so a buggy plugin can't break the dialog open path.
+Dialog._beforeOpenCallbacks = Dialog._beforeOpenCallbacks or {}
+Dialog._afterOpenCallbacks  = Dialog._afterOpenCallbacks  or {}
+
+function Dialog:RegisterOnBeforeOpen(cb)   self._beforeOpenCallbacks[cb] = true end
+function Dialog:RegisterOnAfterOpen(cb)    self._afterOpenCallbacks[cb]  = true end
+function Dialog:UnregisterOnBeforeOpen(cb) self._beforeOpenCallbacks[cb] = nil  end
+function Dialog:UnregisterOnAfterOpen(cb)  self._afterOpenCallbacks[cb]  = nil  end
+
 -- [ OPEN DIALOG ] -----------------------------------------------------------------------------------
 function Dialog:Open(frame, plugin, systemIndex)
     if InCombatLockdown() then
@@ -241,6 +262,11 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
     if not frame then
         return false
+    end
+
+    for cb in pairs(self._beforeOpenCallbacks) do
+        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, frame, plugin, systemIndex)
+        else cb(frame, plugin, systemIndex) end
     end
 
     if Orbit.CanvasComponentSettings and Orbit.CanvasComponentSettings.componentKey then
@@ -518,6 +544,11 @@ function Dialog:Open(frame, plugin, systemIndex)
     if as and not as.CanvasTourComplete then
         as.CanvasTourComplete = true
         C_Timer.After(0.1, function() if self:IsShown() then self:StartTour() end end)
+    end
+
+    for cb in pairs(self._afterOpenCallbacks) do
+        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, frame, plugin, systemIndex)
+        else cb(frame, plugin, systemIndex) end
     end
 
     return true

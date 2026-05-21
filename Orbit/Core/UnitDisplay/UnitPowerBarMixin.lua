@@ -1,6 +1,5 @@
 -- [ UNIT POWER BAR MIXIN ]---------------------------------------------------------------------------
--- Shared mixin for Target/Focus power bar plugins.
--- Follows the CastBarMixin pattern: consumer files Mixin(Plugin, ...) then call config methods.
+-- shared by Target/Focus power-bar plugins; same Mixin(Plugin, ...) → config-methods shape as CastBarMixin.
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -231,13 +230,7 @@ function Mixin:ApplySettings()
     Orbit.Skin:SkinStatusBar(PowerBar, textureName, nil, true)
     Frame:SetBorder(borderSize)
 
-    local backdropColor = self:GetSetting(1, "BackdropColour")
-    if backdropColor and Frame.bg then
-        Frame.bg:SetColorTexture(backdropColor.r, backdropColor.g, backdropColor.b, backdropColor.a or 0.9)
-    elseif Frame.bg then
-        local c = Orbit.Constants.Colors.Background
-        Frame.bg:SetColorTexture(c.r, c.g, c.b, c.a or 0.9)
-    end
+    Orbit.Skin:ApplyGradientBackground(Frame, Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
 
     local fontPath = LSM:Fetch("font", fontName)
     local positions = self:GetSetting(1, "ComponentPositions") or {}
@@ -301,3 +294,5 @@ function Mixin:UpdateAll()
         end
     end
 end
+
+if table.freeze then table.freeze(Orbit.UnitPowerBarMixin) end

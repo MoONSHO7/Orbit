@@ -53,3 +53,4 @@ function Orbit.AggroIndicatorMixin:UpdateAllAggroIndicators(plugin)
     end
 end
 
+if table.freeze then table.freeze(Orbit.AggroIndicatorMixin) end

@@ -1,11 +1,5 @@
 -- [ COOLDOWN DRAG DROP ] ----------------------------------------------------------------------------
--- Pure helpers for resolving a cursor payload (spell/item) into a validated
--- cooldown ability. Consumed by any plugin that accepts drag-and-drop of
--- cooldown-bearing spells or items — currently CooldownManager/ViewerInjection
--- and (future) the redesigned Tracked plugin. No plugin references, no frame
--- creation, no saved-data writes — just cursor → validated (type, id) and the
--- metadata a consumer needs to build an entry (texture, active/cooldown
--- durations, equipment slot, useSpellId).
+-- pure cursor → (type, id, texture, durations, slot, useSpellId) resolver. no plugin refs / frame creation / saved-data writes.
 local _, Orbit = ...
 
 ---@class OrbitCooldownDragDrop

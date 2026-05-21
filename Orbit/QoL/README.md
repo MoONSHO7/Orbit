@@ -30,16 +30,18 @@ to add a new section, update `Orbit/Core/Config/Advanced/QoL.lua`:
 
 ## saving & reading settings
 
-all qol settings **must** be account-wide. **do not** use `Orbit.db.profile` or generic `Orbit.db` keys — those tie the setting to the active character profile or risk data wipes on profile switch.
+all qol settings **must** be account-wide. **do not** use `Orbit.db.profiles[...]` or generic `Orbit.db` keys — those tie the setting to the active character profile or risk data wipes on profile switch.
 
-use the helpers defined in `QoL.lua`:
+read and write directly against `Orbit.db.AccountSettings`. the `Core/Config/Advanced/QoL.lua` panel defines file-local `GetAccountSetting`/`SetAccountSetting` helpers for the config builders; runtime modules use the table directly:
 
 ```lua
--- reading
-local val = GetAccountSetting("MyCoolSetting", false)
+-- reading (with default)
+local v = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.MyCoolSetting
+if v == nil then v = false end
 
--- saving
-SetAccountSetting("MyCoolSetting", newValue)
+-- writing
+if not Orbit.db.AccountSettings then Orbit.db.AccountSettings = {} end
+Orbit.db.AccountSettings.MyCoolSetting = newValue
 ```
 
 ## initialization & architecture
@@ -63,7 +65,7 @@ keep modules combat-safe. use `Orbit:SafeAction(callback)` or `InCombatLockdown(
 
 ## rules
 
-- account-wide only — never touch `Orbit.db.profile`.
+- account-wide only — never touch `Orbit.db.profiles`.
 - modules must not depend on other plugins or other qol modules.
 - decomposed modules (`QoL/ModuleName/`) must keep all module-local state inside the `Orbit.ModuleName` namespace; no module-level mutable state in source files.
 - user-visible strings go through `Orbit.L`. see `Orbit/Localization/README.md`.

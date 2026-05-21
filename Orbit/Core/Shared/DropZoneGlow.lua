@@ -1,11 +1,5 @@
 -- [ DROP ZONE GLOW ] --------------------------------------------------------------------------------
--- 9-slice atlas glow that wraps a drop-zone frame to signal droppability.
--- Used by CooldownManager viewer injection, TrackedContainer drop zones, and
--- TrackedBar drop hint. Visibility is gated by a shared ticker on
--- `IsDraggingCooldownAbility()` AND the zone frame being visible — drop zones
--- that show for non-drag reasons (edit mode, settings panel) do not light the
--- glow. Glow is at Background strata / level 0 so it always renders beneath
--- the drop-zone's own textures.
+-- visibility gated by `IsDraggingCooldownAbility()` AND frame-visible, so drop zones that show for non-drag reasons (edit mode, settings panel) don't light up. rendered at Background strata / level 0 so it sits beneath the zone's own textures.
 local _, Orbit = ...
 
 ---@class OrbitDropZoneGlow

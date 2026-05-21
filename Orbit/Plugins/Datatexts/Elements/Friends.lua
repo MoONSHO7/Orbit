@@ -1,7 +1,6 @@
--- Friends.lua
--- Friends datatext: online friends count
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 local BNET_CLIENT_NAMES = {
@@ -52,7 +51,7 @@ local function GetClassColorFromLocalized(localizedName)
 end
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Friends")
+local W = DT.BaseDatatext:New("Friends", L.PLU_DT_FRIENDS_NAME)
 
 function W:Update()
     local _, bnetOnline = BNGetNumFriends()
@@ -170,7 +169,6 @@ function W:Init()
     self:RegisterEvent("BN_FRIEND_ACCOUNT_ONLINE")
     self:RegisterEvent("BN_FRIEND_ACCOUNT_OFFLINE")
     self:RegisterEvent("FRIENDLIST_UPDATE")
-    self:SetCategory("SOCIAL")
     self:Register()
     self:Update()
 end

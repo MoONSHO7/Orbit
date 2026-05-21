@@ -21,7 +21,7 @@ function GC:Show(frame, glowKey, typeName, options)
     local entry = state.active[glowKey]
     
     if options and not options.frameLevel then 
-        options.frameLevel = Constants.Levels.IconOverlay + 2 
+        options.frameLevel = Constants.Levels.IconGlow
     end
     
     local hash = Engine.GlowUtils:GetOptionsHash(options)
@@ -39,17 +39,6 @@ function GC:Hide(frame, glowKey)
     if not entry then return end
     LCG.Hide(frame, entry.typeName, glowKey)
     state.active[glowKey] = nil
-end
-
-function GC:StopAll(frame)
-    if not frame or not LCG then return end
-    local state = frame._orbitGlow
-    if not state then return end
-    for glowKey, entry in pairs(state.active) do
-        LCG.Hide(frame, entry.typeName, glowKey)
-    end
-    wipe(state.active)
-    state.suppressNative = nil
 end
 
 function GC:IsActive(frame, glowKey)
@@ -159,7 +148,7 @@ function GC:ShowPandemic(frame, typeName, options, alpha)
     local state = GetState(frame)
     
     if options and not options.frameLevel then 
-        options.frameLevel = Constants.Levels.IconOverlay + 2 
+        options.frameLevel = Constants.Levels.IconGlow
     end
     
     local hash = Engine.GlowUtils:GetOptionsHash(options)

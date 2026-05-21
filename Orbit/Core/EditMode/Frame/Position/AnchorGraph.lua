@@ -87,38 +87,6 @@ function Graph:GetAnchorRoot(frame)
     end
 end
 
--- [ DEPENDENTS ] ------------------------------------------------------------------------------------
--- syncAxis: if provided, only include descendants that sync on that axis.
-function Graph:GetDependents(frame, syncAxis)
-    local result = {}
-    local function walk(parent)
-        local children = self.childrenOf[parent]
-        if not children then return end
-        for child in pairs(children) do
-            if not syncAxis or SyncEnabled(child, syncAxis) then
-                result[#result + 1] = child
-                walk(child)
-            end
-        end
-    end
-    walk(frame)
-    return result
-end
-
--- [ CHILDREN ON EDGE ] ------------------------------------------------------------------------------
-function Graph:GetChildrenOnEdge(frame, edge)
-    local result = {}
-    local children = self.childrenOf[frame]
-    if not children then return result end
-    for child in pairs(children) do
-        local a = self.anchors[child]
-        if a and a.edge == edge then
-            result[#result + 1] = child
-        end
-    end
-    return result
-end
-
 -- [ TARGETED RECONCILIATION ] -----------------------------------------------------------------------
 -- Walk one chain, promote children past skipped frames; O(chain). skipLogical preserves intent.
 function Graph:RestoreLogicalChildren(parent, anchorModule)

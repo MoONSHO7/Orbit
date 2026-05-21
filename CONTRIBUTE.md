@@ -88,6 +88,7 @@ Orbit/
     GroupFrames/                -- unified party (1-5) and raid (6-40) frames with tiered layouts
     MenuItems/                  -- micro menu, bag bar, queue status
     Minimap/                    -- minimap and compartment with canvas-mode component placement
+    RaidPanel/                  -- party / raid frame extensions and raid-marker management
     StatusBars/                 -- experience / reputation / honor bars with canvas text components
     Tracked/                    -- user-authored tracked ability icons and bars
     UnitFrames/                 -- player, target, focus and sub-frames
@@ -99,11 +100,11 @@ each directory has its own `README.md`. read it before editing code in that dire
 
 ### style
 
-- inline code aggressively. minimize loc.
-- single-line comments only. no multi-line comment blocks.
+- inline code aggressively. minimize loc, but never at the cost of clarity for blizzard-internal behavior.
+- comments are minimal — prefer a single `--` line; no `--[[ ]]` block comments and no decorative banners. multi-line comments are a last resort, only for a subtle why a single line cannot carry (taint, event ordering, a blizzard quirk). if the code reads clearly, write no comment.
 - constants at file top. no magic numbers anywhere.
-- divider format: `-- [ TITLE ] ---...` (no blank line after).
-- files must not exceed ~1000 loc. decompose when approaching this.
+- divider format: `-- [ TITLE ] ---...` padded to column 102 (no blank line after).
+- loc is a smell, not a rule: >1000 loc is fine for a cohesive unit of work. the trigger to decompose is a god class — a file that has accumulated multiple responsibilities or multiple reasons to change — never a raw line-count threshold.
 
 ### formatting
 
@@ -122,12 +123,12 @@ run `stylua .` from the project root before committing.
 
 ### principles
 
-- **solid** — non-negotiable
-- **dry** — by default. repeat only when dry would violate srp
-- **no fallback code** — work once or fail fast
-- **no defensive nil-chains** "just in case"
-- **no memory leaks** — no wasted cycles, no o(n²) when o(n) exists
-- **pixel-perfect** — all pixel offsets use `Pixel:Snap()` or `Pixel:Multiple()`
+- **architecture is non-negotiable.** three principles carry the weight: single responsibility, inward-only dependency direction (sub-addons → plugins → core → infrastructure → shared), and bounded contexts (each feature lives in exactly one domain).
+- **dry** — by default. repeat only when dry would violate srp.
+- **no fallback code** — work once or fail fast, except at boundaries you don't own (blizzard frames, optional sibling addons, version-conditional apis).
+- **no defensive nil-chains** "just in case" — the test is whether the nil is your bug or the environment's.
+- **no memory leaks** — no wasted cycles, no o(n²) when o(n) exists.
+- **pixel-perfect** — all pixel offsets use `Pixel:Snap()` or `Pixel:Multiple()`.
 
 ## plugin lifecycle
 
@@ -198,7 +199,7 @@ to make a frame positionable in edit mode:
 to add fine-tuning of components within a frame:
 
 1. register component creators in `CanvasMode/Creators/`
-2. register via `OrbitEngine.CanvasMode.RegisterCreator(key, creatorFn)`
+2. register via `OrbitEngine.CanvasMode:RegisterCreator(key, creatorFn)`
 3. the creator receives the source component and returns a draggable preview
 4. see `CanvasMode/Creators/Registry.lua` for the full pattern
 
@@ -207,8 +208,8 @@ to add fine-tuning of components within a frame:
 use the eventbus for cross-system communication:
 
 ```lua
-Orbit.Engine.EventBus:Listen("ORBIT_PROFILE_CHANGED", function() ... end)
-Orbit.Engine.EventBus:Fire("MY_CUSTOM_EVENT", data)
+Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function() ... end)
+Orbit.EventBus:Fire("ORBIT_MY_CUSTOM_EVENT", data)
 ```
 
 prefer `EventBus:Fire()` over direct function calls. inter-plugin communication must always go through the eventbus.
@@ -236,7 +237,7 @@ mixins are **stateless**. state lives on the frame (`frame._mixinState`), never 
 | new color resolver | `Core/Color/` |
 | new canvas mode component creator | `Core/CanvasMode/Creators/` |
 | new constant | `Core/Shared/Constants.lua` |
-| z-index / layer ordering | `Core/Shared/StrataEngine.lua` |
+| z-index / layer ordering | `Core/Infrastructure/StrataEngine.lua` |
 | new plugin | `Plugins/NewPlugin/` |
 | new mixin | `Core/Plugin/` |
 | edit mode frame behavior | `Core/EditMode/` |

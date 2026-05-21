@@ -1,5 +1,6 @@
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_LAYOUT_ID = "Default"
@@ -31,19 +32,19 @@ function Orbit.PluginMixin:RegisterStandardEvents()
     local debounceKey = (self.name or "Plugin") .. "_Apply"
     local debounceDelay = (Orbit.Constants and Orbit.Constants.Timing and Orbit.Constants.Timing.DefaultDebounce) or 0.1
 
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         Orbit.Async:Debounce(debounceKey, function()
             self:ApplySettings()
         end, debounceDelay)
     end, self)
 
-    Orbit.EventBus:On("COLORS_CHANGED", function()
+    Orbit.EventBus:On("ORBIT_COLORS_CHANGED", function()
         Orbit.Async:Debounce(debounceKey, function()
             self:ApplySettings()
         end, debounceDelay)
     end, self)
 
-    Orbit.EventBus:On("STRATA_UPDATED", function()
+    Orbit.EventBus:On("ORBIT_STRATA_UPDATED", function()
         Orbit.Async:Debounce(debounceKey, function()
             self:ApplySettings()
         end, debounceDelay)
@@ -144,7 +145,7 @@ function Orbit.PluginMixin:WatchCanvasChanges()
         local frame = sysIdx and self.GetFrameBySystemIndex and self:GetFrameBySystemIndex(sysIdx)
         if self.ApplySettings then self:ApplySettings(frame) end
     end
-    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", self._canvasLiveCallback)
+    Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", self._canvasLiveCallback)
 end
 
 function Orbit.PluginMixin:GetLayoutID()
@@ -165,7 +166,7 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
     local db = Orbit.runtime and Orbit.runtime.Layouts
 
     -- Global Inheritance
-    if key == "Texture" or key == "Font" or key == "BorderSize" or key == "BackdropColour" then
+    if key == "Texture" or key == "Font" or key == "BorderSize" then
         local val = Orbit.db.GlobalSettings[key]
 
         return val
@@ -199,7 +200,7 @@ function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
     local layoutID = self:GetLayoutID()
     local db = Orbit.runtime and Orbit.runtime.Layouts
     if not self.system then
-        Orbit:Print("Warning: Plugin", self.name, "has no system identifier")
+        Orbit:Print(L.MSG_PLUGIN_NO_SYSTEM_ID_F:format(tostring(self.name)))
         return
     end
     db[layoutID] = db[layoutID] or {}
@@ -249,7 +250,7 @@ function Orbit.PluginMixin:SetSpecData(systemIndex, key, value)
 end
 
 -- [ VISIBILITY ]-------------------------------------------------------------------------------------
-local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA", "MOUNTED_VISIBILITY_CHANGED" }
+local VISIBILITY_EVENTS = { "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE", "PLAYER_MOUNT_DISPLAY_CHANGED", "ZONE_CHANGED_NEW_AREA", "ORBIT_MOUNTED_VISIBILITY_CHANGED" }
 local VISIBILITY_UNIT_EVENTS = { "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE" }
 
 function Orbit.PluginMixin:RegisterVisibilityEvents()

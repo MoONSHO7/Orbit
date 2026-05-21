@@ -1,7 +1,7 @@
 -- [ ORBIT ERROR HANDLER ]----------------------------------------------------------------------------
 -- Trust-boundary error catcher: wraps plugin lifecycle / event callbacks so a single misbehaving
 -- module can't take down the addon. Failures are printed to chat and ring-buffered in
--- `Orbit.db.ErrorLog` (viewable in-game).
+-- the `OrbitErrorLogDB` SavedVariable so a corrupt log can't take down user settings.
 
 local _, Orbit = ...
 
@@ -25,15 +25,13 @@ function ErrorHandler:Wrap(func, context)
 end
 
 function ErrorHandler:LogError(source, method, err)
-    if not Orbit.db then return end
-    if not Orbit.db.ErrorLog then
-        Orbit.db.ErrorLog = {}
-        Orbit.db.ErrorLogIndex = 0
-    end
+    OrbitErrorLogDB = OrbitErrorLogDB or { entries = {}, index = 0 }
+    OrbitErrorLogDB.entries = OrbitErrorLogDB.entries or {}
+    OrbitErrorLogDB.index = OrbitErrorLogDB.index or 0
 
-    local index = (Orbit.db.ErrorLogIndex % MAX_ERRORS) + 1
-    Orbit.db.ErrorLogIndex = index
-    Orbit.db.ErrorLog[index] = {
+    local index = (OrbitErrorLogDB.index % MAX_ERRORS) + 1
+    OrbitErrorLogDB.index = index
+    OrbitErrorLogDB.entries[index] = {
         time = time(),
         date = date("%Y-%m-%d %H:%M:%S"),
         source = tostring(source),

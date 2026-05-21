@@ -242,3 +242,5 @@ function Mixin:GetTipOfTheSpearState()
     if not aura then return 0, TIP_OF_THE_SPEAR_MAX end
     return aura.applications, TIP_OF_THE_SPEAR_MAX
 end
+
+if table.freeze then table.freeze(Orbit.ResourceBarMixin) end

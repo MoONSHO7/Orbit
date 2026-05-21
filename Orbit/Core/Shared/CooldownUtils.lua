@@ -57,7 +57,7 @@ function CooldownUtils:BuildSkinSettings(plugin, systemIndex, options)
         showTimer = plugin:GetSetting(systemIndex, "ShowTimer"),
         showGCDSwipe = plugin:GetSetting(systemIndex, "ShowGCDSwipe"),
         baseIconSize = Constants.Skin.DefaultIconSize,
-        backdropColor = plugin:GetSetting(systemIndex, "BackdropColour"),
+        -- backdropColor omitted: ActionButtonSkinning falls back to the global "Background" colour.
         showTooltip = options.showTooltip or false,
         verticalGrowth = options.verticalGrowth,
         horizontalGrowth = options.horizontalGrowth,
@@ -89,30 +89,6 @@ function CooldownUtils:CalculateIconDimensions(plugin, systemIndex, overrides, s
     local Pixel = OrbitEngine.Pixel
     if Pixel then w = Pixel:Snap(w, scale); h = Pixel:Snap(h, scale); iconSize = Pixel:Snap(iconSize, scale) end
     return w, h, iconSize
-end
-
--- [ SIMPLE TEXT APPLIER ] ---------------------------------------------------------------------------
-function CooldownUtils:ApplySimpleTextStyle(plugin, systemIndex, textElement, componentKey, defaultAnchor, defaultOffsetX, defaultOffsetY)
-    if not textElement then
-        return
-    end
-
-    local fontPath = plugin:GetGlobalFont()
-    local baseSize = plugin:GetBaseFontSize()
-    local positions = plugin:GetComponentPositions(systemIndex)
-    local pos = positions[componentKey] or {}
-    local overrides = pos.overrides or {}
-    local defaultSize = math.max(6, baseSize)
-
-    local OverrideUtils = OrbitEngine.OverrideUtils
-    if OverrideUtils then
-        OverrideUtils.ApplyOverrides(textElement, overrides, { fontSize = defaultSize, fontPath = fontPath })
-    end
-
-    local ApplyTextPosition = OrbitEngine.PositionUtils and OrbitEngine.PositionUtils.ApplyTextPosition
-    if ApplyTextPosition then
-        ApplyTextPosition(textElement, textElement:GetParent(), pos, defaultAnchor, defaultOffsetX, defaultOffsetY)
-    end
 end
 
 -- [ CHARGE COMPLETION TRACKING ] --------------------------------------------------------------------

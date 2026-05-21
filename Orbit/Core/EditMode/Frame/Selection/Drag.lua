@@ -94,33 +94,60 @@ local function SetNonSelectedOverlaysVisible(selectionOverlay, visible)
     selectionOverlay.precisionMode = not visible
 end
 
--- [ DRAG UPDATE (VISUALS) ]--------------------------------------------------------------------------
-local function RestorePreviewSize(selectionOverlay, isDragging)
-    local parent = selectionOverlay.parent
-    local needsReposition = selectionOverlay.previewOrigWidth or selectionOverlay.previewOrigHeight
-    if not needsReposition then return end
-    if isDragging then parent:StopMovingOrSizing() end
-    local l, b = parent:GetLeft(), parent:GetBottom()
-    local dw, dh = 0, 0
-    if selectionOverlay.previewOrigWidth then
-        dw = parent:GetWidth() - selectionOverlay.previewOrigWidth
-        parent:SetWidth(selectionOverlay.previewOrigWidth)
-        selectionOverlay.previewOrigWidth = nil
-    end
-    if selectionOverlay.previewOrigHeight then
-        dh = parent:GetHeight() - selectionOverlay.previewOrigHeight
-        parent:SetHeight(selectionOverlay.previewOrigHeight)
-        selectionOverlay.previewOrigHeight = nil
-    end
-    parent:ClearAllPoints()
+-- [ FRAME MOVE ]-------------------------------------------------------------------------------------
+-- The drag's move lifecycle: BeginMove -> UpdateMove (per frame) -> EndMove. Two modes —
+--   native: WoW's StartMoving drives the frame.
+--   manual: StartMoving failed to re-latch a follow point (an Orbit rounded-corner MaskTexture
+--           bound onto the frame can cause this), so UpdateMove tracks the cursor by hand instead.
+-- drag.manual selects the mode: BeginMove sets it, EndMove clears it.
+local function BeginMove(parent)
+    local drag = parent._drag
+    local preL, preB = parent:GetLeft(), parent:GetBottom()
+    parent:StartMoving()
+    drag.manual = nil
+    if parent:GetNumPoints() > 0 then return end
+
+    -- StartMoving failed to set a follow point but may still have flagged the frame as "moving"
+    -- in WoW's internal state. Clear that — left set, it fights the manual SetPoints below and
+    -- makes the StopMovingOrSizing on drag-stop strip the frame's point (frame lands at 0,0).
+    parent:StopMovingOrSizing()
+
     local scale = parent:GetEffectiveScale()
-    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(l + dw / 2, scale), Engine.Pixel:Snap(b + dh / 2, scale))
-    if isDragging then parent:StartMoving() end
+    if not scale or scale < 0.01 then scale = 1 end
+    preL, preB = preL or 0, preB or 0
+    local cx, cy = GetCursorPosition()
+    drag.manual = true
+    drag.manualOffX = preL - cx / scale
+    drag.manualOffY = preB - cy / scale
+    -- Re-anchor immediately so the frame is never left point-less.
+    parent:ClearAllPoints()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", preL, preB)
 end
 
+-- Per-frame cursor follow — a no-op unless BeginMove fell back to manual mode.
+local function UpdateMove(parent)
+    local drag = parent._drag
+    if not (drag and drag.manual) or InCombatLockdown() then return end
+    local scale = parent:GetEffectiveScale()
+    if not scale or scale < 0.01 then scale = 1 end
+    local cx, cy = GetCursorPosition()
+    parent:ClearAllPoints()
+    parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT",
+        cx / scale + drag.manualOffX, cy / scale + drag.manualOffY)
+end
+
+-- Ends the move: stops WoW's native move (harmless if it never engaged) and clears the mode.
+local function EndMove(parent)
+    parent:StopMovingOrSizing()
+    parent._drag.manual = nil
+end
+
+-- [ DRAG UPDATE (VISUALS) ]--------------------------------------------------------------------------
 local function OnDragUpdate(selectionOverlay, elapsed)
     local parent = selectionOverlay.parent
     local Selection = Engine.FrameSelection
+
+    UpdateMove(parent)
 
     local shiftHeld = IsShiftKeyDown()
     if shiftHeld and not selectionOverlay.precisionMode then
@@ -163,7 +190,6 @@ local function OnDragUpdate(selectionOverlay, elapsed)
             Selection:ShowAnchorLine(oldSel, nil)
         end
         Selection:ShowAnchorLine(selectionOverlay, nil)
-        RestorePreviewSize(selectionOverlay, true)
 
         local targetSel = Selection.selections[anchorTarget]
         Selection:ShowAnchorLine(targetSel, anchorEdge, lineAlign)
@@ -175,7 +201,6 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
         Selection:ShowAnchorLine(oldSel, nil)
         Selection:ShowAnchorLine(selectionOverlay, nil)
-        RestorePreviewSize(selectionOverlay, true)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
@@ -215,8 +240,14 @@ function Drag:OnDragStart(selectionOverlay)
 
     if parent:IsMovable() and not parent.orbitNoDrag then
         parent.orbitIsDragging = true
+        -- All transient drag-internal state lives in one table for the drag's lifetime; created
+        -- here, destroyed in OnDragStop. (orbitIsDragging stays a separate frame flag — external
+        -- code reads it.)
+        parent._drag = {}
+        parent._drag.mergeSuspendGroup = Orbit.Skin:SuspendMergeGroup(parent)
 
         local anchor = Engine.FrameAnchor.anchors[parent]
+        parent._drag.prevAnchor = anchor and { parent = anchor.parent, edge = anchor.edge, padding = anchor.padding } or nil
         if anchor then
             -- Capture visual center before break. BreakAnchor fires
             -- OnAnchorChanged which may resize the frame (e.g. TrackedBar
@@ -229,7 +260,7 @@ function Drag:OnDragStart(selectionOverlay)
             local root = oldAxis and oldParent and Engine.FrameAnchor:GetRootParent(oldParent) or nil
 
             Engine.FrameAnchor:BreakAnchor(parent, true, true)
-            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
 
             if root then
                 Engine.FrameAnchor:SyncChildren(root)
@@ -240,10 +271,14 @@ function Drag:OnDragStart(selectionOverlay)
             parent:ClearAllPoints()
             local scale = parent:GetEffectiveScale()
             parent:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", Engine.Pixel:Snap(preCX - postW / 2, scale), Engine.Pixel:Snap(preCY - postH / 2, scale))
-            parent:StartMoving()
-        else
-            parent:StartMoving()
         end
+
+        -- Snapshot the resolved pre-drag position. If the drop can't otherwise resolve where the
+        -- frame lands, OnDragStop restores this instead of dumping the frame to screen origin.
+        local rPoint, _, _, rX, rY = parent:GetPoint(1)
+        parent._drag.restorePoint = rPoint and { point = rPoint, x = rX, y = rY } or nil
+
+        BeginMove(parent)
 
         if parent.orbitAutoOrient and Engine.FrameOrientation then
             Engine.FrameOrientation:StartTracking(parent)
@@ -265,121 +300,151 @@ function Drag:OnDragStart(selectionOverlay)
 end
 
 -- [ DRAG STOP ]--------------------------------------------------------------------------------------
-function Drag:OnDragStop(selectionOverlay)
-    Drag.isDragging = false
-    local parent = selectionOverlay.parent
-    
+-- Unconditional visual/state teardown — runs even when the position commit is blocked below.
+local function TeardownDrag(selectionOverlay, parent)
+    local drag = parent._drag
+
+    -- Resumed before any combat/canvas early-return so combat starting mid-drag can't strand it.
+    if drag.mergeSuspendGroup then
+        Orbit.Skin:ResumeMergeGroup(drag.mergeSuspendGroup)
+        drag.mergeSuspendGroup = nil
+    end
+
+    local Selection = Engine.FrameSelection
     if selectionOverlay.lastAnchorTarget then
-        local Selection = Engine.FrameSelection
-        local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
-        Selection:ShowAnchorLine(oldSel, nil)
+        Selection:ShowAnchorLine(Selection.selections[selectionOverlay.lastAnchorTarget], nil)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
-    RestorePreviewSize(selectionOverlay)
-    Engine.FrameSelection:ShowAnchorLine(selectionOverlay, nil)
+    Selection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)
     SetBlizzardSnapPreview(parent, false)
 
-    -- Restore overlays if precision mode was active
     if selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, true)
-        Engine.FrameSelection:RefreshVisuals()
+        Selection:RefreshVisuals()
+    end
+end
+
+-- Read-only: the symmetric partner's current anchor padding, or nil. Does NOT re-anchor the
+-- partner — re-anchoring the partner is OnMouseWheel's responsibility, not the drop's.
+local function SymmetricPartnerPadding(parent)
+    local partnerName = Engine.FrameSelection:GetSymmetricPartner(parent:GetName())
+    local partner = partnerName and _G[partnerName]
+    local pAnchor = partner and Engine.FrameAnchor.anchors[partner]
+    return pAnchor and (pAnchor.padding or 0) or nil
+end
+
+-- A drop that resolved no point falls back to the pre-drag snapshot, so it never dumps the
+-- frame to screen origin just because resolution transiently failed.
+local function FallbackPoint(parent, point, x, y)
+    local s = parent._drag.restorePoint
+    if point or not s then return point, x, y end
+    return s.point, s.x, s.y
+end
+
+-- Decides what a drop does. Returns { kind = "anchor" | "free" | "precision", ... }. Runs snap
+-- detection (which snaps the frame as a side effect); CommitDrop then applies the decision.
+local function ResolveDrop(parent)
+    local Selection = Engine.FrameSelection
+
+    if IsShiftKeyDown() or parent.orbitNoSnap then
+        -- Precision mode: raw position, no snapping.
+        local point, _, _, x, y = parent:GetPoint(1)
+        point, x, y = FallbackPoint(parent, point, x, y)
+        return { kind = "precision", point = point, x = x, y = y }
     end
 
-    if InCombatLockdown() then
+    local targets = Selection:GetSnapTargets(parent)
+    local _, _, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, false, targets, nil)
+
+    local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
+    if anchorTarget and anchorEdge and anchoringEnabled and Selection.selections[anchorTarget] then
+        -- Re-dropping onto the same target keeps the user's existing gap (e.g. a deliberate 0);
+        -- failing that, inherit a symmetric partner's gap; failing that, CreateAnchor's default.
+        local padding
+        local prev = parent._drag.prevAnchor
+        if prev and prev.parent == anchorTarget and prev.edge == anchorEdge then
+            padding = prev.padding
+        end
+        if padding == nil then
+            padding = SymmetricPartnerPadding(parent)
+        end
+        return { kind = "anchor", target = anchorTarget, edge = anchorEdge, align = anchorAlign, padding = padding }
+    end
+
+    local point, x, y = Engine.FrameSnap:NormalizePosition(parent)
+    if not point then
+        point, _, _, x, y = parent:GetPoint(1)
+    end
+    point, x, y = FallbackPoint(parent, point, x, y)
+    return { kind = "free", point = point, x = x, y = y }
+end
+
+-- Applies a ResolveDrop decision: anchors or positions the frame, persists it via the drag
+-- callback, refreshes group borders.
+local function CommitDrop(parent, decision)
+    local cb = Engine.FrameSelection.dragCallbacks[parent]
+
+    if decision.kind == "anchor" then
+        Engine.FrameAnchor:CreateAnchor(parent, decision.target, decision.edge, decision.padding, nil, decision.align)
+        -- Ordering is load-bearing: the anchor must exist before ORBIT_BORDER_LAYOUT_CHANGED and before
+        -- the callback, which reads FrameAnchor.anchors[parent].
+        Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
+        if cb then cb(parent, "ANCHORED", decision.target, decision.edge) end
         return
     end
 
+    if decision.kind == "precision" then
+        parent:ClearAllPoints()
+        parent:SetPoint(decision.point or "CENTER", decision.x or 0, decision.y or 0)
+        if cb then cb(parent, decision.point or "CENTER", decision.x or 0, decision.y or 0) end
+        return
+    end
+
+    -- "free": SetPoint before ApplySettings — ApplySettings re-reads geometry and must see the drop.
+    if cb then cb(parent, decision.point, decision.x, decision.y) end
+    parent:ClearAllPoints()
+    parent:SetPoint(decision.point or "CENTER", decision.x or 0, decision.y or 0)
+    if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
+        parent.orbitPlugin:ApplySettings(parent)
+    end
+end
+
+function Drag:OnDragStop(selectionOverlay)
+    Drag.isDragging = false
     local parent = selectionOverlay.parent
-    parent:StopMovingOrSizing()
+    -- OnDragStop can fire without a matching OnDragStart (WoW fires it for any drag gesture);
+    -- ensure the drag table exists so the teardown/resolve below is nil-safe.
+    parent._drag = parent._drag or {}
 
-    if Engine.CanvasMode:IsActive(parent) then
+    TeardownDrag(selectionOverlay, parent)
+    -- End the move unconditionally — a combat-interrupted drag must not leave the frame latched.
+    EndMove(parent)
+
+    -- Combat and canvas mode block the position commit; the teardown above always runs.
+    if InCombatLockdown() or Engine.CanvasMode:IsActive(parent) then
         parent.orbitIsDragging = nil
+        parent._drag = nil
         return
     end
 
-    -- Break existing anchor
+    -- BreakAnchor is deliberately in the commit tier, not teardown: don't detach a frame's anchor
+    -- unless the commit below can then re-place it.
     Engine.FrameAnchor:BreakAnchor(parent, true)
 
+    CommitDrop(parent, ResolveDrop(parent))
+
     local Selection = Engine.FrameSelection
-    local precisionMode = IsShiftKeyDown() or parent.orbitNoSnap
-
-    if precisionMode then
-        -- Precision mode: save raw position, skip all snapping
-        local point, _, _, x, y = parent:GetPoint(1)
-        parent:ClearAllPoints()
-        parent:SetPoint(point or "CENTER", x or 0, y or 0)
-
-        if Selection.dragCallbacks[parent] then
-            Selection.dragCallbacks[parent](parent, point or "CENTER", x or 0, y or 0)
-        end
-    else
-        -- Detect snap
-        local targets = Selection:GetSnapTargets(parent)
-        local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(
-            parent,
-            false,
-            targets,
-            nil -- No locked-frame filter needed
-        )
-
-        -- Check if anchoring is enabled globally
-        local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
-
-        -- Only allow anchoring to Orbit frames (in Selection.selections registry)
-        local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
-
-        if anchorTarget and anchorEdge and anchoringEnabled and isOrbitFrame then
-            local padding = nil
-            local name = parent:GetName()
-            local partnerName = Selection:GetSymmetricPartner(name)
-            if partnerName then
-                local partner = _G[partnerName]
-                if partner and Engine.FrameAnchor.anchors[partner] then
-                    padding = Engine.FrameAnchor.anchors[partner].padding or 0
-                end
-            end
-
-            Engine.FrameAnchor:CreateAnchor(parent, anchorTarget, anchorEdge, padding, nil, anchorAlign)
-
-            -- Defer group border update after new anchor is established
-            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
-
-            if Selection.dragCallbacks[parent] then
-                Selection.dragCallbacks[parent](parent, "ANCHORED", anchorTarget, anchorEdge)
-            end
-        else
-            local point, x, y = Engine.FrameSnap:NormalizePosition(parent)
-            if not point then
-                point, _, _, x, y = parent:GetPoint(1)
-            end
-
-            if Selection.dragCallbacks[parent] then
-                Selection.dragCallbacks[parent](parent, point, x, y)
-            end
-
-            parent:ClearAllPoints()
-            parent:SetPoint(point or "CENTER", x or 0, y or 0)
-
-            if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
-                parent.orbitPlugin:ApplySettings(parent)
-            end
-        end
-    end
-
     Selection:UpdateVisuals(parent)
-
-    -- Show final position in tooltip (with fade)
     Engine.SelectionTooltip:ShowPosition(parent, Selection)
-
     if selectionOverlay.ShowTooltip then
         selectionOverlay:ShowTooltip()
     end
 
     parent.orbitIsDragging = nil
+    parent._drag = nil
 
-    -- Stop orientation tracking
     if parent.orbitAutoOrient and Engine.FrameOrientation then
         Engine.FrameOrientation:StopTracking(parent)
     end

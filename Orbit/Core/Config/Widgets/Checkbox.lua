@@ -73,8 +73,8 @@ function Layout:CreateCheckbox(parent, label, tooltip, initialValue, callback, o
                 frame.ValueText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
             end
             frame.ValueText:ClearAllPoints()
-            frame.ValueText:SetPoint("RIGHT", frame, "RIGHT", -4, 0)
-            frame.ValueText:SetWidth(C.Widget.ValueWidth - 8)
+            frame.ValueText:SetPoint("RIGHT", frame, "RIGHT", -C.Widget.ValueInset, 0)
+            frame.ValueText:SetWidth(C.Widget.ValueWidth - C.Widget.ValueInset)
             frame.ValueText:SetJustifyH("RIGHT")
             frame.ValueText:SetText(tostring(opts.valueText))
             frame.ValueText:Show()

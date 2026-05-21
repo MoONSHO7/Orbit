@@ -14,7 +14,7 @@ lib:Open({
     initialData = self.curveData,
     forceSingleColor = self.singleColorMode,
     recentColorsDb = mySavedVar.RecentColors,
-    callback = function(result)
+    callback = function(result, isPreview)
         if result and result.pins and #result.pins > 0 then
             self.curveData = result
         else
@@ -67,7 +67,8 @@ the tour can always be started manually via the info button in the top-left corn
 ### checking state
 
 ```lua
-lib:IsOpen()
+lib:IsOpen()           -- true while the picker frame is shown
+lib:GetColorCurve()    -- last built native ColorCurve (or nil if never built)
 ```
 
 ## open options
@@ -78,7 +79,7 @@ lib:IsOpen()
 | `forceSingleColor` | `boolean` | restrict to one pin when `true` (default: `false`) |
 | `hasDesaturation` | `boolean` | show desaturation checkbox when `true` (default: `false`) |
 | `recentColorsDb` | `table` or `nil` | array reference to enable the persistent 8-slot color history row |
-| `callback` | `function(result)` | called on picker close with result or `nil` |
+| `callback` | `function(result, isPreview)` | called both on every pin/curve change (`isPreview = false` for live updates, but the rolled-back snapshot fires with `isPreview = true` on cancel) and on picker close. The two-arg form lets consumers throttle expensive previews vs. final commits; ignoring `isPreview` is safe. |
 | `onOpen` | `function(picker)` | called after picker is fully shown and initialized |
 
 ## callback result
@@ -138,6 +139,22 @@ unlimited pins. drag colors onto the gradient bar to add stops. drag handles to 
 - "apply color" commits the result, "clear color" appears when no pins remain
 - close / escape cancels and restores the previous state
 
+## localization
+
+the entire ui (labels, tooltips, buttons, mode titles, tour) is localized for 9 languages and resolves at file load via `GetLocale()`:
+
+- english (enUS / enGB)
+- german (deDE)
+- french (frFR)
+- spanish (esES / esMX)
+- brazilian portuguese (ptBR)
+- russian (ruRU)
+- korean (koKR)
+- simplified chinese (zhCN)
+- traditional chinese (zhTW)
+
+string keys live in the `CP_LOCALE` table at the bottom of `LibOrbitColorPicker-1.0.lua`. extend per-locale by adding new keys to each block; the tour and ui both read the same active locale.
+
 ## tour system
 
 a built-in sequential guided tour with 6 stops:
@@ -149,7 +166,7 @@ a built-in sequential guided tour with 6 stops:
 5. **pin controls** — arrow key nudging, shift for fine precision
 6. **apply / clear** — save gradient or reset to default
 
-the tour is localized for: english, german, french, spanish, portuguese, russian, korean, simplified chinese, traditional chinese.
+the tour tooltip frame is lazy-built on first `StartTour()` — users who never run the tour pay zero cost at file load.
 
 ### public tour api
 

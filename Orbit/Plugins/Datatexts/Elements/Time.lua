@@ -1,7 +1,6 @@
--- Time.lua
--- Time datatext: local/realm time with calendar tooltip
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
@@ -12,7 +11,7 @@ local FORMAT_24H = "%H:%M"
 local use24h = true
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Time")
+local W = DT.BaseDatatext:New("Time", L.PLU_DT_TIME_NAME)
 
 function W:Update()
     local format = use24h and FORMAT_24H or FORMAT_12H
@@ -50,7 +49,6 @@ function W:Init()
     end)
     self.leftClickHint = L.PLU_DT_TIME_HINT_TOGGLE
     self.rightClickHint = L.PLU_DT_TIME_HINT_CALENDAR
-    self:SetCategory("UTILITY")
     self:Register()
     self:Update()
 end

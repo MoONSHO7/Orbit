@@ -12,6 +12,7 @@ local DEFAULT_POSITION_X = -250
 local DEFAULT_POSITION_Y = -100
 
 local Plugin = Orbit:RegisterPlugin("Pet Frame", SYSTEM_ID, {
+    displayName = L.PLG_NAME_PET_FRAME,
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 90,
@@ -57,7 +58,7 @@ function Plugin:OnLoad()
     self.container = self:CreateVisibilityContainer(UIParent)
     self.frame = OrbitEngine.UnitButton:Create(self.container, "pet", "OrbitPlayerPetFrame")
     self.frame:SetFrameLevel(math.max(1, self.frame:GetFrameLevel() - FRAME_LEVEL_DEMOTE))
-    self.frame.editModeName = "Pet Frame"
+    self.frame.editModeName = self.displayName
     self.frame.systemIndex = PET_FRAME_INDEX
     self.frame.anchorOptions = { horizontal = false, vertical = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
@@ -206,8 +207,3 @@ function Plugin:ApplySettings(frame)
     self:UpdateVisibility()
 end
 
-function Plugin:UpdateVisuals(frame)
-    if frame and frame.UpdateAll then
-        frame:UpdateAll()
-    end
-end

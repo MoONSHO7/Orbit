@@ -2,6 +2,7 @@
 -- User-authored cooldown containers (icon grids + bars) as flat records in GlobalSettings.TrackedContainers.
 local _, Orbit = ...
 
+local L = Orbit.L
 local Constants = Orbit.Constants
 local DragDrop = Orbit.CooldownDragDrop
 
@@ -23,6 +24,7 @@ local TALENT_REFRESH_DEBOUNCE = 0.1
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 -- settingsArePerSpec: records own their spec field, so Persistence's spec-data routing is skipped.
 local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
+    displayName = L.PLG_NAME_TRACKED_ITEMS,
     liveToggle = true,
     settingsArePerSpec = true,
     containers = {}, -- live frames keyed by id
@@ -44,9 +46,9 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
         self:EnsureStore()
         self:RegisterTabs()
         self:RefreshForCurrentSpec()
-        Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function() self:RefreshForCurrentSpec() end, self)
+        Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function() self:RefreshForCurrentSpec() end, self)
         Orbit.EventBus:On("ACTIVE_TALENT_GROUP_CHANGED", function() self:RefreshForCurrentSpec() end, self)
-        Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function() self:RefreshForCurrentSpec() end, self)
+        Orbit.EventBus:On("ORBIT_PLAYER_SPECIALIZATION_CHANGED", function() self:RefreshForCurrentSpec() end, self)
         Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function() self:RefreshForCurrentSpec() end, self)
         Orbit.EventBus:On("TRAIT_CONFIG_UPDATED", function() self:_ScheduleBarPayloadRefresh() end, self)
     end,
@@ -198,7 +200,7 @@ function Plugin:CreateIconContainer()
     local specID = self:GetCurrentSpecID()
     if not specID then return end
     if self:CountForSpec(specID, "icons") >= MAX_ICON_CONTAINERS then
-        Orbit:Print("Tracked: max icon containers reached for this spec (" .. MAX_ICON_CONTAINERS .. ")")
+        Orbit:Print(L.MSG_TRK_MAX_CONTAINERS_F:format(MAX_ICON_CONTAINERS))
         return
     end
 
@@ -220,7 +222,7 @@ function Plugin:CreateBar()
     local specID = self:GetCurrentSpecID()
     if not specID then return end
     if self:CountForSpec(specID, "bar") >= MAX_BARS then
-        Orbit:Print("Tracked: max bars reached for this spec (" .. MAX_BARS .. ")")
+        Orbit:Print(L.MSG_TRK_MAX_BARS_F:format(MAX_BARS))
         return
     end
 
@@ -321,7 +323,7 @@ function Plugin:FlushCurrentSpec()
         if record.spec == specID then toRemove[#toRemove + 1] = id end
     end
     for _, id in ipairs(toRemove) do self:DeleteContainer(id) end
-    Orbit:Print("Tracked: flushed " .. #toRemove .. " container(s) for spec " .. specID)
+    Orbit:Print(L.MSG_TRK_FLUSHED_CONTAINERS_F:format(#toRemove, specID))
     return #toRemove
 end
 

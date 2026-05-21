@@ -165,7 +165,6 @@ function Bar:Build(plugin, record)
     frame.Selection:Hide()
 
     frame.IconBg = frame:CreateTexture(nil, "BACKGROUND")
-    frame.IconBg:SetColorTexture(0, 0, 0, 0.5)
     Orbit.Skin:RegisterMaskedSurface(frame, frame.IconBg)
 
     frame.Icon = frame:CreateTexture(nil, "ARTWORK")
@@ -180,7 +179,6 @@ function Bar:Build(plugin, record)
 
     frame.BarBg = frame.StatusBar:CreateTexture(nil, "BACKGROUND")
     frame.BarBg:SetAllPoints(frame.StatusBar)
-    frame.BarBg:SetColorTexture(0, 0, 0, 0.5)
     Orbit.Skin:RegisterMaskedSurface(frame, frame.BarBg)
 
     -- Invisible positioner whose fill edge tracks currentCharges; RechargeSegment anchors to it.
@@ -289,6 +287,7 @@ function Bar:Build(plugin, record)
         bar:SetAllPoints()
         bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
         bar:SetOrientation(isVertical and "VERTICAL" or "HORIZONTAL")
+        bar:SetRotatesTexture(isVertical)
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(0.6)
         Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
@@ -354,7 +353,6 @@ function Bar:Build(plugin, record)
     frame.StatusBar:HookScript("OnSizeChanged", function() Bar:LayoutChargesGeometry(frame) end)
 
     Bar:StartCursorWatcher(plugin, frame)
-    Bar:StartUpdateTicker(plugin, frame)
     Bar:StartChargeEventWatcher(plugin, frame)
     Bar:StartCastWatcher(plugin, frame)
     return frame
@@ -418,6 +416,11 @@ function Bar:Apply(plugin, frame, record)
 
     Orbit.Skin:SkinBorder(frame, frame, Orbit.db.GlobalSettings.BorderSize or 1)
 
+    -- Icon + bar backdrops default to the global "Background" colour (Textures tab).
+    local bgColor = Orbit.Skin:GetBackgroundColor()
+    frame.IconBg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+    frame.BarBg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+
     frame._hideOnCooldown = plugin:GetSetting(record.id, "HideOnCooldown") or false
     frame._hideOnAvailable = plugin:GetSetting(record.id, "HideOnAvailable") or false
 
@@ -450,8 +453,10 @@ function Bar:Apply(plugin, frame, record)
     frame.StatusBar:ClearAllPoints()
     if isVertical then
         frame.StatusBar:SetOrientation("VERTICAL")
+        frame.StatusBar:SetRotatesTexture(true)
         frame.RechargePositioner:SetOrientation("VERTICAL")
         frame.RechargeSegment:SetOrientation("VERTICAL")
+        frame.RechargeSegment:SetRotatesTexture(true)
         if iconSize > 0 then
             if iconAtEnd then
                 frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
@@ -466,8 +471,10 @@ function Bar:Apply(plugin, frame, record)
         end
     else
         frame.StatusBar:SetOrientation("HORIZONTAL")
+        frame.StatusBar:SetRotatesTexture(false)
         frame.RechargePositioner:SetOrientation("HORIZONTAL")
         frame.RechargeSegment:SetOrientation("HORIZONTAL")
+        frame.RechargeSegment:SetRotatesTexture(false)
         if iconSize > 0 then
             if iconAtEnd then
                 frame.StatusBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
@@ -1018,7 +1025,7 @@ function Bar:OnReceiveDrag(plugin, frame)
 
     -- Two-step gate: clear existing payload first before assigning a new one.
     if record.payload and record.payload.id then
-        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
+        Orbit:Print(L.MSG_TRK_CLEAR_PAYLOAD_FIRST)
         return
     end
 
@@ -1037,7 +1044,7 @@ function Bar:OnCooldownSettingsDrop(plugin, frame, spellID)
     local record = plugin:GetContainerRecord(frame.recordId)
     if not record then return end
     if record.payload and record.payload.id then
-        Orbit:Print("Tracked: clear the current payload first (shift-right-click) before assigning a new one")
+        Orbit:Print(L.MSG_TRK_CLEAR_PAYLOAD_FIRST)
         return
     end
     record.payload = DragDrop:BuildTrackedBarPayload("spell", spellID)
@@ -1059,12 +1066,19 @@ function Bar:HandleShiftRightClick(plugin, frame)
 end
 
 -- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
--- Polls ShouldShowDropHints; triggers RefreshSpellState when hint visibility flips.
+-- S18-C2: 20Hz throttle + frame-visibility gate matches the sibling Container watcher; previously
+-- every TrackedBar (all specs' records, off-spec included) ran the full closure body 60Hz for life.
+local CURSOR_WATCHER_INTERVAL = 0.05
 function Bar:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
     local watcher = CreateFrame("Frame")
     watcher._wasShowing = false
-    watcher:SetScript("OnUpdate", function(self)
+    watcher._cursorAccum = 0
+    watcher:SetScript("OnUpdate", function(self, elapsed)
+        self._cursorAccum = self._cursorAccum + elapsed
+        if self._cursorAccum < CURSOR_WATCHER_INTERVAL then return end
+        self._cursorAccum = 0
+        if not frame:IsShown() then return end
         local record = plugin:GetContainerRecord(frame.recordId)
         if not record then return end
         local p = Orbit.Profiler
@@ -1092,9 +1106,6 @@ function Bar:_EnsureTicker(plugin, frame)
             frame._updateTicker = nil
         end
     end)
-end
-
-function Bar:StartUpdateTicker(plugin, frame)
 end
 
 -- [ CHARGE EVENT WATCHER ] --------------------------------------------------------------------------

@@ -1,8 +1,5 @@
 -- [ WHITELISTED SPELLS ]-----------------------------------------------------------------------------
--- Blizzard-whitelisted spell IDs where aura/cooldown fields are NON-SECRET even in combat.
--- Update this file when Blizzard patches add new whitelisted spells.
--- See UNSECRETED.md in project root for full Blizzard whitelist documentation.
--- No executable logic. Only declarations.
+-- Blizzard-whitelisted spell IDs where aura/cooldown fields are non-secret even in combat. see UNSECRETED.md.
 local _, Orbit = ...
 
 ---@class OrbitWhitelistedSpells
@@ -177,39 +174,3 @@ W.UTILITY = {
     [26013]  = "Deserter",
 }
 
--- [ QUICK LOOKUP TABLE ]-----------------------------------------------------------------------------
--- Merged lookup for fast O(1) checks: W.IsWhitelisted[spellId] == true
-W.IsWhitelisted = {}
-
-local function MergeInto(dest, source)
-    for id in pairs(source) do dest[id] = true end
-end
-
-MergeInto(W.IsWhitelisted, W.CLASS_RESOURCES)
-MergeInto(W.IsWhitelisted, W.HEALER_AURAS)
-MergeInto(W.IsWhitelisted, W.RAID_BUFFS)
-MergeInto(W.IsWhitelisted, W.BRONZE_VARIANTS)
-MergeInto(W.IsWhitelisted, W.ROGUE_POISONS)
-MergeInto(W.IsWhitelisted, W.SHAMAN_IMBUEMENTS)
-MergeInto(W.IsWhitelisted, W.EXHAUSTION)
-MergeInto(W.IsWhitelisted, W.SKYRIDING)
-MergeInto(W.IsWhitelisted, W.COMBAT_RES)
-MergeInto(W.IsWhitelisted, W.SYSTEM)
-MergeInto(W.IsWhitelisted, W.UTILITY)
-
--- [ API ]--------------------------------------------------------------------------------------------
-function W:IsSpellWhitelisted(spellId)
-    return self.IsWhitelisted[spellId] == true
-end
-
-function W:IsClassResource(spellId)
-    return self.CLASS_RESOURCES[spellId] ~= nil
-end
-
-function W:IsHealerAura(spellId)
-    return self.HEALER_AURAS[spellId] ~= nil
-end
-
-function W:IsCombatRes(spellId)
-    return self.COMBAT_RES[spellId] ~= nil
-end

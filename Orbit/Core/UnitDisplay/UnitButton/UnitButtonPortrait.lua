@@ -117,6 +117,7 @@ function PortraitMixin:UpdatePortrait()
     local style = plugin:GetSetting(systemIndex, "PortraitStyle") or "3d"
     local mirror = plugin:GetSetting(systemIndex, "PortraitMirror") or false
     local ringAtlas = plugin:GetSetting(systemIndex, "PortraitRing") or "none"
+    local portraitType = plugin:GetSetting(systemIndex, "PortraitType") or "portrait"
 
     local size = PORTRAIT_DEFAULT_SIZE * scale
     local ringData = PORTRAIT_RING_DATA[ringAtlas]
@@ -129,7 +130,7 @@ function PortraitMixin:UpdatePortrait()
     portrait.Ring:SetPoint("TOPLEFT", -ringOS, ringOS)
     portrait.Ring:SetPoint("BOTTOMRIGHT", ringOS, -ringOS)
 
-    self:ApplyPortraitContent(style, unit, mirror)
+    self:ApplyPortraitContent(style, unit, mirror, portraitType)
     self:ApplyPortraitRing(style, ringAtlas)
     self:ApplyPortraitBackdrop(style)
 
@@ -137,16 +138,26 @@ function PortraitMixin:UpdatePortrait()
         local showBorder = plugin:GetSetting(systemIndex, "PortraitBorder")
         if showBorder == nil then showBorder = true end
         local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-        Orbit.Skin:SkinBorder(portrait, portrait, borderSize)
+        -- 3D portrait is a PlayerModel — an unmaskable rectangle. Force Square corners so the
+        -- nine-slice border matches the model edge; thickness still follows the global setting.
+        Orbit.Skin:SkinBorder(portrait, portrait, borderSize, nil, false, false, true)
     else
-        Orbit.Skin:SkinBorder(portrait, portrait, 0)
+        -- 2D portrait / icon styles take no Orbit border (custom portrait borders planned separately).
+        Orbit.Skin:SkinBorder(portrait, portrait, 0, nil, false, true)
     end
 
     portrait:SetAlpha(parentAlpha)
     portrait:Show()
 end
 
-function PortraitMixin:ApplyPortraitContent(style, unit, mirror)
+-- classicon-{class} atlas; nil for a unit with no player class (a creature target/focus).
+local function ClassIconAtlas(unit)
+    local _, classFile = UnitClass(unit)
+    if not classFile then return nil end
+    return "classicon-" .. classFile:lower()
+end
+
+function PortraitMixin:ApplyPortraitContent(style, unit, mirror, portraitType)
     local portrait = self.Portrait
     if not portrait.Model then
         portrait.Model = CreateFrame("PlayerModel", nil, portrait)
@@ -159,15 +170,30 @@ function PortraitMixin:ApplyPortraitContent(style, unit, mirror)
         portrait.Model:SetPortraitZoom(mirror and PORTRAIT_3D_MIRROR_ZOOM or 1)
         portrait.Model:SetFacing(mirror and PORTRAIT_3D_MIRROR_FACING or 0)
         portrait.Model:SetPosition(mirror and PORTRAIT_3D_MIRROR_OFFSET or 0, 0, mirror and PORTRAIT_3D_MIRROR_VERT or 0)
+        return
+    end
+
+    portrait.Model:Hide()
+    portrait.StaticTexture:Show()
+    local tex = portrait.StaticTexture
+
+    -- Class-icon style falls back to the 2D portrait for a unit with no player class.
+    local iconAtlas
+    if portraitType == "classicon" then
+        iconAtlas = ClassIconAtlas(unit)
+    end
+    if iconAtlas then
+        tex:SetAtlas(iconAtlas)
+        return
+    end
+
+    -- 2D portrait (or an icon style with no resolvable icon). disableMasking = true skips WoW's
+    -- built-in feathered round portrait mask so the texture fills the frame edge-to-edge.
+    SetPortraitTexture(tex, unit, true)
+    if mirror then
+        tex:SetTexCoord(1, 0, 0, 1)
     else
-        portrait.Model:Hide()
-        portrait.StaticTexture:Show()
-        SetPortraitTexture(portrait.StaticTexture, unit)
-        if mirror then
-            portrait.StaticTexture:SetTexCoord(1, 0, 0, 1)
-        else
-            portrait.StaticTexture:SetTexCoord(0, 1, 0, 1)
-        end
+        tex:SetTexCoord(0, 1, 0, 1)
     end
 end
 

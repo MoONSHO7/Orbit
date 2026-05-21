@@ -3,6 +3,8 @@
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
 local Constants = Orbit.Constants
+local GameTooltip = Orbit.Tooltip
+local L = Orbit.L
 
 Orbit.UnitAuraGridMixin = {}
 local Mixin = Orbit.UnitAuraGridMixin
@@ -36,8 +38,8 @@ Mixin.playerDebuffDefaults = {
 
 local BASE_ICON_SIZE = 34
 local ASPECT_RATIOS = {
-    { text = "Square (1:1)", value = "1:1" }, { text = "Landscape (16:9)", value = "16:9" },
-    { text = "Landscape (4:3)", value = "4:3" }, { text = "Ultrawide (21:9)", value = "21:9" },
+    { text = L.PLU_AURA_ASPECT_SQUARE, value = "1:1" }, { text = L.PLU_AURA_ASPECT_LANDSCAPE_169, value = "16:9" },
+    { text = L.PLU_AURA_ASPECT_LANDSCAPE_43, value = "4:3" }, { text = L.PLU_AURA_ASPECT_ULTRAWIDE, value = "21:9" },
 }
 
 local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
@@ -78,7 +80,7 @@ local function CreateCollapseArrow(frame, plugin)
         self.tex:SetAlpha(0.6)
         GameTooltip:Hide()
     end)
-    btn.tooltipText = plugin:GetSetting(1, "Collapsed") and "My Buffs" or "All Buffs"
+    btn.tooltipText = plugin:GetSetting(1, "Collapsed") and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
     btn:Show()
     return btn
 end
@@ -88,7 +90,7 @@ local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
     local onLeft = (growthX == "RIGHT")
     local baseRot = onLeft and math.rad(180) or 0
     btn.tex:SetRotation(collapsed and (math.pi - baseRot) or baseRot)
-    btn.tooltipText = collapsed and "My Buffs" or "All Buffs"
+    btn.tooltipText = collapsed and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
     btn:ClearAllPoints()
     local parent = btn:GetParent()
     local scale = parent:GetEffectiveScale() or 1
@@ -342,6 +344,21 @@ function Mixin:CreateAuraGridPlugin(config)
 
     self.frame = Frame
     self._agFrame = Frame
+    -- The aura grid masks its own child icons (see _applyGridGroupBorder); GroupBorder's group
+    -- layer must skip this frame's _maskedSurfaces — GroupManagesMask checks this flag.
+    Frame._auraGridFrame = true
+    -- The merged-state group mask is stamped during UpdateAuras. Re-run it when the merge
+    -- topology changes so a merge forming while auras are static doesn't leave icons stale.
+    -- Debounced past GroupBorder's own 0-delay refresh so _groupBorderActive / _groupRoundedMask
+    -- are current by the time UpdateAuras reads them. Player grids only — non-player auras
+    -- have no rounded grid border.
+    if config.showIconLimit then
+        Orbit.EventBus:On("ORBIT_BORDER_LAYOUT_CHANGED", function()
+            Orbit.Async:Debounce("AuraGridMask_" .. tostring(Frame), function()
+                if Frame:IsShown() then self:UpdateAuras() end
+            end, 0.1)
+        end)
+    end
     if config.exposeMountedConfig then self.mountedConfig = { frame = Frame } end
     local vePlugin = config.vePluginName and Orbit:GetPlugin(config.vePluginName) or self
     local veIndex = config.veSystemIndex or 1
@@ -703,17 +720,40 @@ end
 local function ClearGridRoundedMask(frame, activeIcons)
     local mask = frame._gridGroupRoundedMask
     if not mask then return end
+    -- Owner-guarded clear via _SetSurfaceMask: only surfaces carrying the grid mask are detached,
+    -- so a per-icon _roundedMask (spacing > 0) is left intact.
     for _, icon in ipairs(activeIcons) do
-        for _, tex in ipairs(icon._maskedSurfaces or {}) do
-            if tex.RemoveMaskTexture then tex:RemoveMaskTexture(mask) end
-        end
+        Orbit.Skin:ClearMaskFromSurfaces(icon._maskedSurfaces, mask)
     end
 end
 
 function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH)
-    if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 or Frame._groupBorderActive then
+    if not skinSettings.iconBorder or spacing ~= 0 or #activeIcons == 0 then
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         ClearGridRoundedMask(Frame, activeIcons)
+        return
+    end
+    -- Merged: the grid Frame is a member of a GroupBorder cross-merge. The group draws the
+    -- outline and owns the mask; the grid draws no outline of its own, but every aura icon must
+    -- still take the GROUP mask. The group layer can't reach icons acquired from the pool since
+    -- its last refresh, so the grid stamps the group mask onto its own icons here, every
+    -- UpdateAuras cycle. groupMask is nil for a Square group (or before the group refresh has
+    -- run) — _SetSurfaceMask(tex, nil) then correctly leaves the icon unmasked.
+    if Frame._groupBorderActive then
+        if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
+        local groupMask = Frame._groupBorderRoot and Frame._groupBorderRoot._groupRoundedMask
+        for _, icon in ipairs(activeIcons) do
+            if icon._roundedMask then
+                for _, t in ipairs(icon._maskedSurfaces or {}) do
+                    if t.RemoveMaskTexture then t:RemoveMaskTexture(icon._roundedMask) end
+                end
+            end
+            for _, t in ipairs(icon._maskedSurfaces or {}) do
+                Orbit.Skin:_SetSurfaceMask(t, groupMask)
+            end
+            if icon._borderFrame then icon._borderFrame:Hide() end
+            if icon._edgeBorderOverlay then icon._edgeBorderOverlay:Hide() end
+        end
         return
     end
     local scale = Frame:GetEffectiveScale()
@@ -744,33 +784,46 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
     overlay:ClearAllPoints()
     if iconNineSlice and iconNineSlice.sliceMargin then
         local style = Skin:BuildIconStyle(iconNineSlice)
-        overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
-        overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
-        local c = Skin:ResolveBorderColor(true)
-        Skin:_RenderSliceTexture(overlay, style, c)
+        if style.edgeFile then
+            overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+            overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
+            Skin:_RenderSliceTexture(overlay, style, Skin:ResolveBorderColor(true))
+            overlay:Show()
+        else
+            -- Border Thickness None: no grid outline — the corner-clip mask still applies.
+            Skin:HideSliceTexture(overlay)
+            overlay:Hide()
+        end
 
-        if not Frame._gridGroupRoundedMask then
-            Frame._gridGroupRoundedMask = Frame:CreateMaskTexture(nil, "BACKGROUND")
-            if Orbit.Engine.Pixel then Orbit.Engine.Pixel:Enforce(Frame._gridGroupRoundedMask) end
-        end
-        local mask = Frame._gridGroupRoundedMask
-        local tier = Skin:GetRoundedTier(true)
-        mask:SetTexture(tier.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        mask:SetTextureSliceMargins(tier.margin, tier.margin, tier.margin, tier.margin)
-        mask:ClearAllPoints()
-        mask:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
-        mask:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
-        for _, icon in ipairs(activeIcons) do
-            for _, t in ipairs(icon._maskedSurfaces or {}) do
-                if t.RemoveMaskTexture then
-                    if icon._roundedMask then t:RemoveMaskTexture(icon._roundedMask) end
-                    t:RemoveMaskTexture(mask)
+        -- The mask uses the SAME `style` as the outline above.
+        -- Square carries no mask: no content clipping needed.
+        if style.mask then
+            local mask = Skin:EnsureSliceMask(Frame, "_gridGroupRoundedMask", style, function(m)
+                m:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
+                m:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
+            end)
+            for _, icon in ipairs(activeIcons) do
+                if icon._roundedMask then
+                    for _, t in ipairs(icon._maskedSurfaces or {}) do
+                        if t.RemoveMaskTexture then t:RemoveMaskTexture(icon._roundedMask) end
+                    end
                 end
-                if t.AddMaskTexture then t:AddMaskTexture(mask) end
+                -- Route through _SetSurfaceMask so tex._orbitRoundedMask tracks the grid mask —
+                -- a later merge then cleanly swaps grid mask → group mask with no stacking.
+                for _, t in ipairs(icon._maskedSurfaces or {}) do
+                    Orbit.Skin:_SetSurfaceMask(t, mask)
+                end
             end
+        else
+            ClearGridRoundedMask(Frame, activeIcons)
         end
+        for _, icon in ipairs(activeIcons) do
+            if icon._borderFrame then icon._borderFrame:Hide() end
+            if icon._edgeBorderOverlay then icon._edgeBorderOverlay:Hide() end
+        end
+        return
     elseif iconNineSlice and iconNineSlice.edgeFile then
-        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        Skin:HideSliceTexture(overlay)
         ClearGridRoundedMask(Frame, activeIcons)
         local style = Skin:BuildIconStyle(iconNineSlice)
         local edgeSize = style.edgeSize or 16
@@ -783,23 +836,14 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
         overlay:SetBackdrop({ edgeFile = style.edgeFile, edgeSize = edgeSize })
         overlay:SetBackdropBorderColor(1, 1, 1, 1)
     else
-        if overlay._sliceTexture then overlay._sliceTexture:Hide() end
+        Skin:HideSliceTexture(overlay)
         ClearGridRoundedMask(Frame, activeIcons)
         local borderSize = gs and gs.IconBorderSize or 2
         if borderSize <= 0 then overlay:Hide(); return end
         overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
         overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
         local pixelSize = Orbit.Engine.Pixel:Multiple(borderSize, scale)
-        overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
-        local raw = (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 }
-        local c
-        if raw.type == "class" then
-            c = Orbit.Engine.ClassColor:GetCurrentClassColor()
-            c.a = raw.a or 1
-        else
-            c = raw
-        end
-        overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
+        Skin:ApplyPixelBackdrop(overlay, pixelSize, true)
     end
     overlay:Show()
     for _, icon in ipairs(activeIcons) do

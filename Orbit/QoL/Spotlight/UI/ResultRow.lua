@@ -1,6 +1,7 @@
 -- [ RESULT ROW ]-------------------------------------------------------------------------------------
 local _, Orbit = ...
 local L = Orbit.L
+local GameTooltip = Orbit.Tooltip
 local Skin = Orbit.Skin
 local AButtonSkin = Orbit.Skin.ActionButtonSkin
 local Constants = Orbit.Constants

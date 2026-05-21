@@ -1,13 +1,12 @@
--- Versatility.lua
--- Versatility datatext: shows current Versatility percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local NumericOrNil = Orbit.SecretValueUtils.NumericOrNil
 local L = Orbit.L
 
 local CR_VERSATILITY_DAMAGE_DONE = 29
 
-local W = DT.BaseDatatext:New("Versatility")
+local W = DT.BaseDatatext:New("Versatility", L.PLU_DT_VERSATILITY_NAME)
 W.showPercentage = true
 
 -- Each operand needs NumericOrNil before the add; one secret operand poisons the sum.
@@ -60,7 +59,6 @@ function W:Init()
     self:RegisterUnitEvent("UNIT_AURA", "player")
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetCategory("CHARACTER")
     self.leftClickHint = L.PLU_DT_STAT_TOGGLE
     self:Register()
     self:Update()

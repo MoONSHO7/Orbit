@@ -1,14 +1,13 @@
--- Mail.lua
--- Mail datatext: shows pending mail indicator
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local ICON_SIZE = 32
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Mail")
+local W = DT.BaseDatatext:New("Mail", L.PLU_DT_MAIL_NAME)
 
 function W:Update()
     local hasMail = HasNewMail()
@@ -104,7 +103,6 @@ function W:Init()
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:RegisterEvent("UPDATE_PENDING_MAIL")
     self:RegisterEvent("MAIL_INBOX_UPDATE")
-    self:SetCategory("SOCIAL")
     self:Register()
     
     self.text:SetText("")

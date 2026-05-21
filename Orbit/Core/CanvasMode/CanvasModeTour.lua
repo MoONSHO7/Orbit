@@ -1,7 +1,5 @@
 -- [ CANVAS MODE - TOUR ] ----------------------------------------------------------------------------
--- Sequential tour that cycles through help points with Next/Done.
--- Strings live in Orbit/Localization/Domains/Tours.lua under the TOUR_CM_* prefix.
--- When adding or renaming tour stops here, update the matching keys there.
+-- strings live in Orbit/Localization/Domains/Tours.lua under TOUR_CM_*.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode

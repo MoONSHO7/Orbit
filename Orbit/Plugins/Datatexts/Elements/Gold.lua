@@ -1,7 +1,6 @@
--- Gold.lua
--- Currency display: cross-character tracking, session profit/loss, gold/hour, sparkline
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
 local L = Orbit.L
@@ -21,7 +20,7 @@ local MIN_HISTORY_POINTS = 2
 local DAILY_HISTORY_DAYS = 7
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Gold")
+local W = DT.BaseDatatext:New("Gold", L.PLU_DT_GOLD_NAME)
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 W.history = RingBuffer:New(HISTORY_SIZE)
@@ -194,7 +193,6 @@ function W:Init()
     self:RegisterEvent("PLAYER_MONEY", function() self:OnMoneyChange() end)
     self:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:OnMoneyChange() end)
     self:RegisterEvent("MERCHANT_SHOW", function() self:AutoSellJunk() end)
-    self:SetCategory("GAMEPLAY")
     self:Register()
     self:Update()
 end

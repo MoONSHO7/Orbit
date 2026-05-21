@@ -678,8 +678,7 @@ Orbit.Profile.defaults = {
     DisabledPlugins = {},
     HideBlizzardFrames = {},
     GlobalSettings = {
-        OverlayTexture = "None", TourComplete = false,
-        BackdropColour = { a = 0.7, r = 0.145, g = 0.145, b = 0.145 },
+        OverlayTexture = "None", AbsorbTexture = "Orbit Absorb", TourComplete = false,
         UnitHealthUseGradient = false,
         BarColorCurve = {
             pins = { { color = { a = 1, b = 1, g = 1, r = 1 }, type = "class", position = 0 } },
@@ -688,7 +687,7 @@ Orbit.Profile.defaults = {
         BarColor = { a = 1, b = 0.2, g = 0.8, r = 0.2 },
         Font = "Barlow Condensed Bold", HideWhenMounted = false, BorderSize = 2,
         ClassColorBackground = false, IconBorderSize = 2, OverlayAllFrames = false,
-        FontOutline = "OUTLINE", FontShadow = false, UseClassColors = true, Texture = "Solid",
+        FontOutline = "OUTLINE", FontShadow = false, UseClassColors = true, Texture = "Orbit Gradient Top-Bottom",
         TrackedMigrationComplete = true,
         TrackedContainers = {}, NextTrackedContainerId = 1000,
     },

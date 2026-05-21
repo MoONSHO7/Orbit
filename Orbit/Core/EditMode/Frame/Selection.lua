@@ -3,6 +3,7 @@
 -- have been extracted into separate files in Selection/ subdirectory.
 
 local _, Orbit = ...
+local L = Orbit.L
 local Engine = Orbit.Engine
 local C = Orbit.Constants
 
@@ -309,19 +310,19 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
 
         -- Show Canvas Mode hint if plugin supports it
         if self.parent and self.parent.orbitPlugin and self.parent.orbitPlugin.canvasMode then
-            GameTooltip:AddLine("Right-click: Open Canvas Mode", 0.6, 0.9, 0.6)
+            GameTooltip:AddLine(L.CFG_EM_TIP_OPEN_CANVAS, 0.6, 0.9, 0.6)
         end
 
         if self.parent and self.parent.editModeTooltipLines then
             GameTooltip:AddLine(" ", 1, 1, 1)
-            GameTooltip:AddLine("Exit edit mode and", 0.6, 0.6, 0.6)
+            GameTooltip:AddLine(L.CFG_EM_TIP_EXIT_AND, 0.6, 0.6, 0.6)
             for _, line in ipairs(self.parent.editModeTooltipLines) do
                 GameTooltip:AddLine(line, 0.6, 0.6, 0.6)
             end
             if self.parent.isTrackedBar then
-                GameTooltip:AddLine("Shift-right click to delete icons", 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L.CFG_EM_TIP_DELETE_ICONS, 0.6, 0.6, 0.6)
             elseif self.parent.isChargeBar then
-                GameTooltip:AddLine("Shift-right click to delete bars", 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L.CFG_EM_TIP_DELETE_BARS, 0.6, 0.6, 0.6)
             end
         end
         GameTooltip:Show()

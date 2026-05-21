@@ -115,7 +115,6 @@ end
 
 -- Expose on plugin so other files can use them without re-declaring
 Plugin.GetBlizzardMinimap = GetBlizzardMinimap
-Plugin.GetBlizzardCluster = GetBlizzardCluster
 
 -- [ BLIZZARD ART STRIPPING ]-------------------------------------------------------------------------
 -- Hidden parent for Blizzard's compass/backdrop art. Reparenting (rather than :Hide() or SetAlpha(0))
@@ -310,46 +309,6 @@ function Plugin:ReparentBlizzardComponents()
             craftingOrder.Icon:SetScale(1)
         end
         self.frame.CraftingOrder = craftingOrder
-    end
-end
-
-function Plugin:RestoreBlizzardComponents()
-    if self.frame.Difficulty and self._origDifficultyParent then
-        self.frame.Difficulty:SetParent(self._origDifficultyParent)
-        self.frame.Difficulty:ClearAllPoints()
-        self.frame.Difficulty = nil
-    end
-    if self.frame.DifficultyIcon then
-        self.frame.DifficultyIcon:Hide()
-        self.frame.DifficultyIcon:SetParent(nil)
-        self.frame.DifficultyIcon = nil
-    end
-    if self.frame.DifficultyText then
-        self.frame.DifficultyText:Hide()
-        self.frame.DifficultyText:SetParent(nil)
-        self.frame.DifficultyText = nil
-    end
-
-    if self.frame.Missions and self._origMissionsParent then
-        self.frame.Missions:SetScript("OnShow", nil)
-        self.frame.Missions:SetParent(self._origMissionsParent)
-        self.frame.Missions:ClearAllPoints()
-        self.frame.Missions:SetSize(53, 53) -- restore original size
-        self.frame.Missions = nil
-    end
-
-    if self.frame.Mail and self._origMailParent then
-        self.frame.Mail:SetScript("OnShow", nil)
-        self.frame.Mail:SetParent(self._origMailParent)
-        self.frame.Mail:ClearAllPoints()
-        self.frame.Mail = nil
-    end
-
-    if self.frame.CraftingOrder and self._origCraftingOrderParent then
-        self.frame.CraftingOrder:SetScript("OnShow", nil)
-        self.frame.CraftingOrder:SetParent(self._origCraftingOrderParent)
-        self.frame.CraftingOrder:ClearAllPoints()
-        self.frame.CraftingOrder = nil
     end
 end
 

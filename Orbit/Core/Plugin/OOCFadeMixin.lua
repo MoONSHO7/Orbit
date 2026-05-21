@@ -53,6 +53,31 @@ local function GetVESettings(data)
     return opacity, oocFade, true, true, false
 end
 
+-- S04-C3: snapshot the 5 VE settings (+hideMounted) onto the frame on Apply / ORBIT_VISIBILITY_CHANGED.
+-- The SetAlpha hook fires every render-frame during UIFrameFadeIn/Out animations; without the
+-- snapshot it would resolve 5 (or 6) VE lookups per fire × every managed frame.
+local function RefreshVESnapshot(frame, data)
+    local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(data)
+    frame._veOpacity        = opacity
+    frame._veOocFade        = oocFade
+    frame._veMouseOver      = mouseOver
+    frame._veShowWithTarget = showWithTarget
+    frame._veAlphaLock      = alphaLock
+    local veKey = GetVEKey(data)
+    local VE = Orbit.VisibilityEngine
+    if veKey and VE and not VE:IsOpacityOnly(veKey) then
+        frame._veHideMounted = VE:GetFrameSetting(veKey, "hideMounted")
+    else
+        frame._veHideMounted = false
+    end
+end
+
+local function RefreshAllSnapshots()
+    for frame, data in pairs(ManagedFrames) do
+        RefreshVESnapshot(frame, data)
+    end
+end
+
 
 
 local function SetGroupBorderOOCHidden(frame, hidden)
@@ -73,9 +98,14 @@ end
 
 local function SyncMinimapChildrenAlpha(frame, alpha)
     if not frame or not frame.orbitOpacityExternal then return end
-    for _, child in ipairs({ frame:GetChildren() }) do
-        child:SetAlpha(alpha)
+    -- S04-C2: select-vararg pass-through avoids the {GetChildren()} temp-table alloc per call;
+    -- SyncMinimapChildrenAlpha runs on the SetAlpha hot path so even small allocs accumulate.
+    local function ApplyChildAlpha(a, ...)
+        for i = 1, select("#", ...) do
+            select(i, ...):SetAlpha(a)
+        end
     end
+    ApplyChildAlpha(alpha, frame:GetChildren())
 end
 
 local function UpdateFrameVisibility(frame, _, data)
@@ -89,7 +119,8 @@ local function UpdateFrameVisibility(frame, _, data)
         end
     end
     if isMountedHidden then
-        local _, _, mouseOver, showWithTarget = GetVESettings(data)
+        -- S04-C3: read from snapshot (refreshed by ApplyOOCFade / ORBIT_VISIBILITY_CHANGED).
+        local mouseOver, showWithTarget = frame._veMouseOver, frame._veShowWithTarget
         local revealFull = (mouseOver and frame.orbitMouseOver) or (showWithTarget and UnitExists("target")) or IsCursorRevealing(frame) or IsSpellUIOpen()
         if not revealFull then
             frame:SetAlpha(0)
@@ -98,7 +129,8 @@ local function UpdateFrameVisibility(frame, _, data)
             return
         end
     end
-    local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(data)
+    local opacity, oocFade, mouseOver, showWithTarget, alphaLock =
+        frame._veOpacity, frame._veOocFade, frame._veMouseOver, frame._veShowWithTarget, frame._veAlphaLock
     local baseAlpha = frame.orbitOpacityExternal and 1 or (opacity or 100) / 100
     local rawOpacity = (opacity or 100) / 100
     if not oocFade and rawOpacity >= 1 and not mouseOver then
@@ -175,9 +207,16 @@ EventFrame:SetScript("OnEvent", function(self, event)
     if p then p:End("Orbit_OOCFade", event, s) end
 end)
 
--- Re-evaluate all managed frames after mount/dismount to restore mouse state
+-- Re-evaluate all managed frames after mount/dismount to restore mouse state.
+-- S04-C3: ORBIT_VISIBILITY_CHANGED (fired by VE:SetFrameSetting) drives the snapshot refresh —
+-- the snapshot is the per-frame cache the SetAlpha hook and UpdateFrameVisibility read from.
 C_Timer.After(0, function()
-    if Orbit.EventBus then Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() C_Timer.After(0.1, UpdateAllFrames) end) end
+    if not Orbit.EventBus then return end
+    Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() C_Timer.After(0.1, UpdateAllFrames) end)
+    Orbit.EventBus:On("ORBIT_VISIBILITY_CHANGED", function()
+        RefreshAllSnapshots()
+        UpdateAllFrames()
+    end)
 end)
 
 -- Hook Edit Mode enter/exit
@@ -226,6 +265,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
     end
     if veKey and Orbit.VisibilityEngine then enableHover = Orbit.VisibilityEngine:GetFrameSetting(veKey, "mouseOver") end
     ManagedFrames[frame] = { plugin = plugin, systemIndex = systemIndex, settingKey = settingKey, enableHover = enableHover or false, veKey = veKey }
+    RefreshVESnapshot(frame, ManagedFrames[frame])
     -- Create hover ticker (parented to UIParent to avoid corrupting LayoutFrame sizing)
     if not frame.orbitOOCHoverTicker then
         local hoverTicker = CreateFrame("Frame", nil, UIParent)
@@ -264,14 +304,17 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             local p = Orbit.Profiler
             local s = p and p:Begin()
 
-            local opacity, oocFade, mouseOver, showWithTarget, alphaLock = GetVESettings(d)
+            -- S04-C3: snapshot reads — refreshed on ApplyOOCFade / ORBIT_VISIBILITY_CHANGED. The
+            -- hook fires every UIFrameFadeIn/Out tick (60Hz); each saved GetVESettings call removes
+            -- 5 VE lookups, and the hideMounted snapshot removes one more per fire while mounted.
+            local opacity, oocFade, mouseOver, showWithTarget, alphaLock =
+                self._veOpacity, self._veOocFade, self._veMouseOver, self._veShowWithTarget, self._veAlphaLock
             local maxAlpha = self.orbitOpacityExternal and 1 or (opacity or 100) / 100
-            
+
             -- Mounted hidden check (shared by all paths)
             local isMountedHide = false
             if Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
-                local isMH = d.veKey and Orbit.VisibilityEngine:GetFrameSetting(d.veKey, "hideMounted")
-                if isMH then
+                if self._veHideMounted then
                     local revealFull = (showWithTarget and UnitExists("target")) or (mouseOver and self.orbitMouseOver) or IsCursorRevealing(self) or IsSpellUIOpen()
                     if not revealFull then isMountedHide = true end
                 end

@@ -1,20 +1,6 @@
 -- [ STRATA ENGINE ] ---------------------------------------------------------------------------------
--- Manages the dynamic visual layering (Z-index) of root-level UI containers.
--- Persists entity ordering to the active Profile via Orbit.runtime.Layouts,
--- enabling future "Bump Up / Bump Down" controls in Edit Mode and Canvas Mode.
---
--- Scope:
---   Root containers only (PlayerFrame, GroupFrames, ActionBars, etc.).
---   Sub-component layering (StatusBar, Border, Overlay) stays in Constants.Levels.
---   Frame strata (MEDIUM, DIALOG, etc.) stays in Constants.Strata.
---
--- Registration contract:
---   New plugins MUST be added to PopulateDefaults() to participate in bumping.
---   Plugins call GetFrameLevel("Global_HUD", "Orbit_PluginName") during OnLoad.
---
--- Persistence:
---   Entity order is stored in Orbit.runtime.Layouts.Orbit.Orbit_StrataEngine.
---   baseFrameLevel offsets are volatile (session-only, never saved).
+-- root-container Z-index only; sub-component levels stay in Constants.Levels, strata in Constants.Strata.
+-- new plugins MUST be added to PopulateDefaults() and call GetFrameLevel("Global_HUD", "Orbit_PluginName") in OnLoad to participate in bumping. baseFrameLevel offsets are session-only.
 
 local _, Orbit = ...
 local C = Orbit.Constants
@@ -69,7 +55,7 @@ function Engine:GetFrameLevel(scopeID, entityID)
 end
 
 -- [ BUMPING ] ---------------------------------------------------------------------------------------
--- Swap entity with its neighbor. Fires STRATA_UPDATED so plugins re-apply.
+-- Swap entity with its neighbor. Fires ORBIT_STRATA_UPDATED so plugins re-apply.
 function Engine:BumpUp(scopeID, entityID)
     local scope = self:GetScopeData(scopeID)
     local index
@@ -115,7 +101,7 @@ function Engine:BumpAbove(scopeID, entityID, targetEntityID)
 end
 
 function Engine:_NotifyScope(scopeID)
-    Orbit.EventBus:Fire("STRATA_UPDATED", scopeID)
+    Orbit.EventBus:Fire("ORBIT_STRATA_UPDATED", scopeID)
 end
 
 -- [ STARTUP POPULATION ] ----------------------------------------------------------------------------
