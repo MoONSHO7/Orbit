@@ -264,11 +264,7 @@ function Persistence:RestorePosition(frame, plugin, systemIndex)
 
     -- Fallback: Reset to Default Position
     if frame.defaultPosition then
-        -- Break any stale physical anchor before parking. Reaching this
-        -- branch means no saved position/anchor wired up, so any leftover
-        -- graph entry (e.g. from a prior spec) would lie about where the
-        -- frame is and mislead a subsequent ReconcileChain into promoting
-        -- children of a frame that is visually parked off-screen.
+        -- Break stale anchors before parking — a leftover graph entry (e.g. from a prior spec) would mislead ReconcileChain into promoting children of an off-screen parked frame.
         if Engine.FrameAnchor and Engine.FrameAnchor:GetAnchorParent(frame) then
             Engine.FrameAnchor:BreakAnchor(frame, true)
         end
@@ -302,8 +298,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
         frame.system = plugin.system or plugin.name
     end
 
-    -- Ensure PositionManager has access to the plugin for saving
-    -- (Fixes data loss for frames created manually without FrameFactory)
+    -- Wire plugin/systemIndex so PositionManager can save (manually-created frames bypass FrameFactory and would otherwise lose writes).
     frame.orbitPlugin = plugin
     frame.systemIndex = systemIndex
 
@@ -318,8 +313,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
     -- Shared logic to refresh dialog (Trailing Debounce)
     local refreshTimer
     local function RefreshDialog()
-        -- Reset timer on every call (Trailing Debounce)
-        -- We only update the dialog when the user STOPS moving/nudging for 0.2s
+        -- Trailing debounce: refresh dialog only after user stops moving/nudging for 0.2s.
         if refreshTimer then
             refreshTimer:Cancel()
         end
@@ -374,9 +368,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                 Engine.PositionManager:SetPosition(f, point, x, y)
             end
             Engine.PositionManager:MarkDirty(f)
-            -- Immediate write for spec-scoped plugins. FlushToStorage runs on
-            -- edit-mode close, but a /reload between drag-stop and flush would
-            -- lose spec-scoped writes. Global writes are left to FlushToStorage.
+            -- Spec-scoped writes go immediate — a /reload between drag-stop and edit-mode-close would lose them; global writes still flush on close.
             local p = f.orbitPlugin
             local sysIdx = f.systemIndex
             if p and sysIdx and HasGetSpecData(p) and IsBuiltinSpecScoped(p, sysIdx) then
@@ -423,13 +415,7 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
 end
 
 -- [ SPEC-CHANGE RE-RESTORE ] ------------------------------------------------------------------------
--- Re-restore positions on spec swap for spec-data plugins; settingsArePerSpec plugins skipped.
--- Only re-restore frames whose plugin has OPTED IN to spec-scoped positions via
--- `IsSpecScopedIndex`. Plugins that merely inherit GetSpecData/SetSpecData from
--- PluginMixin (i.e. everyone) are not automatically eligible — walking every
--- attached frame on every spec change is the pattern that caused the group-join
--- stall. Subscribers that own their own positioning (e.g. GroupFrames' per-tier
--- storage) simply never opt in.
+-- Only frames whose plugin explicitly opted in via IsSpecScopedIndex re-restore on spec change — walking every PluginMixin inheritor caused the group-join stall.
 function Persistence:RestoreAffectedBySpecChange()
     for frame, info in pairs(self._attachedFrames) do
         if HasGetSpecData(info.plugin) and IsBuiltinSpecScoped(info.plugin, info.systemIndex) then

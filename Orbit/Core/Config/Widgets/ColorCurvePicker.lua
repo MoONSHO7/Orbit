@@ -4,9 +4,6 @@ local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 -- [ COLOR CURVE PICKER WIDGET ] ---------------------------------------------------------------------
--- Opens LibOrbitColorPicker for gradient editing
--- Stores curve data as serialized pins for persistence
-
 local WIDGET_HEIGHT = 32
 local GRADIENT_BAR_HEIGHT = 20
 local CHECKERBOARD = "Interface\\AddOns\\Orbit\\Core\\assets\\Other\\Orbit_Checkerboard.tga"
@@ -96,8 +93,7 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
             local pins = data and data.pins
             self.GradientTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
             if not pins or #pins == 0 then
-                -- Legacy single-color shape { r, g, b, a } — render as solid color so the
-                -- swatch reflects SavedVariables on first paint instead of grey-until-clicked.
+                -- Legacy `{r,g,b,a}` shape — render as solid so first paint matches SavedVariables, not grey.
                 if data and data.r then
                     local c = CreateColor(data.r, data.g, data.b, data.a or 1)
                     self.GradientTexture:SetGradient("HORIZONTAL", c, c)

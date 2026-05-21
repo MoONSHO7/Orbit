@@ -64,9 +64,6 @@ Plugin.indexDefaults = {
 
 
 -- [ KEYBIND METHOD ATTACHMENT ] ---------------------------------------------------------------------
--- Delegates to OrbitEngine.KeybindSystem so CooldownText can resolve bindings
--- via self:GetSpellKeybind / self:GetItemKeybind without knowing the
--- infrastructure module exists.
 function Plugin:GetSpellKeybind(spellID)
     return OrbitEngine.KeybindSystem and OrbitEngine.KeybindSystem:GetForSpell(spellID)
 end
@@ -233,8 +230,7 @@ function Plugin:OnLoad()
     -- Reload items after a profile switch completes.
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
         C_Timer.After(0.15, function()
-            -- Batched: collapses with ProfileManager's scheduled reconcile so a
-            -- profile switch triggers a single flush instead of N.
+            -- Batched: coalesces with ProfileManager's reconcile into a single flush per profile switch.
             if Orbit.Engine.FrameAnchor then
                 Orbit.Engine.FrameAnchor:ScheduleReconcileAll()
             end
@@ -415,10 +411,7 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
     return entry and entry.anchor or nil
 end
 
--- Spec-scoped storage (GetCurrentSpecID / GetSpecData / SetSpecData) is inherited
--- from Orbit.PluginMixin. Only InjectedItems (ViewerInjection) flows through it;
--- Position/Anchor on native viewers are intentionally global because the underlying
--- Blizzard cooldown viewer is shared across specs.
+-- Only InjectedItems flows through spec-scoped storage; native-viewer Position/Anchor stay global because the Blizzard viewer is shared across specs.
 
 -- [ CLEANUP ] ---------------------------------------------------------------------------------------
 function Plugin:OnDisable()

@@ -43,10 +43,7 @@ function PositionManager:MarkDirty(frame)
     end
 end
 
--- Persistence:WriteAnchor / WritePosition handle the spec-vs-global routing
--- (built-in spec-scoped plugins, per-spec target frames, sticky free-position
--- writes). Centralizing the routing here means FlushToStorage just chooses
--- between anchor and position and lets Persistence decide which store to hit.
+-- Persistence:WriteAnchor / WritePosition own the spec-vs-global routing — this just dispatches by anchor/position.
 function PositionManager:FlushToStorage()
     local Persistence = Orbit.Engine.FramePersistence
     for name, frame in pairs(PendingFrames) do

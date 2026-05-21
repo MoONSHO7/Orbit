@@ -1,6 +1,4 @@
 -- [ ORBIT PANDEMIC GLOW ] ---------------------------------------------------------------------------
--- Curve-driven pandemic glow for UnitDisplay aura icons.
--- Thin adapter: curve evaluation → GlowController call.
 local _, Orbit = ...
 Orbit.PandemicGlow = {}
 local PG = Orbit.PandemicGlow

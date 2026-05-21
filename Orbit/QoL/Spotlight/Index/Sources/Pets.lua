@@ -24,8 +24,7 @@ function Pets:Build()
         if isOwned and petID and name and not seenSpecies[speciesID] then
             seenSpecies[speciesID] = true
             local displayName = customName or name
-            -- Fold the localized pet family (Dragonkin, Humanoid, Beast, etc.) into lowerName so a query like
-            -- "pets dragon" substring-matches "dragonkin" in the tag region after the category prefix is consumed.
+            -- Fold pet family into lowerName so "pets dragon" substring-matches "dragonkin".
             local folded = Tokenize:Fold(displayName)
             local familyName = petType and _G["BATTLE_PET_NAME_" .. petType]
             if familyName then folded = folded .. " " .. Tokenize:Fold(familyName) end

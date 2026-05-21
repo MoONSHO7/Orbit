@@ -63,8 +63,7 @@ local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
         GlobalDisabledComponents = {},
         OutOfCombatFade = false, ShowOnMouseover = true,
         KeypressColor = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } },
-        -- IconBackdropColor is intentionally unset: when absent the icon backdrop inherits the
-        -- global "Background" colour (Textures tab). Setting it via the Colors tab overrides per-bar.
+        -- IconBackdropColor unset → inherits global "Background"; Colors-tab override falls through per-bar.
         OORColor = DEFAULT_OOR_COLOR, OOMColor = DEFAULT_OOM_COLOR, UnusableColor = DEFAULT_UNUSABLE_COLOR,
         CooldownSwipeColor = DEFAULT_CD_SWIPE,
         ProcGlowType = Constants.Glow.Type.Medium,
@@ -203,8 +202,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             default = Constants.Glow.Type.Medium,
         })
     elseif currentTab == L.PLU_AB_TAB_COLORS then
-        -- Unset IconBackdropColor inherits the global "Background" colour (Textures tab); show that
-        -- as the picker's starting value so the swatch matches what the bar actually renders.
+        -- Picker's starting swatch matches what the bar renders when IconBackdropColor is unset (inherits global "Background").
         local DEFAULT_BACKDROP = (Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.UnitFrameBackdropColourCurve)
             or { pins = { { position = 0, color = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 } } } }
         local DEFAULT_KEYPRESS = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } }
@@ -357,9 +355,7 @@ function Plugin:OnLoad()
     local function RefreshAll() RefreshAllManagedButtons(self) end
     Orbit.EventBus:On("PLAYER_TARGET_CHANGED", RefreshAll, self)
     Orbit.EventBus:On("ACTIONBAR_UPDATE_USABLE", RefreshAll, self)
-    -- S19-L2: SPELL_UPDATE_USABLE is a high-frequency in-combat event; RefreshAllManagedButtons
-    -- does 5 C-calls × ~100 buttons per fire. Throttle (leading-edge) keeps the first fire snappy
-    -- and drops the bursts that follow within 100ms.
+    -- SPELL_UPDATE_USABLE fires at high frequency in combat; throttle leading-edge drops the burst tail.
     Orbit.EventBus:On("SPELL_UPDATE_USABLE", function()
         Orbit.Async:Throttle("ActionBars_RefreshAll", RefreshAll, 0.1)
     end, self)
@@ -456,10 +452,7 @@ end
 function Plugin:OnCombatEnd() C_Timer.After(0.5, function() self:ApplyAll() end) end
 
 -- [ BUTTON LAYOUT AND SKINNING ] --------------------------------------------------------------------
--- S19-C3: cache the per-bar skinSettings + 4 ColorCurve resolves on settings/Masque change so
--- pet/cursor/combat-end LayoutButtons calls don't rebuild + re-resolve every time. Stays in step
--- via ApplySettings (settings, profile switch, COLORS_CHANGED) and the Masque RegisterDisableCallback
--- (which routes back through ApplySettings).
+-- Cache per-bar skinSettings + 4 ColorCurve resolves; rebuilt only on settings/Masque change so cheap relayouts don't re-resolve.
 function Plugin:RefreshSkinSettings(index)
     self._skinSettings = self._skinSettings or {}
     self._skinSettings[index] = {
@@ -474,9 +467,7 @@ function Plugin:RefreshSkinSettings(index)
     }
 end
 
--- S19-L1: cheap path for pet / CURSOR_CHANGED / combat-end relayouts. Position + visibility only;
--- skips ActionButtonSkin:Apply (LibStub + region scans + nine-slice rebuild) and ABText:Apply
--- (font resolution + 4 OverrideUtils calls per button) which are only needed on actual skin changes.
+-- Cheap path: position + visibility only, skips ActionButtonSkin:Apply / ABText:Apply (only needed on real skin changes).
 function Plugin:LayoutButtonPositions(index)
     self:LayoutButtons(index, true)
 end
@@ -504,8 +495,7 @@ function Plugin:LayoutButtons(index, positionOnly)
     local padding = OrbitEngine.Pixel:Multiple(rawPadding, scale)
     local useMasque = MasqueBridge and MasqueBridge.enabled
     local masqueGroup = useMasque and (config and config.label or "Action Bar " .. index)
-    -- Lazy first-build covers any callsite that skipped RefreshSkinSettings (defensive); steady-state
-    -- the cache is populated by RefreshSkinSettings from ApplySettings/OnLoad/Masque-callback.
+    -- Defensive first-build; steady-state RefreshSkinSettings populates from ApplySettings/OnLoad/Masque-callback.
     if not positionOnly and (not self._skinSettings or not self._skinSettings[index]) then
         self:RefreshSkinSettings(index)
     end
@@ -561,8 +551,7 @@ function Plugin:LayoutButtons(index, positionOnly)
                 if button.orbitHidden and not InCombatLockdown() then button:SetParent(container) end
                 button.orbitHidden = false; button:Show(); button:SetSize(w, h)
                 if useMasque then MasqueBridge:AddActionButton(masqueGroup, button) end
-                -- S19-C3 / S19-L1: skip the per-button re-skin entirely on cheap paths AND on Masque-
-                -- owned bars (Masque owns the visual stack; ActionButtonSkin:Apply would just thrash it).
+                -- Skip per-button re-skin on cheap paths and Masque-owned bars (Masque owns the visual stack).
                 if not positionOnly and skinSettings and (not useMasque or not MasqueBridge:IsGroupEnabled(masqueGroup)) then
                     Orbit.Skin.ActionButtonSkin:Apply(button, skinSettings)
                 end
@@ -591,10 +580,7 @@ function Plugin:LayoutButtons(index, positionOnly)
     local iconNineSlice = Orbit.Skin:GetActiveIconBorderStyle()
     if rawPadding == 0 then Orbit.Skin:ApplyIconGroupBorder(container, iconNineSlice)
     else Orbit.Skin:ClearIconGroupBorder(container) end
-    -- S19-L2: per-bar fire is suppressed during ApplyAll (`_suppressBorderEvent` flag); ApplyAll
-    -- coalesces all 12 bars into a single border-relayout event at the tail. Direct LayoutButtons
-    -- callers (pet event, CURSOR_CHANGED, settings) still fire per-call — that's the correct shape
-    -- because they only touch one bar.
+    -- ApplyAll suppresses per-bar fire and coalesces into one event at the tail; direct callers still fire per-call (they only touch one bar).
     if not self._suppressBorderEvent then
         Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
     end

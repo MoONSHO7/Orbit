@@ -94,8 +94,7 @@ local function SampleColorCurve(curveData, position)
     return OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
 end
 
--- Alpha-only visibility: cast bar is protected when secure frames anchor to it.
--- Fire ORBIT_BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
+-- Alpha-only visibility (cast bar can be protected); fire ORBIT_BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
 local VE_KEY = "PlayerCastBar"
 local function GetVEAlpha()
     local VE = Orbit.VisibilityEngine
@@ -278,8 +277,7 @@ function Plugin:OnLoad()
     CastBar.value = 0
     CastBar.castGUID = nil
 
-    -- Attach to Frame system
-    -- Configure frame options: Only Y stacking, sync dimensions/spacing scale
+    -- Vertical stacking only; width syncs across the chain.
     CastBar.anchorOptions = { horizontal = false, vertical = true, mergeBorders = { x = false, y = true } }
     CastBar.orbitWidthSync = true
     CastBar.orbitResizeBounds = { minW = 100, maxW = 600, minH = 5, maxH = 40, widthKey = "CastBarWidth", heightKey = "CastBarHeight" }

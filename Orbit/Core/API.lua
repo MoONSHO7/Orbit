@@ -8,8 +8,6 @@ local L = Orbit.L
 Orbit.API = {}
 local API = Orbit.API
 
--- Get current addon state
--- @return table: Version, Profile, Spec, etc.
 function API:GetState()
     return {
         Version = Orbit.version,
@@ -20,9 +18,6 @@ function API:GetState()
     }
 end
 
--- Reset a specific profile to defaults
--- @param profileName (string): Name of profile to reset. Defaults to current.
--- @return boolean: Success
 function API:ResetProfile(profileName)
     if InCombatLockdown() then
         Orbit:Print(L.MSG_NO_RESET_IN_COMBAT)
@@ -46,8 +41,7 @@ function API:ResetProfile(profileName)
     -- 1. Nuke existing data using raw DB access (bypass "Active" check in DeleteProfile)
     Orbit.db.profiles[profileName] = nil
 
-    -- 2. Re-create from clean defaults
-    -- Internal magic string ":CLEAN:" tells CreateProfile to use defaults
+    -- ":CLEAN:" sentinel tells CreateProfile to use defaults instead of cloning.
     pm:CreateProfile(profileName, ":CLEAN:")
 
     -- 3. Reload if it was active
@@ -59,8 +53,6 @@ function API:ResetProfile(profileName)
     return true
 end
 
--- Factory Reset: Wipe Everything
--- WARNING: Destructive!
 function API:HardReset()
     if InCombatLockdown() then
         return
@@ -73,8 +65,6 @@ function API:HardReset()
     ReloadUI()
 end
 
--- Rescue lost frames
--- Resets all known plugin frames to the center of the screen
 function API:UnlockFrames()
     if InCombatLockdown() then
         Orbit:Print(L.MSG_NO_MOVE_IN_COMBAT)
@@ -127,8 +117,6 @@ function API:UnlockFrames()
     Orbit:Print(string.format("Reset positions for %d frames.", count))
 end
 
--- Dump Debug Info
--- Returns a string containing system info and error logs
 function API:DumpDebugInfo()
     local parts = {}
 

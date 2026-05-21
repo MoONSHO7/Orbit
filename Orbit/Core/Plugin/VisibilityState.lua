@@ -1,8 +1,5 @@
 -- [ ORBIT VISIBILITY STATE ]-------------------------------------------------------------------------
--- RegisterStateDriver, UnregisterStateDriver, and frame:Show are combat-locked, so the entire
--- ApplyState body is deferred via CombatManager when combat is active to keep the driver cache in
--- sync with the actual secure state.
-
+-- RegisterStateDriver/UnregisterStateDriver/Show are combat-locked — ApplyState defers via CombatManager so the driver cache stays in sync with secure state.
 local _, Orbit = ...
 
 Orbit.Visibility = {}

@@ -24,21 +24,12 @@ Orbit.MinimapConstants = {
 
     MISSIONS_BASE_SIZE = 36,
 
-    -- Shape. MASK_ROUND uses our shipped high-res Orbit_Circle.tga (filled white disk) so the
-    -- minimap surface, HybridMinimap canvas, bg backdrop, and round border all clip to the same
-    -- pixel-identical circle edge — no visible mismatch between layers.
+    -- MASK_ROUND clips minimap + HybridMinimap + bg + border to the same pixel-identical circle (Orbit_Circle.tga).
     MASK_SQUARE = "Interface\\BUTTONS\\WHITE8x8",
     MASK_ROUND = "Interface\\AddOns\\Orbit\\Core\\assets\\Minimap\\Orbit_Circle",
     MASK_HUD = "Interface\\AddOns\\Orbit\\Core\\assets\\Minimap\\Orbit_Splatter",
 
-    -- Ring sizing only — no per-ring mask. The Minimap render surface uses TempPortraitAlphaMask
-    -- so its visible terrain fills most of its bounds; the atlas-based mask experiment produced a
-    -- dark border in the area Blizzard's C++ Minimap renders outside the mask alpha (the mask
-    -- clips terrain but doesn't punch alpha-transparent — there's no API to flip that).
-    -- ratioX/ratioY scale the atlas relative to the minimap diameter. padding adds absolute pixels to
-    -- the rendered size; offsetX/offsetY shift the centered anchor. Blizzard's Minimap.xml anchors
-    -- ui-hud-minimap-frame at 215x226 CENTER on a 198x198 Minimap, so the cardinal spike
-    -- decorations hang outside the round map onto the game world. No mask atlas needed.
+    -- ratioX/ratioY scale the atlas to minimap diameter; padding/offset shift the centered anchor; Blizzard's Minimap.xml anchors at 215x226 CENTER on 198x198, so cardinal spikes hang outside the round map.
     BORDER_RING_OPTIONS = {
         blizzard    = { texture = "Interface\\AddOns\\Orbit\\Core\\assets\\Minimap\\Orbit_BlizzMinimapBorder", ratioX = 1, ratioY = 1, sublevel = 7, rotatable = true, mask = "Interface\\AddOns\\Orbit\\Core\\assets\\Minimap\\Orbit_BlizzMinimap" },
         round       = { fill = true },

@@ -10,8 +10,7 @@ local Professions = {
 }
 Sources.professions = Professions
 
--- Returns profession trade skill entries (the openable professions themselves, not individual recipes).
--- Clicking casts the profession spell which opens the tradeskill window — the expected Spotlight behaviour.
+-- Openable professions (not individual recipes); clicking casts the profession spell to open the tradeskill window.
 function Professions:Build()
     local entries = {}
     local lineIDs = C_TradeSkillUI.GetAllProfessionTradeSkillLines and C_TradeSkillUI.GetAllProfessionTradeSkillLines()

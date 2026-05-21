@@ -32,8 +32,7 @@ local function SetAccountSetting(key, val)
 end
 
 local function GetAccountSetting(key, default)
-    -- `... or default` would silently replace a saved `false` with `default`, so unchecked boxes
-    -- couldn't persist across /reload. Distinguish "missing" (nil) from "saved as false" explicitly.
+    -- Explicit nil check — `... or default` silently replaces a saved `false`, breaking unchecked-box persistence.
     local v = Orbit.db.AccountSettings[key]
     if v == nil then return default end
     return v
@@ -131,9 +130,7 @@ local function BuildMouse(body)
     Layout:AddControl(body, cb)
     local desc = Layout:CreateDescription(body, L.PLU_MOUSE_DESC, A.MUTED)
     Layout:AddControl(body, desc)
-    -- After each SavedVariables write, refresh the Mouse module's cached snapshot so the slider
-    -- change applies live (the cached fields drive the per-frame OnUpdate; CVAR_UPDATE doesn't fire
-    -- for SavedVariables, only for actual CVars).
+    -- RefreshSnapshot after each write — CVAR_UPDATE doesn't fire for SavedVariables, and the per-frame OnUpdate reads cached fields.
     local s1 = Layout:CreateSlider(body, L.PLU_MOUSE_SCALE, 0.1, 2.0, 0.01, FmtDecimal, GetAccountSetting("CustomCursorScale", 0.55), function(val)
         SetAccountSetting("CustomCursorScale", val)
         Orbit.Mouse:RefreshSnapshot()
@@ -184,8 +181,7 @@ local function BuildBindingString(key)
     return table.concat(parts, "-")
 end
 
--- Inline hotkey capture: single click enters listen mode, next non-modifier keypress saves via SetBinding.
--- Right-click clears the current binding. ESCAPE cancels without changing anything.
+-- Click → listen; next non-modifier keypress saves via SetBinding. Right-click clears, ESCAPE cancels.
 local function CreateHotkeyCapture(parent, bindingName)
     local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     btn:SetSize(SPOTLIGHT_HOTKEY_BTN_W, SPOTLIGHT_HOTKEY_BTN_H)
@@ -196,9 +192,7 @@ local function CreateHotkeyCapture(parent, bindingName)
     end
 
     local function StopListening()
-        -- Leave propagation at false so the key that triggered this stop (the captured hotkey or Escape)
-        -- does not bubble to the binding system — otherwise SetBinding+propagate would fire the new
-        -- binding immediately. EnableKeyboard(false) means no future events reach this frame anyway.
+        -- Propagation stays false so the captured key doesn't bubble to the binding system — SetBinding+propagate would re-fire the new binding immediately.
         btn:EnableKeyboard(false)
         btn._listening = false
         Refresh()
@@ -262,8 +256,7 @@ local function BuildSpotlight(body)
         end
     end
 
-    -- Enable checkbox (row 1, left half) — compact variant keeps the label glued to the check.
-    -- Compact checkboxes need a defined frame width to render; dual anchors give a dynamic half-width column.
+    -- Compact checkbox needs a frame width; dual anchors give a dynamic half-width column for row 1.
     local enableCb = Layout:CreateCheckbox(body, L.PLU_SPT_ENABLE, L.PLU_SPT_ENABLE_TT, GetAccountSetting("Spotlight", false), function(checked)
         SetAccountSetting("Spotlight", checked)
         if checked then Orbit.Spotlight:Enable() else Orbit.Spotlight:Disable() end
@@ -537,8 +530,7 @@ function Orbit._AC.CreateQoLContent(parent)
 
     -- Scrollable area
     local scrollFrame, scrollChild = Layout:CreateScrollArea(content)
-    -- Section definitions: { name, builderFn }
-    -- "Keys"/"Markers"/"Inventory" are placeholders for unshipped features; not localized until implemented.
+    -- "Keys"/"Markers"/"Inventory" are placeholders for unshipped features — not localized until implemented.
     local sectionDefs = {
         { L.PLU_QOL_SEC_UI, BuildUserInterface },
         { L.PLU_QOL_SEC_COLORS, BuildColors },

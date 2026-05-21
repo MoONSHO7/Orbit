@@ -64,9 +64,7 @@ local function FormatHealthPercent(unit)
     return string.format("%.0f%%", percent)
 end
 
--- UnitHealth returns a secret value in combat; any `if health` / `type(health)` here would
--- throw. Pass it straight through to the formatter via pcall (which tolerates secret args at
--- the call site), and fall back cleanly when the C function rejects it.
+-- pcall the formatter directly — Lua-side `if health` / `type(health)` throws on a secret UnitHealth in combat.
 local function FormatShortHealth(unit)
     local health = UnitHealth(unit)
     if AbbreviateLargeNumbers then
@@ -190,8 +188,7 @@ function TextMixin:UpdateName()
 
     local name = UnitName(self.unit)
 
-    -- Nat 1 on Identify: the DM sealed the name scroll with arcane warding
-    -- Check secrecy BEFORE any nil/type test — `name == nil` would throw on a secret.
+    -- issecretvalue first — `name == nil` throws on a secret UnitName.
     if issecretvalue(name) then
         self.Name:SetText(name)
         local available = self:GetNameAvailableWidth()
@@ -236,9 +233,7 @@ local function SafeGetValue(fn)
     return type(val) == "number" and val or nil
 end
 
--- S09b-L4: closureless variant — call sites pass the already-resolved value rather than a thunk,
--- so GetNameAvailableWidth stops allocating 7 closures per call. Nil-guards at the callsites
--- already cover the "self.X is missing" case that the pcall in SafeGetValue was masking.
+-- Closureless variant — callers pass the resolved value so GetNameAvailableWidth doesn't allocate 7 thunks per call.
 local function FilterNumeric(val)
     if val == nil then return nil end
     if issecretvalue and issecretvalue(val) then return nil end
@@ -303,9 +298,7 @@ function TextMixin:ConstrainNameWidth()
     if not available then return end
     available = math.max(available, MIN_NAME_WIDTH)
 
-    -- S09b-L4: skip the binary search (multiple SetText + GetStringWidth iterations per call) when
-    -- (name, available) is unchanged. Non-resize relayouts repeat the same width across calls;
-    -- EditMode drag-resize is the only path that genuinely needs the search per fire.
+    -- Skip the binary search when (name, available) is unchanged — only EditMode drag-resize genuinely needs to re-fit per fire.
     if self._lastConstrainName == name and self._lastConstrainAvailable == available then
         if self._lastConstrainResult then self.Name:SetText(self._lastConstrainResult) end
         return

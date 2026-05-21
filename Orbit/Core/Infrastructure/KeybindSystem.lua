@@ -114,10 +114,7 @@ function KeybindSystem:GetForButton(button)
 end
 
 -- [ KEYBIND MAP ]------------------------------------------------------------------------------------
--- Unified map built once per cache cycle from a single scan of all action bar
--- buttons.  Both GetForSpell and GetForItem are O(1) table lookups after the
--- initial build.
-
+-- Built once per cache cycle from a single action-bar scan; GetForSpell/Item are O(1) afterwards.
 local spellKeybindMap -- lazily built, nil = needs rebuild
 local itemKeybindMap -- lazily built, nil = needs rebuild
 
@@ -232,8 +229,7 @@ function KeybindSystem:GetForSpell(spellID)
         end
     end
 
-    -- Fallback: C_ActionBar.FindSpellActionButtons resolves slots at the data layer,
-    -- works even when bar 1 is visually overridden (Skyriding, vehicles)
+    -- Data-layer fallback — works when bar 1 is visually overridden (Skyriding, vehicles).
     if C_ActionBar and C_ActionBar.FindSpellActionButtons then
         local slots = C_ActionBar.FindSpellActionButtons(spellID)
         if slots and slots[1] then

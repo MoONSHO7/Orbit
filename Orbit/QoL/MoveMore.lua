@@ -141,8 +141,7 @@ local function ApplySavedScale(frame)
 end
 
 -- [ DRAG HANDLERS ]----------------------------------------------------------------------------------
--- `_mmDragging` sentinel: a click-and-release without our StartMoving would still fire OnDragStop,
--- and StopMovingOrSizing on a protected frame in combat trips ADDON_ACTION_BLOCKED.
+-- _mmDragging sentinel — a click-and-release without StartMoving still fires OnDragStop, and StopMovingOrSizing on a protected frame in combat trips ADDON_ACTION_BLOCKED.
 local function OnDragStart(frame)
     if InCombatLockdown() then return end
     frame._mmDragging = true

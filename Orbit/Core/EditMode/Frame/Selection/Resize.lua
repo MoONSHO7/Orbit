@@ -22,8 +22,7 @@ local DRAG_DIVISOR_Y = 4
 local SHIFT_DIVISOR_X = 6
 local SHIFT_DIVISOR_Y = 12
 
--- Returns which axes are locked because the frame's anchor syncs that dimension from its parent.
--- TOP/BOTTOM anchors sync WIDTH (gated by orbitWidthSync); LEFT/RIGHT sync HEIGHT (gated by orbitHeightSync).
+-- T/B anchors sync WIDTH (orbitWidthSync); L/R sync HEIGHT (orbitHeightSync) — those axes are locked from drag.
 local function GetSyncLocks(frame)
     if not frame then return false, false end
     local anchors = Engine.FrameAnchor and Engine.FrameAnchor.anchors
@@ -123,8 +122,7 @@ function Resize:Attach(selection, frame)
 
     handle:SetScript("OnDragStop", function(self)
         self.isDragging = false
-        -- Snapshot the live anchor-synced dimension into stored settings so a future unanchor
-        -- doesn't snap the frame back to the pre-anchor width/height (which was stale).
+        -- Snapshot live anchor-synced dimension to settings — otherwise unanchor would snap back to stale pre-anchor size.
         if self.widthLocked then
             local liveW = self.parentFrame:GetWidth()
             if liveW and liveW > 0 then
@@ -159,8 +157,7 @@ function Resize:Attach(selection, frame)
         local dx = (mx - self.startMouseX) / (shift and SHIFT_DIVISOR_X or DRAG_DIVISOR_X)
         local dy = (self.startMouseY - my) / (shift and SHIFT_DIVISOR_Y or DRAG_DIVISOR_Y)
 
-        -- Square frames (Minimap) resize on a single axis: the dominant drag delta drives both
-        -- dimensions through widthKey so a corner drag from any direction keeps the frame square.
+        -- Square frames take the dominant drag delta on widthKey for both axes so any corner drag stays square.
         if self.square then
             local delta = math.abs(dx) >= math.abs(dy) and dx or dy
             local size = math.max(self.minW, math.min(self.maxW, math.floor(self.startWidth + delta + 0.5)))
@@ -183,8 +180,7 @@ function Resize:Attach(selection, frame)
         local curH = self.plugin:GetSetting(self.sysIdx, self.hKey)
         if curW == newW and curH == newH then return end
 
-        -- Per-axis writes: locked axes never touch SetSetting OR the frame's live dimension,
-        -- so the anchor-sync value stays authoritative — no visual jump from stored-vs-synced mismatch.
+        -- Locked axes skip both SetSetting and the live SetWidth/Height so the anchor-sync value stays authoritative.
         if not self.widthLocked then
             self.plugin:SetSetting(self.sysIdx, self.wKey, newW)
             self.parentFrame:SetWidth(newW)

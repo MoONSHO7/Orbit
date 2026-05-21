@@ -26,12 +26,7 @@ local DISPEL_ATLASES = {
 }
 Orbit.DispelIconAtlases = DISPEL_ATLASES
 
--- GetAuraDispelTypeColor is SecretWhenUnitAuraRestricted, so its result is
--- a secret color in M+/raid encounters even with a non-secret curve. We
--- cannot do Lua-side arithmetic or comparisons on the channels. Instead we
--- stack one sub-texture per dispel type and drive each one's alpha through
--- a per-type curve that returns 1 only at that type's x value and 0 elsewhere.
--- SetAlpha accepts secret values, so the right icon "wins" via the C++ sink.
+-- GetAuraDispelTypeColor is secret in M+/raid — stack one texture per dispel type and drive each alpha via a per-type curve (1 at its x, 0 elsewhere). The right icon wins via SetAlpha's C++ sink.
 Orbit.DispelTypeOrder = {
     { typeNum = 1, name = "Magic",   atlas = DISPEL_ATLASES.Magic   },
     { typeNum = 2, name = "Curse",   atlas = DISPEL_ATLASES.Curse   },

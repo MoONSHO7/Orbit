@@ -186,10 +186,7 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
         end
         if val ~= nil then return val end
         if default ~= nil then return default end
-        -- Preview-only fallback: surface the inherited global so the swatch reflects the color
-        -- actually rendered in the world when no local override exists. Saving still writes locally.
-        -- Mirrors OverrideUtils.ApplyTextColor's final white fallback so the swatch matches reality
-        -- even when GlobalSettings.FontColorCurve has never been persisted.
+        -- Preview-only: surface the inherited global FontColorCurve so the swatch matches what renders; mirrors OverrideUtils.ApplyTextColor's white fallback. Saving still writes locally.
         if key == "CustomColorCurve" then
             local g = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
             return g or { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
@@ -324,8 +321,6 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
         local endIndex = math.min(r * maxPerRow, buttonCount)
         local countInRow = endIndex - startIndex + 1
 
-        -- Calculate Width per button
-        -- Width = (Total - (spcaing * (n-1))) / n
         local totalSpacing = spacingH * (countInRow - 1)
         local btnWidth = (availableWidth - totalSpacing) / countInRow
 
@@ -345,11 +340,6 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
 
         currentY = currentY - btnHeight - rowSpacing
     end
-
-    -- Calculate final height
-    -- currentY is negative total height used including last spacing
-    -- Real used height = abs(currentY + rowSpacing) + bottomPadding
-    -- Simplified: topPadding + (rows * btnHeight) + ((rows-1) * rowSpacing) + bottomPadding
 
     local totalHeight = topPadding + (rows * btnHeight) + (math.max(0, rows - 1) * rowSpacing) + bottomPadding
 

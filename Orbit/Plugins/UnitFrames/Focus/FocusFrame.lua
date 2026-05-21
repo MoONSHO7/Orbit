@@ -174,8 +174,7 @@ function Plugin:OnLoad()
     -- Register standard events
     self:RegisterStandardEvents()
 
-    -- Edit Mode Visibility: Show frame even without focus for positioning
-    -- Use "player" as preview unit so we can see colors/name/health
+    -- Edit Mode: show even without focus; use "player" as preview unit for visible colors/name/health.
     OrbitEngine.EditMode:RegisterCallbacks({
         Enter = function()
             if self.frame and not InCombatLockdown() then
@@ -202,10 +201,7 @@ function Plugin:OnLoad()
         end,
     }, self)
 
-    -- S12b-L1: the frame's own OnEvent (line 121/136 RegisterEvent + dispatch) already handles
-    -- PLAYER_FOCUS_CHANGED with the light update; the EventBus listener fired a redundant full
-    -- ApplySettings every focus change. TargetFrame has no equivalent listener — drop it to match.
-
+    -- PLAYER_FOCUS_CHANGED is handled by the frame's own OnEvent (light update); no EventBus listener — matches TargetFrame.
     Orbit.EventBus:On("ORBIT_PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
     Orbit.EventBus:On("ORBIT_TARGET_SETTINGS_CHANGED", function()
         if self:GetSyncSource(FOCUS_FRAME_INDEX) == TARGET_FRAME_INDEX then self:ApplySettings(self.frame) end
@@ -249,8 +245,7 @@ function Plugin:ApplySettings(frame)
         OrbitEngine.ComponentDrag:RestoreFramePositions(frame, savedPositions)
     end
 
-    -- Component positions + style overrides (positions, font, color, scale)
-    -- Must run unconditionally to restore overrides after ApplyBaseVisuals resets text
+    -- Unconditional — must run after ApplyBaseVisuals resets text overrides.
     if frame.ApplyComponentPositions then frame:ApplyComponentPositions() end
 
     self:UpdateVisualsExtended(frame, systemIndex)

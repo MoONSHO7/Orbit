@@ -9,9 +9,7 @@ local WOW_REFERENCE_HEIGHT = 768
 local SCREEN_SCALE = 1
 
 -- [ MATH ]-------------------------------------------------------------------------------------------
--- S03-L1: PLAYER_ENTERING_WORLD fires on every loading screen; Init.lua:176 re-ApplySettings on
--- every plugin in response to ORBIT_DISPLAY_SIZE_CHANGED. Suppress the fire when the resolved scale
--- is unchanged so cross-zone transitions don't trigger a global per-plugin relayout.
+-- Suppress the fire when scale is unchanged — zone transitions would otherwise trigger a global per-plugin relayout on every loading screen.
 local function UpdateScreenScale()
     local physicalWidth, physicalHeight = GetPhysicalScreenSize()
     local newScale
@@ -76,8 +74,7 @@ function Pixel:DefaultBorderSize(scale)
     return self:Multiple(1, scale)
 end
 
--- Center-anchored points snap relative to the center, not the edge — otherwise width/height drift after Snap.
--- Secret width/height (frame size derived from a secret) skips the center adjustment to avoid Lua arithmetic on a secret.
+-- Center-anchored points snap relative to center (else size drifts after Snap); secret width/height skips the center adjustment.
 function Pixel:SnapPosition(x, y, point, width, height, scale)
     local centerX = not (point:find("LEFT", 1, true) or point:find("RIGHT", 1, true))
     local centerY = not (point:find("TOP", 1, true) or point:find("BOTTOM", 1, true))

@@ -239,7 +239,7 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
             local btn = frame.buttons[i]
             if btn then
                 local r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, i, max)
-                local state = ResourceMixin:GetEssenceState(i, current, max)
+                local state = ResourceMixin:GetEssenceState(frame, i, current, max)
                 if state == "full" then
                     if btn.orbitBar then btn.orbitBar:Show(); btn.orbitBar:SetVertexColor(r, g, b) end
                     if btn.Overlay then btn.Overlay:Show() end

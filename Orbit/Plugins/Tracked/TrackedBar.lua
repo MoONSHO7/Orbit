@@ -67,8 +67,7 @@ local Parser = Orbit.TooltipParser
 local BuildPhaseCurve = function(a, cd) return Parser:BuildPhaseCurve(a, cd) end
 
 -- [ ACTIVE+CD FILL CURVE CACHE ] --------------------------------------------------------------------
--- V-shaped curve: remaining% → bar value. Active phase drains 1→0, cd phase fills 0→1.
--- Cached per (activeDuration, cooldownDuration) pair.
+-- V-shape: active drains 1→0, cd fills 0→1; cached per (active, cd) pair.
 local _barFillCurveCache = setmetatable({}, { __mode = "v" })
 local function BuildBarFillCurve(activeDuration, cooldownDuration)
     if not activeDuration or not cooldownDuration or cooldownDuration <= 0 or activeDuration >= cooldownDuration then
@@ -812,8 +811,7 @@ function Bar:UpdateChargesMode(frame, payload)
 end
 
 -- [ CD-ONLY MODE UPDATE ] ---------------------------------------------------------------------------
--- Bar fills 0→1 as cooldown elapses. Spell path uses curves piped to C++ sinks;
--- item path uses C_Container.GetItemCooldown (already numeric).
+-- Spell path uses curves piped to C++ sinks; item path uses numeric GetItemCooldown.
 function Bar:UpdateCdOnlyMode(frame, payload)
     if payload.type == "spell" then
         local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
@@ -887,8 +885,7 @@ function Bar:UpdateCdOnlyMode(frame, payload)
 end
 
 -- [ ACTIVE+CD MODE UPDATE ] -------------------------------------------------------------------------
--- Active phase drains 1→0; cd phase fills 0→1. Spell path uses V-shaped fill
--- curve and phase curve piped to C++ sinks; item path uses numeric GetItemCooldown.
+-- Spell path uses V-shape fill + phase curves piped to C++ sinks; item path uses numeric GetItemCooldown.
 function Bar:UpdateActiveCdMode(frame, payload)
     local breakpoint = frame._phaseBreakpoint
     if not breakpoint then return "ready" end
@@ -1066,8 +1063,7 @@ function Bar:HandleShiftRightClick(plugin, frame)
 end
 
 -- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
--- S18-C2: 20Hz throttle + frame-visibility gate matches the sibling Container watcher; previously
--- every TrackedBar (all specs' records, off-spec included) ran the full closure body 60Hz for life.
+-- 20Hz throttle + visibility gate matches the Container watcher — every TrackedBar would otherwise run a 60Hz closure for life.
 local CURSOR_WATCHER_INTERVAL = 0.05
 function Bar:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end

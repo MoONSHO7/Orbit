@@ -163,8 +163,7 @@ function IconItem:Build(container, removeCallback)
 end
 
 -- [ UPDATE ] ----------------------------------------------------------------------------------------
--- Refresh texture, cooldown state, and visibility. Update helpers return a numeric state
--- derived from curves (secret-safe); ApplyVisibilityAlpha consumes it.
+-- Update helpers return a curve-derived (secret-safe) numeric state consumed by ApplyVisibilityAlpha.
 function IconItem:Update(icon)
     if not icon.trackedId then icon:Hide(); icon._visShown = nil; icon._lastState = "ready"; return "ready" end
 
@@ -235,8 +234,7 @@ function IconItem:UpdateSpell(icon)
 end
 
 -- [ NON-CHARGE SPELL ] ------------------------------------------------------------------------------
--- Phase-aware desat/swipe/glow via desatCurve/cdAlphaCurve and ActiveCooldown reverse swipe.
--- Returns visibility state ("active"/"cooldown"/"ready") derived via ONCD_CURVE → numeric.
+-- Returns "active"/"cooldown"/"ready" via ONCD_CURVE; ActiveCooldown drives reverse swipe.
 function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
     -- ignoreGCD excludes the GCD contribution from durObj; ignored on older clients.
     local durObj = C_Spell.GetSpellCooldownDuration(activeId, not icon._showGCDSwipe)
@@ -283,8 +281,7 @@ function IconItem:UpdateNonChargeSpell(icon, activeId, cdInfo, onGCD)
 end
 
 -- [ CHARGE SPELL ] ----------------------------------------------------------------------------------
--- Caches charges out of combat via issecretvalue; desaturates only when all charges consumed.
--- Returns state: "active" during glow window, "cooldown" while recharging, "ready" otherwise.
+-- Caches charges out of combat (issecretvalue); desaturates only when all charges consumed.
 function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     if not issecretvalue(chargeInfo.currentCharges) then
         icon._charges = chargeInfo.currentCharges
@@ -359,8 +356,7 @@ function IconItem:UpdateItem(icon)
 end
 
 -- [ ITEM WITH SPELL ID ] ----------------------------------------------------------------------------
--- Prefers GetItemCooldown (numeric); falls back to GetSpellCooldownDuration for in-combat access.
--- Returns "active"/"cooldown"/"ready" state.
+-- Prefers GetItemCooldown (numeric); falls back to GetSpellCooldownDuration for in-combat reads.
 function IconItem:UpdateItemWithSpellId(icon)
     local start, duration = C_Container.GetItemCooldown(icon.trackedId)
     if start and duration and duration > 1.5 then
@@ -460,8 +456,7 @@ function IconItem:UpdateSpellChargeText(icon, spellId, chargeInfo)
 end
 
 -- [ VISIBILITY ] ------------------------------------------------------------------------------------
--- SetShown not SetAlpha — matches TrackedBar. Debounced via _visShown so the OnUpdate poll is a
--- no-op when state hasn't changed; state is derived secret-safely by the update helpers.
+-- SetShown (not SetAlpha) matches TrackedBar; _visShown debounces the OnUpdate poll to a no-op when state is unchanged.
 function IconItem:ApplyVisibilityAlpha(icon, state)
     local hide = (icon._hideOnCooldown and state == "cooldown")
               or (icon._hideOnAvailable and state == "ready")

@@ -1,6 +1,4 @@
 -- [ LOCALIZATION - COMMON ] -------------------------------------------------------------------------
--- CMN_ keys. Shared UI verbs and generic actions used across the addon.
--- To translate: add or extend your locale block below. Missing keys fall back to enUS.
 local _, Orbit = ...
 
 local LOCALE_STRINGS = {

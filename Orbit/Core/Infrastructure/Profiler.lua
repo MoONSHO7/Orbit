@@ -1,11 +1,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 
--- [ TITLE ] -----------------------------------------------------------------------------------------
--- Orbit Opt-In CPU Profiler
--- Measures millisecond-precision execution time of framework events.
--- Zero overhead when disabled.
-
+-- [ ORBIT PROFILER ] --------------------------------------------------------------------------------
 Orbit.Profiler = {}
 local Profiler = Orbit.Profiler
 

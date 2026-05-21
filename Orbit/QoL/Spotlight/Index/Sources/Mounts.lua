@@ -15,9 +15,7 @@ function Mounts:signature()
     return ids and #ids or 0
 end
 
--- Builds a { [mountID] = isFavorite } map by iterating the mount journal's *displayed* list, which is
--- the only place isFavorite is exposed. Depends on the player's journal filter state, so favourites
--- hidden behind filters won't get boosted — acceptable trade-off vs. mutating filter state here.
+-- isFavorite is only exposed via the displayed list — so journal filter state can hide favourites from the boost; acceptable vs. mutating filter state.
 local function BuildFavoriteMap()
     local map = {}
     local numDisplayed = C_MountJournal.GetNumDisplayedMounts and C_MountJournal.GetNumDisplayedMounts() or 0
@@ -38,8 +36,7 @@ function Mounts:Build()
     for _, mountID in ipairs(ids) do
         local name, _, icon, _, _, _, _, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
         if name and isCollected then
-            -- Fold mount capability tags ("flying"/"ground"/"aquatic"/"skyriding") into lowerName so that
-            -- a query like "mounts flying" falls through the category prefix and substring-matches the tags.
+            -- Fold capability tags into lowerName so "mounts flying" matches via substring.
             local folded = Tokenize:Fold(name)
             local tags = MountTypeTags:ForMount(mountID)
             if tags then folded = folded .. " " .. tags end

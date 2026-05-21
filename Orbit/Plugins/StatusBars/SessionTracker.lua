@@ -2,9 +2,7 @@
 local Orbit = Orbit
 
 -- [ SESSION TRACKER ]--------------------------------------------------------------------------------
--- Tracks per-session gain and rate for each bar. Persists across /reload via AccountSettings.
--- A reload preserves the session; logout starts a new one after a configurable stale window.
-
+-- Per-bar session persists across /reload via AccountSettings; logout + STALE_WINDOW idle starts a new session.
 Orbit.StatusBarSession = {}
 local Session = Orbit.StatusBarSession
 
@@ -18,8 +16,6 @@ local function GetStore()
     return as.StatusBarSessions
 end
 
--- trackerKey identifies a session bucket, e.g. "Orbit_ExperienceBar" or "Orbit_HonorBar"
--- currentValue is whatever the tracker measures (total XP earned, total honor points, etc.)
 local function Now() return time() end
 
 function Session:Start(trackerKey, currentTotal)
@@ -55,8 +51,7 @@ function Session:Update(trackerKey, currentTotal)
     s.lastUpdate = Now()
 end
 
--- Levels reset currentXP to 0 on level up; caller informs the tracker so the session preserves
--- total gain by baking the old max into `gained`.
+-- Level-up resets currentXP to 0; caller bakes the old max into `gained` so the session preserves total gain.
 function Session:OnResetBoundary(trackerKey, priorMax)
     local store = GetStore()
     if not store then return end

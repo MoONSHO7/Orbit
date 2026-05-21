@@ -1,8 +1,4 @@
 -- [ ORBIT ERROR HANDLER ]----------------------------------------------------------------------------
--- Trust-boundary error catcher: wraps plugin lifecycle / event callbacks so a single misbehaving
--- module can't take down the addon. Failures are printed to chat and ring-buffered in
--- the `OrbitErrorLogDB` SavedVariable so a corrupt log can't take down user settings.
-
 local _, Orbit = ...
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------

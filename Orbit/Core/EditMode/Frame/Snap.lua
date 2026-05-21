@@ -133,10 +133,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         end
     end
 
-    -- Per-axis Blizzard grid + UIParent edges. These correspond to the red magnetism preview lines.
-    -- Frame-to-frame anchor candidates take priority: an axis with an anchor candidate is locked to
-    -- the anchor and the grid/UIParent fallback is skipped on that axis. Where no anchor candidate
-    -- exists, the grid/UIParent candidate (if within blizRange) wins over a tighter alignment match.
+    -- Blizzard grid + UIParent edges (red magnetism preview); frame-to-frame anchor candidates take priority and lock the axis when present.
     if EditModeManagerFrame and EditModeManagerFrame:IsShown()
         and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() then
         local blizRange = (EditModeMagnetismManager and EditModeMagnetismManager.magnetismRange) or 8
@@ -234,8 +231,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
             anchorAlign = (ratio < ALIGN_THIRD) and "LEFT" or (ratio > (1 - ALIGN_THIRD)) and "RIGHT" or "CENTER"
         end
 
-        -- Align-slot fallback: only relevant for non-sync children (they share the edge via slots).
-        -- Sync children fully occupy the edge and can't share.
+        -- Slot fallback only for non-sync children — sync children fully occupy the edge.
         local edgeCrossSync = (anchorEdge == "LEFT" or anchorEdge == "RIGHT") and syncsHeight or syncsWidth
         if not edgeCrossSync then
             local isOccupied = Engine.FrameAnchor.IsEdgeOccupied
@@ -266,9 +262,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         anchorAlign = opts.align
     end
 
-    -- Filter anchor based on horizontal/vertical options
-    -- horizontal = false disables LEFT/RIGHT edge anchoring (horizontal expansion)
-    -- vertical = false disables TOP/BOTTOM edge anchoring (vertical stacking)
+    -- horizontal=false disables L/R edge anchoring; vertical=false disables T/B.
     if anchorTarget then
         if (anchorEdge == "LEFT" or anchorEdge == "RIGHT") and not canAnchorHorizontal then
             anchorTarget, anchorEdge, anchorAlign = nil, nil, nil
@@ -277,8 +271,7 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         end
     end
 
-    -- Apply snap on drop. Snap the final L/B through Pixel:Snap (not the delta) so the frame edge
-    -- lands on the exact pixel of the guideline even if the drag left the frame at a sub-pixel offset.
+    -- Snap final L/B (not the delta) so the frame edge lands on the guideline pixel even if drag ended at a sub-pixel offset.
     if not showGuides and (closestX or closestY) then
         local effectiveScale = frame:GetEffectiveScale()
         local l, b = frame:GetLeft(), frame:GetBottom()

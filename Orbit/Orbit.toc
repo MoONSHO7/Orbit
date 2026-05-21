@@ -57,6 +57,7 @@ Plugins\CooldownManager\CooldownManager.xml
 Plugins\CooldownViewerExtensions\CooldownViewerExtensions.xml
 Plugins\Tracked\Tracked.xml
 Plugins\MenuItems\MenuItems.xml
+Plugins\Bag\Bag.xml
 Plugins\Minimap\Minimap.xml
 Plugins\Datatexts\Datatexts.xml
 Plugins\DamageMeter\DamageMeter.xml

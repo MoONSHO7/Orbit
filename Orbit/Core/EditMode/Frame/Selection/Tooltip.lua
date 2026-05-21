@@ -56,8 +56,7 @@ local function EnsureTooltip(self)
     return tooltip
 end
 
--- Position tooltip at cursor with screen edge awareness
--- @param anchor: "BOTTOMRIGHT" (default), "LEFT", or "RIGHT"
+-- anchor: "BOTTOMRIGHT" (default) / "LEFT" / "RIGHT".
 local function PositionAtCursor(tooltip, anchor)
     local cursorX, cursorY = GetCursorPosition()
     local uiScale = UIParent:GetEffectiveScale()

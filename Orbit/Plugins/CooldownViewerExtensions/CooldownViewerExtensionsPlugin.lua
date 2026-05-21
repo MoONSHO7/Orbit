@@ -43,15 +43,7 @@ function Plugin:IsSettingsFrameReady()
 end
 
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------
--- spec = {
---     id          = string  (unique key, e.g. "Orbit_Tracked.Icons")
---     atlas       = string  (atlas name shown on the tab face)
---     tooltipText = string  (free-form tooltip body)
---     onClick     = function(tabFrame)  called on left-click
---     vertexColor = { r, g, b }  (optional — desaturates the atlas and tints
---                                 it. Used by Tracked Icons/Bars to match the
---                                 dropzone colors.)
--- }
+-- spec: { id, atlas, tooltipText, onClick(tabFrame), vertexColor? } — vertexColor desaturates+tints the atlas.
 function Plugin:RegisterTab(spec)
     if type(spec) ~= "table" or not spec.id then return end
     if self.builtTabs[spec.id] then return end
@@ -65,13 +57,7 @@ function Plugin:RegisterTab(spec)
 end
 
 -- [ TAB BUILDING ] ----------------------------------------------------------------------------------
--- Each new extension tab anchors below the previously built one (or AurasTab
--- for the first). `_lastBuiltTab` is the running tail of the chain so a second
--- RegisterTab call after the first batch already flushed still anchors below
--- the existing tabs instead of stacking on top of AurasTab. Tracked hits this
--- path because it registers Icons and Bars in two separate RegisterTab calls,
--- and if the settings frame is already open the first call flushes pendingTabs
--- before the second call is even made.
+-- _lastBuiltTab tracks the running tail so a second RegisterTab after the first flush still anchors below the chain (Tracked Icons/Bars register separately).
 function Plugin:BuildPendingTabs()
     local parent = CooldownViewerSettings
     if not parent then return end
@@ -102,8 +88,7 @@ local function NormalizeOrbitTabIcon(tab)
     if not tab.activeAtlas then return end
     tab.Icon:SetAtlas(tab.activeAtlas, false)
     tab.Icon:SetSize(TAB_ICON_SIZE, TAB_ICON_SIZE)
-    -- The mixin's SetChecked re-applies the atlas which resets desaturation
-    -- and vertex color, so we have to reapply our tint on every state change.
+    -- SetChecked re-applies the atlas (resets desat + vertex color), so we re-tint on every state change.
     if tab.vertexColor then
         tab.Icon:SetDesaturated(true)
         tab.Icon:SetVertexColor(tab.vertexColor.r, tab.vertexColor.g, tab.vertexColor.b)
@@ -124,8 +109,7 @@ function Plugin:CreateTab(parent, spec, anchorTo)
     tab:ClearAllPoints()
     tab:SetPoint("TOP", anchorTo, "BOTTOM", 0, TAB_GAP_Y)
 
-    -- The mixin's SetChecked applies activeAtlas/inactiveAtlas with UseAtlasSize.
-    -- Hook it to renormalize back to a fixed size after every state change.
+    -- SetChecked applies the atlas with UseAtlasSize; renormalize to fixed size after every state change.
     hooksecurefunc(tab, "SetChecked", NormalizeOrbitTabIcon)
 
     -- Defer onClick out of Blizzard's secure click dispatch so the spawn chain can't propagate taint.

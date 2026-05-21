@@ -350,13 +350,7 @@ function Plugin:RefreshFrequentUpdates()
     end
 end
 
--- S12a-C1: snapshot spec + smoothing on the boundaries that already re-apply (ApplySettings runs on
--- PLAYER_SPECIALIZATION_CHANGED via the event handler; RefreshOnUpdate runs alongside). The 20Hz
--- Aug-Evoker OnUpdate ticker now reads only cached fields, avoiding a per-tick GetSpecialization +
--- GetSetting("SmoothAnimation") (the latter walks the PluginMixin override chain).
--- Deferred follow-up: per-power-type curve native-resolution cache (UpdateAll's non-Aug path
--- currently still resolves curveData/ToNativeColorCurve on event-driven calls — lower priority since
--- those are event-driven not 20Hz; left for a separate PR).
+-- Refreshed on PLAYER_SPECIALIZATION_CHANGED + ApplySettings; the 20Hz Aug-Evoker OnUpdate reads only cached fields (no per-tick GetSpecialization / GetSetting walk).
 function Plugin:RefreshPerfCache()
     self._cachedSmoothing = (self:GetSetting(SYSTEM_INDEX, "SmoothAnimation") ~= false) and SMOOTH_ANIM or nil
     local _, class = UnitClass("player")
@@ -492,12 +486,8 @@ function Plugin:UpdateAll()
         return
     end
 
-    -- Aug Evoker Ebon Might bar takes priority. _cachedIsAugEvoker is refreshed on
-    -- PLAYER_SPECIALIZATION_CHANGED + ApplySettings; never call GetSpecialization() in this hot path.
+    -- Aug Evoker → Ebon Might bar; _cachedIsAugEvoker is refreshed on spec change so this hot path never calls GetSpecialization. GetEbonMightState returns 0/max unconditionally so no gating needed.
     if self._cachedIsAugEvoker then
-        -- GetEbonMightState returns (number, EBON_MIGHT_MAX_DURATION) unconditionally
-        -- (0 when the buff is inactive). Aug Evoker always renders the ebon-might bar
-        -- in place of the normal power bar, so no gating check is needed.
         local current, max = Orbit.ResourceBarMixin:GetEbonMightState()
         PowerBar:SetMinMaxValues(0, max)
         local smoothing = self._cachedSmoothing

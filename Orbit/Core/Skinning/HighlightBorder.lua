@@ -33,8 +33,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then nineSliceStyle = nil end
     local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
 
-    -- A LibSharedMedia edge-file border highlights via an edge-file backdrop ("legacy"); the
-    -- built-in flat "Orbit" border (nineSliceStyle nil) highlights via a flat WHITE8x8 backdrop.
+    -- LSM edge-file → "legacy" path; built-in flat "Orbit" (nil style) → "pixel" WHITE8x8 backdrop.
     local pathType = (nineSliceStyle and nineSliceStyle.edgeFile) and "legacy" or "pixel"
 
     local overlay = frame[storageKey]

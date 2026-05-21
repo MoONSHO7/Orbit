@@ -97,10 +97,7 @@ local function CreateInjectedIcon(parent, systemIndex)
 end
 
 -- [ ICON UPDATE ] -----------------------------------------------------------------------------------
--- C_Container.GetItemCooldown returns are conditionally secret under M+/raid encounter cooldown
--- restrictions for non-whitelisted user-dragged items; the doc (ContainerDocumentation.lua:328-344)
--- has no NeverSecret/SecretReturns annotation. Guard issecretvalue BEFORE any Lua-side branching;
--- on the secret path route start/duration straight into the Cooldown:SetCooldown C-sink.
+-- GetItemCooldown returns are conditionally secret under M+/raid restrictions — issecretvalue BEFORE branching; secret path goes straight into the Cooldown C-sink.
 local function ApplyItemCooldownAndCount(icon)
     local start, duration = C_Container.GetItemCooldown(icon.trackedId)
     if issecretvalue(start) or issecretvalue(duration) then
@@ -181,8 +178,7 @@ function Injection:UpdateIcon(icon)
                 icon.ActiveCooldown:Clear()
                 icon.Icon:SetDesaturation(0)
             end
-            -- chargeInfo.currentCharges is secret in combat; route it straight into SetText
-            -- rather than boolean-testing it to build a fallback.
+            -- Pass currentCharges directly to SetText — boolean-testing it would throw on the secret-in-combat path.
             local chargeInfo = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
             if chargeInfo then
                 icon.ChargeCount.Current:SetText(chargeInfo.currentCharges)
@@ -737,11 +733,7 @@ function Injection:IsDraggingCooldownAbility()
 end
 
 -- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
--- Polls the cursor, shift-key, and edit-mode state at a fixed interval and
--- pushes the current droppable state into SetClickEnabled. Also refreshes
--- OOCFadeMixin so frames with `orbitCursorReveal` reveal while a cooldown
--- ability is on the cursor. Self-contained — no dependency on the Tracked
--- plugin or any deleted module.
+-- Drives SetClickEnabled + OOCFade reveal for `orbitCursorReveal` frames while a cooldown ability is on the cursor.
 function Injection:StartCursorWatcher()
     if Plugin._injectedCursorWatcher then return end
     local accum = 0

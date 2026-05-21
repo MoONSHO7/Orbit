@@ -1,15 +1,11 @@
 -- [ ORBIT SELECTION - PEEK HIDE ] -------------------------------------------------------------------
--- Hold Left-Alt during Edit Mode to hide all selection overlays (Orbit + Blizzard native).
--- Release restores visual state via Selection:RefreshVisuals().
-
 local _, Orbit = ...
 local Engine = Orbit.Engine
 
 local PeekHide = {}
 Engine.SelectionPeekHide = PeekHide
 
--- MODIFIER_STATE_CHANGED emits raw modifier up/down regardless of keybindings,
--- unlike OnKeyDown/OnKeyUp which the binding system can swallow for bare modifiers.
+-- MODIFIER_STATE_CHANGED emits raw modifier up/down — OnKeyDown/Up can be swallowed by the binding system for bare modifiers.
 local PEEK_KEY = "LALT"
 
 local handler
@@ -30,8 +26,7 @@ local function HideAll(Selection)
     end
 end
 
--- UpdateVisuals' isSelected branch sets alpha on regions but not the frame itself,
--- so we reset frame alpha first; RefreshVisuals then re-hides any that should stay hidden.
+-- Reset frame alpha before RefreshVisuals — UpdateVisuals' isSelected branch only sets region alpha, not the frame's.
 local function ShowAll(Selection)
     for _, selection in pairs(Selection.selections) do
         selection:SetAlpha(1)

@@ -119,11 +119,7 @@ Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", function(changedPlugin)
 end)
 
 -- [ PROCESS CHILDREN ] ------------------------------------------------------------------------------
--- S16-L3: re-entrancy guard + per-call children snapshot. The body fires Skin:Apply (which can
--- hook into Masque) and `ORBIT_ICON_REPROCESSED` (cross-plugin); a re-entry from either would
--- have wiped the shared `_activeChildBuf` mid-iteration and corrupted the outer loop. The guard
--- short-circuits inner calls; the per-call snapshot makes the outer iteration robust even if a
--- future change permits re-entry through a different path.
+-- Re-entrancy guard + per-call snapshot — Skin:Apply / ORBIT_ICON_REPROCESSED can re-enter and corrupt the iteration.
 local _processingChildren = false
 function CDM:ProcessChildren(anchor)
     if _processingChildren or not anchor then return end
@@ -138,8 +134,7 @@ function CDM:ProcessChildren(anchor)
 
     for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
         if child.layoutIndex and not child.isInjectedIcon then
-            -- Per-icon OnShow/RefreshData hooks only for BuffIcon/BuffBar.
-            -- Essential/Utility use viewer-level UpdateLayout/RefreshLayout hooks.
+            -- BuffIcon/BuffBar use per-icon hooks; Essential/Utility hook viewer-level UpdateLayout.
             if systemIndex == BUFFICON_INDEX or systemIndex == BUFFBAR_INDEX then
                 if not child.orbitOnShowHooked then
                     local plugin = self
