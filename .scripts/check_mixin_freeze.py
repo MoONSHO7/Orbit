@@ -8,16 +8,22 @@
 #   > errors immediately instead of silently corrupting the shared table.
 #
 # A mixin is any module-level table named `*Mixin` declared on the `Orbit.`
-# or `Engine.` namespace (e.g. `Orbit.CastBarMixin = {}`). The file that
-# declares the mixin must also contain a freeze call against it, guarded for
-# clients without table.freeze:
+# or `Engine.` namespace (e.g. `Orbit.CastBarMixin = {}`). The repo must
+# contain a `table.freeze(<MixinRef>)` call against it somewhere (typically
+# at the end of the declaring file, but for mixins extended across multiple
+# `.lua` files the freeze belongs at the end of the LAST extending file).
+# Guard for clients without table.freeze:
 #
 #     if table.freeze then table.freeze(Orbit.CastBarMixin) end
 #
+# In addition, this script verifies that the freeze sits in a file that runs
+# AFTER every file that writes to the mixin — otherwise the late write either
+# silently fails or raises "attempt to modify a read-only table" at load
+# time, leaving the method nil at call time. Cross-file write detection is
+# alias-aware: `local M = Orbit.X` followed by `function M.Y(...)` counts.
+#
 # Exemptions: mixins that legitimately hold module-level state (e.g.
-# AuraMixin scratch buffers), or mixins extended across multiple files where
-# the freeze cannot live at the end of the declaring file. These are listed
-# in EXEMPT_MIXINS with a one-line justification.
+# AuraMixin scratch buffers). Listed in EXEMPT_MIXINS with one-line WHY.
 #
 # Exit 0 on success, 1 on any hard failure. Safe to run in CI.
 
@@ -35,6 +41,12 @@ EXCLUDE_DIR_NAMES = {"Libs", "assets", ".git"}
 DECL_RE = re.compile(r"^(Orbit|Engine)\.([A-Za-z][\w]*Mixin)\s*=\s*\{\s*\}\s*$")
 FREEZE_RE_TPL = r"table\.freeze\s*\(\s*(?:Orbit|Engine|[A-Za-z_][\w]*)\.{name}\s*\)"
 FREEZE_RE_LOCAL_TPL = r"table\.freeze\s*\(\s*{local_name}\s*\)"
+ALIAS_DECL_TPL = r"^\s*local\s+(\w+)\s*=\s*(?:Orbit|Engine)\.{name}\s*$"
+EXTERNAL_WRITE_TPLS = [
+    r"^(?:function\s+)?(?:Orbit|Engine)\.{name}\.\w+\s*(?:=|\()",
+    r"^(?:function\s+){alias}\.\w+\s*\(",
+    r"^{alias}\.\w+\s*=",
+]
 
 # Mixins exempt from the freeze requirement, with one-line WHY for each.
 # Trim this list as freezes are added.
@@ -64,10 +76,7 @@ def iter_lua_files():
 
 def find_local_alias(text, mixin_name):
     # e.g. `local PG = Orbit.PandemicGlow`  →  alias `PG`
-    pattern = re.compile(
-        r"^\s*local\s+([A-Za-z_][\w]*)\s*=\s*(?:Orbit|Engine)\." + re.escape(mixin_name) + r"\s*$",
-        re.MULTILINE,
-    )
+    pattern = re.compile(ALIAS_DECL_TPL.format(name=re.escape(mixin_name)), re.MULTILINE)
     m = pattern.search(text)
     return m.group(1) if m else None
 
@@ -81,40 +90,84 @@ def file_freezes_mixin(text, mixin_name):
     return False
 
 
+def file_writes_mixin(text, mixin_name):
+    """Return True if `text` writes a method/field onto the mixin (full or alias form)."""
+    name_e = re.escape(mixin_name)
+    if re.search(EXTERNAL_WRITE_TPLS[0].format(name=name_e), text, re.MULTILINE):
+        return True
+    alias = find_local_alias(text, mixin_name)
+    if alias:
+        alias_e = re.escape(alias)
+        for tpl in EXTERNAL_WRITE_TPLS[1:]:
+            if re.search(tpl.format(alias=alias_e), text, re.MULTILINE):
+                return True
+    return False
+
+
 def main():
     fail = False
     print("=== Orbit Mixin Freeze Lint ===")
     print(f"Repo: {REPO_ROOT}")
     print()
 
+    # Pass 1: index every file's text and find every mixin declaration.
+    file_texts = {}
     declarations = []
     for fp in iter_lua_files():
         with open(fp, encoding="utf-8", errors="replace") as f:
             text = f.read()
+        file_texts[fp] = text
         for ln, line in enumerate(text.splitlines(), 1):
             m = DECL_RE.match(line.rstrip())
             if m:
                 ns, name = m.group(1), m.group(2)
-                declarations.append((name, ns, fp, ln, text))
+                declarations.append((name, ns, fp, ln))
 
     print(f"Found {len(declarations)} mixin declaration(s).")
     print()
 
     unfrozen = []
     frozen = []
+    write_after_freeze = []
     exempt_used = set()
     exempt_dead = []
 
-    for name, ns, fp, ln, text in declarations:
+    for name, ns, fp, ln in declarations:
         rel = fp.relative_to(REPO_ROOT)
         if name in EXEMPT_MIXINS:
             exempt_used.add(name)
             print(f"[skip] {ns}.{name}  ({rel})  — exempt: {EXEMPT_MIXINS[name]}")
             continue
-        if file_freezes_mixin(text, name):
-            frozen.append((name, rel))
-        else:
+
+        # Pass 2: search ALL files for a freeze of this mixin.
+        freeze_file = None
+        for ofp, otext in file_texts.items():
+            if file_freezes_mixin(otext, name):
+                freeze_file = ofp
+                break
+
+        if not freeze_file:
             unfrozen.append((name, rel, ln))
+            continue
+        frozen.append((name, freeze_file.relative_to(REPO_ROOT)))
+
+        # Pass 3: only the declaring file and the freeze file may write to the
+        # mixin. The declaring file is always safe (it runs first by definition),
+        # and the freeze file is safe (its writes precede its own freeze call).
+        # Any third file that writes is a load-order land-mine: if it loads
+        # AFTER the freeze, the write either silently fails or raises
+        # "attempt to modify a read-only table" depending on the client. The
+        # GroupFrameMixin / GroupFrameEventHandler regression (May 2026) was
+        # exactly this shape — freeze sat in the declaring file while the
+        # event-handler file extended the mixin AFTER the freeze ran.
+        offenders = []
+        for ofp, otext in file_texts.items():
+            if ofp == freeze_file or ofp == fp:
+                continue
+            if file_writes_mixin(otext, name):
+                offenders.append(ofp.relative_to(REPO_ROOT))
+        if offenders:
+            write_after_freeze.append((name, freeze_file.relative_to(REPO_ROOT), offenders))
 
     # Detect stale exemptions (listed but no matching declaration).
     declared_names = {d[0] for d in declarations}
@@ -138,6 +191,20 @@ def main():
         fail = True
     else:
         print("[ OK ] No unfrozen non-exempt mixins.")
+    print()
+
+    if write_after_freeze:
+        print(f"[FAIL] {len(write_after_freeze)} mixin(s) written outside their freeze file:")
+        for name, freeze_rel, offenders in write_after_freeze:
+            print(f"  - {name} is frozen in {freeze_rel}, but also written in:")
+            for o in offenders:
+                print(f"      {o}")
+        print()
+        print("       Fix: either move the writes into the freeze file, or move the freeze")
+        print("       to the end of the LAST file that writes to the mixin (load-order tail).")
+        fail = True
+    else:
+        print("[ OK ] No external writes to frozen mixins.")
     print()
 
     if exempt_dead:

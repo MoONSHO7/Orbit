@@ -133,6 +133,7 @@ local function ApplySavedPoints(frame)
 end
 
 local function ApplySavedScale(frame)
+    if InCombatLockdown() then return end
     if NO_SCALE[frame:GetName() or ""] then return end
     local entry = GetSavedEntry(frame:GetName() or "")
     if entry and entry.scale then
@@ -272,6 +273,7 @@ local function HookFrame(frame)
         frame:HookScript("OnHide", function(f)
             if not (MM._armed and f._mmHooked) then return end
             if IsSavingPositions() then return end
+            if InCombatLockdown() then return end
             RestoreDefaultPoints(f)
             if f._mmDefaultScale then f:SetScale(f._mmDefaultScale) end
             f._mmDefaultPoints = nil
