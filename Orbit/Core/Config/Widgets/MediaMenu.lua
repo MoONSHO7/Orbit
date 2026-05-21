@@ -19,7 +19,7 @@ local MediaMenu = {}
 Engine.MediaMenu = MediaMenu
 
 local function IsOrbitName(name)
-    return strfind(name, "^Orbit") ~= nil
+    return (Orbit.OwnedMedia and Orbit.OwnedMedia[name]) or strfind(name, "^Orbit") ~= nil
 end
 
 local function SortNames(items)
