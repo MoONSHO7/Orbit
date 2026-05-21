@@ -581,8 +581,7 @@ function PA:StartDispels(owner, frames, cfg)
     if not dispelTicker then dispelTicker = C_Timer.NewTicker(1, DispelTick) end
 end
 
--- Live-patch an active session's cfg and immediately re-show all visible glows so slider/color
--- changes appear without waiting for the next 6s slot expiry.
+-- Live-patch active session cfg + re-show glows so slider/color changes appear without waiting for the 6s slot expiry.
 function PA:RefreshDispels(owner, cfg)
     local session = dispelSessions[owner]
     if not session then return end

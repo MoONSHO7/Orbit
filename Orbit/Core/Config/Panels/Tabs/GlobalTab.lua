@@ -66,8 +66,7 @@ local function GetGlobalSchema()
     local currentIconStyle = (g and g.IconBorderStyle) or Constants.BorderStyle.Default
     local currentIconEntry = Constants.BorderStyle.Lookup[currentIconStyle]
 
-    -- Value-column swatches. Border colors only apply to Orbit's built-in styles, so the swatch
-    -- hides for LibSharedMedia border textures (no BorderStyle.Lookup entry).
+    -- Swatch hides for LSM border textures — color only applies to built-in styles.
     local DEFAULT_FONT_CURVE = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
     local function GS() return Orbit.db and Orbit.db.GlobalSettings end
     local function StyleHasColor(key)
@@ -150,8 +149,7 @@ local function GetGlobalSchema()
         Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
     end
     local pixelSize = Constants.BorderStyle.PixelSize
-    -- The built-in "Orbit" style is a flat pixel border (Border Size 0-5); a LibSharedMedia
-    -- border instead exposes edge-size and offset sliders.
+    -- Built-in "Orbit" → Border Size 0-5 slider; LSM → edge-size + offset sliders.
     if currentEntry and currentEntry.pixel then
         tinsert(controls, { type = "slider", key = "PixelBorderSize", label = L.CFG_BORDER_SIZE, default = Constants.BorderStyle.DefaultPixelSize, min = pixelSize.Min, max = pixelSize.Max, step = pixelSize.Step, updateOnRelease = true, onChange = function(v) borderSizeChanged("PixelBorderSize", v) end })
     else

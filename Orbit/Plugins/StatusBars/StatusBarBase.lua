@@ -17,11 +17,7 @@ local COMP_KEY_LEVEL = "BarLevel"
 local COMP_KEY_VALUE = "BarValue"
 
 -- [ CANVAS MODE COMPONENT SCHEMAS ]------------------------------------------------------------------
--- `Name` already exists in the shared KEY_SCHEMAS (STATIC_TEXT: font/size/color). `BarLevel` and
--- `BarValue` are status-bar specific — register them so each component's Canvas Mode dock shows
--- font/size/color, and `BarValue` exposes the ValueMode dropdown (current/max/percent) that drives
--- what the value text renders. `plugin = true` routes that dropdown to `plugin:SetSetting`.
-
+-- `plugin = true` on ValueMode routes the dropdown write to `plugin:SetSetting` instead of the canvas blob.
 do
     local Schema = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.SettingsSchema
     if Schema and Schema.KEY_SCHEMAS then
@@ -47,21 +43,12 @@ do
 end
 
 -- [ STATUS BAR BASE ]--------------------------------------------------------------------------------
--- Shared factory for StatusBars plugins. Each bar is a container Frame holding:
---   .Bar       : StatusBar — primary fill (XP/Rep/Honor)
---   .Overlay   : StatusBar — secondary fill beneath Bar (rested XP, paragon bonus)
---   .bg        : Texture   — solid backdrop behind both bars
---   .TextFrame : Frame     — parent for the 3 canvas-managed text components
---   .Name / .Level / .Value : per-component Frames with a .Text FontString child
-
 ---@class OrbitStatusBarBase
 Orbit.StatusBarBase = {}
 local StatusBarBase = Orbit.StatusBarBase
 
 StatusBarBase.ComponentKeys = { Name = COMP_KEY_NAME, Level = COMP_KEY_LEVEL, Value = COMP_KEY_VALUE }
 
--- Preset token templates keyed by ValueMode. Plugins call `ResolveTemplate(plugin)` to get the
--- template string matching the user's current dropdown choice, then hand it to TextTemplate:Render.
 local VALUE_MODE_TEMPLATES = {
     percent    = "{pct}",
     currentmax = "{cur}/{max}",
@@ -95,8 +82,7 @@ function StatusBarBase:Create(globalName, parent)
     container.Overlay = overlay
     Orbit.Skin:RegisterMaskedSurface(container, overlay:GetStatusBarTexture())
 
-    -- Pending-XP sub-fill: rendered between Overlay and Bar. Shows quest-turn-in XP as a green
-    -- translucent fill extending past the current XP point. Hidden for rep/honor.
+    -- Pending-XP sub-fill: layered between Overlay and Bar; hidden for rep/honor.
     local pending = CreateFrame("StatusBar", nil, container)
     pending:SetAllPoints(container)
     pending:SetFrameLevel(container:GetFrameLevel() + OVERLAY_FRAME_OFFSET + 1)
@@ -112,16 +98,12 @@ function StatusBarBase:Create(globalName, parent)
     bar:SetFrameLevel(container:GetFrameLevel() + BAR_FRAME_OFFSET)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
-    -- Establish the StatusBarTexture before anything anchors to it. Without this, GetStatusBarTexture()
-    -- returns nil and the Tick's SetPoint silently falls back to UIParent — producing a screen-tall
-    -- white line at screen-right. ApplyTheme replaces the file path later but reuses the same Texture object.
+    -- Must precede the Tick's SetPoint anchor — otherwise GetStatusBarTexture() is nil and the Tick silently anchors to UIParent (screen-tall line).
     bar:SetStatusBarTexture(FALLBACK_TEXTURE)
     container.Bar = bar
     Orbit.Skin:RegisterMaskedSurface(container, bar:GetStatusBarTexture())
 
-    -- Leading-edge tick: solid vertical line riding the fill's right edge. Width is driven by
-    -- the plugin's TickWidth setting (0 = hidden). Anchored so height auto-tracks the bar and
-    -- horizontal position tracks the fill without per-frame arithmetic.
+    -- Leading-edge tick anchored to the StatusBarTexture so position/height track the fill without per-frame arithmetic.
     local tick = bar:CreateTexture(nil, "ARTWORK")
     tick:SetTexture("Interface\\Buttons\\WHITE8x8")
     tick:SetVertexColor(1, 1, 1, 1)
@@ -146,10 +128,7 @@ function StatusBarBase:Create(globalName, parent)
 end
 
 -- [ TEXT COMPONENTS ]--------------------------------------------------------------------------------
--- Creates three canvas-positionable text frames (Name, Level, Value) parented to the text frame.
--- Each is a Frame with a single OVERLAY FontString child so Canvas Mode can drag the frame and
--- OverrideUtils can apply font/size/color to the FontString via frame.visual.
-
+-- Each component is a Frame wrapping a FontString — Canvas Mode drags the Frame, OverrideUtils restyles `frame.visual`.
 local function MakeTextComponent(parent)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetSize(1, 1)
@@ -166,9 +145,7 @@ function StatusBarBase:CreateTextComponents(container)
     container.Value = MakeTextComponent(container.TextFrame)
 end
 
--- Sets text and resizes the component frame to fit — FontString uses SetAllPoints, so the
--- parent frame must be at least the text's rendered size or the string clips. Mirrors Minimap
--- Clock/ZoneText's dynamic sizing.
+-- Parent frame must size to the rendered text — FontString uses SetAllPoints, so an undersized parent clips the string.
 function StatusBarBase:SetComponentText(component, text)
     if not component or not component.Text then return end
     component.Text:SetText(text or "")
@@ -188,11 +165,6 @@ function StatusBarBase:AttachCanvasComponents(plugin, container, systemIndex)
         { key = COMP_KEY_VALUE, sourceOverride = container.Value.Text, isFontString = true, onPositionChange = MPC(COMP_KEY_VALUE) })
 end
 
--- Resolves each text component's visibility from three inputs:
---   - `DisabledComponents` (canvas-mode per-component toggle) → force hide
---   - `TextOnMouseover` setting + hover state → hide when unhover (unless in edit mode)
---   - otherwise show
--- Called from ApplySettings and from the mouse enter/leave hooks.
 function StatusBarBase:ApplyComponentVisibility(plugin, container)
     local mouseOverOnly = plugin:GetSetting(plugin.system, "TextOnMouseover")
     if Orbit:IsEditMode() then mouseOverOnly = false end
@@ -208,9 +180,7 @@ function StatusBarBase:ApplyComponentVisibility(plugin, container)
     resolve(COMP_KEY_VALUE, container.Value)
 end
 
--- Enables mouse on the container and hooks OnEnter/OnLeave to re-run ApplyComponentVisibility.
--- Idempotent — safe to call on every ApplySettings. Mouse stays enabled regardless of setting
--- state so edit-mode drag and the hover hooks share the same mouse-enabled frame.
+-- Mouse stays enabled regardless of mouseover setting so edit-mode drag shares the same hooked frame; idempotent.
 function StatusBarBase:SetupMouseoverHooks(plugin, container)
     if container._mouseoverHooked then return end
     container._mouseoverHooked = true
@@ -225,10 +195,7 @@ function StatusBarBase:SetupMouseoverHooks(plugin, container)
     end)
 end
 
--- Mirrors each live text component's current text into the canvas preview's cloned FontStrings.
--- `FontStringCreator` clones the FontString once at preview creation (reads source:GetText and
--- stores locally), so subsequent live-frame text changes never reach the preview. Call this
--- after SetComponentText to keep the preview in sync while the canvas dialog is open.
+-- FontStringCreator clones GetText once at preview creation, so later live-frame text changes don't reach the preview — call this after SetComponentText.
 function StatusBarBase:SyncPreviewText(plugin, container)
     local Dialog = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Dialog
     if not Dialog or not Dialog.IsShown or not Dialog:IsShown() then return end
@@ -283,9 +250,7 @@ function StatusBarBase:ApplyTextComponent(component, overrides, defaultSize)
 end
 
 -- [ FILL HELPERS ]-----------------------------------------------------------------------------------
--- Guard secret inputs so widget internal state never holds secret values (taint risk during edit
--- mode traversal); the bar keeps its last non-secret fill during encounters instead.
-
+-- Guard secret inputs so widget state stays non-secret (taint risk during edit-mode traversal) — bar holds its last non-secret fill through encounters.
 function StatusBarBase:SetFill(container, current, max)
     if issecretvalue(current) or issecretvalue(max) then return end
     container.Bar:SetMinMaxValues(0, max)
@@ -304,9 +269,6 @@ function StatusBarBase:HideOverlay(container)
 end
 
 -- [ PENDING-XP SUB-FILL ]----------------------------------------------------------------------------
--- Draws a secondary green fill from 0 to (current + pending), clamped to max. Rendered under the
--- main bar so the visible slice between current and current+pending appears green — signalling
--- "XP waiting in completed quests." Guarded for secret inputs.
 function StatusBarBase:SetPendingFill(container, current, max, pending, color)
     if issecretvalue(current) or issecretvalue(max) then container.Pending:Hide(); return end
     if not pending or pending <= 0 or not max or max <= 0 then container.Pending:Hide(); return end
@@ -334,13 +296,8 @@ function StatusBarBase:SetTickWidth(container, width)
 end
 
 -- [ FILL ANIMATION ]---------------------------------------------------------------------------------
--- SmoothStatusBarMixin self-registers an OnUpdate script on the bar, which leaves the frame
--- running Orbit-tainted Lua every frame and keeps the execution context flagged for as long as
--- the bar exists. That flag propagates into Blizzard's secure edit-mode iteration and trips
--- HideSystemSelections on exit. Keep the API surface but no-op the hook — fills land directly
--- through the plain-value path.
+-- No-op: SmoothStatusBarMixin's OnUpdate keeps the bar Orbit-tainted, which propagates into Blizzard's secure edit-mode iteration and trips HideSystemSelections on exit.
 function StatusBarBase:EnableSmoothFill(container)
-    -- Intentionally noop: see notes above.
 end
 
 function StatusBarBase:SetSmoothFill(container, current, max)
@@ -348,8 +305,6 @@ function StatusBarBase:SetSmoothFill(container, current, max)
 end
 
 -- [ BLOCK TICK MARKS ]-------------------------------------------------------------------------------
--- Draws vertical dividers every `percent`% across the bar width. percent=10 → 10/20/.../90;
--- percent=25 → 25/50/75; percent=33 → 33/66; percent=50 → 50. Reuses textures via container._ticks.
 function StatusBarBase:SetTickMarks(container, percent, color)
     percent = tonumber(percent) or 0
     local pool = container._ticks
@@ -377,12 +332,6 @@ function StatusBarBase:SetTickMarks(container, percent, color)
 end
 
 -- [ CLICK DISPATCH ]---------------------------------------------------------------------------------
--- Wires left / shift-left / shift-right-click behaviors to the container. Each plugin supplies the
--- concrete handlers via an options table so we don't hard-code XP-specific logic here.
---   onLeftClick        : open the relevant native panel
---   onShiftClick       : paste a chat-linkable string representing the bar's current state
---   onShiftRightClick  : reset session stats
---   onScroll           : (direction) → cycle watched faction, etc.
 function StatusBarBase:SetupClickDispatch(container, options)
     if container._clickDispatchHooked then return end
     container._clickDispatchHooked = true

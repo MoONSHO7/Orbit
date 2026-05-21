@@ -126,9 +126,7 @@ function Renderer:UpdateSpacers(plugin, frame, cfg, max)
 end
 
 -- [ UPDATE POWER (CONTINUOUS PATH) ] ----------------------------------------------------------------
--- All `getState` implementations are guaranteed to return numeric `current`/`max`
--- (never nil), so we skip the legacy `if current and max then` gate which would
--- otherwise perform a boolean test on a secret value in combat.
+-- getState implementations always return numeric current/max — skip nil-gate to avoid boolean-testing a secret in combat.
 function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     local cfg = self.CONFIG[plugin.continuousResource]
     if not cfg then return end

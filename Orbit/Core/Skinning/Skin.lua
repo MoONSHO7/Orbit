@@ -10,10 +10,7 @@ local Constants = Orbit.Constants
 local SHADOW_OFFSET_X = 2
 local SHADOW_OFFSET_Y = -2
 
--- Per-overlay blend mode + alpha. tile = true repeats the texture at native pixel size instead
--- of stretching it, so detail keeps a constant on-screen scale as the bar grows; Gloss is a pure
--- gradient with nothing to distort, so it stretches. An unrecognised pick (e.g. a user routing a
--- plain bar fill through the Overlay control) falls back to OVERLAY_DEFAULT's neutral sheen.
+-- tile = true: repeats at native pixel size so detail holds a constant on-screen scale; omit for gradients (Gloss).
 local OVERLAY_RENDER = {
     ["Orbit Gloss Overlay"]  = { blend = "ADD",   alpha = 1.0 },
     ["Orbit Frost Overlay"]  = { blend = "BLEND", alpha = 1.0, tile = true },
@@ -24,9 +21,7 @@ local OVERLAY_DEFAULT = { blend = "ADD", alpha = 0.5 }
 
 local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 
--- Statusbar fill textures that must TILE rather than stretch -- their patterns (stripes, hex
--- cells) shear when a statusbar stretches its fill. ApplyAbsorbTexture renders these as a
--- clip-masked tiled pattern instead; see UnitButton.lua's TotalAbsorbPattern.
+-- Patterns shear when a statusbar stretches its fill — ApplyAbsorbTexture routes these to the bar's TiledPattern (UnitButton.lua) instead.
 local TILING_FILLS = {
     ["Orbit Absorb"]           = true,
     ["Orbit Honeycomb Absorb"] = true,
@@ -39,8 +34,7 @@ local function RefreshBordersIfNeeded()
     local gs = Orbit.db and Orbit.db.GlobalSettings
     if not gs then return end
     local needsRefresh = false
-    -- Only LibSharedMedia borders can resolve late (sibling addon registers after us);
-    -- the built-in Orbit style always resolves.
+    -- LSM borders resolve late if a sibling addon registers after us.
     for _, key in ipairs({ "BorderStyle", "IconBorderStyle" }) do
         local v = gs[key]
         if v and v:match("^lsm:") and not Skin:ResolveStyle(key) then
@@ -107,16 +101,10 @@ function Skin:RegisterMaskedSurface(frame, texture)
     table.insert(frame._maskedSurfaces, texture)
 end
 
--- No active border style produces a corner-clip mask any more — the flat "Orbit" border and
--- LibSharedMedia edge-file borders are both rectangular. Kept callable: ~24 sites resolve a
--- swipe texture through this; nil routes the cooldown swipe to its default rectangular asset.
 function Skin:GetRoundedSwipeTexture(isIcon)
     return nil
 end
 
--- Lazily builds host[cacheKey] as a slice MaskTexture from `styleEntry`, then hands it to
--- `anchorFn` for placement. No built-in style carries a `.mask`/`.sliceMargin` any more, so the
--- masked-surface callers never reach this — kept defined for call-site compatibility.
 function Skin:EnsureSliceMask(host, cacheKey, styleEntry, anchorFn)
     local mask = host[cacheKey]
     if not mask then
@@ -132,8 +120,7 @@ function Skin:EnsureSliceMask(host, cacheKey, styleEntry, anchorFn)
     return mask
 end
 
--- A surface holds at most one Orbit rounded mask, tracked as tex._orbitRoundedMask; this
--- removes whatever is present before adding, so stale per-frame/ex-group masks never stack.
+-- One mask per surface (tex._orbitRoundedMask) — remove the previous before adding so stale masks never stack.
 function Skin:_SetSurfaceMask(tex, mask)
     if not tex.AddMaskTexture then return end
     local prev = tex._orbitRoundedMask
@@ -143,17 +130,12 @@ function Skin:_SetSurfaceMask(tex, mask)
     tex._orbitRoundedMask = mask
 end
 
--- Inert since the border-system collapse: the flat "Orbit" border and LibSharedMedia edge-file
--- borders are rectangular, so no style ever yields a corner-clip mask. Kept callable for the
--- ~24 sites that drive the masked-surface model; it now only clears any stale mask.
 function Skin:ApplyRoundedMaskToSurfaces(frame, styleEntry)
     if not frame or not frame._maskedSurfaces then return end
     self:ClearRoundedMaskFromSurfaces(frame)
 end
 
--- Detaches `mask` from every surface that currently carries it, leaving surfaces owned by a
--- different mask untouched. A surface can be registered on both an icon and its container,
--- sharing one mask slot, so an owner-blind clear would clobber the other owner on merge/unmerge.
+-- Only clears surfaces owned by `mask` — a surface shared with another owner (icon + container) keeps the other owner's mask.
 function Skin:ClearMaskFromSurfaces(surfaces, mask)
     if not surfaces or not mask then return end
     for _, tex in ipairs(surfaces) do
@@ -163,21 +145,16 @@ function Skin:ClearMaskFromSurfaces(surfaces, mask)
     end
 end
 
--- Releases ONLY this frame's own rounded mask.
 function Skin:ClearRoundedMaskFromSurfaces(frame)
     if not frame then return end
     self:ClearMaskFromSurfaces(frame._maskedSurfaces, frame._roundedMask)
 end
 
--- For frames built outside the SkinBorder lifecycle (e.g. canvas-mode previews) where surfaces
--- are registered after the border dispatch ran. Uses the same style the border uses.
+-- For frames built outside the SkinBorder lifecycle (e.g. canvas-mode previews) where surfaces register after the border dispatch ran.
 function Skin:UpdateRoundedMask(frame, isIcon)
     self:ApplyRoundedMaskToSurfaces(frame, isIcon and self:GetActiveIconBorderStyle() or self:GetActiveBorderStyle())
 end
 
--- Renders a sliced edge-file texture onto `overlay`. With the border-system collapse no built-in
--- style carries `sliceMargin`, so callers only reach this when a style table explicitly supplies
--- one — kept callable for those sites; the margin is applied only when present.
 function Skin:_RenderSliceTexture(overlay, styleEntry, color, blendMode)
     overlay:SetBackdrop(nil)
     if not overlay._sliceTexture then
@@ -194,14 +171,12 @@ function Skin:_RenderSliceTexture(overlay, styleEntry, color, blendMode)
     return tex
 end
 
--- Hides a frame's slice-outline texture without tearing it down -- used when a border mode
--- switches away from the slice outline (pixel/legacy) on a reused frame.
+-- Hides without tearing down — used when a reused frame switches border modes.
 function Skin:HideSliceTexture(overlay)
     if overlay._sliceTexture then overlay._sliceTexture:Hide() end
 end
 
--- Flat WHITE8x8 pixel border, the shared pixel-mode primitive. `color` overrides the resolved
--- border color when a caller supplies one (SkinBorder's explicit-color path).
+-- `color` overrides the resolved border color (SkinBorder's explicit-color path).
 function Skin:ApplyPixelBackdrop(overlay, pixelSize, isIcon, color)
     overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
     local c = color or self:ResolveBorderColor(isIcon)
@@ -209,9 +184,6 @@ function Skin:ApplyPixelBackdrop(overlay, pixelSize, isIcon, color)
 end
 
 -- [ EDGE-FILE BORDER ]-------------------------------------------------------------------------------
--- The only non-nil style ResolveStyle yields is a LibSharedMedia `{ edgeFile = ... }` border;
--- the built-in flat "Orbit" border resolves to nil and renders through SkinBorder's pixel path.
--- Kept named ApplyNineSliceBorder/ClearNineSliceBorder for the ~24 external call sites.
 function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame or not styleEntry or not styleEntry.edgeFile then return end
     if not frame._edgeBorderOverlay then
@@ -251,8 +223,7 @@ end
 -- Highlight border functions → HighlightBorder.lua
 
 -- [ ICON GROUP BORDER ] -----------------------------------------------------------------------------
--- iconsList: optional. Required when icons are not direct children of `container` (e.g.
--- CooldownManager parents icons to Blizzard's viewer, separate from the Orbit anchor frame).
+-- iconsList is required when icons are not direct children of `container` (e.g. CooldownManager parents to Blizzard's viewer).
 function Skin:ApplyIconGroupBorder(container, styleEntry, iconsList)
     if not container then return end
     if container._groupBorderActive then return end
@@ -290,8 +261,7 @@ end
 
 function Skin:ClearIconGroupBorder(container)
     if not container then return end
-    -- NOTE: _isIconContainer is NOT cleared here — it reflects frame type, not border style.
-    -- Clear _activeBorderMode so ClearGroupBorder → SetBorderHidden(false) won't re-show stale borders.
+    -- _isIconContainer reflects frame type, not border style; only _activeBorderMode clears so SetBorderHidden(false) doesn't re-show stale borders.
     container._activeBorderMode = nil
     self:ClearNineSliceBorder(container)
     if container._borderFrame then container._borderFrame:Hide() end
@@ -300,11 +270,6 @@ end
 
 -- Group border functions → GroupBorder.lua
 
--- Resolves the configured border style to a render directive:
---   • nil           — the built-in flat "Orbit" border. A nil styleEntry is the pipeline-wide
---                      signal for pixel mode (SkinBorder's flat path, GroupBorder's isPixelMode,
---                      HighlightBorder's "pixel" path, ApplyIconGroupBorder's else branch).
---   • { edgeFile }  — a LibSharedMedia edge-file border.
 function Skin:ResolveStyle(settingsKey)
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local bs = Constants.BorderStyle
@@ -343,8 +308,7 @@ function Skin:BuildIconStyle(baseStyle)
     return style
 end
 
--- forceSquare is retained for call-site compatibility but is now inert: the only non-pixel
--- style is a LibSharedMedia edge-file border, which is already rectangular.
+-- forceSquare kept for call-site compatibility — inert now that the only non-pixel style is a rectangular LSM edge-file border.
 function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel, forceSquare)
     if not frame or not backdrop then
         return
@@ -475,12 +439,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha, tile)
     end
 
     local overlay = bar.Overlay
-    -- bar.Overlay is reused across overlay-texture changes, so each mode must fully re-establish
-    -- its own texcoord state. A tiling overlay loads with REPEAT wrap; SetHoriz/VertTile then
-    -- repeat it at native pixel size by rewriting the texcoords. A non-tiling overlay must clear
-    -- tiling AND restore standard texcoords -- otherwise a previous tiling overlay's texcoords
-    -- linger and the stretched overlay samples only a sliver of its texture (e.g. just the
-    -- bright top glint of the gloss sheen, making it render far too bright).
+    -- Overlay is reused: tiling sets REPEAT + SetHoriz/VertTile; non-tiling must reset BOTH and restore SetTexCoord(0,1,0,1) or stale texcoords linger and the next overlay samples only a sliver.
     if tile then
         overlay:SetTexture(texturePath, "REPEAT", "REPEAT")
         overlay:SetHorizTile(true)
@@ -496,11 +455,7 @@ function Skin:AddOverlay(bar, texturePath, blendMode, alpha, tile)
     overlay:Show()
 end
 
--- Applies an absorb-bar fill texture. A seamless tiling texture ("Orbit Absorb") cannot be a
--- stretched statusbar fill without shearing its diagonal stripes, so it draws via the bar's
--- TiledPattern -- a clip-masked horizTile/vertTile texture MOD-blended over a plain white fill
--- that SetStatusBarColor still tints. That is mathematically identical to a tinted stretched
--- fill, minus the distortion. Any other texture is a normal stretched fill, pattern hidden.
+-- TILING_FILLS textures draw via the bar's TiledPattern (clip-masked, MOD-blended over a white fill SetStatusBarColor tints) instead of stretching — same render math, no pattern shearing.
 function Skin:ApplyAbsorbTexture(bar, textureName)
     if not bar then
         return
@@ -595,9 +550,7 @@ function Skin:ApplyUnitFrameText(fontString, alignment, fontPath, textSize)
 end
 
 -- [ GRADIENT BACKGROUND ] ---------------------------------------------------------------------------
--- Resolves the global "Background" colour (Textures tab → UnitFrameBackdropColourCurve) to a flat
--- colour. Use for solid backdrop surfaces that can't take a gradient; frames with a `.bg` texture
--- should prefer ApplyGradientBackground so a multi-pin Background curve renders as a gradient.
+-- Flat-colour resolution of UnitFrameBackdropColourCurve — for surfaces that can't take a gradient. Frames with `.bg` should use ApplyGradientBackground.
 function Skin:GetBackgroundColor()
     local gs = Orbit.db and Orbit.db.GlobalSettings
     return (gs and Engine.ColorCurve:GetFirstColorFromCurve(gs.UnitFrameBackdropColourCurve))

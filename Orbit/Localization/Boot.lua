@@ -1,13 +1,8 @@
 -- [ LOCALIZATION - BOOT ] ---------------------------------------------------------------------------
--- Seeds Orbit.L and provides Orbit.Localization.Install used by every domain file
--- under Domains/. Loaded before Core/Init.lua so plugin schema `label = L.KEY`
--- fields evaluated at table-construction time see a populated L.
+-- Loaded before Core/Init.lua so plugin schema `label = L.KEY` resolves at table-construction time.
 local _, Orbit = ...
 
--- [ DEV DIAGNOSTIC ] --------------------------------------------------------------------------------
--- Set true via `/run Orbit.DEBUG_LOCALIZATION = true` to log every read of an
--- undefined L key. Off by default. The metatable is always installed but costs
--- nothing for resolved keys — __index only fires when the raw table has no entry.
+-- /run Orbit.DEBUG_LOCALIZATION = true → logs reads of undefined L keys; off by default (__index fires only when missing).
 Orbit.DEBUG_LOCALIZATION = false
 
 Orbit.L = setmetatable({}, {

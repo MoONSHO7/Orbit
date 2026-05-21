@@ -19,9 +19,7 @@ Layout.texturePool = Layout.texturePool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
 
 -- [ PICKER ANCHOR ]----------------------------------------------------------------------------------
--- LibOrbitColorPicker is opened from value swatches, schema color rows, and curve previews; in every
--- case the picker should sit 25px to the right of the dialog it was launched from. Walk to the
--- nearest top-level frame (parent is UIParent) and return the anchor table the lib expects.
+-- LibOrbitColorPicker anchors 25px right of the launching dialog — walk to the nearest top-level frame and return the lib's anchor shape.
 local PICKER_ANCHOR_PADDING = 25
 
 function Layout.GetPickerAnchor(frame)
@@ -103,10 +101,7 @@ function Layout:RecycleControls(controls)
                     innerSlider:SetScript("OnMouseUp", nil)
                 end
 
-                -- NOTE: Stepper buttons (Back/Forward) use flag-guarded HookScript
-                -- They are hooked once permanently, so we don't clear their scripts.
-                -- The hook checks frame.OnOrbitChange which we nil above, so stale
-                -- callbacks become no-ops.
+                -- Stepper buttons are permanently HookScript'd; the hook checks frame.OnOrbitChange (nil'd above) so stale callbacks no-op.
             end
 
             -- Cancel any pending stepper timer
@@ -175,10 +170,7 @@ function Layout:Stack(container, startY, spacing)
 end
 
 function Layout:ComputeGridPosition(index, limitPerLine, orientation, width, height, padding)
-    -- index: 1-based index of item
-    -- limitPerLine: number of items before wrapping (columns for Horizontal, rows for Vertical)
-    -- orientation: 0 = Horizontal (Row-major), 1 = Vertical (Column-major)
-
+    -- orientation: 0 = Horizontal/row-major, 1 = Vertical/column-major; limitPerLine = items before wrap.
     local row, col
     if orientation == 0 then
         -- Horizontal: Fill rows left-to-right, wrap to next row
@@ -197,18 +189,13 @@ function Layout:ComputeGridPosition(index, limitPerLine, orientation, width, hei
 end
 
 function Layout:ComputeGridContainerSize(numItems, limitPerLine, orientation, width, height, padding)
-    -- numItems: Total number of items
-    -- limitPerLine: number of items before wrapping (columns for Horizontal, rows for Vertical)
-    -- orientation: 0 = Horizontal (Row-major), 1 = Vertical (Column-major)
-
     local numRows, numCols
 
     if orientation == 0 then
         -- Horizontal: limitPerLine is COLUMNS
         numCols = limitPerLine
         numRows = math.ceil(numItems / limitPerLine)
-        -- Clamp columns to actual items if less in the last row?
-        -- No, grid is strictly defined by limitPerLine cols usually, unless items < limit.
+        -- Grid is strictly limitPerLine wide unless items < limit (then collapse to actual count).
         if numItems < limitPerLine then
             numCols = numItems
         end

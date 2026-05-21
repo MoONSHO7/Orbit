@@ -12,13 +12,6 @@ local MIN_SYNC_HEIGHT = 5
 local MIN_SYNC_WIDTH = 10
 
 -- [ AXIS TABLES ] -----------------------------------------------------------------------------------
--- forward  = edge in the direction of increasing screen coordinate (RIGHT/TOP)
--- backward = opposite edge (LEFT/BOTTOM)
--- getSize/setSize = along-axis dimension (width for horizontal, height for vertical)
--- getMin/getMax   = screen-space frame edge coordinates on this axis
--- rowDim          = frame field for explicit per-axis dimension override (useRowDimension path)
--- independentFlag = anchorOption key that gates cross-axis sync when anchoring perpendicular
--- syncFlag        = frame field that opts the frame into cross-axis size sync from its parent
 Axis.horizontal = {
     name            = "horizontal",
     edges           = { LEFT = true, RIGHT = true },

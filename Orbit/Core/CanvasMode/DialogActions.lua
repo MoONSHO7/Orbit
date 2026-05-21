@@ -76,8 +76,7 @@ function Dialog:Apply()
     end
     local targetFrame = self.targetFrame
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.FlushPendingPluginSettings then OrbitEngine.CanvasComponentSettings:FlushPendingPluginSettings() end
-    -- Bypass Transaction:Commit() — Apply needs fine-grained control over sync/global writes
-    -- and builds positions from preview state, not from pendingPositions.
+    -- Bypass Transaction:Commit — Apply needs fine-grained control over sync/global writes and reads preview state, not pendingPositions.
     CanvasMode.Transaction:Clear()
     self:CloseDialog()
     if plugin.OnCanvasApply then plugin:OnCanvasApply() end

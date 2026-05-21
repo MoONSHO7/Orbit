@@ -86,9 +86,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
             end
         end
 
-        -- Handle stepper buttons (Back/Forward)
-        -- FIX: Use HookScript with a flag guard to prevent hook accumulation on pooled sliders
-        -- We can't use SetScript because it overwrites Blizzard's native increment/decrement handler
+        -- HookScript with flag guard — SetScript would overwrite Blizzard's increment/decrement handler.
         local back = frame.Back or (frame.Slider and frame.Slider.Back)
         local forward = frame.Forward or (frame.Slider and frame.Slider.Forward)
 

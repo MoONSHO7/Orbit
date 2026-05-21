@@ -87,8 +87,7 @@ local function SetMergeBorderState(parent, child, edge, hidden, deferExecution)
         if not hidden then
             child._groupBorderActive = nil
         end
-        -- Update group border on the merge root directly — no deferral needed since
-        -- bounding box is computed from anchor data, not screen coordinates.
+        -- Direct update — bounding box is computed from anchor data, not screen coords, so no deferral needed.
         if Orbit.Skin and Orbit.Skin.UpdateGroupBorder then
             local mergeRoot = parent or child
             while true do
@@ -100,8 +99,7 @@ local function SetMergeBorderState(parent, child, edge, hidden, deferExecution)
                 mergeRoot = pa.parent
             end
             if mergeRoot and mergeRoot.GetFrameLevel then Orbit.Skin:UpdateGroupBorder(mergeRoot) end
-            -- Only clear stale group overlays on the child when UN-merging; during merge,
-            -- UpdateGroupBorder already handles hiding stale overlays on non-root frames.
+            -- Only sweep stale overlays on UN-merge — UpdateGroupBorder handles them on merge.
             if not hidden and child and child.GetFrameLevel then Orbit.Skin:ClearGroupBorder(child) end
         end
     end
@@ -269,8 +267,7 @@ end
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings, skipLogical)
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
-        -- Only legacy LibSharedMedia edgeFile borders outset and need the wider gap; the modern
-        -- slice "Orbit" border (and None) render flush, so they use DEFAULT_PADDING.
+        -- Only edgeFile borders without sliceMargin outset and need the wider gap; flat/slice borders use DEFAULT_PADDING.
         local outsetBorder = style and style.edgeFile and not style.sliceMargin
         padding = outsetBorder and NINESLICE_DEFAULT_PADDING or DEFAULT_PADDING
     end
@@ -316,8 +313,7 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
                 local parentSize = (opts.useRowDimension and parent[crossAxis.rowDim]) or crossAxis.getSize(parent)
                 local synced = math.max(parentSize, crossAxis.minSize)
                 crossAxis.setSize(child, synced)
-                -- Preserved quirk: when child opts out of cross-axis sync but we're applying live
-                -- (not suppressed), sync anyway AND record back to the plugin's saved dimension.
+                -- Quirk: live (non-suppressed) apply syncs even when child opts out, and writes back to the plugin's saved dimension.
                 if opts[indepFlag] and child.orbitPlugin and child.orbitPlugin.SetSetting and child.systemIndex then
                     local key = (crossAxis.name == "vertical") and "Height" or "Width"
                     child.orbitPlugin:SetSetting(child.systemIndex, key, math.floor(synced + 0.5))
@@ -375,8 +371,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals, ski
         local oldParent = oldAnchor.parent
         local oldEdgeAxis = AxisForEdge(oldAnchor.edge)
 
-        -- Parent frames are the source of truth and never move on their own when a child joins or
-        -- leaves the anchor graph. Re-sync children after the break but do not shift the root.
+        -- Parent never shifts on its own when a child joins/leaves — re-sync children after the break, leave the root.
         local root
         if not suppressApplySettings and oldEdgeAxis and oldParent then
             root = self:GetRootParent(oldParent)
@@ -386,9 +381,7 @@ function Anchor:BreakAnchor(child, suppressApplySettings, deferMergeVisuals, ski
         if oldAnchor.parent and self.childrenOf[oldAnchor.parent] then
             self.childrenOf[oldAnchor.parent][child] = nil
         end
-        -- Only clear the logical anchor when the caller explicitly intends a
-        -- user-driven break. Physical repairs (ReconcileChain) pass skipLogical=true
-        -- so the user-intended parent reference survives across virtual/disabled toggles.
+        -- Physical repairs (ReconcileChain) pass skipLogical=true so the user-intended parent reference survives virtual/disabled toggles.
         if not skipLogical then
             self:ClearLogicalAnchor(child)
         end
@@ -512,8 +505,7 @@ local EDGE_ALIGN_SLOTS = {
     RIGHT = { "TOP", "CENTER", "BOTTOM" },
 }
 
--- incomingSyncsCross: does the candidate child sync on the cross-axis of `edge`?
--- A size-synced child fills the full edge; a non-synced child shares via LEFT/CENTER/RIGHT slots.
+-- incomingSyncsCross: size-synced child fills the edge; non-synced shares via LEFT/CENTER/RIGHT slots.
 function Anchor:IsEdgeOccupied(parent, edge, excludeChild, incomingSyncsCross, incomingAlign)
     if not self.childrenOf[parent] then
         return false

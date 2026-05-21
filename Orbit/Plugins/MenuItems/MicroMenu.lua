@@ -9,10 +9,7 @@ local SYSTEM_ID = "Orbit_MicroMenu"
 local DEFAULT_POSITION_X = -50
 local DEFAULT_POSITION_Y = 40
 local OFFSCREEN_OFFSET = 9000
--- We still want to hook into the "EditModeSystem" for MicroMenu to hide the native selection if possible,
--- but the user effectively wants an Orbit Frame.
--- Let's use our own ID and specific "Micro Menu" label.
-
+-- Hook EditModeSystem to hide the native selection but expose this as an Orbit Frame with our own ID/label.
 local Plugin = Orbit:RegisterPlugin("Menu Bar", SYSTEM_ID, {
     displayName = L.PLG_NAME_MENU_BAR,
     defaults = {

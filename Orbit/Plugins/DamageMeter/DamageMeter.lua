@@ -26,8 +26,7 @@ local Plugin = Orbit:RegisterPlugin("Damage Meter", SYSTEM_ID, {
     },
 })
 
--- DamageMeter's disable path mutates the Blizzard frame (NeutralizeRoot, InstallShowGuard hooks);
--- toggling at runtime cannot cleanly reverse those mutations, so require a reload.
+-- Disable mutates the Blizzard frame (NeutralizeRoot, InstallShowGuard) — can't be cleanly reversed without a reload.
 Plugin.liveToggle = false
 Plugin.canvasMode = true
 
@@ -113,9 +112,7 @@ end
 function Plugin:OnCanvasApply() self:RelayoutAllMeters() end
 
 -- [ CANVAS STATE LOOKUP ] ---------------------------------------------------------------------------
--- Default PluginMixin reads self.frame.systemIndex; multi-meter has no single frame, so resolve via txn.
--- NormalizeMeterDefs rewrites persisted disabledComponents to hash form; Dock stages txn in array
--- form, so this helper checks both shapes without allocating a temporary hash on every call.
+-- Multi-meter has no single frame; resolves via txn. Dock stages disabledComponents as an array but persisted form is a hash — checks both without allocating.
 local function ListContainsKey(list, key)
     if type(list) ~= "table" then return false end
     if list[key] then return true end
@@ -265,16 +262,14 @@ function Plugin:DeleteMeter(id)
     local defs = self:GetMeterDefs()
     if not defs[id] then return end
 
-    -- Wipe ephemeral edit-mode state and runtime anchor graph entries for this frame,
-    -- so if the id is recycled by a future CreateMeter, the new meter starts clean.
+    -- Wipe edit-mode state + anchor graph so a recycled id starts clean in a future CreateMeter.
     local frame = self:GetFrameBySystemIndex(id)
     if frame then
         Orbit.Engine.PositionManager:ClearFrame(frame)
         Orbit.Engine.FrameAnchor:BreakAnchor(frame, true)
     end
 
-    -- Dropping the def wipes every per-meter setting (style, icon, position, anchor,
-    -- componentPositions, disabledComponents, etc.) since they all live inside the def table.
+    -- Dropping the def wipes every per-meter setting — they all live inside the def table.
     defs[id] = nil
     self:SaveMeterDefs(defs)
     self:RebuildAllMeters()
@@ -352,10 +347,7 @@ function Plugin:SnapAllMetersToCurrent()
     end
 end
 
--- Self-heal orphan anchors: for each def whose anchor.target is not a live meter,
--- snapshot the child's current visual position into def.position and drop the anchor.
--- Runs on every rebuild so parent-delete never has to walk children — the child's
--- def detects the stale target on its own and reverts to a free position.
+-- Each rebuild: snapshot current position + drop the anchor on defs pointing at dead meters, so parent-delete doesn't have to walk children.
 function Plugin:ScrubStaleAnchors()
     local defs = self:GetMeterDefs()
     local FRAME_PREFIX = "OrbitDamageMeter"
@@ -397,9 +389,7 @@ function Plugin:EnsureSeedMeter()
     self:SaveMeterDefs(defs)
 end
 
--- Backfill missing styling fields on every def. Profiles from earlier code paths can drop fields
--- (partial saves, legacy migrations), leaving nil holes that the render path would arithmetic on.
--- Also normalizes disabledComponents into hash form so IsComponentDisabled stays O(1).
+-- Backfill nil-holes from partial saves / legacy migrations + normalize disabledComponents to hash form (O(1) IsComponentDisabled).
 function Plugin:NormalizeMeterDefs()
     local defs = self:GetMeterDefs()
     local changed = false
@@ -429,8 +419,7 @@ function Plugin:OnLoad()
     self:InitEventBridge()
     self:InitUI()
 
-    -- Eager build so mid-session enables draw immediately instead of waiting on the next zone change.
-    -- RebuildAllMeters internally runs EnsureSeedMeter + NormalizeMeterDefs + ScrubStaleAnchors.
+    -- Eager build so mid-session enables draw immediately rather than waiting on the next zone change.
     self:RebuildAllMeters()
 
     self:RegisterStandardEvents()

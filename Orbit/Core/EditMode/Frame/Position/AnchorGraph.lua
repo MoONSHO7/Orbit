@@ -110,11 +110,7 @@ function Graph:ReconcileChain(root, anchorModule)
     self._reconcilingChains[root] = true
     local visited = {}
 
-    -- Promote a grandchild of a skipped frame up to the nearest non-skipped
-    -- ancestor. CreateAnchor's SetPoint places the grandchild on the promoted
-    -- parent's edge, which is exactly what we want: empty children should
-    -- stack under the grandparent's content in edit mode instead of following
-    -- the skipped parent to its parked position.
+    -- Promote a grandchild past a skipped parent so empty children stack under grandparent content, not the skipped parent's parked position.
     local function PromoteGrandchild(gc, parent)
         local gcAnchor = self.anchors[gc]
         if not gcAnchor then return false end
@@ -241,9 +237,7 @@ function Graph:FlushPendingReconciles()
     local roots = self.pendingRoots
     self.pendingRoots = {}
     if not anchorModule then return end
-    -- Root may have shifted (GetAnchorRoot chases parents) if another scheduled
-    -- change reparented it. Resolve at flush time, then dedupe resolved roots
-    -- so we never walk the same chain twice.
+    -- Resolve roots at flush time + dedupe so we never walk the same chain twice (another scheduled change may have reparented).
     local resolved = {}
     for root in pairs(roots) do
         local current = self:GetAnchorRoot(root)

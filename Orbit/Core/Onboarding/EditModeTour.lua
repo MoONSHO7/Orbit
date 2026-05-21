@@ -42,9 +42,6 @@ local TOOLTIP_LEVEL = 9500
 local FONT = "GameFontNormalSmall"
 
 -- [ LOCALIZATION ] ----------------------------------------------------------------------------------
--- Strings live in Localization/Domains/Tours.lua (TOUR_EM_* keys) and Common.lua
--- (CMN_NEXT / CMN_DONE). Everything below this block up to `local isCJK = ...` was
--- removed in the central localization migration.
 local L = Orbit.L
 local isCJK = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
 if isCJK then TOOLTIP_MAX_WIDTH = 280 end

@@ -8,10 +8,7 @@ local Mouse = Orbit.Mouse
 Mouse._active = false
 Mouse._frame = nil
 
--- S26-C1: snapshot on Enable + on CVAR_UPDATE; OnUpdate reads only cached fields. Previously the
--- cursor `OnUpdate` re-read `cursorSizePreferred` CVar through a 5-branch string-compare and 3
--- SavedVariables values 60×/sec — values that change only on a settings edit. Pattern mirrors the
--- canonical "snapshot+refresh" reference (IMPLEMENTATION-PLAN.md §3.1).
+-- Snapshot on Enable + CVAR_UPDATE; OnUpdate reads cached fields only — values change on settings edit, not 60Hz.
 local CURSOR_SIZE_FOR_CVAR = { ["0"] = 32, ["1"] = 48, ["2"] = 64, ["3"] = 96, ["4"] = 128 }
 
 local function RefreshSnapshot(frame)
@@ -65,10 +62,7 @@ function Mouse:Enable()
     end
 
     RefreshSnapshot(self._frame)
-    -- CVAR_UPDATE fires when any CVar changes via SetCVar (incl. cursorSizePreferred via the
-    -- Blizzard settings panel). The CustomCursorScale/X/Y SavedVariables change via Orbit's own
-    -- account-settings UI — that panel can call Mouse:RefreshSnapshot() directly; otherwise the
-    -- new values apply on next /reload or on the next Enable cycle.
+    -- CVAR_UPDATE catches cursorSizePreferred via Blizzard's settings panel; SavedVariables edits go through Mouse:RefreshSnapshot directly.
     Orbit.EventBus:On("CVAR_UPDATE", function() RefreshSnapshot(self._frame) end, self)
 
     self._frame:Show()
@@ -86,8 +80,7 @@ function Mouse:Disable()
     end
 end
 
--- Public: lets the QoL settings panel (or any caller) force-refresh the cached values after a
--- CustomCursor{Scale,X,Y} edit, without a /reload.
+-- Force-refresh after a CustomCursor* edit without /reload.
 function Mouse:RefreshSnapshot()
     if self._frame then RefreshSnapshot(self._frame) end
 end

@@ -1,6 +1,4 @@
 -- [ CANVAS MODE - COMPONENT SETTINGS PREVIEW ] ------------------------------------------------------
--- Preview renderers and style applicators for component override settings.
--- Extends the Settings table created in ComponentSettings.lua.
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")

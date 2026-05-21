@@ -129,9 +129,7 @@ local ADDON_REGISTRY = {
     { key = "Bartender3",       display = L.PLU_VE_BARTENDER_3,    addon = "Bartender4",      frame = "BT4Bar3" },
 }
 
--- ownedBy may be a string (single owner) or a table of strings (multi-owner — entry is hidden
--- from the VE table whenever any listed plugin is enabled). Used by frames replaced by more than
--- one Orbit plugin (e.g. StatusTrackingBarManager handles both Experience and Honor bars).
+-- ownedBy: string or {strings} — entry is hidden from VE when ANY listed plugin is enabled (e.g. StatusTrackingBarManager → Experience + Honor).
 local function IsOwnedByEnabledPlugin(entry)
     local owned = entry.ownedBy
     if not owned then return false end
@@ -142,8 +140,7 @@ local function IsOwnedByEnabledPlugin(entry)
     return false
 end
 
--- S04-C2: select-vararg avoids the {GetChildren()} temp-table alloc on every secure-frame /
--- Blizzard-cluster repaint. Three sites previously built throwaway tables per call.
+-- select-vararg avoids the {GetChildren()} temp-table alloc on every secure/Blizzard-cluster repaint.
 local function ApplyChildAlphaVararg(alpha, ...)
     for i = 1, select("#", ...) do
         select(i, ...):SetAlpha(alpha)
@@ -271,11 +268,7 @@ function VE:AnyFrameHasSetting(settingKey)
 end
 
 -- [ APPLY ] -----------------------------------------------------------------------------------------
--- 12.0.5+ note: direct SetAlpha on a Blizzard secure frame from insecure context taints it. The
--- taint then surfaces in Blizzard's own UnitFrame_Update path on the next event (e.g. PLAYER_TARGET_CHANGED
--- → TargetFrame:OnEvent → UnitFrameHealthBar_Update fails on secret UnitHealthMax). To avoid tainting
--- frames the user has not actually configured, skip the SetAlpha entirely when all settings are at
--- defaults. SECURE_FRAMES tracks frames we've ever applied to so resets back to defaults still flow.
+-- 12.0.5+: SetAlpha on a Blizzard secure frame from insecure context taints it, surfacing in UnitFrame_Update on next event. Skip SetAlpha entirely when all settings are at defaults; SECURE_FRAMES tracks ever-applied frames so resets still flow.
 local SECURE_FRAMES = {}
 local function HasNonDefaultSecureSettings(self, entry)
     local op = self:GetFrameSetting(entry.key, "opacity") or 100

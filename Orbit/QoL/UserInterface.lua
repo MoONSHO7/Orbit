@@ -14,11 +14,7 @@ local CVAR_FLOOR = 0.65
 local APPLY_DELAY = 0.5
 
 -- [ APPLY ]------------------------------------------------------------------------------------------
--- Below CVAR_FLOOR, the CVar clamps but UIParent:SetScale honors the lower value — that's how addons
--- like ElvUI break Blizzard's 0.65 floor for pixel-perfect rendering on 1440p+ monitors.
-
--- UIParent:SetScale skips UI_SCALE_CHANGED, leaving EditMode's magnetism cache and the absolute
--- grid-line positions baked at registration stale — both must be shifted by the uiParentCenter delta.
+-- UIParent:SetScale below CVAR_FLOOR honors the lower value (breaks Blizzard's 0.65 floor) but skips UI_SCALE_CHANGED, so EditMode's magnetism cache + absolute grid lines stay stale.
 local function ResyncEditModeMagnetism()
     local mgr = EditModeMagnetismManager
     if not mgr or not mgr.UpdateUIParentPoints then return end

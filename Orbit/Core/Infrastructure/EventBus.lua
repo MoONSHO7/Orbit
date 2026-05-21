@@ -61,8 +61,7 @@ function EventBus:Fire(event, ...)
     if not listeners then
         return
     end
-    -- Snapshot before dispatch: prevents the `ctx and pcall(...) or pcall(...)` short-circuit
-    -- double-fire on the error path AND a listener-re-visit when a callback runs Off/OffContext mid-fire.
+    -- Snapshot before dispatch — guards against double-fire on error path and listener-re-visit when a callback runs Off/OffContext mid-fire.
     local n = #listeners
     local snapshot = {}
     for i = 1, n do snapshot[i] = listeners[i] end

@@ -23,9 +23,9 @@ ignore:
   - .pkgmeta
   - .vscode
   - .scripts
-  - README.md
+  - "**/README.md"
   - Docs
-  - CONTRIBUTE.md
+  - "**/CONTRIBUTE.md"
   - CHANGELOG.md
   - LICENSE
   

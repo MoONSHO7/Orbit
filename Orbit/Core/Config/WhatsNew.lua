@@ -1,7 +1,4 @@
 -- [ WHATS NEW ] -------------------------------------------------------------------------------------
--- Shows a changelog popup once per account after each Orbit update.
--- Update WHATS_NEW_ENTRIES each release.
-
 local _, Orbit = ...
 local L = Orbit.L
 local Constants = Orbit.Constants

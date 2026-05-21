@@ -15,8 +15,7 @@ local FLYOUT_BUTTON_SPACING = 2     -- Spacing between buttons in the grid
 local FLYOUT_COLUMNS = 6            -- Number of columns in the flyout grid
 local FLYOUT_GAP = 4                -- Pixel gap between flyout and minimap edge
 local FLYOUT_CLOSE_DELAY = 0.35     -- Seconds of mouse-outside before auto-closing
--- S22-L1.c: gate the per-frame IsMouseOver / GameTooltip / IsDropdownMenuVisible checks behind a
--- 0.1s poll accumulator. Well under FLYOUT_CLOSE_DELAY so the outsideTimer still resolves accurately.
+-- Gates per-frame IsMouseOver/Tooltip/Dropdown checks; 0.1s is well under FLYOUT_CLOSE_DELAY so outsideTimer still resolves accurately.
 local FLYOUT_POLL_INTERVAL = 0.1
 local FADE_IN_DURATION = 0.15
 local FADE_OUT_DURATION = 0.3
@@ -28,9 +27,7 @@ local PRESSED_ALPHA = 0.6
 -- No-op function used to block addons from repositioning their buttons
 local function doNothing() end
 
--- Blizzard-owned Minimap children that must never be collected into the compartment.
--- Names without a "Minimap"/"MiniMap" prefix won't be caught by the generic prefix filter
--- below, so we enumerate them explicitly here.
+-- Blizzard-owned children whose names don't match the generic Minimap/MiniMap prefix filter below — enumerate explicitly so they're never collected.
 local BLIZZARD_MINIMAP_CHILDREN = {
     ["MinimapBackdrop"] = true,
     ["MinimapCompassTexture"] = true,
@@ -54,10 +51,7 @@ local PIN_FRAME_PATTERNS = {
     "^GatherMate",
 }
 
--- Candidate parent frames scanned for legacy (non-LibDBIcon) minimap buttons.
--- Only Minimap itself — that's where LibDBIcon parents its buttons and where
--- virtually all non-LDB third-party addons anchor. MinimapCluster / MinimapBackdrop
--- are Blizzard-structured and scanning them pulls in native frames like the clock.
+-- Only Minimap itself — MinimapCluster/MinimapBackdrop scans pull in Blizzard native frames (clock etc).
 local LEGACY_PARENTS = { "Minimap" }
 
 local function IsPinFrame(name)
@@ -88,9 +82,7 @@ end
 -- Minimum button width to be considered a real addon button (map pins are typically <20px).
 local MIN_BUTTON_SIZE = 20
 
--- Returns true if any classic DropDownMenu list is currently visible.
--- Used to prevent the compartment flyout from auto-closing while an addon's
--- dropdown menu (opened from a proxy button click) is still shown.
+-- Prevents flyout auto-close while an addon's proxy-click-opened dropdown is still visible.
 local function IsDropdownMenuVisible()
     return (DropDownList1 and DropDownList1:IsShown()) or
            (DropDownList2 and DropDownList2:IsShown())
@@ -209,8 +201,7 @@ function Plugin:CreateCompartmentFlyout()
 
         local tooltipShown = GameTooltip:IsShown() and GameTooltip:GetOwner() and GameTooltip:GetOwner():GetParent() == f  -- proxy tooltip open
 
-        -- If a proxy button was recently clicked, check whether a dropdown menu is still
-        -- open. Clear the flag once no dropdown is visible so normal close logic resumes.
+        -- Clear _menuActive once no dropdown is visible so normal close logic resumes.
         if f._menuActive and not IsDropdownMenuVisible() then
             f._menuActive = false
         end
@@ -262,15 +253,13 @@ function Plugin:ShowCompartmentFlyout()
     end
     local flyout = self._compartmentFlyout
 
-    -- Re-apply global skin each open so theme changes (backdrop colour, border size/style/colour)
-    -- take effect without a /reload.
+    -- Re-skin on every open so global theme changes take effect without /reload.
     self:ApplyCompartmentFlyoutSkin(flyout)
     self:LayoutButtonsInFlyout()
     flyout:Show()
 end
 
--- Pull backdrop colour + border size/style/colour from Orbit.db.GlobalSettings.
--- SkinBorder auto-resolves colour and nineslice style from globals when `color` is omitted.
+-- SkinBorder auto-resolves colour + nineslice style from GlobalSettings when `color` is omitted.
 function Plugin:ApplyCompartmentFlyoutSkin(flyout)
     flyout = flyout or self._compartmentFlyout
     if not flyout or not flyout.bg then return end
@@ -343,8 +332,7 @@ local function GetOrCreateProxyButton(originalBtn, parent)
 
     proxy:RegisterForClicks("AnyUp")
     proxy:SetScript("OnClick", function(self, button, down)
-        -- Pass proxy (self) not originalBtn so any dropdown/menu anchors to the visible button.
-        -- Mark the flyout so it won't auto-close while the addon's menu is opening.
+        -- Pass proxy (self) not originalBtn so dropdowns anchor to the visible button; mark flyout to skip auto-close while menu opens.
         local flyout = self:GetParent()
         if flyout then flyout._menuActive = true end
         local b = button or "LeftButton"
@@ -504,8 +492,7 @@ function Plugin:LayoutButtonsInFlyout()
 end
 
 -- [ BUTTON COLLECTION ]------------------------------------------------------------------------------
--- S22-C6: select-vararg pass-through avoids the {GetChildren()} temp-table alloc on every
--- debounced ADDON_LOADED rescan (which can rebuild a large compartment-button collection).
+-- select-vararg pass-through avoids the {GetChildren()} temp-table alloc per ADDON_LOADED rescan.
 local function ProcessScannedChild(self, child, collected, seen, seenSignatures, seenNames)
     if seen[child] then return end
     local frameName = child:GetName()
@@ -525,8 +512,7 @@ local function ProcessScannedChild(self, child, collected, seen, seenSignatures,
     local isHidden = not child:IsShown()
     if isBlizzard or isPin or tooSmall or isProtected or isHidden then return end
 
-    -- Require a discoverable icon on the button itself (icon/Icon field, direct region, dataObject, or NormalTexture).
-    -- Addons that nest their icon on a child frame don't follow the standard pattern and are intentionally skipped.
+    -- Icon must be discoverable on the button itself — addons that nest their icon on a child frame are intentionally skipped.
     local icon = GetProxyIcon(child)
     if not icon then return end
     local displayName = NormalizeCompartmentDisplayName(frameName or tostring(child))
@@ -567,9 +553,7 @@ function Plugin:CollectAddonButtons()
     local seenSignatures = {}
     local seenNames = {}  -- catches duplicates even when icon is nil
 
-    -- 1) LibDBIcon registered buttons
-    --    Hidden entries are skipped so addons that register *both* an LDB button and a custom Minimap button
-    --    (toggling between the two via LibDBIcon:Hide) aren't collected twice.
+    -- 1) LibDBIcon registered buttons — hidden ones skipped so an addon that registers both LDB + custom buttons isn't collected twice.
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
     if lib then
         for name, button in pairs(lib.objects) do
@@ -592,8 +576,7 @@ function Plugin:CollectAddonButtons()
         end
     end
 
-    -- 2) Legacy (non-LibDBIcon) children of Minimap, MinimapCluster, and MinimapBackdrop.
-    --    Also handles the edge case where LibDBIcon uses a Frame instead of a Button.
+    -- 2) Legacy (non-LibDBIcon) children — also catches the edge case where LibDBIcon uses a Frame instead of a Button.
     for _, parentName in ipairs(LEGACY_PARENTS) do
         local parent = _G[parentName]
         if parent and parent.GetChildren then
@@ -728,8 +711,7 @@ function Plugin:ApplyAddonCompartment()
             frame._compartmentHoverHooked = true
         end
 
-        -- Re-collect when new addons attach buttons after the initial scan, or when
-        -- the player zones in and late-initialising addons finally show their button.
+        -- Re-collect after ADDON_LOADED / PLAYER_ENTERING_WORLD so late-attaching addon buttons get picked up.
         if not self._rescanHook then
             local f = CreateFrame("Frame")
             f:RegisterEvent("ADDON_LOADED")

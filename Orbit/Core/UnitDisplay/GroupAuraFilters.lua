@@ -142,12 +142,10 @@ function Orbit.GroupAuraFilters:CreateDebuffFilter(cfg)
                     local passesFilter = plugin:IsAuraIncluded(unit, instanceID, raidFilter)
                     local included = false
                     if excludeCC then
-                        -- excludeCC=true: only pass raid filter AND not be CC-dominated.
-                        -- Short-circuit: skip the CC call entirely if raid filter already failed.
+                        -- excludeCC=true: pass raid filter AND not CC-dominated (short-circuits the CC call when raid filter failed).
                         included = passesFilter and not plugin:IsAuraIncluded(unit, instanceID, "HARMFUL|CROWD_CONTROL")
                     else
-                        -- excludeCC=false: pass if raid filter matches OR aura is a CC we want to keep.
-                        -- Short-circuit: skip the CC call if raid filter already passed.
+                        -- excludeCC=false: raid filter OR CC-keep (short-circuits the CC call when raid filter passed).
                         included = passesFilter or plugin:IsAuraIncluded(unit, instanceID, "HARMFUL|CROWD_CONTROL")
                     end
                     if included then
@@ -178,9 +176,7 @@ function Orbit.GroupAuraFilters:CreateBuffFilter()
                     local passesRaid = plugin:IsAuraIncluded(unit, instanceID, raidFilter)
                     local included = false
                     if excludeDefensives then
-                        -- excludeDefensives=true: pass raid filter AND not be a routed defensive.
-                        -- Short-circuit: if raid filter failed, skip both defensive checks.
-                        -- If already flagged as BigDef, skip ExtDef check.
+                        -- excludeDefensives=true: pass raid filter AND not a routed defensive (BigDef short-circuits ExtDef).
                         if passesRaid then
                             if not plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|BIG_DEFENSIVE")
                                 and not plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|EXTERNAL_DEFENSIVE") then
@@ -188,8 +184,7 @@ function Orbit.GroupAuraFilters:CreateBuffFilter()
                             end
                         end
                     else
-                        -- excludeDefensives=false: pass if raid filter matches OR aura is a defensive we want.
-                        -- Short-circuit: skip defensive checks entirely if raid filter already passed.
+                        -- excludeDefensives=false: raid filter OR defensive-keep (short-circuits defensive checks when raid passed).
                         included = passesRaid
                             or plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|BIG_DEFENSIVE")
                             or plugin:IsAuraIncluded(unit, instanceID, "HELPFUL|EXTERNAL_DEFENSIVE")

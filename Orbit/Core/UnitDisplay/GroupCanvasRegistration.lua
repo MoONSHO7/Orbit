@@ -265,8 +265,6 @@ function Reg:ApplyIconPositions(frames, savedPositions, iconKeys)
 end
 
 -- [ PREPARE ICONS ]----------------------------------------------------------------------------------
--- Sets placeholder textures/atlases and sizes on frame icons so Canvas Mode can clone them.
--- healerSlots = HealerReg:ActiveSlots(), raidBuffs = HealerReg:ActiveRaidBuffs()
 function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 	local previewAtlases = Orbit.IconPreviewAtlases
 	local StatusMixin = Orbit.StatusIconMixin
@@ -410,9 +408,6 @@ function Reg:PrepareIcons(plugin, frame, cfg, healerSlots, raidBuffs)
 end
 
 -- [ SHOW CANVAS MODE ICONS ]-------------------------------------------------------------------------
--- Shows/hides canvas-mode preview icons during ApplyPreviewVisuals.
--- healerSlots = HealerReg:ActiveSlots(), raidBuffs = HealerReg:ActiveRaidBuffs()
--- healerKeys = HealerReg:ActiveKeys() (for hide path)
 function Reg:ShowCanvasModeIcons(plugin, frame, isCanvasMode, cfg, healerSlots, raidBuffs, healerKeys)
 	local isDisabled = plugin.IsComponentDisabled and function(k)
 		return plugin:IsComponentDisabled(k)

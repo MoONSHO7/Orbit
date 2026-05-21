@@ -26,14 +26,7 @@ Reg("font", "Roboto Condensed SemiBold", mediaPath .. "Fonts\\RobotoCondensed-Se
 Reg("font", "Changa One", mediaPath .. "Fonts\\ChangaOne-Regular.ttf")
 Reg("font", "Expressway", mediaPath .. "Fonts\\expressway.ttf")
 
--- Statusbars
--- The texture pickers partition this media by a case-insensitive name substring: "overlay" ->
--- the Overlay Texture control, "absorb" -> the Absorb Texture control, anything else -> bar-fill
--- pickers. So those two words in a name are load-bearing.
--- Orbit Absorb / Orbit Honeycomb Absorb are seamlessly-tiling pattern fills (see
--- make-fill-textures.py). They must be TILED, not used as a stretched statusbar fill, or the
--- pattern shears with the bar -- Skin.lua's TILING_FILLS routes them through the clip-masked
--- tiled-pattern path.
+-- Statusbars — substrings "overlay" / "absorb" route to dedicated controls (TexturePicker); Orbit Absorb / Honeycomb Absorb MUST tile (Skin.lua's TILING_FILLS) or their pattern shears.
 Reg("statusbar", "Orbit Absorb", mediaPath .. "Statusbar\\orbit-absorb.tga")
 Reg("statusbar", "Orbit Honeycomb Absorb", mediaPath .. "Statusbar\\orbit-honeycomb.tga")
 Reg("statusbar", "Orbit Solid", mediaPath .. "Statusbar\\orbit-solid.tga")
@@ -42,14 +35,10 @@ Reg("statusbar", "Orbit Gradient Right-Left", mediaPath .. "Statusbar\\orbit-gra
 Reg("statusbar", "Orbit Gradient Bottom-Top", mediaPath .. "Statusbar\\orbit-gradient-bt.tga")
 Reg("statusbar", "Orbit Gradient Top-Bottom", mediaPath .. "Statusbar\\orbit-gradient-tb.tga")
 
--- Bar overlays. Painted on top of a coloured fill; Skin.lua's OVERLAY_RENDER maps each to its
--- blend mode + whether it tiles. The "Overlay" suffix routes them to the Overlay Texture control
--- (see the partition note above). Gloss is a smooth gradient and stretches; Frost, Galaxy
--- and Starfield carry detail and tile.
+-- Overlays painted over coloured fill; Skin.lua's OVERLAY_RENDER maps each to blend/tile. "Overlay" suffix routes them to the Overlay Texture control.
 Reg("statusbar", "Orbit Gloss Overlay", mediaPath .. "Statusbar\\orbit-gloss.tga")
 Reg("statusbar", "Orbit Frost Overlay", mediaPath .. "Statusbar\\orbit-frost.tga")
 Reg("statusbar", "Orbit Galaxy Overlay", mediaPath .. "Statusbar\\orbit-galaxy.tga")
 Reg("statusbar", "Orbit Starfield Overlay", mediaPath .. "Statusbar\\orbit-starfield.tga")
 
--- Borders
--- LSM:Register("border", "Dummy", mediaPath .. "Borders\\Dummy.tga")
+-- Borders (none currently registered)

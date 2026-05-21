@@ -71,10 +71,7 @@ function PositionUtils.BuildAnchorPoint(anchorX, anchorY)
     end
 end
 
--- Build the self-anchor for SetPoint based on component type.
--- Text: uses justifyH only (horizontal edge, vertically centered)
--- Aura containers: uses justifyH + anchorY (both edges)
--- Other: CENTER
+-- Text → justifyH only; aura container → justifyH+anchorY; other → CENTER.
 function PositionUtils.BuildComponentSelfAnchor(isFontString, isAuraContainer, anchorY, justifyH)
     if not justifyH or justifyH == "CENTER" then
         return "CENTER"
@@ -133,15 +130,6 @@ function PositionUtils.CalculateAnchorWithWidthCompensation(posX, posY, halfW, h
 end
 
 -- [ APPLY TEXT POSITION ] ---------------------------------------------------------------------------
--- Apply saved position data to a text element (FontString or Frame)
--- Handles anchor-based positioning with justifyH support for text alignment
--- @param element: The FontString or Frame to position
--- @param parent: The parent frame to anchor to
--- @param pos: Position data table { anchorX, anchorY, offsetX, offsetY, justifyH, posX, posY }
--- @param defaultAnchor: (optional) Default anchor point string if no pos data
--- @param defaultOffsetX: (optional) Default X offset if no pos data
--- @param defaultOffsetY: (optional) Default Y offset if no pos data
--- @return true if position was applied, false otherwise
 function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, defaultOffsetX, defaultOffsetY, isAuraContainer)
     if not element or not parent then
         return false

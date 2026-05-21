@@ -177,8 +177,7 @@ function GroupFrameMixin.CreateOnShowHandler(plugin, callbacks)
 end
 
 -- [ CENTRALIZED GLOBAL EVENT HANDLER ] --------------------------------------------------------------
--- Single event frame handles all global events and dispatches to visible frames.
--- Eliminates N per-frame closures per global event (was O(40) closures, now O(1) + iteration).
+-- Single event frame dispatches to visible frames — was O(40) closures per global event, now O(1) + iteration.
 local GLOBAL_EVENTS = {
     "READY_CHECK", "READY_CHECK_CONFIRM", "READY_CHECK_FINISHED",
     "INCOMING_SUMMON_CHANGED", "PLAYER_ROLES_ASSIGNED", "GROUP_ROSTER_UPDATE",

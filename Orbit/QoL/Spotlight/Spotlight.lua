@@ -11,9 +11,7 @@ Spotlight.UI = {}
 Spotlight._active = false
 
 -- [ KINDS ]------------------------------------------------------------------------------------------
--- Canonical list of searchable source kinds. Every consumer (config panel, result row kind label,
--- enabled-kinds resolver, category token matcher) iterates this list so adding a new source only
--- requires adding one row here (and the matching Index/Sources/<Name>.lua).
+-- Canonical list — adding a source means one row here + matching Index/Sources/<Name>.lua.
 Spotlight.Kinds = {
     { kind = "bags",        settingKey = "Bags",        labelKey = "PLU_SPT_SRC_BAGS" },
     { kind = "equipped",    settingKey = "Equipped",    labelKey = "PLU_SPT_SRC_EQUIPPED" },
@@ -58,8 +56,6 @@ function Spotlight:Disable()
 end
 
 -- [ DIAGNOSTIC ]-------------------------------------------------------------------------------------
--- /run Orbit.Spotlight:Debug()        — counts per source
--- /run Orbit.Spotlight:Dump("currencies")  — first 20 entries' lowerName so you can see what tags were folded in
 function Spotlight:Debug()
     local IM = self.Index.IndexManager
     IM:InvalidateAll()

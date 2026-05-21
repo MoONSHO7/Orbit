@@ -12,10 +12,7 @@ local CONTROL_PREVIEW = 12
 
 local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 
--- FontPicker Widget
--- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right]
--- Control is a preview button (the name drawn in the selected font); clicking opens a MediaMenu.
--- Optional valueColorCfg fills the value column with a color swatch (used for the global font color).
+-- valueColorCfg → value-column swatch (used for the global font color).
 function Layout:CreateFontPicker(parent, label, initialFont, callback, valueColorCfg)
     if not self.fontPool then self.fontPool = {} end
     local frame = table.remove(self.fontPool)

@@ -60,11 +60,7 @@ function TickMixin:Create(parent, statusBar, anchorRegion)
 end
 
 -- [ APPLY ]------------------------------------------------------------------------------------------
--- `perpDim` is the dimension perpendicular to the bar's fill axis (the bar's
--- height for HORIZONTAL, the bar's width for VERTICAL). The tick mark is a
--- thin line that crosses the bar perpendicular to fill direction; tickSize is
--- its thickness along the fill axis. orientation defaults to HORIZONTAL so
--- existing horizontal callers (PlayerPower, PlayerResources) need no changes.
+-- perpDim = dimension perpendicular to fill axis (height for HORIZONTAL, width for VERTICAL); tickSize = thickness along fill.
 function TickMixin:Apply(frame, tickSize, perpDim, anchorBar, orientation)
     local rounded = 2 * math.floor((tickSize + 1) / 2)
     if rounded > 0 and frame.TickBar then

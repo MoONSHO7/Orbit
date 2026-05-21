@@ -22,9 +22,6 @@ Orbit = addonTable
 Orbit.Engine = Orbit.Engine or {}
 local OrbitEngine = Orbit.Engine
 
--- ErrorHandler lives in Core/Infrastructure/ErrorHandler.lua.
--- Orbit.Visibility (state-driver wrapper) lives in Core/Plugin/VisibilityState.lua.
-
 -- [ EDIT MODE QUERY ]--------------------------------------------------------------------------------
 function Orbit:IsEditMode() return EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() or false end
 
@@ -142,9 +139,7 @@ function Orbit:OnLoad()
     self.db.SpecData = self.db.SpecData or {}
     self.db.SpecData[self.CHAR_KEY] = self.db.SpecData[self.CHAR_KEY] or {}
 
-    -- Detect class change (character services, PTR copies, realm merges that rename
-    -- characters onto an existing key). SpecIDs are class-bound, so any surviving
-    -- data would be stale — wipe and reseed rather than leave orphan frames.
+    -- Wipe SpecData on class change (services / PTR copy / realm merge) — SpecIDs are class-bound, surviving data would be stale.
     local _, playerClass = UnitClass("player")
     self.db.SpecDataMeta = self.db.SpecDataMeta or {}
     local meta = self.db.SpecDataMeta[self.CHAR_KEY]
@@ -260,9 +255,7 @@ function Orbit:LiveTogglePlugin(name, enabled)
             OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
             plugin.frame:UnregisterAllEvents()
             if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
-            -- SetScript and Hide are combat-locked for secure frames — defer the
-            -- whole tear-down block until combat ends so the frame ends in a
-            -- consistent (fully torn down) state.
+            -- SetScript+Hide are combat-locked for secure frames — defer the whole tear-down so the frame ends fully torn down.
             local f = plugin.frame
             local function TearDownFrame()
                 f:SetScript("OnEvent", nil)

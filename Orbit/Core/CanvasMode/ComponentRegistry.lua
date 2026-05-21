@@ -392,8 +392,6 @@ function ComponentDrag:SetEnabledForFrame(parent, enabled)
     end
 end
 
--- Check if a component is disabled via Canvas Mode
--- Uses the key stored during Attach and checks the parent frame's plugin
 function ComponentDrag:IsDisabled(component)
     local data = registeredComponents[component]
     if not data then

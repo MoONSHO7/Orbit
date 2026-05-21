@@ -16,9 +16,7 @@ local Currencies = {
 }
 Sources.currencies = Currencies
 
--- Expand every header once so collapsed expansions still get indexed. Indices shift after each expand,
--- so we walk headers in reverse to keep earlier indices valid as later ones grow. Originally-collapsed
--- headers are restored at the end to avoid surprising the Blizzard TokenFrame's state.
+-- Walk headers in reverse so earlier indices stay valid as later ones grow; restore originally-collapsed state at the end.
 local function WithAllExpanded(fn)
     local originallyCollapsed = {}
     local headerNames = {}

@@ -135,10 +135,7 @@ function ABText:Apply(plugin, button, systemIndex)
     end
 
     -- [ PROFESSION QUALITY OVERLAY ]---------------------------------------------------------------
-    -- Blizzard's ProfessionQualityOverlayFrame (the item-quality diamond) is created lazily and
-    -- carries no frame level, so it renders beneath Orbit's icon/group border. Raise it; placement
-    -- stays at Blizzard's default. The overlay is created on demand inside UpdateProfessionQuality,
-    -- so hook that method once to catch overlays that appear after this pass.
+    -- Lazy-created overlay has no frame level — raise it; hook UpdateProfessionQuality once to catch later-created ones.
     if button.UpdateProfessionQuality then
         if not button.orbitQualityHooked then
             hooksecurefunc(button, "UpdateProfessionQuality", function(self) ABText:ApplyQualityOverlay(self) end)

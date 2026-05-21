@@ -4,9 +4,6 @@ local L = Orbit.L
 local GameTooltip = Orbit.Tooltip
 
 -- [ TOOLTIP BUILDER ]--------------------------------------------------------------------------------
--- Centralised hover-tooltip content for the three bars. Each `Show*` function adopts the private
--- Orbit tooltip at the owner anchor and writes several lines of progression + session stats.
-
 Orbit.StatusBarTooltip = {}
 local Tooltip = Orbit.StatusBarTooltip
 
@@ -63,8 +60,7 @@ function Tooltip:ShowXP(owner, level, currentXP, maxXP)
             0.6, 1.0, 0.6, 0.6, 1.0, 0.6)
     end
 
-    -- Session
-    -- S23-C1: bucket key matches the writer (ExperienceBar.lua uses "Orbit_ExperienceBar_XP" for the XP session).
+    -- Session bucket key matches the writer in ExperienceBar.
     local _, rate = AddSession("Orbit_ExperienceBar_XP", L.PLU_XP_SESSION_GAINED, L.PLU_XP_PER_HOUR, { 0.9, 0.6, 1.0 })
     if rate and rate > 0 and xpSafe then
         local remaining = maxXP - currentXP

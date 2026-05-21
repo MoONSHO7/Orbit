@@ -21,9 +21,7 @@ local ICON_BAR_GAP       = 8
 local SECTION_ROW_H      = 20
 local BAR_STACK_H        = 18
 local SECTION_GAP        = 4
--- Mythic+ "Gold Timer" crown atlases — tried in order. First one that resolves wins.
--- Different clients version these atlases differently; falling back to a plain spell-icon
--- texture guarantees SOMETHING renders.
+-- Crown atlases tried in order; clients version them differently — fall back to a plain icon texture.
 local OVERALL_CROWN_ATLASES = {
     "challenges-medal-gold",
 }
@@ -70,8 +68,7 @@ local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
 
 -- [ SPEC / CLASS LOOKUP ] ---------------------------------------------------------------------------
--- Reverse map from specIconID (fileID) → localized spec name. Built lazily on first open;
--- the data is static so one pass over GetNumClasses × GetNumSpecializationsForClassID suffices.
+-- Lazy reverse map specIconID → spec name; one pass over class × spec on first open (data is static).
 local SPEC_ICON_TO_NAME
 local function GetSpecNameByIcon(iconID)
     if not iconID then return nil end
@@ -224,8 +221,7 @@ local function EnsureFrame()
     local f = CreateFrame("Frame", FRAME_NAME, UIParent)
     Pixel:Enforce(f)
     f:SetSize(WINDOW_WIDTH, 400)
-    -- Center on first open, then pin TOPLEFT so subsequent SetHeight calls extend the bottom
-    -- edge downward instead of re-centering (which would make the top creep up/down).
+    -- Pin TOPLEFT after centering so SetHeight grows downward instead of re-centering (which would creep the top edge).
     local sw = UIParent and UIParent:GetWidth() or (GetScreenWidth and GetScreenWidth()) or 1920
     local sh = UIParent and UIParent:GetHeight() or (GetScreenHeight and GetScreenHeight()) or 1080
     local openHeight = 500
@@ -413,15 +409,13 @@ local function InstallHoverBinding(hitFrame, ctx)
     hitFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
--- Checks if a slot is toggled off in the legend. Stored by sourceGUID so state survives
--- re-renders (LayoutContent rebuilds but f._disabled is preserved on the singleton frame).
+-- Keyed by sourceGUID so state survives LayoutContent rebuilds (f._disabled lives on the singleton frame).
 local function IsSlotDisabled(f, slot)
     local guid = slot and slot.source and slot.source.sourceGUID
     return guid and f._disabled and f._disabled[guid] or false
 end
 
--- Returns the subset of perPlayer that's currently enabled. Order preserved so color
--- assignments (slot.colorIndex) stay stable.
+-- Order preserved so slot.colorIndex stays stable across legend toggles.
 local function ActiveSlots(f, perPlayer)
     local out = {}
     for _, slot in ipairs(perPlayer) do
@@ -664,8 +658,6 @@ local function LayoutContent(f, perPlayer, unionOrder)
 end
 
 -- [ PUBLIC ENTRY POINT ] ----------------------------------------------------------------------------
--- Lays out legend / overall / content using the already-gathered f._perPlayer and
--- f._unionOrder. Called both on initial open and when the legend toggles a player on/off.
 local function ApplyLayout(f)
     local perPlayer = f._perPlayer or {}
     local unionOrder = f._unionOrder or {}

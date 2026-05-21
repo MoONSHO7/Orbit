@@ -5,8 +5,7 @@ local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local GameTooltip = Orbit.Tooltip
 
--- Key Bindings panel label for ORBIT_MINIMAP_TOGGLEVIEW (defined in Orbit/Bindings.xml).
--- Header is BINDING_HEADER_ORBIT (set by Spotlight); this binding appears under "Orbit" alongside it.
+-- Key Bindings label for ORBIT_MINIMAP_TOGGLEVIEW (in Orbit/Bindings.xml); shown under BINDING_HEADER_ORBIT.
 _G.BINDING_NAME_ORBIT_MINIMAP_TOGGLEVIEW = Orbit.L.PLU_MINIMAP_BINDING_TOGGLE_VIEW
 
 local PVP_TYPE_LABELS = {
@@ -118,8 +117,7 @@ function Plugin:OnLoad()
     self.frame:SetFrameStrata(Orbit.Constants.Strata.Base)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = self.displayName
-    -- Edit Mode drag-resize handle. The minimap is square, so square=true locks aspect and drives
-    -- the single Size setting; bounds match the Size slider's range (clamped, can't exceed it).
+    -- square=true locks aspect; both axes write to the single Size setting, bounds match the slider.
     self.frame.orbitResizeBounds = { minW = C.MIN_SIZE, maxW = C.MAX_SIZE, widthKey = "Size", heightKey = "Size", square = true }
 
     -- HUD host: surface reparents here while HUD is active so self.frame stays put and FrameAnchor children don't follow.
@@ -136,9 +134,7 @@ function Plugin:OnLoad()
             local scale = minimapSurface:GetEffectiveScale()
             minimapSurface:SetSize(OrbitEngine.Pixel:Snap(w, scale), OrbitEngine.Pixel:Snap(h, scale))
         end
-        -- S22-L1.a: surface size stays synchronous (must track the frame during drag), but the
-        -- ring re-apply is debounced — EditMode drag fires OnSizeChanged at 60Hz, and ApplyBorderRing
-        -- resolves color + rebuilds the ring on every fire. 50ms is well under EditMode drag-end latency.
+        -- Surface size syncs synchronously; ring re-apply is debounced — OnSizeChanged fires at 60Hz during drag, ApplyBorderRing rebuilds on every fire.
         if self.ApplyBorderRing then
             Orbit.Async:Debounce("Minimap_RingResize", function()
                 if self.ApplyBorderRing then self:ApplyBorderRing(self:GetResolvedBorderColor()) end
@@ -169,10 +165,7 @@ function Plugin:OnLoad()
     self.frame.BorderRing:Hide()
     OrbitEngine.Pixel:Enforce(self.frame.BorderRing)
 
-    -- Solid-fill ring (BasicMinimap-style): a SetColorTexture backdrop clipped by the same
-    -- Orbit_Circle.tga used as the minimap surface mask. Sized to minimap + BorderSize*2 so the
-    -- visible "ring" around the masked map matches BorderSize exactly. BACKGROUND of the
-    -- container so the captured Minimap surface draws above it.
+    -- Solid-fill ring: SetColorTexture clipped by Orbit_Circle.tga (the same mask as the minimap surface); sized to minimap + BorderSize*2; BACKGROUND so the surface draws above.
     self.frame.SolidRing = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
     self.frame.SolidRing._mask = self.frame:CreateMaskTexture()
     self.frame.SolidRing._mask:SetTexture(C.MASK_ROUND, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -269,9 +262,7 @@ function Plugin:OnLoad()
 
     Orbit.EventBus:On("CALENDAR_UPDATE_PENDING_INVITES", function() self:UpdateCalendarInvites() end, self)
 
-    -- S22-L2: ORBIT_COLORS_CHANGED already routes through PluginMixin's debounced ApplySettings
-    -- (which calls ApplyShape). The previously-plugin-local listener fired ApplyShape twice per
-    -- repin — once immediately, once on the next debounce tick.
+    -- ORBIT_COLORS_CHANGED already routes through PluginMixin's debounced ApplySettings (→ ApplyShape) — a plugin-local listener would fire ApplyShape twice per repin.
 
     -- [ Coords component ] — wrapper frame holds the FontString so ComponentDrag can move it
     self.frame.Coords = CreateFrame("Frame", nil, self.frame.Overlay)
@@ -366,10 +357,7 @@ function Plugin:OnLoad()
         end
     end, self)
 
-    -- Canvas preview: renders a live snapshot of the minimap container for the canvas viewport.
-    -- The real live frames (ZoneText, Clock, Coords, icons) are already children of self.frame
-    -- and are registered as draggable components — so the canvas dialog picks them up directly.
-    -- We only need to provide the bg preview frame and seed live data into text components.
+    -- Canvas preview only needs the bg preview + seeded live data — live frames (ZoneText, Clock, Coords, icons) are already self.frame children registered as draggable components.
     self.frame.CreateCanvasPreview = function(frame, options)
         options = options or {}
         local parent = options.parent or UIParent
@@ -414,9 +402,7 @@ function Plugin:OnLoad()
     self:CaptureBlizzardMinimap()
     self:UpdateCalendarInvites()
 
-    -- If Blizzard_HybridMinimap is already loaded, ApplyShape will handle it on PLAYER_ENTERING_WORLD.
-    -- If it loads later (demand-loaded on first map open), reapply shape so CircleMask is correct.
-    -- Force a map tile update after login/reload to ensure the inner graphics scale correctly to the container
+    -- Force a map tile update after login/reload so inner graphics scale correctly; HybridMinimap loads on demand and is handled by its own ADDON_LOADED hook below.
     Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         C_Timer.After(0.5, function()
             local minimap = self:GetBlizzardMinimap()
@@ -508,17 +494,13 @@ function Plugin:GetMinimapClickAction(button)
     return settingKey and self:GetSetting(SYSTEM_ID, settingKey) or "none"
 end
 
--- Override PluginMixin's VE handler so HUD view is invisible to the Visibility Engine —
--- no mounted-hide, no vehicle/pet-battle alpha override, no opacity setting re-application.
--- Normal Minimap view falls through to the default behavior.
+-- HUD view bypasses the Visibility Engine entirely (no mounted-hide / vehicle / opacity); minimap view falls through to default.
 function Plugin:UpdateVisibility()
     if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then return end
     return Orbit.PluginMixin.UpdateVisibility(self)
 end
 
--- Hide/show third-party addon minimap buttons (LibDBIcon + legacy minimap-parented buttons).
--- Used by HUD view to keep the overlay clean. State is remembered per-button so we only restore
--- what we actually hid, never force-show a button the user had previously hidden in their addon.
+-- Per-button hidden state tracked so we only restore what we hid — never force-show a button the user had hidden in their own addon.
 function Plugin:SetAddonIconsShown(shown)
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
     if lib and lib.objects then
@@ -762,8 +744,7 @@ function Plugin:ApplySettings()
     -- Shape + Border
     self:ApplyShape()
 
-    -- Background. Suppressed in round/splatter/HUD — ApplyShape already hid the bg so the masked
-    -- surface sits over the game world cleanly without a square backdrop bleeding through.
+    -- bg only paints in square non-HUD shape; round/splatter/HUD let ApplyShape's hidden bg keep the masked surface clean over the game world.
     local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
     if frame.bg and shape == "square" and not isHud then
         local backdropColor = Orbit.Skin:GetBackgroundColor()
@@ -957,17 +938,14 @@ function Plugin:ApplySettings()
         self:ApplyTrackingButton()
     end)
 
-    -- Visibility Engine integration (opacity, OOC fade, mounted, mouseover).
-    -- Skipped in HUD view — the OOC fade hooks SetAlpha and overrides our Hud_Opacity slider.
+    -- Skip VE in HUD view — the OOC fade hooks SetAlpha and would override Hud_Opacity.
     if Orbit.OOCFadeMixin and not isHud then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID) end
 
     self._applyingSettings = nil
 end
 
 -- [ VIEW TOGGLE ]------------------------------------------------------------------------------------
--- Hotkey-driven swap between the normal Minimap layout and the centered HUD overlay.
--- Debounced (0.3s) so rapid mashing doesn't cause overlapping ApplySettings calls and the position/size
--- jitter that produces.
+-- Debounced 0.3s so rapid mashing doesn't overlap ApplySettings and produce position/size jitter.
 function Plugin:ToggleView()
     if InCombatLockdown() then Orbit.CombatManager:QueueUpdate(function() self:ToggleView() end); return end
     if self._viewToggleDebounce then return end
@@ -980,6 +958,5 @@ end
 
 -- [ TEARDOWN ]---------------------------------------------------------------------------------------
 function Plugin:OnDisable()
-    -- Toggling the Minimap plugin requires a UI reload (Blizzard hooks cannot be cleanly undone).
-    -- The reload button in the Plugin Manager handles this; nothing to do at runtime.
+    -- Disable requires a UI reload — Blizzard hooks can't be cleanly undone; Plugin Manager's reload button handles it.
 end

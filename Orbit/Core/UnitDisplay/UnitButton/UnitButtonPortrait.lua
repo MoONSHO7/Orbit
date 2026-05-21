@@ -50,11 +50,7 @@ function PortraitMixin:CreatePortrait()
 
     local parentFrame = self
     local ALPHA_THRESHOLD = 0.01
-    -- parentFrame:SetAlpha() may be called with a secret alpha (e.g. curve mapping
-    -- UnitInRange->alpha). Check issecretvalue BEFORE the `< ALPHA_THRESHOLD` compare,
-    -- or the hook throws every time an out-of-range curve hits the frame.
-    -- In the secret case we can't determine the threshold — fall through and let
-    -- alpha inheritance handle the visual, and forward the secret to the C++ sink.
+    -- alpha may be secret (curve-mapped UnitInRange); issecretvalue BEFORE the compare, then forward to the C++ sink.
     hooksecurefunc(parentFrame, "SetAlpha", function(_, alpha)
         if issecretvalue(alpha) then
             if container.orbitAlphaHidden then
@@ -104,9 +100,7 @@ function PortraitMixin:UpdatePortrait()
         return
     end
 
-    -- GetAlpha returns secret when alpha was set via a secret-derived curve. The
-    -- `< 0.01` comparison would throw, so skip the fast-hide path when secret —
-    -- inherited alpha will still propagate visually through the portrait child chain.
+    -- GetAlpha can be secret (curve-derived) — skip the fast-hide path; inherited alpha still propagates through the child chain.
     local parentAlpha = self:GetAlpha()
     if not issecretvalue(parentAlpha) and parentAlpha < 0.01 then
         portrait:Hide()
@@ -138,8 +132,7 @@ function PortraitMixin:UpdatePortrait()
         local showBorder = plugin:GetSetting(systemIndex, "PortraitBorder")
         if showBorder == nil then showBorder = true end
         local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-        -- 3D portrait is a PlayerModel — an unmaskable rectangle. Force Square corners so the
-        -- nine-slice border matches the model edge; thickness still follows the global setting.
+        -- PlayerModel is unmaskable — force Square so the nine-slice border matches the model edge.
         Orbit.Skin:SkinBorder(portrait, portrait, borderSize, nil, false, false, true)
     else
         -- 2D portrait / icon styles take no Orbit border (custom portrait borders planned separately).
@@ -187,8 +180,7 @@ function PortraitMixin:ApplyPortraitContent(style, unit, mirror, portraitType)
         return
     end
 
-    -- 2D portrait (or an icon style with no resolvable icon). disableMasking = true skips WoW's
-    -- built-in feathered round portrait mask so the texture fills the frame edge-to-edge.
+    -- disableMasking=true skips WoW's feathered round portrait mask so the texture fills edge-to-edge.
     SetPortraitTexture(tex, unit, true)
     if mirror then
         tex:SetTexCoord(1, 0, 0, 1)

@@ -2,11 +2,7 @@
 local Orbit = Orbit
 
 -- [ TEXT TEMPLATE ]----------------------------------------------------------------------------------
--- Token-based text rendering for StatusBars value components. Users write templates like
---   "{cur}/{max}  {pct}"  →  "45,000/80,000  56.3%"
--- Tokens are case-sensitive, unknown tokens render as-is ("{foo}") to expose typos.
--- Context fields: cur, max, rested, level, name, perhour, tolevel, eta, session, paragonCycles
-
+-- Templates like "{cur}/{max} {pct}" → "45,000/80,000 56.3%". Unknown tokens render as-is ("{foo}") to surface typos. Context: cur, max, rested, level, name, perhour, tolevel, eta, session, paragonCycles.
 Orbit.StatusBarTextTemplate = {}
 local TextTemplate = Orbit.StatusBarTextTemplate
 

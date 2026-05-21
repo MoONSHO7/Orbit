@@ -1,7 +1,4 @@
 -- [ COLORS TAB ]-------------------------------------------------------------------------------------
--- Textures and bar/background color curves for the Orbit Options dialog. Font and border colors
--- live on the Global tab as value-column swatches next to the controls they tint.
-
 local _, Orbit = ...
 local L = Orbit.L
 

@@ -40,8 +40,7 @@ local function EnsureCategoryTokens()
     return categoryTokens
 end
 
--- Longest-common-prefix match on category labels. Tolerates plurals ("spells"→"spellbook") and
--- short typos; ambiguous ties fall through to name search.
+-- LCP match on category labels — tolerates plurals/short typos; ambiguous ties fall through to name search.
 local CATEGORY_MIN_PREFIX = 3
 
 local function LongestCommonPrefix(a, b)

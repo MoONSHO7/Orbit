@@ -4,9 +4,6 @@ local Constants = Orbit.Constants
 local Layout = Engine.Layout
 
 -- [ COLOR PICKER WIDGET ] ---------------------------------------------------------------------------
--- Uses LibOrbitColorPicker for consistent Orbit UI styling
--- 3-Column Layout: [Label: Fixed, Left] [Control: Dynamic, Fill] [Value: Fixed, Right (reserved)]
-
 local SWATCH_HEIGHT = 20
 local COMPACT_SWATCH_SIZE = 21
 local COMPACT_ROW_HEIGHT = 26

@@ -28,10 +28,7 @@ local Parser = Orbit.TooltipParser
 local ParseActiveDuration = function(t, id) return Parser:ParseActiveDuration(t, id) end
 local ParseCooldownDuration = function(t, id) return Parser:ParseCooldownDuration(t, id) end
 local _RawBuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
--- S18-L1: weak-valued cache mirrors TrackedBar._barFillCurveCache. Container:Apply built TWO
--- phase curves per icon (desat + cdAlpha) — both shaped only by (activeDuration, cooldownDuration)
--- and read-only via EvaluateRemainingPercent. One cached curve is shared across icons sharing the
--- same duration pair AND across the two fields on a single icon.
+-- Weak-valued cache shared across icons + fields with the same (activeDuration, cooldownDuration); mirrors TrackedBar._barFillCurveCache.
 local _phaseCurveCache = setmetatable({}, { __mode = "v" })
 local BuildPhaseCurve = function(activeDuration, cooldownDuration)
     local key = activeDuration .. ":" .. cooldownDuration
@@ -149,9 +146,7 @@ end
 function Container:Apply(plugin, frame, record)
     if not frame or not record then return end
     plugin:RefreshContainerVirtualState(frame)
-    -- Visibility Engine: every icon container shares the "TrackedIcons" entry
-    -- (sentinel index 1). Real record IDs are >= 1000 so the sentinel can't
-    -- collide. ApplyOOCFade is idempotent — safe to call from the layout pass.
+    -- All icon containers share VE sentinel index 1 (real record IDs ≥ 1000); ApplyOOCFade is idempotent.
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, plugin, 1, "OutOfCombatFade", false) end
     local iconW, iconH = CooldownUtils:CalculateIconDimensions(plugin, record.id, nil, frame:GetEffectiveScale())
     local rawPadding = plugin:GetSetting(record.id, "IconPadding") or Constants.Cooldown.DefaultPadding
@@ -481,10 +476,7 @@ function Container:CommitDrop(plugin, frame, gridX, gridY)
 end
 
 -- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
--- S18-C2: throttle to 20Hz (drop-zone hints don't need 60Hz fidelity) and gate on the container
--- frame's visibility — off-spec / hidden containers each previously ran a full per-frame closure
--- (GetContainerRecord + ShouldShowDropHints internals incl. GetCursorInfo + IsShown + IsEditMode)
--- for the whole session.
+-- 20Hz throttle + visibility gate — off-spec / hidden containers would otherwise run the full closure 60Hz for life.
 local CURSOR_WATCHER_INTERVAL = 0.05
 function Container:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
@@ -534,9 +526,7 @@ function Container:StartUpdateTicker(plugin, frame)
         end
         if p then p:End(plugin, event, s) end
     end)
-    -- Visual-state poll: re-evaluate desat/alpha/glow between event bursts.
-    -- IsShown gate removed — hideOnCooldown/hideOnAvailable may have SetShown(false) on icons, and
-    -- Update is the only path that can flip the visibility back when state changes.
+    -- Visual-state poll: hideOnCooldown/hideOnAvailable may SetShown(false) on icons, and Update is the only path that flips them back.
     local pollAccum = 0
     evtFrame:SetScript("OnUpdate", function(_, elapsed)
         pollAccum = pollAccum + elapsed

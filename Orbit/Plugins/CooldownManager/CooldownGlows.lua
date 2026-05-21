@@ -13,9 +13,7 @@ local BUFFICON_INDEX = Constants.Cooldown.SystemIndex.BuffIcon
 local PANDEMIC_KEY = "orbitPandemic"
 
 -- [ DEFERRED HIDE BATCHING ] ------------------------------------------------------------------------
--- Blizzard's ActionButtonSpellAlertManager does HideAll→Re-Show every refresh
--- cycle (hundreds/sec in raids). We defer hides by 1 frame so the re-Show
--- cancels the pending hide, eliminating flicker entirely.
+-- Defer hides 1 frame so Blizzard's HideAll → Re-Show (hundreds/sec in raids) cancels pending hide, eliminating flicker.
 local pendingProcHides = {}
 local procHideScheduled = false
 local pendingPandemicHides = {}
@@ -64,11 +62,7 @@ local function DeferPandemicHide(icon)
 end
 
 -- [ PROC GLOW HOOKS ] -------------------------------------------------------------------------------
--- S16-C1: write the memo on first-hit too. CooldownLayout.lua:252 populates icon.orbitCDMSystemIndex
--- during ProcessChildren, but the very first ShowAlert/HideAlert hook for a button can fire BEFORE
--- the first layout pass — without this self-write the find walked O(viewers × icons) for every
--- pre-layout alert. The per-layout re-assignment at CooldownLayout.lua:252 also keeps the memo
--- correct across viewer reconfigurations, so no separate invalidation event is needed here.
+-- Self-write the memo on first hit — pre-layout alerts can fire before CooldownLayout populates orbitCDMSystemIndex, and the find walk is O(viewers × icons).
 local function FindSystemIndexForButton(button)
     if button.orbitCDMSystemIndex then return button.orbitCDMSystemIndex end
     for systemIndex, data in pairs(CDM.viewerMap) do

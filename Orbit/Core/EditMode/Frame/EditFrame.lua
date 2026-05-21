@@ -117,9 +117,6 @@ function Frame:GetSelectedFrame()
 end
 
 -- [ CANVAS MODE DELEGATION ]-------------------------------------------------------------------------
--- These methods delegate to Engine.CanvasMode (cross-domain call).
--- Edit Mode needs to trigger Canvas Mode entry from selection double-click.
-
 function Frame:EnterCanvasMode(frame)
     EnsureModules()
     local CM = Engine.CanvasMode

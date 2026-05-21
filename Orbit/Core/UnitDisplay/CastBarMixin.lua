@@ -4,9 +4,7 @@ local Orbit = addonTable
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
--- S09b-L4: hoist LibStub("LibSharedMedia-3.0") to a file-local upvalue. ApplyBaseSettings runs on
--- every ApplySettings (settings tweak, profile switch); the LibStub lookup is a table walk through
--- registered libraries every call. The handle is stable for the session.
+-- LibStub handle stable for the session — hoisted out of the per-ApplySettings table walk.
 local LSM = LibStub("LibSharedMedia-3.0")
 
 ---@class OrbitCastBarMixin
@@ -106,8 +104,7 @@ function Mixin:InitializeSkin(bar)
     if bar.Latency then OrbitEngine.Pixel:Enforce(bar.Latency) end
     if skinned.Spark then OrbitEngine.Pixel:Enforce(skinned.Spark) skinned.Spark:Hide() end
     if skinned.SparkGlow then skinned.SparkGlow:Hide() end
-    -- Protected overlay: mirrors orbitBar but with the protected color.
-    -- SetAlphaFromBoolean drives visibility from the secret notInterruptible value.
+    -- Protected overlay: mirrors orbitBar; SetAlphaFromBoolean drives visibility from secret notInterruptible.
     local overlay = CreateFrame("StatusBar", nil, skinned)
     overlay:SetAllPoints(skinned)
     overlay:SetMinMaxValues(0, 1)
@@ -133,8 +130,7 @@ function Mixin:RegisterEditModeCallbacks(bar)
     bar.orbitEditModeCallbacksRegistered = true
     EventRegistry:RegisterCallback("EditMode.Exit", function()
         self:ApplySettings()
-        -- Defer preview teardown to next frame so it runs AFTER Tour:EndTour()
-        -- restores all hidden frames (HookScript fires after EventRegistry).
+        -- Defer to next frame so teardown runs AFTER Tour:EndTour restores hidden frames (HookScript fires after EventRegistry).
         C_Timer.After(0, function()
             bar.preview = false
             if not bar.casting and not bar.channeling then
@@ -421,10 +417,7 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         self.castTimestamp = GetTime()
         self.durationObj = durationObj
         self.timerThrottle = 0
-        -- Build a curve mapping remaining-percent [0,1] -> remaining-seconds [0, totalSec]
-        -- so OnUpdate can read a formatted timer via durObj:EvaluateRemainingPercent without
-        -- Lua arithmetic. startMs/endMs can be secret for enemy units in combat; when they
-        -- are, we skip the curve and the timer text simply stays blank for that cast.
+        -- Curve maps remaining-percent [0,1] → remaining-seconds so OnUpdate can read via EvaluateRemainingPercent (no Lua arithmetic on secret startMs/endMs).
         self.timerSecondsCurve = nil
         if C_CurveUtil and C_CurveUtil.CreateCurve and startMs and endMs
             and not issecretvalue(startMs) and not issecretvalue(endMs) then
@@ -441,8 +434,7 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
         if targetBar.SetTimerDuration then
             targetBar:SetTimerDuration(durationObj, 0, direction)
         end
-        -- Protected overlay: secret-value-safe interrupt color via SetAlphaFromBoolean.
-        -- notInterruptible is a secret boolean in combat for enemy units (WoW 12.0+).
+        -- SetAlphaFromBoolean is secret-safe for notInterruptible (secret boolean for enemy units in combat, 12.0+).
         local overlay = self.protectedOverlay
         if overlay and notInterruptible ~= nil then
             if overlay.SetTimerDuration then
@@ -605,10 +597,7 @@ function Mixin:SetupCastBarOnUpdate(bar)
         if not self.durationObj or not self.timerSecondsCurve then
             return
         end
-        -- Evaluate remaining seconds via curve (no Lua arithmetic). EvaluateRemainingPercent
-        -- can return a secret when the cast source is secret; string.format would throw, so
-        -- only format in the non-secret path. Omitting the update leaves the previous value
-        -- visible, which is acceptable since the bar itself is engine-driven.
+        -- EvaluateRemainingPercent can return a secret on a secret cast source; format only in the non-secret path (the bar itself is engine-driven).
         local remaining = self.durationObj:EvaluateRemainingPercent(self.timerSecondsCurve)
         if not issecretvalue(remaining) and type(remaining) == "number" then
             if remaining < 0 then remaining = 0 end
