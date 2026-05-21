@@ -44,13 +44,14 @@ local ASPECT_RATIOS = {
 
 local GetPreviewIcon = function() return Orbit.AuraPreview.GetSpellbookIcon() end
 
--- Pulse + reparenting hook in via UnitAuraGridExpirationPulse.lua / UnitAuraGridReparenting.lua, attached through Mixin._Internal.
+-- Reparenting hooks in via UnitAuraGridReparenting.lua, attached through Mixin._Internal.
 
 -- [ COLLAPSE ARROW ]---------------------------------------------------------------------------------
 local ARROW_SIZE = 15
 local ARROW_TEX_SIZE = { w = 10, h = 16 }
 local COLLAPSED_AURA_COUNT = 3
 local ARROW_ATLAS = "bag-arrow"
+local ARROW_HOVER_POLL = 0.1
 
 local function CreateCollapseArrow(frame, plugin)
     local btn = CreateFrame("Button", nil, frame)
@@ -63,7 +64,7 @@ local function CreateCollapseArrow(frame, plugin)
     btn.tex:SetSize(Pixel:Snap(ARROW_TEX_SIZE.w, bScale), Pixel:Snap(ARROW_TEX_SIZE.h, bScale))
     btn.tex:SetPoint("CENTER")
     btn.tex:SetAtlas(ARROW_ATLAS)
-    btn.tex:SetAlpha(0.7)
+    btn.tex:SetAlpha(0)
     btn:SetScript("OnClick", function(self)
         local collapsed = not plugin:GetSetting(1, "Collapsed")
         plugin:SetSetting(1, "Collapsed", collapsed)
@@ -77,8 +78,15 @@ local function CreateCollapseArrow(frame, plugin)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function(self)
-        self.tex:SetAlpha(0.6)
         GameTooltip:Hide()
+    end)
+    btn.elapsed = 0
+    btn:SetScript("OnUpdate", function(self, elapsed)
+        self.elapsed = self.elapsed + elapsed
+        if self.elapsed < ARROW_HOVER_POLL then return end
+        self.elapsed = 0
+        local target = MouseIsOver(self) and 1 or (MouseIsOver(frame) and 0.7 or 0)
+        if self.tex:GetAlpha() ~= target then self.tex:SetAlpha(target) end
     end)
     btn.tooltipText = plugin:GetSetting(1, "Collapsed") and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
     btn:Show()
@@ -86,15 +94,24 @@ local function CreateCollapseArrow(frame, plugin)
 end
 
 local ARROW_OFFSET = 4
-local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
-    local onLeft = (growthX == "RIGHT")
-    local baseRot = onLeft and math.rad(180) or 0
+local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY, anchorIcon)
+    -- Icon-anchored sits on the growth side; frame-edge fallback sits opposite it.
+    local arrowOnLeft = anchorIcon and (growthX == "LEFT") or (growthX == "RIGHT")
+    local baseRot = arrowOnLeft and math.rad(180) or 0
     btn.tex:SetRotation(collapsed and (math.pi - baseRot) or baseRot)
     btn.tooltipText = collapsed and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
     btn:ClearAllPoints()
+    if anchorIcon then
+        if growthX == "LEFT" then
+            btn:SetPoint("RIGHT", anchorIcon, "LEFT", -ARROW_OFFSET, 0)
+        else
+            btn:SetPoint("LEFT", anchorIcon, "RIGHT", ARROW_OFFSET, 0)
+        end
+        return
+    end
     local parent = btn:GetParent()
     local scale = parent:GetEffectiveScale() or 1
-    if onLeft then
+    if arrowOnLeft then
         local anchorY = (growthY == "UP") and "BOTTOMLEFT" or "TOPLEFT"
         local yOff = (growthY == "UP") and OrbitEngine.Pixel:Snap(iconH / 2, scale) or -OrbitEngine.Pixel:Snap(iconH / 2, scale)
         btn:SetPoint("RIGHT", parent, anchorY, -ARROW_OFFSET, yOff)
@@ -106,7 +123,7 @@ local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY)
 end
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
-local function ResolveGrowthDirection(frame, noCenterGrowth)
+local function ResolveGrowthDirection(frame)
     local anchors = OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors
     local a = anchors and anchors[frame]
     local growthX, growthY
@@ -138,11 +155,6 @@ local function ResolveGrowthDirection(frame, noCenterGrowth)
             growthX = growthX or "CENTER"
             growthY = growthY or "DOWN"
         end
-    end
-    if noCenterGrowth and growthX == "CENTER" then
-        local cx = frame:GetCenter()
-        local sw = UIParent:GetWidth()
-        growthX = (cx and cx > sw / 2) and "LEFT" or "RIGHT"
     end
     local anchorY = (growthY == "UP") and "BOTTOM" or "TOP"
     if growthX == "CENTER" then return anchorY, growthX, growthY end
@@ -346,11 +358,11 @@ function Mixin:CreateAuraGridPlugin(config)
     self._agFrame = Frame
     -- _auraGridFrame flag tells GroupManagesMask to skip — grid masks its own icons via _applyGridGroupBorder.
     Frame._auraGridFrame = true
-    -- Re-stamp the merged-state group mask on merge-topology change; debounced past GroupBorder's 0-delay refresh so flags are current when UpdateAuras reads them.
+    -- Re-stamp the merged-state group mask on merge-topology change; debounced past GroupBorder's 0-delay refresh so flags are current when UpdateAuras reads them. Skipped in edit mode — UpdateAuras would release the shared aura pool out from under the preview icons.
     if config.showIconLimit then
         Orbit.EventBus:On("ORBIT_BORDER_LAYOUT_CHANGED", function()
             Orbit.Async:Debounce("AuraGridMask_" .. tostring(Frame), function()
-                if Frame:IsShown() then self:UpdateAuras() end
+                if Frame:IsShown() and not Orbit:IsEditMode() then self:UpdateAuras() end
             end, 0.1)
         end)
     end
@@ -624,12 +636,12 @@ function Mixin:UpdateAuras()
 
     Frame.auraPool:ReleaseAll()
 
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
-    if Frame.collapseArrow then
-        UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY)
-    end
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
 
     if #displayIDs == 0 then
+        if Frame.collapseArrow then
+            UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY)
+        end
         if collapsed and not InCombatLockdown() then Frame:SetSize(iconW, iconH) end
         if cancelable and not InCombatLockdown() then self:_hideCancelOverlays(Frame) end
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
@@ -685,9 +697,7 @@ function Mixin:UpdateAuras()
             icon:SetSize(snappedIconW, snappedIconH)
             CropIconTexture(icon, snappedIconW, snappedIconH)
             self:SetupAuraTooltip(icon, aura, cfg.unit, tooltipFilter)
-            -- Expiration pulse: stash DurationObject for the pulse ticker
-            local durObj = C_UnitAuras.GetAuraDuration(cfg.unit, aura.auraInstanceID)
-            if durObj then Mixin._RegisterExpirationPulse(icon, durObj) else icon._orbitExpireDurObj = nil; icon:SetAlpha(1) end
+            icon:SetAlpha(1)
             activeIcons[#activeIcons + 1] = icon
         end
     end
@@ -697,6 +707,9 @@ function Mixin:UpdateAuras()
     opts.size = iconH; opts.sizeW = iconW; opts.spacing = spacing; opts.maxPerRow = iconsPerRow
     opts.anchor = anchor; opts.growthX = growthX; opts.growthY = growthY; opts.yOffset = 0
     Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, opts)
+    if Frame.collapseArrow then
+        UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY, activeIcons[#activeIcons])
+    end
     if isPlayerGrid then skinSettings._maxPerRow = iconsPerRow; skinSettings._growthX = growthX; skinSettings._growthY = growthY; self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH) end
 
     if cancelable and not InCombatLockdown() then
@@ -996,12 +1009,12 @@ function Mixin:ShowPreviewAuras()
     for i = renderCount + 1, #cache do cache[i] = nil end
 
     Frame._activePreviewIcons = previews
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
-    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY) end
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
     Orbit.AuraLayout:LayoutGrid(Frame, previews, {
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
+    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY, previews[#previews]) end
 end
 
 -- Lightweight resize: reuse existing preview icons, just resize and re-layout
@@ -1016,12 +1029,12 @@ function Mixin:ResizePreviewAuras()
         icon:SetSize(snappedW, snappedH)
         CropIconTexture(icon, snappedW, snappedH)
     end
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, self._agConfig.showIconLimit)
-    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY) end
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
     Orbit.AuraLayout:LayoutGrid(Frame, Frame._activePreviewIcons, {
         size = iconH, sizeW = iconW, spacing = spacing, maxPerRow = iconsPerRow,
         anchor = anchor, growthX = growthX, growthY = growthY, yOffset = 0,
     })
+    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, false, iconH, growthX, growthY, Frame._activePreviewIcons[#Frame._activePreviewIcons]) end
 end
 
 -- [ APPLY SETTINGS ]---------------------------------------------------------------------------------

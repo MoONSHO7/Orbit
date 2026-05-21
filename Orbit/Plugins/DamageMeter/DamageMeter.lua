@@ -436,10 +436,10 @@ function Plugin:OnLoad()
         end)
     end, self)
 
-    -- Separate Enter hook so the roster reshuffles BEFORE ApplySettings paints the preview.
+    -- Distinct owner — CallbackRegistry replaces same-(event,owner); `self` is taken by RegisterStandardEvents.
     Orbit.Engine.EditMode:RegisterCallbacks({
         Enter = function() self:ReshufflePreviewRoster() end,
-    }, self)
+    }, "Orbit_DamageMeter_PreviewRoster")
 
     -- Blizzard_DamageMeter can load after our OnLoad, so re-prime the pipeline on each world entry.
     Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
