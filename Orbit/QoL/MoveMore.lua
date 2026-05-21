@@ -39,7 +39,6 @@ local FRAME_NAMES = {
 local FRAME_NAMES_HASH = {}
 for _, name in ipairs(FRAME_NAMES) do FRAME_NAMES_HASH[name] = true end
 
--- SetScale taints UIWidget arithmetic on widget-hosting frames (BlizzMove issue #181). Drag only.
 local NO_SCALE = {
     WorldMapFrame = true, FlightMapFrame = true,
     GarrisonLandingPage = true, ExpansionLandingPage = true,
