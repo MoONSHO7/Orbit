@@ -1,6 +1,7 @@
 -- [ PORTRAIT RING DATA ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Engine = Orbit.Engine
+local L = Orbit.L
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DEFAULT_OVERSHOOT = 3
@@ -35,19 +36,19 @@ Engine.PortraitRingData = {
 }
 
 Engine.PortraitRingOptions = {
-    { text = "None", value = "none" },
-    { text = "Gold Ring", value = "gold" },
-    { text = "Alchemy", value = "alchemy" },
-    { text = "Blacksmithing", value = "blacksmithing" },
-    { text = "Enchanting", value = "enchanting" },
-    { text = "Engineering", value = "engineering" },
-    { text = "Herbalism", value = "herbalism" },
-    { text = "Inscription", value = "inscription" },
-    { text = "Jewelcrafting", value = "jewelcrafting" },
-    { text = "Leatherworking", value = "leatherworking" },
-    { text = "Mining", value = "mining" },
-    { text = "Skinning", value = "skinning" },
-    { text = "Tailoring", value = "tailoring" },
+    { text = L.CMN_NONE, value = "none" },
+    { text = L.CFG_PORTRAIT_RING_GOLD, value = "gold" },
+    { text = L.CFG_PORTRAIT_RING_ALCHEMY, value = "alchemy" },
+    { text = L.CFG_PORTRAIT_RING_BLACKSMITHING, value = "blacksmithing" },
+    { text = L.CFG_PORTRAIT_RING_ENCHANTING, value = "enchanting" },
+    { text = L.CFG_PORTRAIT_RING_ENGINEERING, value = "engineering" },
+    { text = L.CFG_PORTRAIT_RING_HERBALISM, value = "herbalism" },
+    { text = L.CFG_PORTRAIT_RING_INSCRIPTION, value = "inscription" },
+    { text = L.CFG_PORTRAIT_RING_JEWELCRAFTING, value = "jewelcrafting" },
+    { text = L.CFG_PORTRAIT_RING_LEATHERWORKING, value = "leatherworking" },
+    { text = L.CFG_PORTRAIT_RING_MINING, value = "mining" },
+    { text = L.CFG_PORTRAIT_RING_SKINNING, value = "skinning" },
+    { text = L.CFG_PORTRAIT_RING_TAILORING, value = "tailoring" },
 }
 
 Engine.PORTRAIT_RING_OVERSHOOT = DEFAULT_OVERSHOOT

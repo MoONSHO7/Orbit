@@ -49,7 +49,7 @@ function FrameFactory:Create(name, plugin, opts)
 
     frame.systemIndex = systemIndex
     frame.orbitName = plugin.name
-    frame.editModeName = plugin.name
+    frame.editModeName = plugin.displayName or plugin.name
     frame.orbitPlugin = plugin
     frame.anchorOptions = opts.anchorOptions or { horizontal = true, vertical = false }
     frame.defaultPosition = { point = point, relativeTo = parent, relativePoint = point, x = x, y = y }

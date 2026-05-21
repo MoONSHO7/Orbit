@@ -1,7 +1,6 @@
--- Performance.lua
--- System performance datatext: FPS, latency, memory, addon usage, sparkline graph
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local Fmt = DT.Formatting
 local RingBuffer = Fmt.RingBuffer
 local L = Orbit.L
@@ -31,7 +30,7 @@ local PIN_SCALE = 0.75
 local COLORS = { GREEN = "|cff00ff00", YELLOW = "|cfffea300", ORANGE = "|cffff6600", RED = "|cffff0000" }
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Performance")
+local W = DT.BaseDatatext:New("Performance", L.PLU_DT_PERFORMANCE_NAME)
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 W.history = { fps = RingBuffer:New(HISTORY_SIZE), latency = RingBuffer:New(HISTORY_SIZE), memory = RingBuffer:New(HISTORY_SIZE) }
@@ -243,7 +242,6 @@ function W:Init()
     self:SetClickFunc(function(_, button) self:HandleClick(button) end)
     self.leftClickHint = L.PLU_DT_PERF_COLLECT_GARBAGE
     self.rightClickHint = L.PLU_DT_PERF_PIN_TOOLTIP
-    self:SetCategory("SYSTEM")
     self:Register()
 end
 

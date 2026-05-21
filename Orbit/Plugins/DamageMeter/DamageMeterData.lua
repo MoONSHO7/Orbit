@@ -28,19 +28,6 @@ function Data:GetAvailableSessions()
     return C_DamageMeter.GetAvailableCombatSessions() or {}
 end
 
--- Returns the non-secret duration for a session type, or nil when unknown.
-function Data:GetDurationSeconds(sessionType)
-    if not self:IsAvailable() then return nil end
-    return C_DamageMeter.GetSessionDurationSeconds(sessionType or SESSION_TYPE.Current)
-end
-
-function Data:GetSession(sessionType, meterType)
-    if not self:IsAvailable() then return nil end
-    sessionType = sessionType or SESSION_TYPE.Current
-    meterType = meterType or METER_TYPE.Dps
-    return C_DamageMeter.GetCombatSessionFromType(sessionType, meterType)
-end
-
 function Data:ResolveSession(sessionID, sessionType, meterType)
     if not self:IsAvailable() then return nil end
     meterType = meterType or METER_TYPE.Dps
@@ -61,39 +48,8 @@ function Data:ResolveSessionSource(sessionID, sessionType, meterType, sourceGUID
     )
 end
 
-function Data:GetSessionByID(sessionID, meterType)
-    if not self:IsAvailable() or not sessionID then return nil end
-    return C_DamageMeter.GetCombatSessionFromID(sessionID, meterType or METER_TYPE.Dps)
-end
-
-function Data:GetSessionSource(sessionType, meterType, sourceGUID, sourceCreatureID)
-    if not self:IsAvailable() then return nil end
-    return C_DamageMeter.GetCombatSessionSourceFromType(
-        sessionType or SESSION_TYPE.Current,
-        meterType or METER_TYPE.Dps,
-        sourceGUID, sourceCreatureID
-    )
-end
-
-function Data:GetSessionSourceByID(sessionID, meterType, sourceGUID, sourceCreatureID)
-    if not self:IsAvailable() or not sessionID then return nil end
-    return C_DamageMeter.GetCombatSessionSourceFromID(
-        sessionID, meterType or METER_TYPE.Dps, sourceGUID, sourceCreatureID
-    )
-end
-
 function Data:ResetAllSessions()
     if not self:IsAvailable() then return end
     if not InCombatLockdown() then C_DamageMeter.ResetAllCombatSessions() end
 end
 
--- combatSources array indices are server rank-ordered; never compare totalAmount in Lua (secret).
-function Data:GetSources(sessionType, meterType)
-    local session = self:GetSession(sessionType, meterType)
-    if not session then return {} end
-    return session.combatSources or {}
-end
-
--- Enum exposure so other modules can reference meter/session types without reaching into Constants.
-Data.MeterType = METER_TYPE
-Data.SessionType = SESSION_TYPE

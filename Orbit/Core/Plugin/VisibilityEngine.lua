@@ -142,6 +142,17 @@ local function IsOwnedByEnabledPlugin(entry)
     return false
 end
 
+-- S04-C2: select-vararg avoids the {GetChildren()} temp-table alloc on every secure-frame /
+-- Blizzard-cluster repaint. Three sites previously built throwaway tables per call.
+local function ApplyChildAlphaVararg(alpha, ...)
+    for i = 1, select("#", ...) do
+        select(i, ...):SetAlpha(alpha)
+    end
+end
+local function ApplyChildAlpha(frame, alpha)
+    ApplyChildAlphaVararg(alpha, frame:GetChildren())
+end
+
 -- [ DB ACCESS ]--------------------------------------------------------------------------------------
 local function GetDB()
     if not Orbit.db then return nil end
@@ -293,7 +304,7 @@ function VE:ApplySecureBlizzardFrame(entry)
     local function apply()
         frame:SetAlpha(alpha)
         if entry.propagateAlpha then
-            for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(alpha) end
+            ApplyChildAlpha(frame, alpha)
         end
     end
     if InCombatLockdown() then
@@ -322,7 +333,7 @@ function VE:ApplyBlizzardSettings()
                 -- Minimap: apply opacity to cluster children (including Minimap itself for engine-rendered POI pins)
                 if entry.key == "BlizzMinimap" then
                     local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
-                    for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                    ApplyChildAlpha(frame, opacity)
                 end
             end
         end
@@ -345,7 +356,7 @@ secureEvents:SetScript("OnEvent", function(_, event)
     if p then p:End("Orbit_VisibilityEngine", event, s) end
 end)
 C_Timer.After(0, function()
-    if Orbit.EventBus then Orbit.EventBus:On("MOUNTED_VISIBILITY_CHANGED", function() VE:ApplyAllSecureBlizzardFrames() end) end
+    if Orbit.EventBus then Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() VE:ApplyAllSecureBlizzardFrames() end) end
 end)
 
 function VE:ApplyAll()
@@ -377,7 +388,7 @@ function VE:ApplyFrame(key)
                     Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
                     if key == "BlizzMinimap" then
                         local opacity = (self:GetFrameSetting(key, "opacity") or 100) / 100
-                        for _, child in ipairs({ frame:GetChildren() }) do child:SetAlpha(opacity) end
+                        ApplyChildAlpha(frame, opacity)
                     end
                 end
             end

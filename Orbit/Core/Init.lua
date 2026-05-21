@@ -44,6 +44,7 @@ end
 function Orbit:RegisterPlugin(name, system, mixin)
     local combinedMixin = Mixin({}, Orbit.PluginMixin, mixin)
     local plugin = OrbitEngine:RegisterSystem(name, system, combinedMixin)
+    plugin.displayName = mixin.displayName or name
     plugin.liveToggle = mixin.liveToggle or false
     plugin.disabledSpecs = mixin.disabledSpecs
 
@@ -112,7 +113,6 @@ function Orbit:InitializePlugins()
 end
 
 -- [ ADDON INITIALIZATION ]---------------------------------------------------------------------------
-Orbit.addonName = addonName
 Orbit.version = "@project-version@"
 Orbit.title = "Orbit"
 
@@ -128,6 +128,15 @@ function Orbit:OnLoad()
     self.db.GlobalSettings = self.db.GlobalSettings or {}
     self.db.AccountSettings = self.db.AccountSettings or {}
     self.CHAR_KEY = UnitName("player") .. "-" .. GetRealmName()
+
+    -- One-time migration: ErrorLog moved out of OrbitDB into its own SavedVariable.
+    if self.db.ErrorLog then
+        OrbitErrorLogDB = OrbitErrorLogDB or {}
+        OrbitErrorLogDB.entries = self.db.ErrorLog
+        OrbitErrorLogDB.index = self.db.ErrorLogIndex or 0
+        self.db.ErrorLog = nil
+        self.db.ErrorLogIndex = nil
+    end
 
     -- SpecData is character-scoped: { [charKey] = { [specID] = { [sysIdx] = { key = value } } } }
     self.db.SpecData = self.db.SpecData or {}
@@ -301,9 +310,9 @@ eventFrame:SetScript("OnEvent", function(self, event)
         Orbit:RefreshSpecLockedPlugins()
         if Orbit.EventBus then
             if event == "PLAYER_ENTERING_WORLD" then
-                Orbit.EventBus:Fire("PLAYER_ENTERING_WORLD")
+                Orbit.EventBus:Fire("ORBIT_PLAYER_ENTERING_WORLD")
             elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
-                Orbit.EventBus:Fire("PLAYER_SPECIALIZATION_CHANGED")
+                Orbit.EventBus:Fire("ORBIT_PLAYER_SPECIALIZATION_CHANGED")
             end
         end
     elseif event == "PLAYER_LOGOUT" then

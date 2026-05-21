@@ -18,6 +18,7 @@ local DEFAULT_BUFFBAR_Y = -100
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", {
+    displayName = L.PLG_NAME_COOLDOWN_MANAGER,
     defaults = {
         aspectRatio = "4:3",
         IconSize = Constants.Cooldown.DefaultIconSize,
@@ -226,7 +227,7 @@ function Plugin:OnLoad()
     self:HookBlizzardViewers()
     SetCVar("cooldownViewerEnabled", "1")
 
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", self.OnPlayerEnteringWorld, self)
     self:RegisterVisibilityEvents()
 
     -- Reload items after a profile switch completes.
@@ -240,7 +241,7 @@ function Plugin:OnLoad()
         end)
     end, self)
 
-    Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_SPECIALIZATION_CHANGED", function()
         C_Timer.After(0.15, function()
             self:ReapplyParentage()
             self:ApplyAll()
@@ -251,7 +252,7 @@ function Plugin:OnLoad()
         end)
     end, self)
 
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         for systemIndex, data in pairs(VIEWER_MAP) do
             local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
             if data.anchor then
@@ -407,12 +408,6 @@ function Plugin:UpdateLayout(frame)
         return
     end
     self:ProcessChildren(frame)
-end
-
-function Plugin:UpdateVisuals(frame)
-    if frame then
-        self:ApplySettings(frame)
-    end
 end
 
 function Plugin:GetFrameBySystemIndex(systemIndex)

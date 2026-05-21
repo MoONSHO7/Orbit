@@ -9,7 +9,7 @@ orbit's minimap plugin. reparents blizzard's `Minimap` into a clean, borderless 
 - reparents blizzard's instance difficulty, expansion landing page, mail, and crafting order indicators into the overlay
 - creates custom zoom in/out buttons with hover-reveal behaviour
 - applies orbit's border system (`Orbit.Skin:SkinBorder`) and backdrop. the square shape always uses a square border (`forcePixel`) even under a rounded global Border Style — `Minimap:SetMaskTexture` stretches a flat mask, so the render surface can't be given rounded corners that match a nineslice border
-- integrates with edit mode for drag/position/anchor
+- integrates with edit mode for drag/position/anchor, plus an aspect-locked drag-resize handle that drives the `Size` setting (clamped to the Size slider's 100–400 range)
 - supports visibility in pet battles / vehicles via `RegisterVisibilityEvents`
 - live-toggle support — can be disabled/enabled without a reload
 
@@ -17,7 +17,10 @@ orbit's minimap plugin. reparents blizzard's `Minimap` into a clean, borderless 
 
 | file                     | responsibility                                                    |
 | ------------------------ | ----------------------------------------------------------------- |
-| `Minimap.lua`            | plugin registration, lifecycle, capture, components, teardown     |
+| `Minimap.lua`            | plugin registration, lifecycle orchestration, ApplySettings entry, event fan-out |
+| `MinimapConstants.lua`   | `Orbit.MinimapConstants` — single source of truth for SYSTEM_ID, size/zoom defaults, mask textures, border-ring options |
+| `MinimapCapture.lua`     | blizzard `Minimap`/`MinimapCluster` capture, art stripping, FrameGuard, reparenting of difficulty/missions/mail/crafting indicators |
+| `MinimapComponents.lua`  | per-component creators + updaters (Clock, Coords, ZoomButtons, ZoneText, CalendarInvites) and shape/mask resolution |
 | `MinimapCompartment.lua` | compartment button, flyout, button collection, hover orchestrator |
 | `MinimapSettings.lua`    | settings UI (sliders)                                             |
 

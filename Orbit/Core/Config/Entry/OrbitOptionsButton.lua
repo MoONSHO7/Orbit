@@ -44,8 +44,8 @@ Button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT")
     GameTooltip:AddLine(L.CMD_OPTIONS_BUTTON_LABEL, 1, 1, 1)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("|cFF00FF00Left-click|r: Toggle plugins on/off", 0.8, 0.8, 0.8)
-    GameTooltip:AddLine("|cFFFFFF00Right-click|r: Colors & textures", 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(L.CFG_OPTIONS_TT_LEFT, 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(L.CFG_OPTIONS_TT_RIGHT, 0.8, 0.8, 0.8)
     GameTooltip:Show()
 end)
 
@@ -63,9 +63,9 @@ Button:SetScript("OnClick", function(self, button)
     end
 
     if button == "LeftButton" then
-        Orbit.OptionsPanel:Open("Global")
+        Orbit.OptionsPanel:Open(L.CFG_TAB_GLOBAL)
     elseif button == "RightButton" then
-        Orbit.OptionsPanel:Open("Colors")
+        Orbit.OptionsPanel:Open(L.CFG_TAB_TEXTURES)
     end
 end)
 

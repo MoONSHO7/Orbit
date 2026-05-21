@@ -1,11 +1,10 @@
--- ItemLevel.lua
--- Item level datatext: shows average equipped item level
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("ItemLevel")
+local W = DT.BaseDatatext:New("ItemLevel", L.PLU_DT_ITEMLEVEL_NAME)
 
 function W:Update()
     local avgLevel, equippedLevel = GetAverageItemLevel()
@@ -33,7 +32,6 @@ function W:Init()
     self.leftClickHint = L.PLU_DT_ILVL_CHARACTER_PANEL
     self:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-    self:SetCategory("CHARACTER")
     self:Register()
     self:Update()
 end

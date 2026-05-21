@@ -681,11 +681,11 @@ function PA:WatchCanvas(plugin)
             if plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
         end
     end
-    Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
+    Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
 end
 
 function PA:UnwatchCanvas(plugin)
     if plugin._canvasSettingsCallback then
-        Orbit.EventBus:Off("CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
+        Orbit.EventBus:Off("ORBIT_CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
     end
 end

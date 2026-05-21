@@ -1,5 +1,6 @@
 -- [ ORBIT COMPONENT HANDLE ]-------------------------------------------------------------------------
 local _, Orbit = ...
+local L = Orbit.L
 local Engine = Orbit.Engine
 
 Engine.ComponentHandle = {}
@@ -54,7 +55,9 @@ function Handle:Create(component, parent, callbacks)
     if issecretvalue and issecretvalue(compWidth) then compWidth = headerMinWidth end
     local hScale = handle.header:GetEffectiveScale()
     handle.header:SetWidth(Engine.Pixel:Snap(math.max(compWidth or 0, headerMinWidth), hScale))
-    handle.header.text:SetText(callbacks.key or "Component")
+    local Schema = Engine.CanvasMode and Engine.CanvasMode.SettingsSchema
+    local label = (callbacks.key and Schema and Schema.ResolveTitle and Schema.ResolveTitle(callbacks.key)) or callbacks.key or L.CFG_CM_COMPONENT_FALLBACK
+    handle.header.text:SetText(label)
     handle.header:SetShown(not component.orbitHideHandleHeader)
     Handle:PositionHeader(handle, component, parent)
 

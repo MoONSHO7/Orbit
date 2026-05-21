@@ -1,7 +1,5 @@
 -- [ RECENTS ]----------------------------------------------------------------------------------------
--- Tracks the last N activated entries as an MRU (most-recently-used) list persisted to AccountSettings.
--- The matcher reads GetBoostIndex() to bonus-score matching entries so users' recent choices bubble up
--- when they re-search the same term.
+-- MRU list (last N activations) persisted to AccountSettings; matcher reads GetBoostIndex() so recent picks rank higher on re-search.
 local _, Orbit = ...
 local Recents = {}
 Orbit.Spotlight.Index.Recents = Recents
@@ -39,6 +37,3 @@ function Recents:GetBoostIndex()
     return boost
 end
 
-function Recents:BuildKey(kind, id) return MakeKey(kind, id) end
-
-function Recents:MaxEntries() return MAX_ENTRIES end

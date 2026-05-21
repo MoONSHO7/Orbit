@@ -113,20 +113,26 @@ end
 local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame] end
 
 -- [ LIVE CANVAS PREVIEW ] ---------------------------------------------------------------------------
-Orbit.EventBus:On("CANVAS_SETTINGS_CHANGED", function(changedPlugin)
+Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", function(changedPlugin)
     if changedPlugin == CDM and CDM.buffBarAnchor and not CDM.buffBarAnchor.orbitMountedSuppressed then CDM:ProcessChildren(CDM.buffBarAnchor) end
 end)
 
 -- [ PROCESS CHILDREN ] ------------------------------------------------------------------------------
+-- S16-L3: re-entrancy guard + per-call children snapshot. The body fires Skin:Apply (which can
+-- hook into Masque) and `ORBIT_ICON_REPROCESSED` (cross-plugin); a re-entry from either would
+-- have wiped the shared `_activeChildBuf` mid-iteration and corrupted the outer loop. The guard
+-- short-circuits inner calls; the per-call snapshot makes the outer iteration robust even if a
+-- future change permits re-entry through a different path.
+local _processingChildren = false
 function CDM:ProcessChildren(anchor)
-    if not anchor then return end
+    if _processingChildren or not anchor then return end
     local entry = VIEWER_MAP[anchor.systemIndex]
     local blizzFrame = entry and entry.viewer
     if not blizzFrame then return end
 
+    _processingChildren = true
     local systemIndex = anchor.systemIndex
-    wipe(_activeChildBuf)
-    local activeChildren = _activeChildBuf
+    local activeChildren = {}
     local alwaysShow = (systemIndex == BUFFICON_INDEX) and self:GetSetting(systemIndex, "AlwaysShow")
 
     for _, child in ipairs(PackChildren(blizzFrame:GetChildren())) do
@@ -344,7 +350,7 @@ function CDM:ProcessChildren(anchor)
                 Orbit.Skin:ClearNineSliceBorder(anchorFrame)
                 if anchorFrame._borderFrame then anchorFrame._borderFrame:Hide() end
             end
-            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
         else
             Orbit.Skin.IconLayout:ApplyManualLayout(blizzFrame, activeChildren, skinSettings)
         end
@@ -387,7 +393,7 @@ function CDM:ProcessChildren(anchor)
             if hideBorders then Orbit.Skin:ClearIconGroupBorder(anchorFrame)
             elseif pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice, activeChildren)
             else Orbit.Skin:ClearIconGroupBorder(anchorFrame) end
-            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
         end
 
         -- Essential/Utility: anchor sizing (combat-gated — protected frame ops)
@@ -402,7 +408,7 @@ function CDM:ProcessChildren(anchor)
             local pad = tonumber(skinSettings.padding) or 1
             if pad == 0 then Orbit.Skin:ApplyIconGroupBorder(anchorFrame, iconNineSlice, activeChildren)
             else Orbit.Skin:ClearIconGroupBorder(anchorFrame) end
-            Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+            Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
         end
     else
         -- No active children — hide via alpha (BuffBar/BuffIcon only; Essential/Utility always have configured spells)
@@ -412,8 +418,9 @@ function CDM:ProcessChildren(anchor)
         Orbit.Skin:ClearIconGroupBorder(anchor)
         if anchor._borderFrame then anchor._borderFrame:Hide() end
         Orbit.Skin:ClearNineSliceBorder(anchor)
-        Orbit.EventBus:Fire("BORDER_LAYOUT_CHANGED")
+        Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
     end
+    _processingChildren = false
 end
 
 -- [ PRE-SIZE ANCHORS ] ------------------------------------------------------------------------------
@@ -423,24 +430,26 @@ function CDM:PreSizeAnchors()
     for systemIndex, entry in pairs(VIEWER_MAP) do
         local viewer = entry.viewer
         local anchor = entry.anchor
-        if not viewer or not anchor then break end
-        local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, {
-            inheritOverrides = CooldownUtils:IsInheritingLayout(self, anchor, VIEWER_MAP)
-                and CooldownUtils:BuildSkinSettings(self, CooldownUtils:GetInheritedParentIndex(anchor, VIEWER_MAP)) or nil,
-        })
-        local totalConfigured = 0
-        for _, child in ipairs(PackChildren(viewer:GetChildren())) do
-            if child.layoutIndex then totalConfigured = totalConfigured + 1 end
-        end
-        if totalConfigured > 0 and systemIndex ~= BUFFBAR_INDEX and systemIndex ~= BUFFICON_INDEX then
-            local limit = tonumber(skinSettings.limit) or 10
-            local scale = anchor:GetEffectiveScale()
-            local baseSize = skinSettings.baseIconSize or Constants.Skin.DefaultIconSize
-            local iconW, iconH = CooldownUtils:CalculateIconDimensions(self, systemIndex, skinSettings, scale)
-            local pad = OrbitEngine.Pixel:Multiple(tonumber(skinSettings.padding) or 0, scale)
-            local cols = math.min(totalConfigured, limit)
-            local w = (cols * iconW) + ((cols - 1) * pad)
-            if w > anchor:GetWidth() then anchor:SetSize(w, iconH) end
+        -- S16-L1: skip-guard, not `break` — the prior `break` was order-dependent on pairs() and silently skipped remaining anchors.
+        if viewer and anchor then
+            local skinSettings = CooldownUtils:BuildSkinSettings(self, systemIndex, {
+                inheritOverrides = CooldownUtils:IsInheritingLayout(self, anchor, VIEWER_MAP)
+                    and CooldownUtils:BuildSkinSettings(self, CooldownUtils:GetInheritedParentIndex(anchor, VIEWER_MAP)) or nil,
+            })
+            local totalConfigured = 0
+            for _, child in ipairs(PackChildren(viewer:GetChildren())) do
+                if child.layoutIndex then totalConfigured = totalConfigured + 1 end
+            end
+            if totalConfigured > 0 and systemIndex ~= BUFFBAR_INDEX and systemIndex ~= BUFFICON_INDEX then
+                local limit = tonumber(skinSettings.limit) or 10
+                local scale = anchor:GetEffectiveScale()
+                local baseSize = skinSettings.baseIconSize or Constants.Skin.DefaultIconSize
+                local iconW, iconH = CooldownUtils:CalculateIconDimensions(self, systemIndex, skinSettings, scale)
+                local pad = OrbitEngine.Pixel:Multiple(tonumber(skinSettings.padding) or 0, scale)
+                local cols = math.min(totalConfigured, limit)
+                local w = (cols * iconW) + ((cols - 1) * pad)
+                if w > anchor:GetWidth() then anchor:SetSize(w, iconH) end
+            end
         end
     end
 end

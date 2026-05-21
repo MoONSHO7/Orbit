@@ -126,12 +126,7 @@ function NativeFrame:Hide(nativeFrame, options)
         end
     end
 
-    self.hidden[nativeFrame] = backup
     return true
-end
-
-function NativeFrame:HideMany(frames, options)
-    for _, frame in ipairs(frames) do self:Hide(frame, options) end
 end
 
 -- [ MODIFY (NON-TAINTING ALPHA / SCALE / STRATA) ]---------------------------------------------------
@@ -157,19 +152,6 @@ function NativeFrame:Modify(nativeFrame, options)
     return backup
 end
 
-function NativeFrame:RestoreModified(nativeFrame)
-    if not nativeFrame then return false end
-    local backup = self.modified[nativeFrame]
-    if not backup then return false end
-
-    if backup.scale then nativeFrame:SetScale(backup.scale) end
-    if backup.alpha then nativeFrame:SetAlpha(backup.alpha) end
-    if backup.strata then nativeFrame:SetFrameStrata(backup.strata) end
-
-    self.modified[nativeFrame] = nil
-    return true
-end
-
 -- [ SECURE HIDE (STATE DRIVER) ]---------------------------------------------------------------------
 function NativeFrame:SecureHide(nativeFrame)
     if not nativeFrame then return false end
@@ -180,32 +162,3 @@ function NativeFrame:SecureHide(nativeFrame)
     return true
 end
 
--- [ QUERIES ]----------------------------------------------------------------------------------------
-function NativeFrame:IsParked(nativeFrame) return self.parked[nativeFrame] ~= nil end
-function NativeFrame:IsHidden(nativeFrame) return self.hidden[nativeFrame] ~= nil end
-function NativeFrame:IsModified(nativeFrame) return self.modified[nativeFrame] ~= nil end
-
--- [ RESTORE ]----------------------------------------------------------------------------------------
-function NativeFrame:Restore(nativeFrame)
-    if not nativeFrame then return false end
-    if InCombatLockdown() then return false end
-    local backup = self.hidden[nativeFrame]
-    if not backup then return false end
-
-    if backup.parent then nativeFrame:SetParent(backup.parent) end
-    if backup.onEvent then nativeFrame:SetScript("OnEvent", backup.onEvent) end
-    if backup.onUpdate then nativeFrame:SetScript("OnUpdate", backup.onUpdate) end
-    if backup.shown then nativeFrame:Show() end
-
-    self.hidden[nativeFrame] = nil
-    return true
-end
-
--- [ STATUS ]-----------------------------------------------------------------------------------------
-function NativeFrame:GetStatus()
-    return {
-        hidden = TableCount(self.hidden),
-        parked = TableCount(self.parked),
-        modified = TableCount(self.modified),
-    }
-end

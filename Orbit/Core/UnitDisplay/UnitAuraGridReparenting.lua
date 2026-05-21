@@ -1,15 +1,5 @@
 -- [ UNIT AURA GRID REPARENTING ]---------------------------------------------------------------------
--- Reparents Blizzard's native BuffFrame auraFrames into an Orbit grid container, suppresses the
--- stock textures/borders, wires timer + stacks text into Orbit's font/override system, and feeds
--- DurationObjects to the shared expiration pulse ticker.
---
--- Extracted from UnitAuraGridMixin.lua. Reaches file-local helpers (ResolveGrowthDirection,
--- UpdateCollapseArrow, CropIconTexture) through Mixin._Internal and the expiration pulse through
--- Mixin._RegisterExpirationPulse.
---
--- Module-level scratch contexts (`_durCtx`, `_playerCtx`, `_showCtx`) are deliberate: WoW's
--- AuraUtil.ForEachAura callbacks fire synchronously per call site, so reusing one context per
--- closure type avoids per-frame table allocation. Safe under single-threaded Lua.
+-- module-level scratch contexts (`_durCtx`, `_playerCtx`, `_showCtx`) are deliberate — AuraUtil.ForEachAura callbacks fire synchronously per site, so reusing one ctx per closure type avoids per-frame allocation. safe under single-threaded Lua.
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine

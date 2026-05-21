@@ -2,11 +2,13 @@
 local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
+local GameTooltip = Orbit.Tooltip
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_MinimapButton"
 
 local Plugin = Orbit:RegisterPlugin("Minimap Button", SYSTEM_ID, {
+    displayName = L.PLG_NAME_MINIMAP_BUTTON,
     liveToggle = true,
     defaults = {
         Scale = 100,
@@ -258,7 +260,7 @@ function Plugin:OnLoad()
     self.frame:SetFrameLevel(EDIT_MODE_FRAME_LEVEL)
     self.frame:SetClampedToScreen(true)
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Minimap Button"
+    self.frame.editModeName = self.displayName
     self.frame.anchorOptions = { horizontal = true, vertical = true }
     self.frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", DEFAULT_POSITION_X, DEFAULT_POSITION_Y)
 

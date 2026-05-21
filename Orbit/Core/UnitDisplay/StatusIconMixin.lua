@@ -12,6 +12,15 @@ local GROUP_POSITION_FONT_SIZE = 10
 Orbit.StatusIconMixin = {}
 local Mixin = Orbit.StatusIconMixin
 
+-- S09c-C1 reverted: the per-batch frame-stashed snapshot leaked `_statusBatchPositions` if any
+-- inner Update method threw (the cleanup write at the tail of UpdateAllStatusIcons never ran),
+-- starving subsequent individual Update*Icon calls of fresh positions. Roster-update icons
+-- (leader/main-tank/group-number) stopped re-evaluating overrides in raid. Direct GetSetting per
+-- call is what the rest of the codebase does and is the safe baseline.
+local function GetBatchedPositions(_frame, plugin)
+    return plugin and plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions") or nil
+end
+
 local ROLE_ATLASES = { TANK = "UI-LFG-RoleIcon-Tank", HEALER = "UI-LFG-RoleIcon-Healer", DAMAGER = "UI-LFG-RoleIcon-DPS" }
 local ROUND_ROLE_ATLASES = { TANK = "icons_64x64_tank", HEALER = "icons_64x64_heal", DAMAGER = "icons_64x64_damage" }
 local HEADER_ROLE_ATLASES = { TANK = "GO-icon-role-Header-Tank", HEALER = "GO-icon-role-Header-Healer", DAMAGER = "GO-icon-role-Header-DPS", DAMAGER_RANGED = "GO-icon-role-Header-DPS-Ranged" }
@@ -182,7 +191,6 @@ local function IsRangedDPS(unit)
     local specID = GetInspectSpecialization and GetInspectSpecialization(unit)
     return specID and RANGED_DPS_SPECS[specID] or false
 end
-Mixin.IsRangedDPS = IsRangedDPS
 
 -- ROLE ICON (Tank/Healer/DPS)
 
@@ -204,7 +212,7 @@ function Mixin:UpdateRoleIcon(frame, plugin)
     local atlases = ROLE_ATLASES
     local hideDPS = false
     if plugin then
-        local positions = plugin:GetSetting(1, "ComponentPositions")
+        local positions = GetBatchedPositions(frame, plugin)
         local roleOverrides = positions and positions.RoleIcon and positions.RoleIcon.overrides
         if roleOverrides then
             local style = roleOverrides.RoleIconStyle
@@ -245,7 +253,7 @@ function Mixin:UpdateLeaderIcon(frame, plugin)
     -- Resolve LeaderIconStyle override
     local style = "default"
     if plugin then
-        local positions = plugin:GetSetting(1, "ComponentPositions")
+        local positions = GetBatchedPositions(frame, plugin)
         local overrides = positions and positions.LeaderIcon and positions.LeaderIcon.overrides
         if overrides and overrides.LeaderIconStyle then style = overrides.LeaderIconStyle end
     end
@@ -362,7 +370,7 @@ function Mixin:UpdateCombatIcon(frame, plugin)
     if inCombat or inEditMode then
         local style = "default"
         if plugin then
-            local positions = plugin:GetSetting(1, "ComponentPositions")
+            local positions = GetBatchedPositions(frame, plugin)
             local overrides = positions and positions.CombatIcon and positions.CombatIcon.overrides
             if overrides and overrides.CombatIconStyle then style = overrides.CombatIconStyle end
         end
@@ -473,7 +481,7 @@ function Mixin:UpdateGroupPosition(frame, plugin)
     local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
     frame.GroupPositionText:SetFont(fontPath, GROUP_POSITION_FONT_SIZE, Orbit.Skin:GetFontOutline())
     Orbit.Skin:ApplyFontShadow(frame.GroupPositionText)
-    local positions = plugin and plugin.GetSetting and plugin:GetSetting(1, "ComponentPositions")
+    local positions = GetBatchedPositions(frame, plugin)
     local overrides = positions and positions.GroupPositionText and positions.GroupPositionText.overrides
     if overrides then
         Orbit.Engine.OverrideUtils.ApplyFontOverrides(frame.GroupPositionText, overrides, GROUP_POSITION_FONT_SIZE, fontPath)
@@ -668,3 +676,5 @@ function Mixin:UpdateAllPartyStatusIcons(frame, plugin)
     self:UpdateIncomingRes(frame, plugin)
     self:UpdateIncomingSummon(frame, plugin)
 end
+
+if table.freeze then table.freeze(Orbit.StatusIconMixin) end

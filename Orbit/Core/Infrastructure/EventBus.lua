@@ -61,20 +61,28 @@ function EventBus:Fire(event, ...)
     if not listeners then
         return
     end
+    -- Snapshot before dispatch: prevents the `ctx and pcall(...) or pcall(...)` short-circuit
+    -- double-fire on the error path AND a listener-re-visit when a callback runs Off/OffContext mid-fire.
+    local n = #listeners
+    local snapshot = {}
+    for i = 1, n do snapshot[i] = listeners[i] end
     local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
-    for i = #listeners, 1, -1 do
-        local listener = listeners[i]
-        if listener then
-            local start = profilerActive and debugprofilestop() or nil
-            local ok, err = listener.context and pcall(listener.callback, listener.context, ...) or pcall(listener.callback, ...)
-            if start then
-                Orbit.Profiler:RecordContext(listener.context, event, debugprofilestop() - start)
-            end
-            if not ok then
-                Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
-                if Orbit.ErrorHandler then
-                    Orbit.ErrorHandler:LogError("EventBus", event, err)
-                end
+    for i = 1, n do
+        local listener = snapshot[i]
+        local start = profilerActive and debugprofilestop() or nil
+        local ok, err
+        if listener.context then
+            ok, err = pcall(listener.callback, listener.context, ...)
+        else
+            ok, err = pcall(listener.callback, ...)
+        end
+        if start then
+            Orbit.Profiler:RecordContext(listener.context, event, debugprofilestop() - start)
+        end
+        if not ok then
+            Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
+            if Orbit.ErrorHandler then
+                Orbit.ErrorHandler:LogError("EventBus", event, err)
             end
         end
     end

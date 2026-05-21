@@ -27,7 +27,3 @@ function RowPool:HideAll()
     for _, row in ipairs(self._rows) do row:Hide() end
 end
 
-function RowPool:SetWidth(width)
-    self._width = width
-    for _, row in ipairs(self._rows) do row:SetWidth(width) end
-end

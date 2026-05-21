@@ -133,4 +133,24 @@ function ABText:Apply(plugin, button, systemIndex)
         button.Count:SetDrawLayer("OVERLAY", 7)
         ApplyComponentPosition(button.Count, "Stacks", "LEFT", "BOTTOM", 2, 2)
     end
+
+    -- [ PROFESSION QUALITY OVERLAY ]---------------------------------------------------------------
+    -- Blizzard's ProfessionQualityOverlayFrame (the item-quality diamond) is created lazily and
+    -- carries no frame level, so it renders beneath Orbit's icon/group border. Raise it; placement
+    -- stays at Blizzard's default. The overlay is created on demand inside UpdateProfessionQuality,
+    -- so hook that method once to catch overlays that appear after this pass.
+    if button.UpdateProfessionQuality then
+        if not button.orbitQualityHooked then
+            hooksecurefunc(button, "UpdateProfessionQuality", function(self) ABText:ApplyQualityOverlay(self) end)
+            button.orbitQualityHooked = true
+        end
+        ABText:ApplyQualityOverlay(button)
+    end
+end
+
+function ABText:ApplyQualityOverlay(button)
+    local frame = button.ProfessionQualityOverlayFrame
+    if not frame then return end
+    -- SetFrameLevel is unprotected — safe to raise even mid-combat.
+    frame:SetFrameLevel(button:GetFrameLevel() + Orbit.Constants.Levels.IconGlow)
 end

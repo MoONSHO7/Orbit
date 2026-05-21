@@ -1,4 +1,5 @@
 local _, Orbit = ...
+local L = Orbit.L
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 
@@ -100,7 +101,7 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
     panel.ScrollFrame:SetScrollChild(targetContent)
 
     local needsRender = true
-    if tabKey and tabKey ~= "Profiles" and tabKey ~= "Colors" and targetContent.OrbitRendered then
+    if tabKey and tabKey ~= "Profiles" and tabKey ~= "Textures" and targetContent.OrbitRendered then
         needsRender = false
         targetContent:Show()
     end
@@ -274,7 +275,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
     end
 
     if schema.openPluginManager then
-        local pmBtn = Layout:CreateButton(footer, "Plugin Manager", function()
+        local pmBtn = Layout:CreateButton(footer, "Advanced", function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
                 securecall("HideUIPanel", EditModeManagerFrame)
             end
@@ -283,7 +284,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
                 if Orbit._pluginSettingsCategoryID then
                     Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
                 else
-                    Orbit:Print("Plugin Manager not yet loaded.")
+                    Orbit:Print(L.MSG_PLUGIN_MGR_NOT_LOADED)
                 end
             end)
         end)

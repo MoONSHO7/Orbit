@@ -22,9 +22,6 @@ local function ResolveNonInterruptibleColor(plugin)
         or plugin:GetSetting(1, "NonInterruptibleColor") or { r = 0.7, g = 0.7, b = 0.7 }
 end
 
-CB.ResolveCastBarColor = ResolveCastBarColor
-CB.ResolveNonInterruptibleColor = ResolveNonInterruptibleColor
-
 function CB:Create(parent, bossIndex, plugin)
     local container = CreateFrame("Frame", "OrbitBoss" .. bossIndex .. "CastBarContainer", parent)
     Pixel:Enforce(container)

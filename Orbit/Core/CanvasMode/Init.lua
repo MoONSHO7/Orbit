@@ -1,7 +1,4 @@
 -- [ CANVAS MODE - INIT ] ----------------------------------------------------------------------------
--- Initialize Canvas Mode module with constants and shared state
--- This is loaded first, other modules extend the Dialog and CanvasMode namespace
---------------------------------------------------------------------------------
 
 local _, addonTable = ...
 local Orbit = addonTable

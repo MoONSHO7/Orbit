@@ -46,4 +46,4 @@ local function GetEditModeSchema()
 end
 
 -- [ REGISTRATION ]-----------------------------------------------------------------------------------
-Panel.Tabs["Edit Mode"] = { plugin = EditModePlugin, schema = GetEditModeSchema }
+Panel.Tabs[L.CFG_TAB_EDIT_MODE] = { plugin = EditModePlugin, schema = GetEditModeSchema }

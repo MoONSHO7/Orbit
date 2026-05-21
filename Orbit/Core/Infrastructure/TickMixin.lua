@@ -112,3 +112,5 @@ function TickMixin:Update(frame, current, max, smoothing)
     frame.TickBar:SetMinMaxValues(0, max)
     frame.TickBar:SetValue(current, smoothing)
 end
+
+if table.freeze then table.freeze(Engine.TickMixin) end

@@ -1,6 +1,7 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
+local L = Orbit.L
 
 ---@class OrbitLayout
 Engine.Layout = {}
@@ -429,11 +430,11 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("texture", function(container, def, getValue, callback)
-        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox)
+        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox, def.valueColor, def.mediaCategory)
     end)
 
     self:RegisterWidgetType("font", function(container, def, getValue, callback)
-        return self:CreateFontPicker(container, def.label, getValue(), callback)
+        return self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
     end)
 
     self:RegisterWidgetType("editbox", function(container, def, getValue, callback)
@@ -607,7 +608,7 @@ function Layout:InitializeWidgetTypes()
                 eye.active = false
                 eye:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    GameTooltip:SetText(self.active and "Stop Preview Animation" or "Start Preview Animation")
+                    GameTooltip:SetText(self.active and L.CFG_PREVIEW_ANIM_STOP or L.CFG_PREVIEW_ANIM_START)
                     GameTooltip:Show()
                 end)
                 eye:SetScript("OnLeave", function() GameTooltip:Hide() end)

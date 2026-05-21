@@ -290,7 +290,7 @@ end
 -- Returns state: "active" during glow window, "cooldown" while recharging, "ready" otherwise.
 function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     if not issecretvalue(chargeInfo.currentCharges) then
-        icon._trackedCharges = chargeInfo.currentCharges
+        icon._charges = chargeInfo.currentCharges
         icon._knownRechargeDuration = chargeInfo.cooldownDuration
         icon._rechargeEndsAt = (chargeInfo.cooldownStartTime > 0 and chargeInfo.cooldownDuration > 0) and (chargeInfo.cooldownStartTime + chargeInfo.cooldownDuration) or nil
     end
@@ -301,11 +301,11 @@ function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
         icon.Cooldown:SetCooldownFromDurationObject(chargeDurObj, true)
     else
         icon.Cooldown:Clear()
-        icon._trackedCharges = icon._maxCharges
+        icon._charges = icon._maxCharges
         icon._rechargeEndsAt = nil
     end
 
-    local allConsumed = icon._trackedCharges and icon._trackedCharges == 0
+    local allConsumed = icon._charges and icon._charges == 0
     icon.Icon:SetDesaturation(allConsumed and 1 or 0)
     icon.Cooldown:SetAlpha(1)
 

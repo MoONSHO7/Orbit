@@ -447,12 +447,12 @@ end
 
 -- Safety net: drain all pending anchors after PLAYER_ENTERING_WORLD.
 if Orbit.EventBus then
-    Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
         Persistence:DrainAllPending()
     end)
 
     -- Two-frame defer so ReconcileChain and SetContainerActive settle before re-anchoring.
-    Orbit.EventBus:On("PLAYER_SPECIALIZATION_CHANGED", function()
+    Orbit.EventBus:On("ORBIT_PLAYER_SPECIALIZATION_CHANGED", function()
         C_Timer.After(0, function()
             C_Timer.After(0, function()
                 Persistence:RestoreAffectedBySpecChange()

@@ -8,6 +8,7 @@ local SYSTEM_ID = "Orbit_TalkingHead"
 local DEFAULT_OFFSET_Y = -100
 
 local Plugin = Orbit:RegisterPlugin("Talking Head", SYSTEM_ID, {
+    displayName = L.PLG_NAME_TALKING_HEAD,
     defaults = {
         Scale = 60,
     },
@@ -43,7 +44,7 @@ function Plugin:OnLoad()
     self.frame:SetSize(500, 100) -- Approximate TalkingHead size
     self.frame:SetClampedToScreen(true) -- Prevent dragging off-screen
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Talking Head"
+    self.frame.editModeName = self.displayName
 
     -- Anchor Options: Allow anchoring but disable property sync
     self.frame.anchorOptions = {
@@ -100,14 +101,9 @@ function Plugin:ReparentAll()
         end)
         return
     end
-    if TalkingHeadFrame:GetParent() ~= self.frame then
-        local parent = TalkingHeadFrame:GetParent()
-        -- Only capture from native Blizzard parents, never from another addon's container
-        if parent ~= UIParent and parent ~= (TalkingHeadContainerFrame or UIParent) then
-            self.conflicted = true
-            return
-        end
-        TalkingHeadFrame:SetParent(self.frame)
+    -- §4.4: native-parent capture via the shared NativeBarMixin helper.
+    if not self:CaptureFromNativeParent(TalkingHeadFrame, { UIParent, TalkingHeadContainerFrame or UIParent }) then
+        return
     end
 
     TalkingHeadFrame:ClearAllPoints()

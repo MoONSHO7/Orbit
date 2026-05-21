@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local LSM = LibStub("LibSharedMedia-3.0")
 local ResourceMixin = Orbit.ResourceBarMixin
@@ -38,6 +39,7 @@ local SYSTEM_ID = "Orbit_PlayerResources"
 local SYSTEM_INDEX = 1
 
 local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
+    displayName = L.PLG_NAME_PLAYER_RESOURCES,
     liveToggle = true,
     canvasMode = true,
     disabledSpecs = {

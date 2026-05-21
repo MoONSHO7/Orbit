@@ -5,6 +5,7 @@ local OrbitEngine = Orbit.Engine
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Focus Cast Bar", "Orbit_FocusCastBar", {
+    displayName = L.PLG_NAME_FOCUS_CAST_BAR,
     liveToggle = true,
     defaults = Orbit.CastBarMixin.sharedDefaults,
 })
@@ -21,7 +22,7 @@ end
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
     local CastBar = self:CreateCastBarFrame("OrbitFocusCastBar", {
-        editModeName = "Focus Cast Bar",
+        editModeName = self.displayName,
         yOffset = (Orbit.Constants.PlayerCastBar.DefaultY or -150) + 50,
     })
 

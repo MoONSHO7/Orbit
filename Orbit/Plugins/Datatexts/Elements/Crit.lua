@@ -1,13 +1,12 @@
--- Crit.lua
--- Crit datatext: shows current Critical Strike percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local NumericOrNil = Orbit.SecretValueUtils.NumericOrNil
 local L = Orbit.L
 
 local CR_CRIT_MELEE = 9
 
-local W = DT.BaseDatatext:New("Crit")
+local W = DT.BaseDatatext:New("Crit", L.PLU_DT_CRIT_NAME)
 W.showPercentage = true
 
 function W:Update()
@@ -52,7 +51,6 @@ function W:Init()
     self:RegisterUnitEvent("UNIT_AURA", "player")
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetCategory("CHARACTER")
     self.leftClickHint = L.PLU_DT_STAT_TOGGLE
     self:Register()
     self:Update()

@@ -22,7 +22,6 @@ local TEXT_PAD_INNER = DM.TextPadInner
 local VIEW_TIMEOUT_SECONDS = DM.ViewTimeoutSeconds
 local NAME_AFTER_RANK_PAD = DM.NameAfterRankPad
 local DPS_AFTER_TOTAL_PAD = DM.DpsAfterTotalPad
-local BACKDROP_ALPHA = DM.BackdropAlpha
 local EMPTY_HOVER_ALPHA = 0.5
 
 local Plugin = Orbit:GetPlugin(DM.SystemID)
@@ -277,7 +276,6 @@ local function CreateBar(parent)
 
     bar.bg = bar:CreateTexture(nil, "BACKGROUND")
     bar.bg:SetAllPoints(bar.StatusBar)
-    bar.bg:SetColorTexture(0, 0, 0, 0.4)
     Orbit.Skin:RegisterMaskedSurface(bar.StatusBar, bar.bg)
     if parent._visibleRect then Orbit.Skin:RegisterMaskedSurface(parent._visibleRect, bar.bg) end
 
@@ -627,8 +625,13 @@ end
 
 local function RefreshBackgrounds(frame, def)
     local mode = def.background
+    -- The meter has no backdrop colour picker; per-bar and per-frame backdrops both use the
+    -- global "Background" colour (Textures tab).
+    local c = Orbit.Skin:GetBackgroundColor()
+    frame._backdrop:SetColorTexture(c.r, c.g, c.b, c.a)
     frame._backdrop:SetShown(mode == BG.Frame)
     for _, bar in ipairs(frame.bars) do
+        bar.bg:SetColorTexture(c.r, c.g, c.b, c.a)
         bar.bg:SetShown(mode == BG.PerBar)
     end
 end
@@ -639,6 +642,12 @@ local function LayoutBars(frame, def)
     local width = GetEffectiveWidth(frame, def)
     local frameScale = frame:GetEffectiveScale()
     local stride = def.barHeight + def.barGap
+    -- S20-L1.b: hoist LSM:Fetch + font/outline resolves out of the per-bar loop. The 0.5s UITicker
+    -- iterates up-to-40-bars × up-to-5-meters; each GetBarTexture/GetFont is a LibSharedMedia table
+    -- walk through registered statusbars / fonts.
+    local barTexture = GetBarTexture()
+    local titleFont = GetFont()
+    local titleOutline = GetFontOutline()
     for i = 1, count do
         local bar = frame.bars[i] or CreateBar(frame)
         frame.bars[i] = bar
@@ -648,7 +657,7 @@ local function LayoutBars(frame, def)
         bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, yTop)
         bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, yTop)
         -- Do NOT reset font here: ApplyCanvasState owns font via overrides, reset would wipe them.
-        bar.StatusBar:SetStatusBarTexture(GetBarTexture())
+        bar.StatusBar:SetStatusBarTexture(barTexture)
         LayoutBarInternals(bar, def)
         bar:Show()
     end
@@ -657,7 +666,7 @@ local function LayoutBars(frame, def)
     frame:SetSize(width, FrameHeightFor(def, count))
     RefreshBorders(frame, def)
     RefreshBackgrounds(frame, def)
-    frame._title:SetFont(GetFont(), def.titleSize, GetFontOutline())
+    frame._title:SetFont(titleFont, def.titleSize, titleOutline)
     AttachCanvasComponents(frame)
 end
 
@@ -674,8 +683,12 @@ local SHORT_BREAKPOINTS = {
 local SHORT_OPTIONS = { breakpointData = SHORT_BREAKPOINTS }
 
 -- Declared above BuildMeterFrame: CreateCanvasPreview closure captures this upvalue at parse time.
+-- DamageMeterCombatSource totalAmount/amountPerSecond are secret in combat per
+-- DamageMeterDocumentation.lua:204-205 (no NeverSecret on those fields; getter is SecretWhenInCombat).
+-- issecretvalue-guard first; on the secret path the `not value` empty-text branch is skipped
+-- (Abbreviate/BreakUpLargeNumbers accept secret args; SetFormattedText is a C-sink).
 local function WriteNumberField(fs, value, overrides)
-    if not value then fs:SetText(""); return end
+    if not issecretvalue(value) and not value then fs:SetText(""); return end
     local format = overrides and overrides.Format
     if format == "Full" then
         fs:SetFormattedText("%s", BreakUpLargeNumbers(value))
@@ -698,7 +711,6 @@ local function BuildMeterFrame(id, def)
 
     -- [ EDIT MODE SELECTION PROTOCOL ] ----------------------------------------
     frame.systemIndex = id
-    frame.recordId = id
     frame.editModeName = L.PLU_DM_EDIT_MODE_NAME_F:format(id)
     frame.orbitPlugin = Plugin
     -- Any-edge anchoring: DM stack can snap T/B (width propagates via orbitWidthSync) or L/R
@@ -824,7 +836,6 @@ local function BuildMeterFrame(id, def)
 
     frame._backdrop = frame._visibleRect:CreateTexture(nil, "BACKGROUND")
     frame._backdrop:SetAllPoints(frame._visibleRect)
-    frame._backdrop:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
     Orbit.Skin:RegisterMaskedSurface(frame._visibleRect, frame._backdrop)
 
     -- Parented to outer frame so it can render outside _visibleRect bounds; anchors track the rect.
@@ -986,7 +997,8 @@ local function BuildMeterFrame(id, def)
 
         local bg = bar:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints(bar)
-        bg:SetColorTexture(0, 0, 0, BACKDROP_ALPHA)
+        local previewBg = Orbit.Skin:GetBackgroundColor()
+        bg:SetColorTexture(previewBg.r, previewBg.g, previewBg.b, previewBg.a)
         Orbit.Skin:RegisterMaskedSurface(preview, bg)
 
         local rank = preview:CreateFontString(nil, "OVERLAY")
@@ -996,7 +1008,7 @@ local function BuildMeterFrame(id, def)
 
         local name = preview:CreateFontString(nil, "OVERLAY")
         name:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
-        name:SetText(playerName or "Player")
+        name:SetText(playerName or L.PLU_DM_PREVIEW_PLAYER)
         name:SetTextColor(1, 1, 1)
 
         local positions       = currentDef.componentPositions or {}
@@ -1078,26 +1090,26 @@ function Plugin:ReshufflePreviewRoster()
 end
 
 local NPC_DUMMY_SOURCES = {
-    { name = "Molten Construct",  specIconID = "Interface\\Icons\\Ability_Hunter_Pet_Core",        totalAmount = 2400000, amountPerSecond = 13333 },
-    { name = "Soul Drinker",      specIconID = "Interface\\Icons\\Spell_Shadow_SoulLeech_3",       totalAmount = 2180000, amountPerSecond = 12111 },
-    { name = "Raging Proto-Drake",specIconID = "Interface\\Icons\\INV_Misc_Head_Dragon_01",        totalAmount = 1960000, amountPerSecond = 10888 },
-    { name = "Corrupted Sentinel",specIconID = "Interface\\Icons\\Spell_Shadow_UnholyStrength",    totalAmount = 1840000, amountPerSecond = 10222 },
-    { name = "Frostbound Ogre",   specIconID = "Interface\\Icons\\INV_Misc_MonsterHorn_09",        totalAmount = 1720000, amountPerSecond = 9555  },
-    { name = "Shadow Acolyte",    specIconID = "Interface\\Icons\\Spell_Shadow_ShadowWordPain",    totalAmount = 1550000, amountPerSecond = 8611  },
-    { name = "Arcane Wyrm",       specIconID = "Interface\\Icons\\INV_Misc_Head_Dragon_Blue",      totalAmount = 1410000, amountPerSecond = 7833  },
-    { name = "Stonebound Golem",  specIconID = "Interface\\Icons\\Spell_Nature_EarthShock",        totalAmount = 1270000, amountPerSecond = 7055  },
-    { name = "Ravenous Mawrat",   specIconID = "Interface\\Icons\\Ability_Hunter_Pet_Rat",         totalAmount = 1140000, amountPerSecond = 6333  },
-    { name = "Fel Imp",           specIconID = "Interface\\Icons\\Spell_Shadow_SummonImp",         totalAmount = 1020000, amountPerSecond = 5666  },
-    { name = "Spectral Banshee",  specIconID = "Interface\\Icons\\Spell_Shadow_AntiShadow",        totalAmount = 910000,  amountPerSecond = 5055  },
-    { name = "Infernal Hound",    specIconID = "Interface\\Icons\\Spell_Shadow_SummonVoidWalker",  totalAmount = 820000,  amountPerSecond = 4555  },
-    { name = "Blightcaller",      specIconID = "Interface\\Icons\\Ability_Creature_Poison_05",     totalAmount = 730000,  amountPerSecond = 4055  },
-    { name = "Venomous Skitterer",specIconID = "Interface\\Icons\\Ability_Hunter_Pet_Spider",      totalAmount = 650000,  amountPerSecond = 3611  },
-    { name = "Thornclaw Stalker", specIconID = "Interface\\Icons\\Ability_Druid_Rake",             totalAmount = 580000,  amountPerSecond = 3222  },
-    { name = "Pyroclast Elemental",specIconID = "Interface\\Icons\\Spell_Fire_Volcano",            totalAmount = 510000,  amountPerSecond = 2833  },
-    { name = "Glacial Shardbearer",specIconID = "Interface\\Icons\\Spell_Frost_IceShard",          totalAmount = 450000,  amountPerSecond = 2500  },
-    { name = "Abyssal Lurker",    specIconID = "Interface\\Icons\\Ability_Creature_Cursed_04",     totalAmount = 400000,  amountPerSecond = 2222  },
-    { name = "Void Stalker",      specIconID = "Interface\\Icons\\Spell_Shadow_ShadowFiend",       totalAmount = 350000,  amountPerSecond = 1944  },
-    { name = "Bone Horror",       specIconID = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_02",    totalAmount = 300000,  amountPerSecond = 1666  },
+    { name = L.PLU_DM_DUMMY_MOLTEN_CONSTRUCT,    specIconID = "Interface\\Icons\\Ability_Hunter_Pet_Core",        totalAmount = 2400000, amountPerSecond = 13333 },
+    { name = L.PLU_DM_DUMMY_SOUL_DRINKER,        specIconID = "Interface\\Icons\\Spell_Shadow_SoulLeech_3",       totalAmount = 2180000, amountPerSecond = 12111 },
+    { name = L.PLU_DM_DUMMY_RAGING_PROTODRAKE,   specIconID = "Interface\\Icons\\INV_Misc_Head_Dragon_01",        totalAmount = 1960000, amountPerSecond = 10888 },
+    { name = L.PLU_DM_DUMMY_CORRUPTED_SENTINEL,  specIconID = "Interface\\Icons\\Spell_Shadow_UnholyStrength",    totalAmount = 1840000, amountPerSecond = 10222 },
+    { name = L.PLU_DM_DUMMY_FROSTBOUND_OGRE,     specIconID = "Interface\\Icons\\INV_Misc_MonsterHorn_09",        totalAmount = 1720000, amountPerSecond = 9555  },
+    { name = L.PLU_DM_DUMMY_SHADOW_ACOLYTE,      specIconID = "Interface\\Icons\\Spell_Shadow_ShadowWordPain",    totalAmount = 1550000, amountPerSecond = 8611  },
+    { name = L.PLU_DM_DUMMY_ARCANE_WYRM,         specIconID = "Interface\\Icons\\INV_Misc_Head_Dragon_Blue",      totalAmount = 1410000, amountPerSecond = 7833  },
+    { name = L.PLU_DM_DUMMY_STONEBOUND_GOLEM,    specIconID = "Interface\\Icons\\Spell_Nature_EarthShock",        totalAmount = 1270000, amountPerSecond = 7055  },
+    { name = L.PLU_DM_DUMMY_RAVENOUS_MAWRAT,     specIconID = "Interface\\Icons\\Ability_Hunter_Pet_Rat",         totalAmount = 1140000, amountPerSecond = 6333  },
+    { name = L.PLU_DM_DUMMY_FEL_IMP,             specIconID = "Interface\\Icons\\Spell_Shadow_SummonImp",         totalAmount = 1020000, amountPerSecond = 5666  },
+    { name = L.PLU_DM_DUMMY_SPECTRAL_BANSHEE,    specIconID = "Interface\\Icons\\Spell_Shadow_AntiShadow",        totalAmount = 910000,  amountPerSecond = 5055  },
+    { name = L.PLU_DM_DUMMY_INFERNAL_HOUND,      specIconID = "Interface\\Icons\\Spell_Shadow_SummonVoidWalker",  totalAmount = 820000,  amountPerSecond = 4555  },
+    { name = L.PLU_DM_DUMMY_BLIGHTCALLER,        specIconID = "Interface\\Icons\\Ability_Creature_Poison_05",     totalAmount = 730000,  amountPerSecond = 4055  },
+    { name = L.PLU_DM_DUMMY_VENOMOUS_SKITTERER,  specIconID = "Interface\\Icons\\Ability_Hunter_Pet_Spider",      totalAmount = 650000,  amountPerSecond = 3611  },
+    { name = L.PLU_DM_DUMMY_THORNCLAW_STALKER,   specIconID = "Interface\\Icons\\Ability_Druid_Rake",             totalAmount = 580000,  amountPerSecond = 3222  },
+    { name = L.PLU_DM_DUMMY_PYROCLAST_ELEMENTAL, specIconID = "Interface\\Icons\\Spell_Fire_Volcano",             totalAmount = 510000,  amountPerSecond = 2833  },
+    { name = L.PLU_DM_DUMMY_GLACIAL_SHARDBEARER, specIconID = "Interface\\Icons\\Spell_Frost_IceShard",           totalAmount = 450000,  amountPerSecond = 2500  },
+    { name = L.PLU_DM_DUMMY_ABYSSAL_LURKER,      specIconID = "Interface\\Icons\\Ability_Creature_Cursed_04",     totalAmount = 400000,  amountPerSecond = 2222  },
+    { name = L.PLU_DM_DUMMY_VOID_STALKER,        specIconID = "Interface\\Icons\\Spell_Shadow_ShadowFiend",       totalAmount = 350000,  amountPerSecond = 1944  },
+    { name = L.PLU_DM_DUMMY_BONE_HORROR,         specIconID = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_02",    totalAmount = 300000,  amountPerSecond = 1666  },
 }
 
 -- Frame size is static (full barCount); only _visibleRect is elastic so hit area stays stable.
@@ -1134,8 +1146,6 @@ local DISCRETE_METRICS = {
 local function PostProcessDiscrete(bar, source, meterType, positions, disabled)
     local kind = DISCRETE_METRICS[meterType]
     if not kind then return end
-    if source.displayValue then return end
-
     local targetFS, otherFS, targetKey
     if disabled.DamageDone then
         targetFS, otherFS, targetKey = bar.DPS, bar.DamageDone, "DPS"
@@ -1182,13 +1192,8 @@ local function PaintBar(bar, rank, source, maxAmount, iconPosition, positions, m
     local nameOverrides  = positions.Name       and positions.Name.overrides       or nil
     local dpsOverrides   = positions.DPS        and positions.DPS.overrides        or nil
     local totalOverrides = positions.DamageDone and positions.DamageDone.overrides or nil
-    if source.displayValue then
-        bar.DPS:SetText("")
-        bar.DamageDone:SetText(source.displayValue)
-    else
-        WriteNumberField(bar.DPS,        source.amountPerSecond, dpsOverrides)
-        WriteNumberField(bar.DamageDone, source.totalAmount,     totalOverrides)
-    end
+    WriteNumberField(bar.DPS,        source.amountPerSecond, dpsOverrides)
+    WriteNumberField(bar.DamageDone, source.totalAmount,     totalOverrides)
 
     local ApplyTextColor = OrbitEngine.OverrideUtils.ApplyTextColor
     local classFile = source.classFilename
@@ -1297,23 +1302,29 @@ function RenderFrame(id)
             if spell then
                 local details = spell.combatSpellDetails
                 local rowName, rowClass, iconID
+                -- spell.spellID (DamageMeterDocumentation.lua:219) and details.unitName (:235) lack
+                -- NeverSecret; secret in combat. hasSpellID is a non-throwing presence test (a secret
+                -- value is non-nil by definition); the rowName "" normalization is skipped on the
+                -- secret path so the FontString sink receives the value directly.
+                local spellID = spell.spellID
+                local hasSpellID = issecretvalue(spellID) or (spellID ~= nil)
                 if isHostileParent then
-                    -- Explicit blank check: details.unitName carries "" rather than nil sometimes.
                     rowName = details and details.unitName
-                    if not rowName or rowName == "" then rowName = "?" end
-                    rowClass = details and details.unitClassFilename or ""
+                    rowClass = (details and details.unitClassFilename) or ""
                     if rowClass == "" then rowClass = fallbackClass end
                     iconID = details and details.specIconID
-                    if (not iconID or iconID == 0) and spell.spellID then
-                        iconID = C_Spell.GetSpellTexture(spell.spellID)
+                    if (not iconID or iconID == 0) and hasSpellID then
+                        iconID = C_Spell.GetSpellTexture(spellID)
                     end
                 else
-                    if spell.spellID then
-                        rowName = C_Spell.GetSpellName(spell.spellID)
-                        iconID  = C_Spell.GetSpellTexture(spell.spellID)
+                    if hasSpellID then
+                        rowName = C_Spell.GetSpellName(spellID)
+                        iconID  = C_Spell.GetSpellTexture(spellID)
                     end
-                    if not rowName or rowName == "" then rowName = "?" end
                     rowClass = fallbackClass
+                end
+                if not issecretvalue(rowName) and (not rowName or rowName == "") then
+                    rowName = "?"
                 end
                 _breakdownSource.name            = rowName
                 _breakdownSource.classFilename   = rowClass

@@ -4,6 +4,7 @@
 local _, Orbit = ...
 local Engine = Orbit.Engine
 local C = Orbit.Constants
+local L = Orbit.L
 
 local Tooltip = {}
 Engine.SelectionTooltip = Tooltip
@@ -21,7 +22,7 @@ local ANCHOR_ALIGN_HEX = {
 
 function Tooltip:BuildAnchorLabel(align)
     local hex = ANCHOR_ALIGN_HEX[align] or "FFFFFF"
-    return "|cFF" .. hex .. "Anchor: " .. align .. "|r"
+    return "|cFF" .. hex .. L.CFG_EM_ANCHOR .. " " .. align .. "|r"
 end
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
@@ -136,7 +137,7 @@ function Tooltip:ShowPosition(frame, Selection, noFade, anchorLabel)
     if parent then
         local anchor = Engine.FrameAnchor.anchors[frame]
         local padding = anchor and anchor.padding or 0
-        displayText = "Distance: " .. padding
+        displayText = L.CFG_EM_DISTANCE .. " " .. padding
     else
         displayText = string.format("%d, %d", relX, relY)
     end
@@ -186,9 +187,9 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     -- Build tooltip text based on anchor type
     local tooltipText
     if anchorX == "CENTER" and anchorY == "CENTER" then
-        tooltipText = string.format("%s\nJustify: %s\nPosition: %d, %d", anchorStr, justifyStr, displayPosX, displayPosY)
+        tooltipText = string.format("%s\n%s %s\n%s %d, %d", anchorStr, L.CFG_EM_JUSTIFY, justifyStr, L.CFG_EM_POSITION, displayPosX, displayPosY)
     else
-        tooltipText = string.format("%s\nJustify: %s\nOffset: %d, %d", anchorStr, justifyStr, displayOffX, displayOffY)
+        tooltipText = string.format("%s\n%s %s\n%s %d, %d", anchorStr, L.CFG_EM_JUSTIFY, justifyStr, L.CFG_EM_OFFSET, displayOffX, displayOffY)
     end
 
     tooltip.text:SetText(tooltipText)

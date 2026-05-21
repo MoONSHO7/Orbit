@@ -14,6 +14,7 @@ local RAID_TARGET_TEXTURE_COLUMNS = 4
 local RAID_TARGET_TEXTURE_ROWS = 4
 
 local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
+    displayName = L.PLG_NAME_PLAYER_FRAME,
     canvasMode = true,
     defaults = {
         Width = 160,
@@ -89,7 +90,7 @@ function Plugin:OnLoad()
     self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "player", "OrbitPlayerFrame")
     self.mountedConfig.frame = self.frame
-    self.frame.editModeName = "Player Frame"
+    self.frame.editModeName = self.displayName
     self.frame.systemIndex = PLAYER_FRAME_INDEX
     self.frame.showFilterTabs = true
 
@@ -353,7 +354,7 @@ function Plugin:OnLoad()
 
     self:ApplySettings(self.frame)
 
-    Orbit.EventBus:On("GROUP_ROSTER_SETTLED", function()
+    Orbit.EventBus:On("ORBIT_GROUP_ROSTER_SETTLED", function()
         self:UpdateGroupPosition(self.frame, self)
     end, self)
 
@@ -412,20 +413,7 @@ function Plugin:ApplySettings(frame)
 
     local enableHover = self:GetSetting(systemIndex, "ShowOnMouseover") ~= false
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, systemIndex, "OutOfCombatFade", enableHover) end
-    Orbit.EventBus:Fire("PLAYER_SETTINGS_CHANGED")
-end
-
-function Plugin:UpdateVisuals(frame)
-    if frame and frame.UpdateAll then
-        frame:UpdateAll()
-        self:UpdateVisualsExtended(frame, PLAYER_FRAME_INDEX)
-        self:UpdateCombatIcon(frame, self)
-        self:UpdateRoleIcon(frame, self)
-        self:UpdateLeaderIcon(frame, self)
-        self:UpdateMarkerIcon(frame, self)
-        self:UpdateGroupPosition(frame, self)
-        self:UpdatePvpIcon(frame, self)
-    end
+    Orbit.EventBus:Fire("ORBIT_PLAYER_SETTINGS_CHANGED")
 end
 
 -- Icon update functions (UpdateCombatIcon, UpdateRoleIcon, UpdateLeaderIcon, UpdateMarkerIcon, UpdateGroupPosition)

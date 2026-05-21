@@ -40,7 +40,7 @@ function Manager:Refresh(force)
     if not force and shouldHide == cachedShouldHide then return end
     cachedShouldHide = shouldHide
 
-    Orbit.EventBus:Fire("MOUNTED_VISIBILITY_CHANGED", shouldHide)
+    Orbit.EventBus:Fire("ORBIT_MOUNTED_VISIBILITY_CHANGED", shouldHide)
 end
 
 -- [ EVENT REGISTRATION ]-----------------------------------------------------------------------------

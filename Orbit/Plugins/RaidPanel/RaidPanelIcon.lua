@@ -2,6 +2,7 @@
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
+local GameTooltip = Orbit.Tooltip
 
 local InCombatLockdown = InCombatLockdown
 local math_floor = math.floor
@@ -44,10 +45,8 @@ end
 local SHAPE_CIRCLE = 1
 
 local function GetBackdropColor()
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    local c = gs and gs.BackdropColour
-    if c then return c.r or 0, c.g or 0, c.b or 0, c.a or 1 end
-    return 0.145, 0.145, 0.145, 0.7
+    local c = Orbit.Skin:GetBackgroundColor()
+    return c.r or 0, c.g or 0, c.b or 0, c.a or 1
 end
 
 function Icon.ApplyShape(icon, shape, mergeBorders)

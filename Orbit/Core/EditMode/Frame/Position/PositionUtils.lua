@@ -1,6 +1,4 @@
 -- [ ORBIT POSITION UTILITIES ]-----------------------------------------------------------------------
--- Shared position calculation functions for anchor, offset, and alignment calculations.
--- Used by CanvasModeDialog, ComponentDrag, and UnitButton.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine
@@ -8,20 +6,10 @@ local Engine = Orbit.Engine
 local PositionUtils = {}
 Engine.PositionUtils = PositionUtils
 
--------------------------------------------------
--- ANCHOR CALCULATION
--------------------------------------------------
-
--- Threshold for snapping to CENTER anchor (in pixels)
--- When position is within this range of the center line, anchor to CENTER
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
 local CENTER_THRESHOLD = 5
 
--- Calculate anchor type, edge offsets, and justifyH based on center-relative position
--- @param posX: X position relative to parent center (positive = right)
--- @param posY: Y position relative to parent center (positive = up)
--- @param halfW: Half width of parent frame
--- @param halfH: Half height of parent frame
--- @return anchorX, anchorY, offsetX, offsetY, justifyH
+-- [ ANCHOR CALCULATION ] ----------------------------------------------------------------------------
 function PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
     local anchorX, offsetX, justifyH
     local anchorY, offsetY
@@ -60,7 +48,7 @@ function PositionUtils.CalculateAnchor(posX, posY, halfW, halfH)
     return anchorX, anchorY, offsetX, offsetY, justifyH
 end
 
--- Inverse of CalculateAnchor: convert anchor-based offsets back to center-relative coordinates
+-- inverse of CalculateAnchor.
 function PositionUtils.AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW, halfH)
     local centerX, centerY = 0, 0
     if anchorX == "LEFT" then centerX = (offsetX or 0) - halfW
@@ -70,14 +58,7 @@ function PositionUtils.AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW,
     return centerX, centerY
 end
 
--------------------------------------------------
--- ANCHOR POINT BUILDER
--------------------------------------------------
-
--- Build anchor point string from anchorX and anchorY components
--- @param anchorX: "LEFT", "CENTER", or "RIGHT"
--- @param anchorY: "TOP", "CENTER", or "BOTTOM"
--- @return anchor point string (e.g., "TOPLEFT", "CENTER", "RIGHT")
+-- [ ANCHOR POINT BUILDER ] -------------------------------------------------------------------------
 function PositionUtils.BuildAnchorPoint(anchorX, anchorY)
     if anchorY == "CENTER" and anchorX == "CENTER" then
         return "CENTER"

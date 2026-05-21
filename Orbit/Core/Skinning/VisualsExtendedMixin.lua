@@ -92,3 +92,5 @@ function Mixin:UpdateVisualsExtended(frame, systemIndex, overrideLevel)
     self:UpdateLevelDisplay(frame, systemIndex, overrideLevel)
     self:UpdateClassificationVisuals(frame, systemIndex)
 end
+
+if table.freeze then table.freeze(Orbit.VisualsExtendedMixin) end

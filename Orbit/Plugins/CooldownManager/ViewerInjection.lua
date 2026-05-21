@@ -97,6 +97,50 @@ local function CreateInjectedIcon(parent, systemIndex)
 end
 
 -- [ ICON UPDATE ] -----------------------------------------------------------------------------------
+-- C_Container.GetItemCooldown returns are conditionally secret under M+/raid encounter cooldown
+-- restrictions for non-whitelisted user-dragged items; the doc (ContainerDocumentation.lua:328-344)
+-- has no NeverSecret/SecretReturns annotation. Guard issecretvalue BEFORE any Lua-side branching;
+-- on the secret path route start/duration straight into the Cooldown:SetCooldown C-sink.
+local function ApplyItemCooldownAndCount(icon)
+    local start, duration = C_Container.GetItemCooldown(icon.trackedId)
+    if issecretvalue(start) or issecretvalue(duration) then
+        icon.Cooldown:SetCooldown(start, duration)
+        icon.ActiveCooldown:Clear()
+        icon.Icon:SetDesaturation(1)
+    else
+        local threshold = icon.useSpellId and 1.5 or 0          -- useSpellId filters GCD-only cooldown
+        if start and duration and duration > threshold then
+            if icon.activeDuration and duration > icon.activeDuration
+               and (GetTime() - start) < icon.activeDuration then
+                icon.Cooldown:Clear()
+                icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
+                icon.Icon:SetDesaturation(0)
+            else
+                icon.Cooldown:SetCooldown(start, duration)
+                icon.ActiveCooldown:Clear()
+                icon.Icon:SetDesaturation(1)
+            end
+        elseif icon.useSpellId then
+            local durObj = C_Spell.GetSpellCooldownDuration(icon.useSpellId)
+            if durObj then
+                icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
+                icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
+            else
+                icon.Cooldown:Clear()
+                icon.Icon:SetDesaturation(0)
+            end
+            icon.ActiveCooldown:Clear()
+        else
+            icon.Cooldown:Clear()
+            icon.ActiveCooldown:Clear()
+            icon.Icon:SetDesaturation(0)
+        end
+    end
+    local count = C_Item.GetItemCount(icon.trackedId, false, true)
+    if count and count > 1 then icon.ChargeCount.Current:SetText(count); icon.ChargeCount:Show()
+    else icon.ChargeCount:Hide() end
+end
+
 function Injection:UpdateIcon(icon)
     if not icon.trackedId then icon:Hide(); return end
 
@@ -159,52 +203,8 @@ function Injection:UpdateIcon(icon)
                 icon.Cooldown:Clear()
                 icon.Icon:SetDesaturation(1)
                 icon.ChargeCount.Current:SetText("0"); icon.ChargeCount:Show()
-            elseif icon.useSpellId then
-                local start, duration = C_Container.GetItemCooldown(icon.trackedId)
-                if start and duration and duration > 1.5 then
-                    if icon.activeDuration and duration > icon.activeDuration and (GetTime() - start) < icon.activeDuration then
-                        icon.Cooldown:Clear()
-                        icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                        icon.Icon:SetDesaturation(0)
-                    else
-                        icon.Cooldown:SetCooldown(start, duration)
-                        icon.ActiveCooldown:Clear()
-                        icon.Icon:SetDesaturation(1)
-                    end
-                else
-                    local durObj = C_Spell.GetSpellCooldownDuration(icon.useSpellId)
-                    if durObj then
-                        icon.Cooldown:SetCooldownFromDurationObject(durObj, true)
-                        icon.Icon:SetDesaturation(durObj:EvaluateRemainingPercent(DESAT_CURVE))
-                    else
-                        icon.Cooldown:Clear()
-                        icon.Icon:SetDesaturation(0)
-                    end
-                    icon.ActiveCooldown:Clear()
-                end
-                local count = C_Item.GetItemCount(icon.trackedId, false, true)
-                if count and count > 1 then icon.ChargeCount.Current:SetText(count); icon.ChargeCount:Show()
-                else icon.ChargeCount:Hide() end
             else
-                local start, duration = C_Container.GetItemCooldown(icon.trackedId)
-                if start and duration and duration > 0 then
-                    if icon.activeDuration and duration > icon.activeDuration and (GetTime() - start) < icon.activeDuration then
-                        icon.Cooldown:Clear()
-                        icon.ActiveCooldown:SetCooldown(start, icon.activeDuration)
-                        icon.Icon:SetDesaturation(0)
-                    else
-                        icon.Cooldown:SetCooldown(start, duration)
-                        icon.ActiveCooldown:Clear()
-                        icon.Icon:SetDesaturation(1)
-                    end
-                else
-                    icon.Cooldown:Clear()
-                    icon.ActiveCooldown:Clear()
-                    icon.Icon:SetDesaturation(0)
-                end
-                local count = C_Item.GetItemCount(icon.trackedId, false, true)
-                if count and count > 1 then icon.ChargeCount.Current:SetText(count); icon.ChargeCount:Show()
-                else icon.ChargeCount:Hide() end
+                ApplyItemCooldownAndCount(icon)
             end
         end
     end

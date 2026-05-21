@@ -5,6 +5,7 @@ local OrbitEngine = Orbit.Engine
 local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
 local LSM = LibStub("LibSharedMedia-3.0", true)
+local GameTooltip = Orbit.Tooltip
 
 -- [ DAMAGE METER COMPARISON ] -----------------------------------------------------------------------
 local DM = Constants.DamageMeter
@@ -383,7 +384,7 @@ local function InstallHoverBinding(hitFrame, ctx)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:ClearLines()
 
-        local header = c.mode == "spell" and GetSpellName(c.spellID) or "Overall"
+        local header = c.mode == "spell" and GetSpellName(c.spellID) or L.PLU_DM_COMPARE_OVERALL
         GameTooltip:AddLine(header, 1, 1, 1)
         GameTooltip:AddLine(" ")
 

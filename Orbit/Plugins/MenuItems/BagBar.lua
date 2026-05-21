@@ -9,6 +9,7 @@ local DEFAULT_POSITION_X = -50
 local DEFAULT_POSITION_Y = 40
 
 local Plugin = Orbit:RegisterPlugin("Bag Bar", SYSTEM_ID, {
+    displayName = L.PLG_NAME_BAG_BAR,
     defaults = {
         Scale = 100,
         Opacity = 100,
@@ -96,7 +97,7 @@ function Plugin:OnLoad()
     self.frame:SetSize(200, 40) -- Initial size, will be resized to fit content
     self.frame:SetClampedToScreen(true) -- Prevent dragging off-screen
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Bag Bar"
+    self.frame.editModeName = self.displayName
 
     -- Anchor Options: Allow anchoring but disable property sync
     self.frame.anchorOptions = {
@@ -137,7 +138,7 @@ function Plugin:TryCapture()
 
     if not self._captureRetryRegistered then
         self._captureRetryRegistered = true
-        Orbit.EventBus:On("PLAYER_ENTERING_WORLD", function()
+        Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", function()
             if not self._captured then
                 self:TryCapture()
             end
@@ -157,15 +158,9 @@ function Plugin:ReparentAll()
         end)
         return
     end
-    local parent = BagsBar:GetParent()
-    -- Only capture from native Blizzard parents, never from another addon's container
-    if parent ~= self.frame and parent ~= UIParent and parent ~= MicroMenuContainer then
-        self.conflicted = true
-        return
-    end
-    if parent ~= self.frame then
-        BagsBar:SetParent(self.frame)
-    end
+    -- §4.4: native-parent capture via the shared mixin helper (BagsBar may be parented to UIParent
+    -- or MicroMenuContainer depending on Blizzard's flow; both are sanctioned native parents).
+    if not self:CaptureFromNativeParent(BagsBar, { UIParent, MicroMenuContainer }) then return end
     BagsBar:ClearAllPoints()
     BagsBar:SetPoint("CENTER", self.frame, "CENTER", 0, 0)
     BagsBar:Show()

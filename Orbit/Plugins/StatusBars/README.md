@@ -2,7 +2,9 @@
 
 progression bars with canvas-managed text components. experience bar auto-switches across three modes — **xp** (while leveling), **delve companion** (while inside a delve), **watched reputation** (at max level or when xp is user-disabled). honor is a separate bar. both support canvas mode with three independently-positionable text components (Name / Level / Value).
 
-supporting features: rich tooltips, session rate + eta, pending-quest xp overlay, percentage block tick marks, warband-rep indicator, smooth fill animation, spark, level-up flash + sound, chat ding announce, click-to-open-panel, shift-click chat link, right-click context menu, scroll to cycle watched factions, configurable text templates, minimum-level gate.
+supporting features: rich tooltips, session rate + eta, pending-quest xp overlay, percentage block tick marks, warband-rep indicator, click-to-open-panel, shift-click chat link, shift-right-click to reset session, configurable text templates, minimum-level gate.
+
+> **Note**: `SmoothFill` setting is currently inert. The Blizzard `SmoothStatusBarMixin` caused taint in 12.0.5+ and the implementation was removed; the toggle exists in the Behaviour tab for forward-compat but `EnableSmoothFill` is a no-op (`StatusBarBase.lua`). Re-introducing it requires a taint-safe replacement.
 
 ## plugins
 
@@ -19,8 +21,8 @@ supporting features: rich tooltips, session rate + eta, pending-quest xp overlay
 | `PendingXP.lua` | quest-log scanner: sums XP rewards for quests that are ready to turn in |
 | `SessionTracker.lua` | per-bar session state persisted in `AccountSettings.StatusBarSessions`; survives `/reload`, new session after 30m idle |
 | `Tooltip.lua` | rich hover tooltips for XP / Rep / Honor / Delve with session stats, ETA, pending-xp, warband indicator, paragon cycles |
-| `StatusBarBase.lua` | shared factory: container + bar/overlay/bg/pending/spark/flash/ticks, canvas attachment, smooth-fill mixin, click dispatch, blizzard hide helper. registers `BarLevel` + `BarValue` canvas-dock schemas at file load. block ticks via `SetTickMarks(container, percent)` — percent ∈ {10, 25, 33, 50}. |
-| `ExperienceBar.lua` | three-mode (xp / delve / rep) plugin: auto-switch, rested overlay, percentage block tick marks, warband indicator, auto-watched faction, scroll to cycle recent factions, tabbed schema (Layout + Color + Behaviour) |
+| `StatusBarBase.lua` | shared factory: container + bar/overlay/bg/pending/ticks, canvas attachment, click dispatch, blizzard hide helper. registers `BarLevel` + `BarValue` canvas-dock schemas at file load. block ticks via `SetTickMarks(container, percent)` — percent ∈ {10, 25, 33, 50}. `EnableSmoothFill` is currently a no-op stub (see note in intro). |
+| `ExperienceBar.lua` | three-mode (xp / delve / rep) plugin: auto-switch, rested overlay, percentage block tick marks, warband indicator, auto-watched faction, tabbed schema (Layout + Color + Behaviour) |
 | `HonorBar.lua` | honor plugin: honor value + level, optional pvp-only gate, tabbed schema |
 | `StatusBars.xml` | load bundle — helpers (TextTemplate/PendingXP/SessionTracker/Tooltip) load first so they're available when plugins register; then StatusBarBase; then the two plugins. |
 
@@ -36,18 +38,20 @@ each bar container holds three canvas-managed text frames — `container.Name`, 
 
 the `ValueMode` dropdown lives in the Value component's canvas-dock panel. because it's `plugin = true`, changing it writes to `plugin:SetSetting(systemIndex, "ValueMode", value)` and applies to the selected plugin's bar only.
 
-## settings dialog (Layout / Color tabs)
+## settings dialog (Layout / Color / Behaviour tabs)
 
-both plugins use `SB:AddSettingsTabs` with `{ "Layout", "Color" }`:
+experience-bar uses `SB:AddSettingsTabs` with `{ "Layout", "Color", "Behaviour" }`; honor-bar uses `{ "Layout", "Color" }`:
 
 - **Layout**: Width (100–1200), Height (4–40), `Tick` (leading-edge tick width, 0–10), `Blocks` (block-tick interval — 10/25/33/50%, xp bar only), `Hide Below Level` (xp bar only), + honor-only `OnlyInPvP` checkbox
 - **Color**: `BarColor` (`colorcurve`, `singleColor = true`) — fill colour. experience-bar reputation mode still uses reaction / renown / paragon colours (user colour is only applied in xp mode).
+- **Behaviour** (experience-bar only): `TextOnMouseover` (hide text unless hovered), `SmoothFill` (currently inert — see intro note), `ShowPending` (pending-quest xp overlay toggle), `AutoWatchFaction` (auto-pick recently-gained faction at max level).
 
 per-component font / size / color live in each component's canvas dock (not in the main settings dialog).
 
 ## default component positions
 
-configured in `Core/Plugin/DefaultProfile.lua`:
+configured inline in each plugin's `RegisterPlugin` `defaults = { ComponentPositions = { ... } }`
+block (`DefaultProfile.lua` is a saved-layout snapshot, not the schema-default site):
 
 ```
 Name     → LEFT edge,   offset  +5, justify LEFT
@@ -74,7 +78,7 @@ bar fill goes through `StatusBar` sinks guarded with `issecretvalue()` in `Statu
 | experience | `PLAYER_XP_UPDATE`, `UPDATE_EXHAUSTION`, `PLAYER_LEVEL_UP`, `DISABLE_XP_GAIN`, `ENABLE_XP_GAIN`, `UPDATE_FACTION`, `QUEST_FINISHED`, `MAJOR_FACTION_UNLOCKED` |
 | honor | `HONOR_XP_UPDATE`, `HONOR_LEVEL_UPDATE`, `ZONE_CHANGED_NEW_AREA` |
 
-both also inherit `RegisterStandardEvents` (apply on `PLAYER_ENTERING_WORLD`, colours changed, edit mode enter/exit) and `RegisterVisibilityEvents` (hide in pet battles / vehicles). `canvasMode = true` auto-subscribes to `CANVAS_SETTINGS_CHANGED` for live preview.
+both also inherit `RegisterStandardEvents` (apply on `PLAYER_ENTERING_WORLD`, colours changed, edit mode enter/exit) and `RegisterVisibilityEvents` (hide in pet battles / vehicles). `canvasMode = true` auto-subscribes to `ORBIT_CANVAS_SETTINGS_CHANGED` for live preview.
 
 ## edit-mode integration & taint
 
@@ -118,4 +122,4 @@ container (Frame, edit-mode handle)
     └── Value  (Frame with .Text FontString) — canvas component key `BarValue`
 ```
 
-border + backdrop come from `Orbit.Skin:SkinBorder` + `GlobalSettings.BackdropColour`; bar texture + base font come from `LSM:Fetch` on `GlobalSettings.Texture` / `GlobalSettings.Font`. per-component overrides stack on top.
+border + backdrop come from `Orbit.Skin:SkinBorder` + `Orbit.Skin:ApplyGradientBackground` on the global "Background" colour (`GlobalSettings.UnitFrameBackdropColourCurve`, Textures tab); bar texture + base font come from `LSM:Fetch` on `GlobalSettings.Texture` / `GlobalSettings.Font`. per-component overrides stack on top.

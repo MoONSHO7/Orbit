@@ -94,7 +94,7 @@ local function PrintVersion()
     print("  |cFFAAAAAA " .. L.CMD_PROFILE_LABEL .. "|r " .. (state.Profile or "?"))
     print("  |cFFAAAAAA " .. L.CMD_SPEC_LABEL .. "|r " .. (state.Spec or "?"))
     print("  |cFFAAAAAA " .. L.CMD_PLUGINS_LABEL .. "|r " .. (state.NumPlugins or 0))
-    print("  |cFFAAAAAA " .. L.CMD_COMBAT_LABEL .. "|r " .. (state.InCombat and "Yes" or "No"))
+    print("  |cFFAAAAAA " .. L.CMD_COMBAT_LABEL .. "|r " .. (state.InCombat and L.CMN_YES or L.CMN_NO))
     print("  |cFFAAAAAA " .. L.CMD_WOW_BUILD_LABEL .. "|r " .. (build or "?"))
 end
 
@@ -123,18 +123,18 @@ local function PrintFrameInfo(pluginName)
     if not plugin then Orbit:Print(L.MSG_PLUGIN_NOT_FOUND_F:format(pluginName)); return end
     Orbit:Print(L.MSG_FRAME_INFO_F:format(plugin.name or pluginName))
     local frames = {}
-    if plugin.frame then frames[#frames + 1] = { name = "frame", f = plugin.frame } end
-    if plugin.essentialAnchor then frames[#frames + 1] = { name = "essentialAnchor", f = plugin.essentialAnchor } end
-    if plugin.utilityAnchor then frames[#frames + 1] = { name = "utilityAnchor", f = plugin.utilityAnchor } end
-    if plugin.buffIconAnchor then frames[#frames + 1] = { name = "buffIconAnchor", f = plugin.buffIconAnchor } end
+    if plugin.frame then frames[#frames + 1] = { name = L.CMD_FRAME_LABEL_MAIN, f = plugin.frame } end
+    if plugin.essentialAnchor then frames[#frames + 1] = { name = L.CMD_FRAME_LABEL_ESSENTIAL, f = plugin.essentialAnchor } end
+    if plugin.utilityAnchor then frames[#frames + 1] = { name = L.CMD_FRAME_LABEL_UTILITY, f = plugin.utilityAnchor } end
+    if plugin.buffIconAnchor then frames[#frames + 1] = { name = L.CMD_FRAME_LABEL_BUFFICON, f = plugin.buffIconAnchor } end
     if #frames == 0 then print("  " .. L.MSG_NO_FRAMES_REGISTERED); return end
     for _, entry in ipairs(frames) do
         local f = entry.f
-        local shown = f:IsShown() and "|cFF00FF00shown|r" or "|cFFFF0000hidden|r"
+        local shown = f:IsShown() and ("|cFF00FF00" .. L.CMD_FRAME_SHOWN .. "|r") or ("|cFFFF0000" .. L.CMD_FRAME_HIDDEN .. "|r")
         local alpha = string.format("%.0f%%", (f:GetAlpha() or 1) * 100)
         local w, h = math.floor(f:GetWidth() + 0.5), math.floor(f:GetHeight() + 0.5)
         local point, rel, relPoint, x, y = f:GetPoint(1)
-        local posStr = "unanchored"
+        local posStr = L.CMD_FRAME_UNANCHORED
         if point then
             local relName = (rel and rel.GetName and rel:GetName()) or "UIParent"
             posStr = string.format("%s > %s:%s (%.1f, %.1f)", point, relName, relPoint or "?", x or 0, y or 0)
@@ -226,6 +226,42 @@ local function PrintInspect(pluginName)
     end
 end
 
+-- [ LANGUAGE OVERRIDE (DEV/TEST) ]-------------------------------------------------------------------
+-- Intentionally absent from /orbit help — a dev/test tool, not a player feature.
+local function HandleLang(arg)
+    local L10n = Orbit.Localization
+    if not arg or arg == "" then
+        Orbit:Print(L.CMD_LANG_CURRENT_F:format(L10n.activeLocale))
+        if L10n.localeIsOverridden then
+            Orbit:Print(L.CMD_LANG_OVERRIDE_F:format(L10n.activeLocale, GetLocale()))
+        end
+        Orbit:Print(L.CMD_LANG_AVAILABLE)
+        print("  " .. table.concat(L10n.SUPPORTED_LOCALES, ", "))
+        Orbit:Print(L.CMD_LANG_USAGE)
+        return
+    end
+    local firstWord = arg:match("^%S+")
+    if not firstWord then Orbit:Print(L.CMD_LANG_USAGE); return end
+    local target = firstWord:lower()
+    local function persist(value)
+        if not OrbitDB then return end
+        OrbitDB.AccountSettings = OrbitDB.AccountSettings or {}
+        OrbitDB.AccountSettings.LocaleOverride = value
+    end
+    if target == "auto" or target == "default" then
+        persist(nil)
+        Orbit:Print(L.CMD_LANG_CLEARED)
+        return
+    end
+    local matched
+    for _, code in ipairs(L10n.SUPPORTED_LOCALES) do
+        if code:lower() == target then matched = code end
+    end
+    if not matched then Orbit:Print(L.CMD_LANG_INVALID_F:format(firstWord)); return end
+    persist(matched)
+    Orbit:Print(L.CMD_LANG_SET_F:format(matched))
+end
+
 -- [ SLASH HANDLER ]----------------------------------------------------------------------------------
 SLASH_ORBIT1 = "/orbit"
 SLASH_ORBIT2 = "/orb"
@@ -244,7 +280,7 @@ SlashCmdList["ORBIT"] = function(msg)
                 Panel:Hide()
             else
                 securecall("ShowUIPanel", EditModeManagerFrame)
-                Panel:Open("Global")
+                Panel:Open(L.CFG_TAB_GLOBAL)
             end
         else
             Orbit:Print(L.MSG_EDIT_MODE_UNAVAILABLE)
@@ -297,7 +333,7 @@ SlashCmdList["ORBIT"] = function(msg)
         if not systems or #systems == 0 then Orbit:Print(L.MSG_NO_PLUGINS); return end
         Orbit:Print(L.MSG_PLUGINS_LIST_HEADER)
         for _, plugin in ipairs(systems) do
-            local status = Orbit:IsPluginEnabled(plugin.name) and "|cFF00FF00ON|r" or "|cFFFF0000OFF|r"
+            local status = Orbit:IsPluginEnabled(plugin.name) and ("|cFF00FF00" .. L.CMD_STATUS_ON .. "|r") or ("|cFFFF0000" .. L.CMD_STATUS_OFF .. "|r")
             print("  " .. status .. "  |cFFFFD100" .. (plugin.name or "?") .. "|r")
         end
     elseif cmd == "profile" then
@@ -359,6 +395,8 @@ SlashCmdList["ORBIT"] = function(msg)
         else
             Orbit:Print(L.CMD_TRACKED_USAGE)
         end
+    elseif cmd == "lang" then
+        HandleLang(RestArgs())
     else
         Orbit:Print(L.CMD_UNKNOWN_COMMAND_F:format(cmd))
     end

@@ -1,7 +1,4 @@
 -- [ ORBIT OPTIONS PANEL ]----------------------------------------------------------------------------
--- Shell for the Orbit Options dialog. Owns tab registration, open/hide/refresh lifecycle, and the
--- shared helpers each tab uses to build a Global-scoped settings plugin. Individual tab schemas
--- and plugins live in `Tabs/` and register themselves into `Panel.Tabs`.
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
@@ -9,7 +6,7 @@ local Config = OrbitEngine.Config
 local L = Orbit.L
 
 -- [ TAB ORDER ]--------------------------------------------------------------------------------------
-local TAB_ORDER = { "Global", "Colors", "Edit Mode", "Profiles" }
+local TAB_ORDER = { L.CFG_TAB_GLOBAL, L.CFG_TAB_TEXTURES, L.CFG_TAB_EDIT_MODE, L.CFG_TAB_PROFILES }
 
 -- [ PANEL ]------------------------------------------------------------------------------------------
 Orbit.OptionsPanel = {}
@@ -44,7 +41,7 @@ local function FireFontChanged()
     EventRegistry:TriggerEvent("OrbitFontChanged", fontPath, outline, shadow)
 end
 
-Orbit.EventBus:On("PLAYER_ENTERING_WORLD", FireFontChanged)
+Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", FireFontChanged)
 
 local function CreateGlobalSettingsPlugin(name, onSetOverride)
     return {
@@ -143,13 +140,13 @@ function Panel:Toggle(tab)
     systemFrame.systemIndex = 1
     systemFrame.system = "Orbit_" .. tab
 
-    if tab == "Profiles" and dialog.Title then
+    if tab == L.CFG_TAB_PROFILES and dialog.Title then
         dialog.Title:SetText(L.CFG_PROFILES_TITLE_F:format(Orbit.Profile:GetActiveProfileName()))
     end
 
     local tabDef = self.Tabs[tab]
-    if tab == "Profiles" and tabDef then
-        Config:Render(dialog, systemFrame, tabDef.plugin, tabDef.schema(), "Profiles")
+    if tab == L.CFG_TAB_PROFILES and tabDef then
+        Config:Render(dialog, systemFrame, tabDef.plugin, tabDef.schema(), L.CFG_TAB_PROFILES)
     end
 
     dialog:Show()

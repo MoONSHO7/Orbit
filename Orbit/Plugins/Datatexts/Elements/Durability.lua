@@ -1,7 +1,6 @@
--- Durability.lua
--- Equipment durability datatext: shows lowest item durability percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
@@ -10,7 +9,7 @@ local DURABILITY_MED = 50
 local EQUIP_SLOTS = { "HeadSlot", "ShoulderSlot", "ChestSlot", "WaistSlot", "LegsSlot", "FeetSlot", "WristSlot", "HandsSlot", "MainHandSlot", "SecondaryHandSlot" }
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("Durability")
+local W = DT.BaseDatatext:New("Durability", L.PLU_DT_DURABILITY_NAME)
 
 function W:Update()
     local lowest = 100
@@ -54,7 +53,6 @@ function W:Init()
     self:SetUpdateTier("SLOW")
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
-    self:SetCategory("CHARACTER")
     self:Register()
     self:Update()
 end

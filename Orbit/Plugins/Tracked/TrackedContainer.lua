@@ -27,7 +27,20 @@ local EQUIPMENT_SLOTS = { 13, 14 }
 local Parser = Orbit.TooltipParser
 local ParseActiveDuration = function(t, id) return Parser:ParseActiveDuration(t, id) end
 local ParseCooldownDuration = function(t, id) return Parser:ParseCooldownDuration(t, id) end
-local BuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
+local _RawBuildPhaseCurve = function(a, c) return Parser:BuildPhaseCurve(a, c) end
+-- S18-L1: weak-valued cache mirrors TrackedBar._barFillCurveCache. Container:Apply built TWO
+-- phase curves per icon (desat + cdAlpha) — both shaped only by (activeDuration, cooldownDuration)
+-- and read-only via EvaluateRemainingPercent. One cached curve is shared across icons sharing the
+-- same duration pair AND across the two fields on a single icon.
+local _phaseCurveCache = setmetatable({}, { __mode = "v" })
+local BuildPhaseCurve = function(activeDuration, cooldownDuration)
+    local key = activeDuration .. ":" .. cooldownDuration
+    local cached = _phaseCurveCache[key]
+    if cached then return cached end
+    local curve = _RawBuildPhaseCurve(activeDuration, cooldownDuration)
+    _phaseCurveCache[key] = curve
+    return curve
+end
 
 -- [ SPELL OVERRIDE ALIAS ] --------------------------------------------------------------------------
 local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
@@ -468,12 +481,21 @@ function Container:CommitDrop(plugin, frame, gridX, gridY)
 end
 
 -- [ CURSOR WATCHER ] --------------------------------------------------------------------------------
--- Independent per-container poll; triggers Apply when ShouldShowDropHints flips.
+-- S18-C2: throttle to 20Hz (drop-zone hints don't need 60Hz fidelity) and gate on the container
+-- frame's visibility — off-spec / hidden containers each previously ran a full per-frame closure
+-- (GetContainerRecord + ShouldShowDropHints internals incl. GetCursorInfo + IsShown + IsEditMode)
+-- for the whole session.
+local CURSOR_WATCHER_INTERVAL = 0.05
 function Container:StartCursorWatcher(plugin, frame)
     if frame._cursorWatcher then return end
     local watcher = CreateFrame("Frame")
     watcher._wasShowing = false
-    watcher:SetScript("OnUpdate", function(self)
+    watcher._cursorAccum = 0
+    watcher:SetScript("OnUpdate", function(self, elapsed)
+        self._cursorAccum = self._cursorAccum + elapsed
+        if self._cursorAccum < CURSOR_WATCHER_INTERVAL then return end
+        self._cursorAccum = 0
+        if not frame:IsShown() then return end
         local record = plugin:GetContainerRecord(frame.recordId)
         if not record then return end
         local p = Orbit.Profiler

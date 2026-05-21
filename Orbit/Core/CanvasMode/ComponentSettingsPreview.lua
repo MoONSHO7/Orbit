@@ -83,6 +83,7 @@ function Settings:ApplyPortraitPreview()
     local style = overrides.PortraitStyle or "3d"
     local mirror = overrides.PortraitMirror or false
     local ringAtlas = overrides.PortraitRing or "none"
+    local portraitType = overrides.PortraitType or "portrait"
 
     local pScale = comp:GetEffectiveScale()
     local size = OrbitEngine.Pixel:Snap(32 * scale, pScale)
@@ -115,13 +116,18 @@ function Settings:ApplyPortraitPreview()
         local showBorder = overrides.PortraitBorder
         if showBorder == nil then showBorder = true end
         local borderSize = showBorder and (Orbit.db.GlobalSettings.BorderSize or 0) or 0
-        Orbit.Skin:SkinBorder(comp, comp, borderSize)
+        Orbit.Skin:SkinBorder(comp, comp, borderSize, nil, false, false, true)
     else
         if comp._model then comp._model:Hide() end
         comp.visual:Show()
-        SetPortraitTexture(comp.visual, "player")
-        comp.visual:SetTexCoord(mirror and 1 or 0, mirror and 0 or 1, 0, 1)
-        Orbit.Skin:SkinBorder(comp, comp, 0)
+        if portraitType == "classicon" then
+            local _, classFile = UnitClass("player")
+            comp.visual:SetAtlas("classicon-" .. classFile:lower())
+        else
+            SetPortraitTexture(comp.visual, "player", true)
+            comp.visual:SetTexCoord(mirror and 1 or 0, mirror and 0 or 1, 0, 1)
+        end
+        Orbit.Skin:SkinBorder(comp, comp, 0, nil, false, true)
         local ringData = PORTRAIT_RING_DATA[ringAtlas]
         if ringData and ringData.atlas then
             comp._ring:Show()
@@ -416,6 +422,7 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     local portraitStyle = plugin:GetSetting(sysIdx, "PortraitStyle") or "3d"
     self.currentOverrides = {
         PortraitStyle = portraitStyle,
+        PortraitType = plugin:GetSetting(sysIdx, "PortraitType") or "portrait",
         PortraitScale = plugin:GetSetting(sysIdx, "PortraitScale") or 120,
         PortraitBorder = plugin:GetSetting(sysIdx, "PortraitBorder"),
         PortraitMirror = plugin:GetSetting(sysIdx, "PortraitMirror") or false,

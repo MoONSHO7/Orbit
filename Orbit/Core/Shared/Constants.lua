@@ -7,12 +7,12 @@ local C = Orbit.Constants
 
 -- [ UI PANEL LAYOUT ]--------------------------------------------------------------------------------
 C.Panel = {
-    Width = 320,
-    DialogWidth = 350,
+    Width = 340,
+    DialogWidth = 370,
     MinDialogHeight = 150,
     MaxHeight = 800,
     ScrollbarWidth = 26,
-    ContentPadding = 8,
+    ContentPadding = 3,
     DividerWidth = 280,
     DividerHeight = 16,
     HeaderHeight = 55, -- Height to clear tabs completely
@@ -25,7 +25,7 @@ C.Footer = {
     BottomPadding = 12,
     ButtonHeight = 20,
     RowSpacing = 6,
-    SidePadding = 10,
+    SidePadding = 5,
     ButtonSpacing = 8,
     DividerOffset = 6,
 }
@@ -37,7 +37,10 @@ C.Widget = {
     Height = 26,
     LabelWidth = 100, -- Fixed width for left label column
     LabelGap = 3, -- Gap between label and control
-    ValueWidth = 45, -- Fixed width for right value column
+    ValueWidth = 65, -- Fixed width for right value column
+    ValueInset = 3, -- Right-edge inset for value-column content (text and controls share this)
+    ValueSwatchSize = 21, -- Color swatch box in the value column
+    ValueCheckboxSize = 26, -- Value-column checkbox; larger than the swatch so its art's padded box renders the same visible size
     CheckboxIconWidth = 32,
     CheckboxIconGap = 4,
 }
@@ -80,8 +83,8 @@ C.Levels = {
     IconContent = 1,        -- Icon backdrop
     IconSwipe = 2,          -- Cooldown swipe (border group, below glow)
     IconBorder = 3,         -- Per-icon pixel/NineSlice border
-    IconGlow = 6,           -- Pandemic/proc glow (above border)
     IconOverlay = 7,        -- Text, stacks, flash
+    IconGlow = 9,           -- Pandemic/proc glow — above per-icon AND merged group borders (IconOverlay)
     -- Editor & UI Overlays
     EditModeText = 20,
     EditModeSelection = 100,
@@ -151,27 +154,22 @@ C.Settings = {
     Spacing = { Min = -5, Max = 50, Step = 1, Default = 2 },
     Padding = { Min = -5, Max = 15, Step = 1, Default = 0 },
     Font = { Default = "Barlow Condensed Bold", FallbackPath = "Fonts\\FRIZQT__.TTF" },
-    Texture = { Default = "Solid" },
+    Texture = { Default = "Orbit Gradient Top-Bottom" },
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
-local MASK_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Masks\\"
+-- One built-in border style: "Orbit" — a flat WHITE8x8 outline sized by the Border Size slider
+-- (0-5). `pixel = true` routes it to the pixel render path: ResolveStyle returns nil for it, and
+-- a nil styleEntry is the pipeline-wide signal for flat-border mode. LibSharedMedia edge-file
+-- borders also resolve (via the `lsm:` key) and render through the legacy edge-file path.
 C.BorderStyle = {
-    Default = "flat",
+    Default = "orbit",
     Offset = 6,
     EdgeSize = 16,
+    DefaultPixelSize = 2,
+    PixelSize = { Min = 0, Max = 5, Step = 1 },
     Styles = {
-        { label = "Orbit Squared", value = "flat" },
-        { label = "Orbit Rounded", value = "rounded",
-          edgeFile = MASK_PATH .. "Orbit_Rounded_Border",
-          sliceMargin = 12 },
-    },
-    -- `margin` is the SetTextureSliceMargins value (= rendered corner pixel size); `mask` is the
-    -- matching mask asset.
-    RoundedTiers = {
-        [1] = { margin = 6,  mask = MASK_PATH .. "Orbit_Rounded_Mask_1" },
-        [2] = { margin = 12, mask = MASK_PATH .. "Orbit_Rounded_Mask_2" },
-        [3] = { margin = 20, mask = MASK_PATH .. "Orbit_Rounded_Mask_3" },
+        { label = "Orbit", value = "orbit", pixel = true },
     },
 }
 
@@ -179,6 +177,15 @@ C.BorderStyle = {
 C.BorderStyle.Lookup = {}
 for _, entry in ipairs(C.BorderStyle.Styles) do
     C.BorderStyle.Lookup[entry.value] = entry
+end
+
+-- `BorderSize`/`IconBorderSize` mirror the active Border Size slider value; layout math across
+-- the addon reads them rather than re-deriving, so they re-sync whenever the size changes.
+function C.BorderStyle.SyncEffectiveSize(gs)
+    if not gs then return end
+    local d = C.BorderStyle.DefaultPixelSize
+    gs.BorderSize = gs.PixelBorderSize or d
+    gs.IconBorderSize = gs.IconPixelBorderSize or d
 end
 
 -- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------
@@ -349,6 +356,7 @@ C.PowerTypeIds = {
 
 C.Colors = {
     Background = { r = 0.08, g = 0.08, b = 0.08, a = 0.5 },
+    Absorb = { r = 0.4, g = 0.75, b = 1.0, a = 0.85 },
 
     -- Power Type Colors (for boss frames, etc.)
     -- Keys correspond to Enum.PowerType

@@ -1,7 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 
 local Plugin = Orbit:RegisterPlugin("Target Power", "Orbit_TargetPower", {
+    displayName = L.PLG_NAME_TARGET_POWER,
     liveToggle = true,
     canvasMode = true,
     defaults = Orbit.UnitPowerBarMixin.sharedDefaults,
@@ -25,5 +27,5 @@ function Plugin:OnLoad()
         yOffset = -180,
         textAnchor = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 2 },
     })
-    Orbit.EventBus:On("TARGET_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
+    Orbit.EventBus:On("ORBIT_TARGET_SETTINGS_CHANGED", function() self:UpdateVisibility() end, self)
 end

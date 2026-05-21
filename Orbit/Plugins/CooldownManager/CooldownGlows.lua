@@ -64,12 +64,20 @@ local function DeferPandemicHide(icon)
 end
 
 -- [ PROC GLOW HOOKS ] -------------------------------------------------------------------------------
+-- S16-C1: write the memo on first-hit too. CooldownLayout.lua:252 populates icon.orbitCDMSystemIndex
+-- during ProcessChildren, but the very first ShowAlert/HideAlert hook for a button can fire BEFORE
+-- the first layout pass — without this self-write the find walked O(viewers × icons) for every
+-- pre-layout alert. The per-layout re-assignment at CooldownLayout.lua:252 also keeps the memo
+-- correct across viewer reconfigurations, so no separate invalidation event is needed here.
 local function FindSystemIndexForButton(button)
     if button.orbitCDMSystemIndex then return button.orbitCDMSystemIndex end
     for systemIndex, data in pairs(CDM.viewerMap) do
         if data.viewer and data.viewer.GetItemFrames then
             for _, icon in ipairs(data.viewer:GetItemFrames()) do
-                if icon == button then return systemIndex end
+                if icon == button then
+                    button.orbitCDMSystemIndex = systemIndex
+                    return systemIndex
+                end
             end
         end
     end

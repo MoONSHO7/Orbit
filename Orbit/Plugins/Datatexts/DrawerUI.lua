@@ -1,5 +1,6 @@
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
@@ -23,9 +24,7 @@ local drawerPanel = nil
 local cornerButtons = {}
 local isOpen = false
 local cellPool = {}
-local headerPool = {}
 local activeCells = {}
-local activeHeaders = {}
 
 -- [ DRAWER UI ] -------------------------------------------------------------------------------------
 local DrawerUI = {}
@@ -127,8 +126,6 @@ function DrawerUI:LayoutDrawer()
     
     for _, cell in ipairs(activeCells) do cell:Hide(); cellPool[#cellPool + 1] = cell end
     activeCells = {}
-    for _, hdr in ipairs(activeHeaders) do hdr:Hide(); headerPool[#headerPool + 1] = hdr end
-    activeHeaders = {}
     
     local alldatatexts = {}
     for _, datatext in pairs(DT.DatatextManager:GetAllDatatexts()) do
@@ -160,10 +157,11 @@ function DrawerUI:LayoutDrawer()
         cell:SetPoint("TOPLEFT", drawerPanel, "TOPLEFT", cellX, cellY)
         cell:SetParent(drawerPanel)
         
+        local label = datatext.displayName or datatext.name
         if datatext.isPlaced then
             cell.bg:SetColorTexture(0, 0, 0, 0.3)
             cell.label:SetTextColor(0.4, 0.4, 0.4, 1)
-            cell.label:SetText(datatext.name)
+            cell.label:SetText(label)
             cell:SetAlpha(0.6)
             cell:SetScript("OnEnter", nil)
             cell:SetScript("OnLeave", nil)
@@ -172,13 +170,13 @@ function DrawerUI:LayoutDrawer()
         else
             cell.bg:SetColorTexture(1, 1, 1, 0.05)
             cell.label:SetTextColor(1, 1, 1, 1)
-            cell.label:SetText(datatext.name)
+            cell.label:SetText(label)
             cell:SetAlpha(1)
-            
+
             cell:SetScript("OnEnter", function(f)
                 f.bg:SetColorTexture(HIGHLIGHT_R, HIGHLIGHT_G, HIGHLIGHT_B, HIGHLIGHT_A)
                 GameTooltip:SetOwner(f, "ANCHOR_TOP")
-                GameTooltip:AddLine(datatext.name, 1, 1, 1)
+                GameTooltip:AddLine(label, 1, 1, 1)
                 GameTooltip:AddLine(L.PLU_DT_DRAWER_DRAG_HINT, 0.7, 0.7, 0.7)
                 GameTooltip:Show()
             end)

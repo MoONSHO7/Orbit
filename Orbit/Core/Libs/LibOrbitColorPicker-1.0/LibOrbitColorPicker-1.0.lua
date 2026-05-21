@@ -1,6 +1,6 @@
 -- [ LibOrbitColorPicker-1.0 ] ----------------------------------------------------------------------
 
-local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 4
+local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 5
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -59,6 +59,14 @@ local LIB_PATH = debugstack(1, 1, 0):match("Interface.*LibOrbitColorPicker%-1%.0
 local CHECKERBOARD_TEXTURE = LIB_PATH .. "checkerboard.tga"
 local WHEEL_TEXTURE = "Interface\\Buttons\\UI-ColorPicker-Buttons"
 local DEFAULT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
+
+local RECENT_SWATCH_SIZE = 31
+local RECENT_SWATCH_SPACING = 8
+local RECENT_COLORS_LEVEL_OFFSET = 50
+local PINS_CONTAINER_LEVEL = 50
+
+-- Forward-declared; populated by the locale block below. UI strings reach this via upvalue capture.
+local CL
 
 -- [ MODULE STATE ] ---------------------------------------------------------------------------------
 
@@ -171,7 +179,7 @@ local function CreatePinVisual(parent, alpha)
 end
 
 -- [ GRADIENT BAR MIXIN ] ---------------------------------------------------------------------------
-
+-- Mixin is frozen at file end after all methods are added (12.0.5+ table.freeze).
 local GradientBarMixin = {}
 
 function GradientBarMixin:OnLoad()
@@ -268,14 +276,15 @@ function GradientBarMixin:RefreshPinHandles()
     for i, pin in ipairs(pins) do
         local handle = self.pinHandles[i] or lib:CreatePinHandle(self)
         self.pinHandles[i] = handle
-        handle.pinIndex, handle.pinData = i, pin
+        handle.pinData = pin
         handle:ClearAllPoints()
         handle:SetPoint("BOTTOM", self.SegmentContainer, "TOP", (pin.position - 0.5) * barWidth, 0)
         local resolved = ResolveClassColorPin(pin)
         handle.Circle:SetColorTexture(resolved.r, resolved.g, resolved.b, resolved.a or 1)
         handle:SetFrameStrata("TOOLTIP")
         handle:SetFrameLevel(PIN_HANDLE_FRAME_LEVEL)
-        handle:EnableKeyboard(lib.nudgePin == pin)
+        -- Keyboard state lives on the handle (toggled by its own OnEnter/OnLeave); no module-level
+        -- focus tracker needed. Re-paint reuses the same handles, so the per-handle state persists.
         handle:Show()
     end
 end
@@ -315,15 +324,13 @@ function lib:CreatePinHandle(gradientBar)
 
     handle:SetScript("OnEnter", function(self)
         if not self.pinData then return end
-        lib.nudgePin = self.pinData
         self:EnableKeyboard(true)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(string.format("Position: %.1f%%", self.pinData.position * 100))
+        GameTooltip:AddLine(string.format(CL.POS_TT, self.pinData.position * 100))
         GameTooltip:Show()
     end)
 
     handle:SetScript("OnLeave", function(self)
-        lib.nudgePin = nil
         self:EnableKeyboard(false)
         GameTooltip:Hide()
     end)
@@ -340,7 +347,7 @@ function lib:CreatePinHandle(gradientBar)
             local barWidth = gradientBar.SegmentContainer:GetWidth()
             local pct = ClampPosition((handleX - barLeft) / barWidth) * 100
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(string.format("Position: %.1f%%", pct))
+            GameTooltip:AddLine(string.format(CL.POS_TT, pct))
             GameTooltip:Show()
         end)
     end)
@@ -352,7 +359,9 @@ function lib:CreatePinHandle(gradientBar)
         local handleX = self:GetCenter()
         local barLeft = gradientBar.SegmentContainer:GetLeft()
         local barWidth = gradientBar.SegmentContainer:GetWidth()
-        if self.pinData then self.pinData.position = ClampPosition((handleX - barLeft) / barWidth) end
+        if self.pinData and handleX and barLeft and barWidth and barWidth > 0 then
+            self.pinData.position = ClampPosition((handleX - barLeft) / barWidth)
+        end
         gradientBar:Refresh()
         lib:UpdateCurve()
         GameTooltip:Hide()
@@ -363,15 +372,15 @@ function lib:CreatePinHandle(gradientBar)
     end)
 
     handle:SetScript("OnKeyDown", function(self, key)
-        if not lib.multiPinMode or not lib.nudgePin then
+        if not lib.multiPinMode or not self.pinData then
             self:SetPropagateKeyboardInput(true)
             return
         end
         local step = IsShiftKeyDown() and PIN_NUDGE_FINE or PIN_NUDGE_STEP
         if key == "LEFT" then
-            lib.nudgePin.position = ClampPosition(lib.nudgePin.position - step)
+            self.pinData.position = ClampPosition(self.pinData.position - step)
         elseif key == "RIGHT" then
-            lib.nudgePin.position = ClampPosition(lib.nudgePin.position + step)
+            self.pinData.position = ClampPosition(self.pinData.position + step)
         else
             self:SetPropagateKeyboardInput(true)
             return
@@ -382,8 +391,8 @@ function lib:CreatePinHandle(gradientBar)
         lib:UpdateApplyButtonState()
         if GameTooltip:IsOwned(self) then
             GameTooltip:ClearLines()
-            GameTooltip:AddLine(string.format("Position: %.1f%%", lib.nudgePin.position * 100))
-            GameTooltip:AddLine("Arrow keys to nudge, Shift for fine", 0.5, 0.5, 0.5)
+            GameTooltip:AddLine(string.format(CL.POS_TT, self.pinData.position * 100))
+            GameTooltip:AddLine(CL.NUDGE_HINT, 0.5, 0.5, 0.5)
             GameTooltip:Show()
         end
     end)
@@ -405,7 +414,7 @@ function lib:CreateClassColorSwatch()
 
     frame.Label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.Label:SetPoint("TOP", frame, "BOTTOM", 0, -2)
-    frame.Label:SetText("Class")
+    frame.Label:SetText(CL.CLASS_LBL)
     frame.Label:SetTextColor(0.7, 0.7, 0.7, 1)
 
     frame:SetScript("OnDragStart", function()
@@ -415,9 +424,6 @@ function lib:CreateClassColorSwatch()
     end)
 
     frame:SetScript("OnDragStop", function() lib:EndDrag() end)
-
-    frame:SetScript("OnEnter", nil)
-    frame:SetScript("OnLeave", nil)
 
     self.ui.classSwatch = frame
     self:UpdateClassColorSwatch()
@@ -434,7 +440,7 @@ function lib:CreateDesaturationCheckbox()
     cb.text:SetText("")
     cb.Label = cb:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     cb.Label:SetPoint("TOP", cb, "BOTTOM", 0, -1)
-    cb.Label:SetText("Desat")
+    cb.Label:SetText(CL.DESAT_LBL)
     cb.Label:SetTextColor(0.7, 0.7, 0.7, 1)
     cb:SetScript("OnClick", function(self)
         lib.desaturated = self:GetChecked()
@@ -442,8 +448,8 @@ function lib:CreateDesaturationCheckbox()
     end)
     cb:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Desaturated", 1, 0.82, 0)
-        GameTooltip:AddLine("Apply grayscale to the texture", 1, 1, 1)
+        GameTooltip:AddLine(CL.DESAT_TT_TITLE, 1, 0.82, 0)
+        GameTooltip:AddLine(CL.DESAT_TT_TEXT, 1, 1, 1)
         GameTooltip:Show()
     end)
     cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -558,7 +564,7 @@ end
 function lib:UpdateApplyButtonState()
     if not self.ui.applyButton then return end
     self.ui.applyButton:SetEnabled(true)
-    self.ui.applyButton:SetText((self.pins and #self.pins > 0) and "Apply Color" or "Clear Color")
+    self.ui.applyButton:SetText((self.pins and #self.pins > 0) and CL.APPLY_BTN or CL.CLEAR_BTN)
 end
 
 -- [ PIN MANAGEMENT ] -------------------------------------------------------------------------------
@@ -678,7 +684,7 @@ function lib:CreateGradientBar()
     bar.PinsContainer:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, 0)
     bar.PinsContainer:SetHeight(pinHeight)
     bar.PinsContainer:SetFrameStrata("TOOLTIP")
-    bar.PinsContainer:SetFrameLevel(50)
+    bar.PinsContainer:SetFrameLevel(PINS_CONTAINER_LEVEL)
     bar.PinsContainer:Show()
 
     bar.Notches = {}
@@ -744,7 +750,7 @@ function lib:UpdateRecentColors()
             swatch.Color:SetColorTexture(c.r, c.g, c.b, c.a or 1)
             swatch.Checkerboard:SetAlpha(1)
             swatch:EnableMouse(true)
-            swatch.TooltipText = "Recent Color\nDrag to use as a pin"
+            swatch.TooltipText = CL.RECENT_TT
             swatch.ColorModel = c
         else
             swatch:SetBackdropBorderColor(0, 0, 0, 0)
@@ -763,23 +769,20 @@ function lib:CreateRecentColorsBar()
     local container = CreateFrame("Frame", nil, self.ui.gradientBar)
     container:SetPoint("BOTTOMLEFT", self.ui.gradientBar.PinsContainer, "TOPLEFT", 0, 2)
     container:SetPoint("BOTTOMRIGHT", self.ui.gradientBar.PinsContainer, "TOPRIGHT", 0, 2)
-    container:SetHeight(31)
+    container:SetHeight(RECENT_SWATCH_SIZE)
     container:SetFrameStrata("FULLSCREEN_DIALOG")
-    container:SetFrameLevel(self.ui.frame:GetFrameLevel() + 50)
+    container:SetFrameLevel(self.ui.frame:GetFrameLevel() + RECENT_COLORS_LEVEL_OFFSET)
     
     container.swatches = {}
-    
-    -- Standard 304px width, 8 boxes of 31px with 8px gaps => exactly 304px.
-    local swatchSize = 31
-    local spacing = 8
-    
+
+    -- 8 boxes of RECENT_SWATCH_SIZE with RECENT_SWATCH_SPACING gaps = 304px total at defaults.
     for i = 1, 8 do
         local swatch = CreateFrame("Frame", nil, container, "BackdropTemplate")
-        swatch:SetSize(swatchSize, swatchSize)
+        swatch:SetSize(RECENT_SWATCH_SIZE, RECENT_SWATCH_SIZE)
         if i == 1 then
             swatch:SetPoint("LEFT", container, "LEFT", 0, 0)
         else
-            swatch:SetPoint("LEFT", container.swatches[i - 1], "RIGHT", spacing, 0)
+            swatch:SetPoint("LEFT", container.swatches[i - 1], "RIGHT", RECENT_SWATCH_SPACING, 0)
         end
         
         swatch:SetBackdrop({ bgFile = WHITE_TEXTURE, edgeFile = WHITE_TEXTURE, edgeSize = SWATCH_BORDER })
@@ -822,7 +825,6 @@ function lib:CreateRecentColorsBar()
     return container
 end
 
-
 -- [ FRAME CREATION ] -------------------------------------------------------------------------------
 
 function lib:CreatePickerFrame()
@@ -856,7 +858,7 @@ function lib:CreatePickerFrame()
     f:SetScript("OnHide", function()
         if lib.ui.gradientBar then lib.ui.gradientBar:Hide() end
         if lib.ui.classSwatch then lib.ui.classSwatch:Hide() end
-        lib:EndTourCleanup()
+        lib:EndTour()
         if lib.info.button then lib.info.button:Hide() end
         lib:EndDrag()
 
@@ -869,13 +871,12 @@ function lib:CreatePickerFrame()
             if lib.wasCancelled then
                 lib.callback(BuildResult(lib.snapshotPins), true)
             elseif lib.pins and #lib.pins > 0 then
-                -- In multi-color mode, colors are saved instantly during 'AddPin' (pin drop).
-                -- In single-color mode, there are no 'drops', so we save the final picked color upon 'Apply'.
+                -- Multi-color mode saves recents at each AddPin (drop); single-color has no drop,
+                -- so we save the picked color once on Apply here.
                 if not lib.multiPinMode then
                     lib:AddRecentColor(lib.pins[1])
                     lib:UpdateRecentColors()
                 end
-                
                 lib.callback(BuildResult(lib.pins), false)
             else
                 lib.callback(nil, false)
@@ -883,6 +884,7 @@ function lib:CreatePickerFrame()
         end
         lib.snapshotPins = nil
         lib.wasCancelled = false
+        lib.callback = nil
     end)
 
     f:Hide()
@@ -961,7 +963,6 @@ function lib:OnColorChanged(r, g, b)
     end
 
     if #self.pins > 0 and not self.multiPinMode then
-        local a = self.ui.colorSelect and self.ui.colorSelect:GetColorAlpha() or 1
         self.pins[1].color = { r = r, g = g, b = b, a = a }
         if self.pins[1].type ~= "class" then
             self:UpdateCurve()
@@ -999,7 +1000,7 @@ function lib:CreateCurrentSwatch()
 
     frame.Label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     frame.Label:SetPoint("TOP", frame, "BOTTOM", 0, -2)
-    frame.Label:SetText("Color")
+    frame.Label:SetText(CL.COLOR_LBL)
     frame.Label:SetTextColor(0.7, 0.7, 0.7, 1)
 
     frame:SetScript("OnDragStart", function()
@@ -1010,9 +1011,6 @@ function lib:CreateCurrentSwatch()
     end)
 
     frame:SetScript("OnDragStop", function() lib:EndDrag() end)
-
-    frame:SetScript("OnEnter", nil)
-    frame:SetScript("OnLeave", nil)
 
     self.ui.currentSwatch = frame
     return frame
@@ -1093,7 +1091,7 @@ function lib:CreateFooter()
     self.ui.footer.Divider:SetPoint("TOP", self.ui.footer, "TOP", 0, FOOTER_DIVIDER_OFFSET)
 
     self.ui.applyButton = CreateFrame("Button", nil, self.ui.footer, "UIPanelButtonTemplate")
-    self.ui.applyButton:SetText("Apply Color")
+    self.ui.applyButton:SetText(CL.APPLY_BTN)
     self.ui.applyButton:SetHeight(FOOTER_BUTTON_HEIGHT)
     self.ui.applyButton:SetPoint("TOPLEFT", self.ui.footer, "TOPLEFT", 0, -FOOTER_TOP_PADDING)
     self.ui.applyButton:SetPoint("TOPRIGHT", self.ui.footer, "TOPRIGHT", 0, -FOOTER_TOP_PADDING)
@@ -1104,7 +1102,7 @@ function lib:CreateFooter()
     self.ui.applyButton:SetScript("OnEnter", function(self)
         if not lib.pins or #lib.pins > 0 then return end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("applies default color")
+        GameTooltip:AddLine(CL.APPLY_DEFAULT_TT)
         GameTooltip:Show()
     end)
     self.ui.applyButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1205,6 +1203,19 @@ local CP_LOCALE = {
         PIN_TEXT = "Use arrow keys to nudge a pin position.\nHold Shift for fine-grained precision.",
         APPLY_TITLE = "Apply / Clear",
         APPLY_TEXT = "Apply Color saves your gradient.\nClearing all pins resets the component\nto its default color.",
+        POS_TT = "Position: %.1f%%",
+        NUDGE_HINT = "Arrow keys to nudge, Shift for fine",
+        CLASS_LBL = "Class",
+        DESAT_LBL = "Desat",
+        DESAT_TT_TITLE = "Desaturated",
+        DESAT_TT_TEXT = "Apply grayscale to the texture",
+        APPLY_BTN = "Apply Color",
+        CLEAR_BTN = "Clear Color",
+        RECENT_TT = "Recent Color\nDrag to use as a pin",
+        COLOR_LBL = "Color",
+        APPLY_DEFAULT_TT = "applies default color",
+        MODE_MULTI = "Multi-Color Mode",
+        MODE_SINGLE = "Single Color Mode",
     },
     deDE = {
         TOUR_TIP = "Farbwähler-Tour",
@@ -1221,6 +1232,19 @@ local CP_LOCALE = {
         PIN_TEXT = "Pfeiltasten verschieben einen Pin.\nUmschalttaste für feine Schritte.",
         APPLY_TITLE = "Anwenden / Löschen",
         APPLY_TEXT = "Farbe anwenden speichert den Verlauf.\nAlle Pins entfernen setzt die Komponente\nauf die Standardfarbe zurück.",
+        POS_TT = "Position: %.1f%%",
+        NUDGE_HINT = "Pfeiltasten verschieben, Umschalttaste für feine Schritte",
+        CLASS_LBL = "Klasse",
+        DESAT_LBL = "Entsät.",
+        DESAT_TT_TITLE = "Entsättigt",
+        DESAT_TT_TEXT = "Textur in Graustufen anzeigen",
+        APPLY_BTN = "Farbe anwenden",
+        CLEAR_BTN = "Farbe löschen",
+        RECENT_TT = "Aktuelle Farbe\nZiehen, um als Pin zu verwenden",
+        COLOR_LBL = "Farbe",
+        APPLY_DEFAULT_TT = "wendet die Standardfarbe an",
+        MODE_MULTI = "Mehrfarben-Modus",
+        MODE_SINGLE = "Einfarbiger Modus",
     },
     frFR = {
         TOUR_TIP = "Visite du sélecteur",
@@ -1237,6 +1261,19 @@ local CP_LOCALE = {
         PIN_TEXT = "Utilisez les flèches pour ajuster un point.\nMaintenez Maj pour un réglage fin.",
         APPLY_TITLE = "Appliquer / Effacer",
         APPLY_TEXT = "Appliquer sauvegarde le dégradé.\nSupprimer tous les points réinitialise\nla couleur par défaut.",
+        POS_TT = "Position : %.1f%%",
+        NUDGE_HINT = "Flèches pour ajuster, Maj pour réglage fin",
+        CLASS_LBL = "Classe",
+        DESAT_LBL = "Désat.",
+        DESAT_TT_TITLE = "Désaturé",
+        DESAT_TT_TEXT = "Appliquer des niveaux de gris à la texture",
+        APPLY_BTN = "Appliquer la couleur",
+        CLEAR_BTN = "Effacer la couleur",
+        RECENT_TT = "Couleur récente\nGlissez pour l'utiliser comme point",
+        COLOR_LBL = "Couleur",
+        APPLY_DEFAULT_TT = "applique la couleur par défaut",
+        MODE_MULTI = "Mode multi-couleurs",
+        MODE_SINGLE = "Mode couleur unique",
     },
     esES = {
         TOUR_TIP = "Tour del selector",
@@ -1253,6 +1290,19 @@ local CP_LOCALE = {
         PIN_TEXT = "Usa las flechas para ajustar un pin.\nMantén Mayús para precisión fina.",
         APPLY_TITLE = "Aplicar / Borrar",
         APPLY_TEXT = "Aplicar guarda el gradiente.\nEliminar todos los pines restablece\nel color predeterminado.",
+        POS_TT = "Posición: %.1f%%",
+        NUDGE_HINT = "Flechas para ajustar, Mayús para precisión",
+        CLASS_LBL = "Clase",
+        DESAT_LBL = "Desat.",
+        DESAT_TT_TITLE = "Desaturado",
+        DESAT_TT_TEXT = "Aplicar escala de grises a la textura",
+        APPLY_BTN = "Aplicar color",
+        CLEAR_BTN = "Borrar color",
+        RECENT_TT = "Color reciente\nArrastra para usar como pin",
+        COLOR_LBL = "Color",
+        APPLY_DEFAULT_TT = "aplica el color predeterminado",
+        MODE_MULTI = "Modo multicolor",
+        MODE_SINGLE = "Modo un solo color",
     },
     ptBR = {
         TOUR_TIP = "Tour do seletor",
@@ -1269,6 +1319,19 @@ local CP_LOCALE = {
         PIN_TEXT = "Use as setas para ajustar um pino.\nSegure Shift para precisão fina.",
         APPLY_TITLE = "Aplicar / Limpar",
         APPLY_TEXT = "Aplicar salva o gradiente.\nRemover todos os pins redefine\na cor padrão.",
+        POS_TT = "Posição: %.1f%%",
+        NUDGE_HINT = "Setas para ajustar, Shift para precisão",
+        CLASS_LBL = "Classe",
+        DESAT_LBL = "Dessat.",
+        DESAT_TT_TITLE = "Dessaturado",
+        DESAT_TT_TEXT = "Aplicar escala de cinza à textura",
+        APPLY_BTN = "Aplicar cor",
+        CLEAR_BTN = "Limpar cor",
+        RECENT_TT = "Cor recente\nArraste para usar como pino",
+        COLOR_LBL = "Cor",
+        APPLY_DEFAULT_TT = "aplica a cor padrão",
+        MODE_MULTI = "Modo multicor",
+        MODE_SINGLE = "Modo cor única",
     },
     ruRU = {
         TOUR_TIP = "Обзор палитры",
@@ -1285,6 +1348,19 @@ local CP_LOCALE = {
         PIN_TEXT = "Стрелки для сдвига точки.\nShift для мелких шагов.",
         APPLY_TITLE = "Применить / Очистить",
         APPLY_TEXT = "Применить сохраняет градиент.\nУдаление всех точек сбрасывает\nцвет по умолчанию.",
+        POS_TT = "Позиция: %.1f%%",
+        NUDGE_HINT = "Стрелки для сдвига, Shift для точности",
+        CLASS_LBL = "Класс",
+        DESAT_LBL = "Обесцв.",
+        DESAT_TT_TITLE = "Обесцвечено",
+        DESAT_TT_TEXT = "Применить градации серого к текстуре",
+        APPLY_BTN = "Применить цвет",
+        CLEAR_BTN = "Очистить цвет",
+        RECENT_TT = "Недавний цвет\nПеретащите, чтобы использовать",
+        COLOR_LBL = "Цвет",
+        APPLY_DEFAULT_TT = "применяет цвет по умолчанию",
+        MODE_MULTI = "Многоцветный режим",
+        MODE_SINGLE = "Одноцветный режим",
     },
     koKR = {
         TOUR_TIP = "색상 선택기 안내",
@@ -1301,6 +1377,19 @@ local CP_LOCALE = {
         PIN_TEXT = "화살표 키로 핀 위치를 조정합니다.\nShift를 누르면 미세 조정됩니다.",
         APPLY_TITLE = "적용 / 초기화",
         APPLY_TEXT = "색상 적용은 그라데이션을 저장합니다.\n모든 핀을 제거하면 기본 색상으로\n초기화됩니다.",
+        POS_TT = "위치: %.1f%%",
+        NUDGE_HINT = "방향키로 이동, Shift로 미세 조정",
+        CLASS_LBL = "직업",
+        DESAT_LBL = "흑백",
+        DESAT_TT_TITLE = "흑백 처리",
+        DESAT_TT_TEXT = "텍스처에 회색조 적용",
+        APPLY_BTN = "색상 적용",
+        CLEAR_BTN = "색상 초기화",
+        RECENT_TT = "최근 색상\n드래그하여 핀으로 사용",
+        COLOR_LBL = "색상",
+        APPLY_DEFAULT_TT = "기본 색상 적용",
+        MODE_MULTI = "다중 색상 모드",
+        MODE_SINGLE = "단일 색상 모드",
     },
     zhCN = {
         TOUR_TIP = "取色器导览",
@@ -1317,6 +1406,19 @@ local CP_LOCALE = {
         PIN_TEXT = "方向键微调图钉位置。\n按住Shift进行精细调整。",
         APPLY_TITLE = "应用 / 清除",
         APPLY_TEXT = "应用颜色保存渐变。\n清除所有图钉将重置为\n默认颜色。",
+        POS_TT = "位置: %.1f%%",
+        NUDGE_HINT = "方向键微调, Shift精细调整",
+        CLASS_LBL = "职业",
+        DESAT_LBL = "灰度",
+        DESAT_TT_TITLE = "灰度处理",
+        DESAT_TT_TEXT = "对纹理应用灰度",
+        APPLY_BTN = "应用颜色",
+        CLEAR_BTN = "清除颜色",
+        RECENT_TT = "最近颜色\n拖动以用作图钉",
+        COLOR_LBL = "颜色",
+        APPLY_DEFAULT_TT = "应用默认颜色",
+        MODE_MULTI = "多色模式",
+        MODE_SINGLE = "单色模式",
     },
     zhTW = {
         TOUR_TIP = "取色器導覽",
@@ -1333,11 +1435,24 @@ local CP_LOCALE = {
         PIN_TEXT = "方向鍵微調圖釘位置。\n按住Shift進行精細調整。",
         APPLY_TITLE = "套用 / 清除",
         APPLY_TEXT = "套用顏色儲存漸層。\n清除所有圖釘將重設為\n預設顏色。",
+        POS_TT = "位置: %.1f%%",
+        NUDGE_HINT = "方向鍵微調, Shift精細調整",
+        CLASS_LBL = "職業",
+        DESAT_LBL = "灰階",
+        DESAT_TT_TITLE = "灰階處理",
+        DESAT_TT_TEXT = "對紋理套用灰階",
+        APPLY_BTN = "套用顏色",
+        CLEAR_BTN = "清除顏色",
+        RECENT_TT = "最近顏色\n拖動以用作圖釘",
+        COLOR_LBL = "顏色",
+        APPLY_DEFAULT_TT = "套用預設顏色",
+        MODE_MULTI = "多色模式",
+        MODE_SINGLE = "單色模式",
     },
 }
 CP_LOCALE.enGB = CP_LOCALE.enUS
 CP_LOCALE.esMX = CP_LOCALE.esES
-local CL = CP_LOCALE[GetLocale()] or CP_LOCALE.enUS
+CL = CP_LOCALE[GetLocale()] or CP_LOCALE.enUS
 
 local isCJK_CP = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
 if isCJK_CP then TOUR_MAX_WIDTH = 240 end
@@ -1365,14 +1480,9 @@ local TOUR_STOPS_CP = {
 }
 
 -- [ TOUR TOOLTIP ]---------------------------------------------------------------------------------
-local cpTip = CreateFrame("Frame", nil, UIParent)
-cpTip:SetFrameStrata("TOOLTIP")
-cpTip:SetFrameLevel(999)
-cpTip:Hide()
-
-cpTip.bg = cpTip:CreateTexture(nil, "BACKGROUND")
-cpTip.bg:SetAllPoints()
-cpTip.bg:SetColorTexture(TOUR_BG.r, TOUR_BG.g, TOUR_BG.b, TOUR_BG.a)
+-- Lazy-created on first StartTour; users who never open the picker (or never run the tour) pay zero
+-- cost for ~9 textures + 3 fontstrings + 1 button at file load.
+local cpTip
 
 local function MakeCPBorder(parent, horiz, p1, r1, p2, r2)
     local t = parent:CreateTexture(nil, "BORDER")
@@ -1381,31 +1491,72 @@ local function MakeCPBorder(parent, horiz, p1, r1, p2, r2)
     t:SetPoint(p2, parent, r2)
     if horiz then t:SetHeight(TOUR_BORDER) else t:SetWidth(TOUR_BORDER) end
 end
-MakeCPBorder(cpTip, true, "TOPLEFT", "TOPLEFT", "TOPRIGHT", "TOPRIGHT")
-MakeCPBorder(cpTip, true, "BOTTOMLEFT", "BOTTOMLEFT", "BOTTOMRIGHT", "BOTTOMRIGHT")
-MakeCPBorder(cpTip, false, "TOPLEFT", "TOPLEFT", "BOTTOMLEFT", "BOTTOMLEFT")
-MakeCPBorder(cpTip, false, "TOPRIGHT", "TOPRIGHT", "BOTTOMRIGHT", "BOTTOMRIGHT")
 
--- Directional accent bars
-local AW = 2
-local B = TOUR_BORDER
-cpTip.accents = {}
-cpTip.accents.top = cpTip:CreateTexture(nil, "ARTWORK")
-cpTip.accents.top:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
-cpTip.accents.top:SetHeight(AW)
-cpTip.accents.top:SetPoint("TOPLEFT", B, -B); cpTip.accents.top:SetPoint("TOPRIGHT", -B, -B)
-cpTip.accents.bottom = cpTip:CreateTexture(nil, "ARTWORK")
-cpTip.accents.bottom:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
-cpTip.accents.bottom:SetHeight(AW)
-cpTip.accents.bottom:SetPoint("BOTTOMLEFT", B, B); cpTip.accents.bottom:SetPoint("BOTTOMRIGHT", -B, B)
-cpTip.accents.left = cpTip:CreateTexture(nil, "ARTWORK")
-cpTip.accents.left:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
-cpTip.accents.left:SetWidth(AW)
-cpTip.accents.left:SetPoint("TOPLEFT", B, -B); cpTip.accents.left:SetPoint("BOTTOMLEFT", B, B)
-cpTip.accents.right = cpTip:CreateTexture(nil, "ARTWORK")
-cpTip.accents.right:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
-cpTip.accents.right:SetWidth(AW)
-cpTip.accents.right:SetPoint("TOPRIGHT", -B, -B); cpTip.accents.right:SetPoint("BOTTOMRIGHT", -B, B)
+local function EnsureCpTip()
+    if cpTip then return cpTip end
+    cpTip = CreateFrame("Frame", nil, UIParent)
+    cpTip:SetFrameStrata("TOOLTIP")
+    cpTip:SetFrameLevel(999)
+    cpTip:Hide()
+
+    cpTip.bg = cpTip:CreateTexture(nil, "BACKGROUND")
+    cpTip.bg:SetAllPoints()
+    cpTip.bg:SetColorTexture(TOUR_BG.r, TOUR_BG.g, TOUR_BG.b, TOUR_BG.a)
+
+    MakeCPBorder(cpTip, true, "TOPLEFT", "TOPLEFT", "TOPRIGHT", "TOPRIGHT")
+    MakeCPBorder(cpTip, true, "BOTTOMLEFT", "BOTTOMLEFT", "BOTTOMRIGHT", "BOTTOMRIGHT")
+    MakeCPBorder(cpTip, false, "TOPLEFT", "TOPLEFT", "BOTTOMLEFT", "BOTTOMLEFT")
+    MakeCPBorder(cpTip, false, "TOPRIGHT", "TOPRIGHT", "BOTTOMRIGHT", "BOTTOMRIGHT")
+
+    local AW, B = 2, TOUR_BORDER
+    cpTip.accents = {}
+    cpTip.accents.top = cpTip:CreateTexture(nil, "ARTWORK")
+    cpTip.accents.top:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.top:SetHeight(AW)
+    cpTip.accents.top:SetPoint("TOPLEFT", B, -B); cpTip.accents.top:SetPoint("TOPRIGHT", -B, -B)
+    cpTip.accents.bottom = cpTip:CreateTexture(nil, "ARTWORK")
+    cpTip.accents.bottom:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.bottom:SetHeight(AW)
+    cpTip.accents.bottom:SetPoint("BOTTOMLEFT", B, B); cpTip.accents.bottom:SetPoint("BOTTOMRIGHT", -B, B)
+    cpTip.accents.left = cpTip:CreateTexture(nil, "ARTWORK")
+    cpTip.accents.left:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.left:SetWidth(AW)
+    cpTip.accents.left:SetPoint("TOPLEFT", B, -B); cpTip.accents.left:SetPoint("BOTTOMLEFT", B, B)
+    cpTip.accents.right = cpTip:CreateTexture(nil, "ARTWORK")
+    cpTip.accents.right:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.right:SetWidth(AW)
+    cpTip.accents.right:SetPoint("TOPRIGHT", -B, -B); cpTip.accents.right:SetPoint("BOTTOMRIGHT", -B, B)
+
+    cpTip.counter = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    cpTip.counter:SetPoint("TOPLEFT", TOUR_PAD + 4, -TOUR_PAD)
+    cpTip.counter:SetTextColor(0.5, 0.5, 0.5)
+    cpTip.counter:SetJustifyH("LEFT")
+
+    cpTip.title = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    cpTip.title:SetPoint("TOPLEFT", cpTip.counter, "BOTTOMLEFT", 0, -2)
+    cpTip.title:SetTextColor(TOUR_TITLE_CLR.r, TOUR_TITLE_CLR.g, TOUR_TITLE_CLR.b)
+    cpTip.title:SetJustifyH("LEFT")
+    cpTip.title:SetWidth(TOUR_MAX_WIDTH - TOUR_PAD * 2 - 4)
+
+    cpTip.text = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    cpTip.text:SetPoint("TOPLEFT", cpTip.title, "BOTTOMLEFT", 0, -3)
+    cpTip.text:SetTextColor(TOUR_TEXT_CLR.r, TOUR_TEXT_CLR.g, TOUR_TEXT_CLR.b)
+    cpTip.text:SetJustifyH("LEFT")
+    cpTip.text:SetWidth(TOUR_MAX_WIDTH - TOUR_PAD * 2 - 4)
+    cpTip.text:SetSpacing(2)
+
+    cpTip.nextBtn = CreateFrame("Button", nil, cpTip, "UIPanelButtonTemplate")
+    cpTip.nextBtn:SetSize(TOUR_BTN_W, TOUR_BTN_H)
+    cpTip.nextBtn:SetPoint("BOTTOMRIGHT", cpTip, "BOTTOMRIGHT", -TOUR_PAD, TOUR_PAD)
+    cpTip.nextBtn:SetScript("OnClick", function()
+        if lib.info.tourIndex < #TOUR_STOPS_CP then
+            lib:ShowTourStop(lib.info.tourIndex + 1)
+        else
+            lib:EndTour()
+        end
+    end)
+    return cpTip
+end
 
 local function ApplyCPAccent(tooltipPoint)
     for _, bar in pairs(cpTip.accents) do bar:Hide() end
@@ -1416,35 +1567,6 @@ local function ApplyCPAccent(tooltipPoint)
     if pt:find("LEFT") then cpTip.accents.left:Show() end
     if pt:find("RIGHT") then cpTip.accents.right:Show() end
 end
-
-cpTip.counter = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-cpTip.counter:SetPoint("TOPLEFT", TOUR_PAD + 4, -TOUR_PAD)
-cpTip.counter:SetTextColor(0.5, 0.5, 0.5)
-cpTip.counter:SetJustifyH("LEFT")
-
-cpTip.title = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-cpTip.title:SetPoint("TOPLEFT", cpTip.counter, "BOTTOMLEFT", 0, -2)
-cpTip.title:SetTextColor(TOUR_TITLE_CLR.r, TOUR_TITLE_CLR.g, TOUR_TITLE_CLR.b)
-cpTip.title:SetJustifyH("LEFT")
-cpTip.title:SetWidth(TOUR_MAX_WIDTH - TOUR_PAD * 2 - 4)
-
-cpTip.text = cpTip:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-cpTip.text:SetPoint("TOPLEFT", cpTip.title, "BOTTOMLEFT", 0, -3)
-cpTip.text:SetTextColor(TOUR_TEXT_CLR.r, TOUR_TEXT_CLR.g, TOUR_TEXT_CLR.b)
-cpTip.text:SetJustifyH("LEFT")
-cpTip.text:SetWidth(TOUR_MAX_WIDTH - TOUR_PAD * 2 - 4)
-cpTip.text:SetSpacing(2)
-
-cpTip.nextBtn = CreateFrame("Button", nil, cpTip, "UIPanelButtonTemplate")
-cpTip.nextBtn:SetSize(TOUR_BTN_W, TOUR_BTN_H)
-cpTip.nextBtn:SetPoint("BOTTOMRIGHT", cpTip, "BOTTOMRIGHT", -TOUR_PAD, TOUR_PAD)
-cpTip.nextBtn:SetScript("OnClick", function()
-    if lib.info.tourIndex < #TOUR_STOPS_CP then
-        lib:ShowTourStop(lib.info.tourIndex + 1)
-    else
-        lib:EndTour()
-    end
-end)
 
 -- [ PULSE POOL ]-----------------------------------------------------------------------------------
 local cpPulsePool = {}
@@ -1490,6 +1612,7 @@ local function ShowCPPulseOn(anchor)
 end
 
 local function LayoutCPTooltip(anchor, stop, idx, total)
+    EnsureCpTip()
     cpTip.counter:SetText(idx .. " / " .. total)
     cpTip.title:SetText(stop.title)
     cpTip.text:SetText(stop.text)
@@ -1526,12 +1649,8 @@ end
 function lib:EndTour()
     self.info.tourActive = false
     self.info.tourIndex = 0
-    cpTip:Hide()
+    if cpTip then cpTip:Hide() end
     ReleaseCPPulses()
-end
-
-function lib:EndTourCleanup()
-    self:EndTour()
 end
 
 function lib:ToggleTour()
@@ -1611,7 +1730,7 @@ function lib:Open(options)
     self:LayoutControls()
 
     if self.ui.modeTitle then
-        self.ui.modeTitle:SetText(self.multiPinMode and "Multi-Color Mode" or "Single Color Mode")
+        self.ui.modeTitle:SetText(self.multiPinMode and CL.MODE_MULTI or CL.MODE_SINGLE)
     end
 
     self:UpdateClassColorSwatch()
@@ -1633,3 +1752,6 @@ function lib:Open(options)
 end
 
 function lib:IsOpen() return self.ui.frame and self.ui.frame:IsShown() end
+
+-- Freeze the mixin so stray writes at runtime error immediately instead of corrupting it.
+if table.freeze then table.freeze(GradientBarMixin) end

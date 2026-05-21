@@ -1,5 +1,6 @@
 ---@type Orbit
 local Orbit = Orbit
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Pixel = Orbit.Engine.Pixel
 local Constants = Orbit.Constants
@@ -7,7 +8,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local FALLBACK_TEXTURE = "Interface\\Buttons\\WHITE8x8"
-local DEFAULT_BG_COLOR = { r = 0.05, g = 0.05, b = 0.05, a = 0.85 }
 local OVERLAY_FRAME_OFFSET = 1
 local BAR_FRAME_OFFSET = 2
 local TEXT_FRAME_OFFSET_LEVEL = Constants.Levels.Overlay
@@ -26,22 +26,22 @@ do
     local Schema = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.SettingsSchema
     if Schema and Schema.KEY_SCHEMAS then
         Schema.KEY_SCHEMAS[COMP_KEY_LEVEL] = { controls = {
-            { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+            { type = "font", key = "Font", label = L.CMN_FONT },
+            { type = "slider", key = "FontSize", label = L.CMN_SIZE, min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = L.CMN_COLOR, singleColor = true },
         } }
         Schema.KEY_SCHEMAS[COMP_KEY_VALUE] = { controls = {
-            { type = "dropdown", key = "ValueMode", label = "Value", plugin = true,
+            { type = "dropdown", key = "ValueMode", label = L.PLU_SB_VALUE, plugin = true,
               options = {
-                  { text = "Percentage",      value = "percent" },
-                  { text = "Current / Max",   value = "currentmax" },
-                  { text = "Remaining",       value = "tolevel" },
-                  { text = "Per Hour",        value = "perhour" },
-                  { text = "Time to Level",   value = "eta" },
+                  { text = L.PLU_SB_VAL_PERCENT,   value = "percent" },
+                  { text = L.PLU_SB_VAL_CURMAX,    value = "currentmax" },
+                  { text = L.PLU_SB_VAL_REMAINING, value = "tolevel" },
+                  { text = L.PLU_SB_VAL_PERHOUR,   value = "perhour" },
+                  { text = L.PLU_SB_VAL_ETA,       value = "eta" },
               }, default = "percent" },
-            { type = "font", key = "Font", label = "Font" },
-            { type = "slider", key = "FontSize", label = "Size", min = 6, max = 32, step = 1 },
-            { type = "colorcurve", key = "CustomColorCurve", label = "Color", singleColor = true },
+            { type = "font", key = "Font", label = L.CMN_FONT },
+            { type = "slider", key = "FontSize", label = L.CMN_SIZE, min = 6, max = 32, step = 1 },
+            { type = "colorcurve", key = "CustomColorCurve", label = L.CMN_COLOR, singleColor = true },
         } }
     end
 end
@@ -265,8 +265,7 @@ function StatusBarBase:ApplyTheme(container, options)
         container.Overlay:SetStatusBarColor(c.r, c.g, c.b, c.a or 0.5)
     end
 
-    local bgColor = options.bgColor or gs.BackdropColour or DEFAULT_BG_COLOR
-    container.bg:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a or 0.85)
+    Orbit.Skin:ApplyGradientBackground(container, gs.UnitFrameBackdropColourCurve, Constants.Colors.Background)
 
     local borderSize = gs.BorderSize or Constants.Settings.BorderSize.Default
     Orbit.Skin:SkinBorder(container, container, borderSize)

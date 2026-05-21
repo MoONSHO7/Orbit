@@ -1,12 +1,5 @@
 -- [ MOUNT TYPE TAGS ]--------------------------------------------------------------------------------
--- Maps the creature mountTypeID (returned by C_MountJournal.GetMountInfoExtraByID) to capability tag
--- words that the matcher folds into lowerName so queries like "mounts flying" / "mounts aquatic" work.
---
--- Blizzard's mount journal now surfaces only four filters (Ground / Flying / Aquatic / Ride Along) but
--- does not expose a public mountTypeID → filter mapping. Rather than enumerate every flying creature
--- type ID across expansions (error-prone when patches add new ones), we explicit-list the non-flying
--- IDs and default everything else to "flying". Dragonriding-capable mounts are additionally tagged
--- "skyriding" via the authoritative C_MountJournal.GetCollectedDragonridingMounts lookup.
+-- Blizzard offers no public mountTypeID → filter map, so we explicit-list non-flying IDs and default everything else to "flying" (adding a new flying type ID per expansion would silently break otherwise). Dragonriding is tagged "skyriding" via C_MountJournal.GetCollectedDragonridingMounts.
 local _, Orbit = ...
 local Tags = {}
 Orbit.Spotlight.Index.MountTypeTags = Tags

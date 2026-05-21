@@ -1,7 +1,6 @@
--- CombatTimer.lua
--- Combat timer datatext: encounter tracking, death counter, average combat duration
 local _, Orbit = ...
 local DT = Orbit.Datatexts
+local GameTooltip = Orbit.Tooltip
 local RingBuffer = DT.Formatting.RingBuffer
 local L = Orbit.L
 
@@ -22,7 +21,7 @@ local function FormatDuration(seconds)
 end
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
-local W = DT.BaseDatatext:New("CombatTimer")
+local W = DT.BaseDatatext:New("CombatTimer", L.PLU_DT_COMBAT_TIMER_NAME)
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 W.startTime = 0
@@ -130,7 +129,6 @@ function W:Init()
     self:RegisterEvent("ENCOUNTER_START", function(_, ...) self:OnEncounterStart(_, ...) end)
     self:RegisterEvent("ENCOUNTER_END", function(_, ...) self:OnEncounterEnd(_, ...) end)
     self:RegisterEvent("PLAYER_DEAD", function() self.sessionDeaths = self.sessionDeaths + 1 end)
-    self:SetCategory("SYSTEM")
     self:Register()
     self:Update()
 end

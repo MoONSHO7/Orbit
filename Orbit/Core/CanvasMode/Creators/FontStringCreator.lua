@@ -1,6 +1,7 @@
 -- [ CANVAS MODE - FONT STRING CREATOR ]--------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local CC = CanvasMode.CreatorConstants
@@ -13,7 +14,7 @@ local TEXT_WIDTH_MAX_CHAR_FACTOR = 0.8
 local TEXT_WIDTH_SLACK_MULTIPLIER = 2
 
 local PREVIEW_TEXT_VALUES = {
-    Name = "Name",
+    Name = L.CFG_CM_PREVIEW_NAME,
     HealthText = "100%",
     LevelText = "80",
     GroupPositionText = "G1",
@@ -22,7 +23,7 @@ local PREVIEW_TEXT_VALUES = {
     CountText = "2",
     Keybind = "Q",
     Coords = "45.1, 88.2",
-    ZoneText = "Stormwind City",
+    ZoneText = L.CFG_CM_PREVIEW_ZONE,
 }
 
 local function ResolvePreviewText(key, defaultText)

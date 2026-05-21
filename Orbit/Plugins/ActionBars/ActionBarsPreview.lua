@@ -2,6 +2,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local L = Orbit.L
 
 local BUTTON_SIZE = 32
 local FALLBACK_TEXTURE = "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -40,7 +41,7 @@ function ABPreview:Setup(plugin, container, systemIndex)
 
         OrbitEngine.IconCanvasPreview:AttachTextComponents(preview, {
             { key = "Keybind", preview = kbPreview, anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2 },
-            { key = "MacroText", preview = "Macro", anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2 },
+            { key = "MacroText", preview = L.PLU_AB_PREVIEW_MACRO, anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2 },
             { key = "Timer", preview = "5", anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
             { key = "Stacks", preview = "3", anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2 },
         }, savedPositions, fontPath)

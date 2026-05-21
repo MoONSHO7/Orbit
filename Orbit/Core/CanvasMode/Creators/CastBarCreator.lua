@@ -1,6 +1,7 @@
 -- [ CANVAS MODE - CAST BAR CREATOR ]-----------------------------------------------------------------
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
@@ -270,7 +271,7 @@ local function Create(container, preview, key, source, data)
     local timerData = subData.Timer or { anchorX = "RIGHT", anchorY = "CENTER", offsetX = DEFAULT_TEXT_OFFSET_X, offsetY = 0 }
     container.TextSub = CreateSubText(bar, container, "Text",
         { anchorX = textData.anchorX, anchorY = textData.anchorY, offsetX = textData.offsetX or DEFAULT_TEXT_OFFSET_X, offsetY = textData.offsetY },
-        "Boss Ability", "LEFT", fontPath, cbTextSize, fontFlags)
+        L.CFG_CM_PREVIEW_BOSS_ABILITY, "LEFT", fontPath, cbTextSize, fontFlags)
     container.TimerSub = CreateSubText(bar, container, "Timer", timerData, "1.5", "RIGHT", fontPath, cbTextSize, fontFlags)
 
     return bar

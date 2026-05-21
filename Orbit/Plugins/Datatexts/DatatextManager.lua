@@ -3,16 +3,6 @@ local L = Orbit.L
 local DT = Orbit.Datatexts
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
-local DATATEXT_CATEGORIES = {
-    SYSTEM    = { order = 1, label = L.PLU_DT_SYSTEM },
-    CHARACTER = { order = 2, label = L.PLU_DT_CHARACTER },
-    SOCIAL    = { order = 3, label = L.PLU_DT_SOCIAL },
-    GAMEPLAY  = { order = 4, label = L.PLU_DT_GAMEPLAY },
-    WORLD     = { order = 5, label = L.PLU_DT_WORLD },
-    UTILITY   = { order = 6, label = L.PLU_DT_UTILITY },
-}
-DT.DATATEXT_CATEGORIES = DATATEXT_CATEGORIES
-
 local UPDATE_INTERVALS = {
     FAST    = 0.5,
     NORMAL  = 1.0,
@@ -40,6 +30,7 @@ function DatatextManager:Register(id, datatextData)
     datatexts[id] = {
         id = id,
         name = datatextData.name or id,
+        displayName = datatextData.displayName or datatextData.name or id,
         frame = datatextData.frame,
         category = datatextData.category or "UTILITY",
         onEnable = datatextData.onEnable,
@@ -53,8 +44,6 @@ end
 
 function DatatextManager:GetDatatext(id) return datatexts[id] end
 function DatatextManager:GetAllDatatexts() return datatexts end
-function DatatextManager:GetDatatextCount() return #datatextOrder end
-function DatatextManager:GetDatatextOrder() return datatextOrder end
 
 -- [ LOCK / UNLOCK ] ---------------------------------------------------------------------------------
 function DatatextManager:CanDrag() return not isLocked end
@@ -261,18 +250,6 @@ function DatatextManager:DisableDrawerDatatexts()
     for _, datatext in pairs(datatexts) do
         if not datatext.isPlaced then self:DisableDatatext(datatext.id) end
     end
-end
-
--- [ CATEGORIES ] ------------------------------------------------------------------------------------
-function DatatextManager:GetDatatextsByCategory()
-    local categorized = {}
-    for key, cat in pairs(DATATEXT_CATEGORIES) do categorized[key] = { label = cat.label, order = cat.order, datatexts = {} } end
-    for _, id in ipairs(datatextOrder) do
-        local datatext = datatexts[id]
-        local catKey = datatext.category or "UTILITY"
-        if categorized[catKey] then categorized[catKey].datatexts[#categorized[catKey].datatexts + 1] = datatext end
-    end
-    return categorized
 end
 
 -- [ UPDATE SCHEDULER ] ------------------------------------------------------------------------------
