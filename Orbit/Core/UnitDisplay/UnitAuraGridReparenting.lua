@@ -76,8 +76,7 @@ function Mixin:_updateBlizzardBuffs()
 
     local collapsed = cfg.showIconLimit and self:GetSetting(1, "Collapsed")
     local maxAuras, iconsPerRow, spacing, iconH, iconW = self:_resolveGrid()
-    local anchor, growthX, growthY = ResolveGrowthDirection(Frame, cfg.showIconLimit)
-    if Frame.collapseArrow then UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY) end
+    local anchor, growthX, growthY = ResolveGrowthDirection(Frame)
 
     -- HELPFUL|PLAYER C-filter identifies player auras (auraInstanceID is the only reliably non-secret field); spellId guarded via issecretvalue.
     local showIndices
@@ -234,6 +233,7 @@ function Mixin:_updateBlizzardBuffs()
                         btn.Cooldown:SetAllPoints()
                         btn.Cooldown:SetHideCountdownNumbers(false)
                         btn.Cooldown:EnableMouse(false)
+                        btn.Cooldown:SetReverse(true)
                         btn.cooldown = btn.Cooldown
                     end
                     -- Text overlay above border
@@ -266,13 +266,14 @@ function Mixin:_updateBlizzardBuffs()
                 end
                 btn:EnableMouse(true)
                 btn:SetSize(snappedIconW, snappedIconH)
+                -- Blizzard's BuffFrame:UpdateLayout resets aura.Icon's anchor to a single point, shrinking the texture to its 30x30 template size; re-fill the button every refresh.
+                if btn.Icon then btn.Icon:ClearAllPoints(); btn.Icon:SetAllPoints(btn) end
                 CropIconTexture(btn, snappedIconW, snappedIconH)
                 btn.Cooldown:Clear()
                 if btn.Cooldown.Text then btn.Cooldown.Text:SetText("") end
                 local durObj = bi and bi.index and durObjByIndex[bi.index]
                 if durObj then btn.Cooldown:SetCooldownFromDurationObject(durObj) end
-                -- Expiration pulse: stash DurationObject for the pulse ticker
-                if durObj then Mixin._RegisterExpirationPulse(btn, durObj) else btn._orbitExpireDurObj = nil; btn:SetAlpha(1) end
+                btn:SetAlpha(1)
                 btn:Show()
                 table.insert(activeIcons, btn)
             end
@@ -280,6 +281,9 @@ function Mixin:_updateBlizzardBuffs()
     end
 
     if #activeIcons == 0 then
+        if Frame.collapseArrow then
+            UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY)
+        end
         if Frame._gridGroupBorder then Frame._gridGroupBorder:Hide() end
         return
     end
@@ -288,6 +292,9 @@ function Mixin:_updateBlizzardBuffs()
     opts.size = iconH; opts.sizeW = iconW; opts.spacing = spacing; opts.maxPerRow = iconsPerRow
     opts.anchor = anchor; opts.growthX = growthX; opts.growthY = growthY; opts.yOffset = 0
     Orbit.AuraLayout:LayoutGrid(Frame, activeIcons, opts)
+    if Frame.collapseArrow then
+        UpdateCollapseArrow(Frame.collapseArrow, collapsed, iconH, growthX, growthY, activeIcons[#activeIcons])
+    end
     skinSettings._maxPerRow = iconsPerRow
     skinSettings._growthX = growthX
     skinSettings._growthY = growthY

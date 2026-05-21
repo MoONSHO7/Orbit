@@ -1,5 +1,5 @@
 -- [ ORBIT AURA MIXIN ]-------------------------------------------------------------------------------
--- module-level scratch (`_RecycledSnapshot`, `_RecycledAuraDisplayList`) avoids per-call allocation in hot aura paths; `_curveTicker` is a singleton driving all healer-aura curve animations — same pattern as UnitAuraGridExpirationPulse.
+-- module-level scratch (`_RecycledSnapshot`, `_RecycledAuraDisplayList`) avoids per-call allocation in hot aura paths; `_curveTicker` is a singleton driving all healer-aura curve animations.
 local _, addonTable = ...
 local Orbit = addonTable
 local L = Orbit.L
@@ -194,6 +194,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         icon.Cooldown:SetAllPoints()
         icon.Cooldown:SetHideCountdownNumbers(false)
         icon.Cooldown:EnableMouse(false)
+        icon.Cooldown:SetReverse(true)
         icon.cooldown = icon.Cooldown
     end
     if not icon.Overlay then

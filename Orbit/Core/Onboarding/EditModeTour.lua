@@ -69,21 +69,6 @@ overlay.bg = overlay:CreateTexture(nil, "BACKGROUND")
 overlay.bg:SetAllPoints()
 overlay.bg:SetColorTexture(0, 0, 0, OVERLAY_ALPHA)
 
--- [ EDIT-MODE-MANAGER DIMMER ] ----------------------------------------------------------------------
-local emfDimmer
-local function GetEMFDimmer()
-    if emfDimmer then return emfDimmer end
-    emfDimmer = CreateFrame("Frame", "OrbitEditModeTourEMFBlocker", UIParent)
-    emfDimmer:SetFrameStrata("FULLSCREEN_DIALOG")
-    emfDimmer:SetFrameLevel(BLOCKER_FRAME_LEVEL)
-    emfDimmer:EnableMouse(true)
-    emfDimmer:Hide()
-    emfDimmer.bg = emfDimmer:CreateTexture(nil, "BACKGROUND")
-    emfDimmer.bg:SetAllPoints()
-    emfDimmer.bg:SetColorTexture(0, 0, 0, 1)
-    return emfDimmer
-end
-
 -- [ STAR FIELD ] ------------------------------------------------------------------------------------
 local stars = {}
 local function BuildStars()
@@ -811,11 +796,9 @@ function Tour:StartTour(force)
             end
         end
         if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
-            self._editModeWasShown = true
-            local d = GetEMFDimmer()
-            d:ClearAllPoints()
-            d:SetAllPoints(EditModeManagerFrame)
-            d:Show()
+            self._emfHidden = true
+            EditModeManagerFrame:SetAlpha(0)
+            EditModeManagerFrame:EnableMouse(false)
         end
         self:ShowTourStop(1)
     end, function(e)
@@ -898,7 +881,11 @@ function Tour:EndTour()
         end
         self._hiddenFrames = nil
     end
-    if emfDimmer then emfDimmer:Hide() end
+    if self._emfHidden then
+        EditModeManagerFrame:SetAlpha(1)
+        EditModeManagerFrame:EnableMouse(true)
+        self._emfHidden = nil
+    end
     -- Restore Orbit and Blizzard selection overlays
     if Selection then Selection:RefreshVisuals() end
 end

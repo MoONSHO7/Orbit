@@ -13,7 +13,6 @@
     <Script file="UnitPowerBarMixin.lua"/>
     <Script file="AuraMixin.lua"/>
     <Script file="UnitAuraGridMixin.lua"/>
-    <Script file="UnitAuraGridExpirationPulse.lua"/>
     <Script file="UnitAuraGridReparenting.lua"/>
     <Script file="SecondaryUnitFrameMixin.lua"/>
     <Script file="ResourceBarMixin.lua"/>

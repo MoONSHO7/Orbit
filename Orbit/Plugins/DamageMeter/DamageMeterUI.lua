@@ -312,9 +312,11 @@ local function GetEffectiveWidth(frame, def)
     return def.barWidth
 end
 
-local function FrameHeightFor(def, count)
+local function FrameHeightFor(def, count, scale)
     if count <= 0 then return 0 end
-    return count * def.barHeight + (count - 1) * def.barGap
+    local barHeight = Pixel:Multiple(def.barHeight, scale or 1)
+    local barGap    = Pixel:Multiple(def.barGap, scale or 1)
+    return count * barHeight + (count - 1) * barGap
 end
 
 local function DefaultRankPos()
@@ -374,7 +376,7 @@ local function LayoutBarInternals(bar, def)
     local iconSide = def.iconPosition
     local showIcon = iconSide ~= ICON.Off
     local barScale = bar:GetEffectiveScale()
-    local iconSize = showIcon and Pixel:Snap(def.barHeight, barScale) or 0
+    local iconSize = showIcon and Pixel:Multiple(def.barHeight, barScale) or 0
 
     bar.Icon:ClearAllPoints()
     if showIcon then
@@ -389,7 +391,7 @@ local function LayoutBarInternals(bar, def)
         bar.Icon:Hide()
     end
 
-    local fillHeight = Pixel:Snap(def.barHeight * def.style / 100, barScale)
+    local fillHeight = Pixel:Multiple(def.barHeight * def.style / 100, barScale)
     bar.StatusBar:ClearAllPoints()
     if iconSide == ICON.Right then
         bar.StatusBar:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT",   0,         0)
@@ -494,14 +496,15 @@ local function RefreshTitle(frame, def)
     -- Release any previous width cap so the FS auto-sizes; the corner anchor below positions it.
     title:SetWidth(0)
     title:ClearAllPoints()
+    local gap = Pixel:Multiple(TITLE_GAP, rect:GetEffectiveScale())
     if mode == TITLE.TopLeft then
-        title:SetPoint("BOTTOMLEFT",  rect, "TOPLEFT",     0,  TITLE_GAP)
+        title:SetPoint("BOTTOMLEFT",  rect, "TOPLEFT",     0,  gap)
     elseif mode == TITLE.TopRight then
-        title:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT",    0,  TITLE_GAP)
+        title:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT",    0,  gap)
     elseif mode == TITLE.BottomLeft then
-        title:SetPoint("TOPLEFT",     rect, "BOTTOMLEFT",  0, -TITLE_GAP)
+        title:SetPoint("TOPLEFT",     rect, "BOTTOMLEFT",  0, -gap)
     else
-        title:SetPoint("TOPRIGHT",    rect, "BOTTOMRIGHT", 0, -TITLE_GAP)
+        title:SetPoint("TOPRIGHT",    rect, "BOTTOMRIGHT", 0, -gap)
     end
     -- Re-cap to rect width only if natural text overflows, so long titles still truncate to "Damage: Curren...".
     local rectWidth = rect:GetWidth()
@@ -590,7 +593,8 @@ local function UpdateVisibleRect(frame, def, visibleCount)
     local empty = not visibleCount or visibleCount <= 0
     -- Empty state: stretch to full barCount and let OnEnter/OnLeave drive alpha for hover-only reveal.
     local rows = empty and def.barCount or visibleCount
-    local rectHeight = Pixel:Snap(rows * def.barHeight + math.max(0, rows - 1) * def.barGap, frame:GetEffectiveScale())
+    local frameScale = frame:GetEffectiveScale()
+    local rectHeight = rows * Pixel:Multiple(def.barHeight, frameScale) + math.max(0, rows - 1) * Pixel:Multiple(def.barGap, frameScale)
     rect:ClearAllPoints()
     rect:SetPoint("TOPLEFT",     frame, "TOPLEFT",   0,  0)
     rect:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT",  0, -rectHeight)
@@ -637,7 +641,9 @@ local function LayoutBars(frame, def)
     local count = def.barCount
     local width = GetEffectiveWidth(frame, def)
     local frameScale = frame:GetEffectiveScale()
-    local stride = def.barHeight + def.barGap
+    local barHeightPx = Pixel:Multiple(def.barHeight, frameScale)
+    local barGapPx   = Pixel:Multiple(def.barGap, frameScale)
+    local stride = barHeightPx + barGapPx
     -- Hoist LSM:Fetch out of the per-bar loop — UITicker iterates ≤40 bars × ≤5 meters every 0.5s, each Get* walks LSM's registered table.
     local barTexture = GetBarTexture()
     local titleFont = GetFont()
@@ -645,9 +651,9 @@ local function LayoutBars(frame, def)
     for i = 1, count do
         local bar = frame.bars[i] or CreateBar(frame)
         frame.bars[i] = bar
-        bar:SetSize(width, def.barHeight)
+        bar:SetSize(width, barHeightPx)
         bar:ClearAllPoints()
-        local yTop = -Pixel:Snap((i - 1) * stride, frameScale)
+        local yTop = -((i - 1) * stride)
         bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, yTop)
         bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, yTop)
         -- Do NOT reset font here: ApplyCanvasState owns font via overrides, reset would wipe them.
@@ -657,7 +663,7 @@ local function LayoutBars(frame, def)
     end
     for i = count + 1, #frame.bars do frame.bars[i]:Hide() end
 
-    frame:SetSize(width, FrameHeightFor(def, count))
+    frame:SetSize(width, count * barHeightPx + math.max(0, count - 1) * barGapPx)
     RefreshBorders(frame, def)
     RefreshBackgrounds(frame, def)
     frame._title:SetFont(titleFont, def.titleSize, titleOutline)
@@ -833,7 +839,8 @@ local function BuildMeterFrame(id, def)
 
     do
         local tab = CreateFrame("Button", nil, frame)
-        tab:SetSize(STRETCH_TAB_WIDTH, STRETCH_TAB_HEIGHT)
+        local tabScale = frame:GetEffectiveScale()
+        tab:SetSize(Pixel:Multiple(STRETCH_TAB_WIDTH, tabScale), Pixel:Multiple(STRETCH_TAB_HEIGHT, tabScale))
         tab:SetFrameLevel(frame:GetFrameLevel() + DM.StretchTabLevelBump)
         tab:SetAlpha(STRETCH_TAB_IDLE_ALPHA)
         tab:EnableMouse(true)
@@ -951,7 +958,7 @@ local function BuildMeterFrame(id, def)
 
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(frame, scale, parent, borderSize)
         local effScale = preview:GetEffectiveScale()
-        preview:SetSize(Pixel:Snap(fillWidth * scale, effScale), Pixel:Snap(currentDef.barHeight * scale, effScale))
+        preview:SetSize(Pixel:Multiple(fillWidth * scale, effScale), Pixel:Multiple(currentDef.barHeight * scale, effScale))
         preview.sourceFrame = frame
         preview.sourceWidth = fillWidth
         preview.sourceHeight = currentDef.barHeight
@@ -960,7 +967,7 @@ local function BuildMeterFrame(id, def)
 
         if showIcon then
             local icon = preview:CreateTexture(nil, "ARTWORK")
-            local iconLogical = Pixel:Snap(iconSize * scale, effScale)
+            local iconLogical = Pixel:Multiple(iconSize * scale, effScale)
             icon:SetSize(iconLogical, iconLogical)
             if iconSide == ICON.Right then
                 icon:SetPoint("LEFT", preview, "RIGHT", 0, 0)
@@ -971,7 +978,7 @@ local function BuildMeterFrame(id, def)
             Orbit.Skin:RegisterMaskedSurface(preview, icon)
         end
 
-        local previewFillHeight = Pixel:Snap(currentDef.barHeight * currentDef.style / 100 * scale, effScale)
+        local previewFillHeight = Pixel:Multiple(currentDef.barHeight * currentDef.style / 100 * scale, effScale)
 
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetPoint("BOTTOMLEFT",  preview, "BOTTOMLEFT",  0, 0)
@@ -1102,7 +1109,7 @@ local NPC_DUMMY_SOURCES = {
 -- Frame size is static (full barCount); only _visibleRect is elastic so hit area stays stable.
 local function SetFrameHeightForVisible(frame, def, visibleCount)
     local width = GetEffectiveWidth(frame, def)
-    frame:SetSize(width, FrameHeightFor(def, def.barCount))
+    frame:SetSize(width, FrameHeightFor(def, def.barCount, frame:GetEffectiveScale()))
     frame:Show()
     UpdateVisibleRect(frame, def, visibleCount)
     RefreshTitle(frame, def)
@@ -1464,9 +1471,10 @@ function Plugin:InitUI()
         for id, frame in pairs(meters) do RenderEmpty(frame, self:GetMeterDef(id)) end
     end, self)
 
+    -- Distinct owner — CallbackRegistry replaces same-(event,owner); `self` is taken by RegisterStandardEvents.
     Orbit.Engine.EditMode:RegisterCallbacks({
         Exit = function() self:RelayoutAllMeters() end,
-    }, self)
+    }, "Orbit_DamageMeter_UIExit")
 
     if self._uiTicker then self._uiTicker:Cancel() end
     self._uiTicker = C_Timer.NewTicker(DM.UITickerSeconds, function()

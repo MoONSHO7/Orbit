@@ -65,6 +65,7 @@ function AP:ShowIcons(frame, auraType, posData, numIcons, overrides, cfg)
             icon.Cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
             icon.Cooldown:SetAllPoints()
             icon.Cooldown:SetHideCountdownNumbers(false)
+            icon.Cooldown:SetReverse(true)
             icon.cooldown = icon.Cooldown
             frame[poolKey][idx] = icon
         end
