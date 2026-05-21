@@ -46,6 +46,7 @@ CanvasMode/
   ComponentSettingsSchema.lua   -- schema definitions, presets, titles, type detection
   ComponentSettingsWidgets.lua  -- widget creation helpers (slider, checkbox, font, color)
   ComponentSettingsPreview.lua  -- preview renderers (portrait, cast bar, health text) + style applicators
+  IconCanvasPreview.lua         -- icon-grid canvas preview helper (sized/styled draggable icons for Tracked, CooldownManager)
   Creators/               -- component creator registry (how to build draggable previews per type)
     Registry.lua
     AuraCreator.lua

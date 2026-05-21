@@ -55,3 +55,4 @@ function Mixin:CaptureFromNativeParent(button, allowedParents)
     return false
 end
 
+if table.freeze then table.freeze(Orbit.NativeBarMixin) end

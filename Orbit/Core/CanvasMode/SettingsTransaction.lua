@@ -1,7 +1,4 @@
 -- [ CANVAS MODE - SETTINGS TRANSACTION ]-------------------------------------------------------------
--- Transactional cache for Canvas Mode edits.
--- Buffers all changes until Apply (commit) or Cancel (rollback).
--- Fires ORBIT_CANVAS_SETTINGS_CHANGED so preview frames can live-update.
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine

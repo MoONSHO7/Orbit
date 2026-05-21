@@ -1,8 +1,4 @@
 -- [ LOCALIZATION - CONFIG ] -------------------------------------------------------------------------
--- CFG_ keys. Strings used in the Config panels: Global, Colors, Edit Mode, Profiles,
--- Visibility Engine. Labels, tab names, tooltips, dropdown options.
--- To translate: uncomment your locale block and mirror the keys from enUS.
--- Missing keys fall back to enUS automatically.
 local _, Orbit = ...
 
 local LOCALE_STRINGS = {

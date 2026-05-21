@@ -1,5 +1,3 @@
--- Versatility.lua
--- Versatility datatext: shows current Versatility percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

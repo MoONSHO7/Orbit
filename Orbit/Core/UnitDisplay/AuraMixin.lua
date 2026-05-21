@@ -1,8 +1,5 @@
 -- [ ORBIT AURA MIXIN ]-------------------------------------------------------------------------------
--- Module-level state is deliberate: scratch buffers (`_RecycledSnapshot`, `_RecycledAuraDisplayList`)
--- avoid per-call table allocation in hot aura paths; the curve ticker (`_activeCurveIcons`,
--- `_curveTicker`) is a singleton registry following the UnitAuraGridExpirationPulse precedent
--- (one ticker drives all healer-aura curve animations across frames).
+-- module-level scratch (`_RecycledSnapshot`, `_RecycledAuraDisplayList`) avoids per-call allocation in hot aura paths; `_curveTicker` is a singleton driving all healer-aura curve animations — same pattern as UnitAuraGridExpirationPulse.
 local _, addonTable = ...
 local Orbit = addonTable
 local GameTooltip = Orbit.Tooltip

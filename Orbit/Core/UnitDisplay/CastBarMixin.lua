@@ -620,3 +620,5 @@ function Mixin:SetupCastBarOnUpdate(bar)
         end
     end)
 end
+
+if table.freeze then table.freeze(Orbit.CastBarMixin) end

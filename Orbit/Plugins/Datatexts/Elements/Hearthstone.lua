@@ -1,5 +1,3 @@
--- Hearthstone.lua
--- Hearthstone datatext: shows hearthstone location and cooldown
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

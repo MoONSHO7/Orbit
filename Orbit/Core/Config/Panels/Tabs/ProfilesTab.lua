@@ -1,11 +1,5 @@
 -- [ PROFILES TAB ]-----------------------------------------------------------------------------------
--- Profile management for the Orbit Options dialog. Active profile, spec profiles, create/clone/
--- delete/import/export. Registers tab-local widget types (profileactive, profileselect,
--- collapseheader, checkheader, statusmessage).
---
--- LOCALIZATION WARNING: the "Global" profile name on line ~337 is a reserved identifier,
--- not a generic label. When migrating, keep the `value = "Global"` literal and only localize
--- the `text`. See Orbit/Localization/PHASE_0_DROPDOWN_AUDIT.md.
+-- localization: the "Global" profile name in the dropdown is a reserved identifier — only localize the displayed `text`, never the `value = "Global"` literal.
 
 local _, Orbit = ...
 local L = Orbit.L

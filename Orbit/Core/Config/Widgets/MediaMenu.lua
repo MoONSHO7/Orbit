@@ -1,10 +1,5 @@
 -- [ MEDIA MENU ]-------------------------------------------------------------------------------------
--- Custom dropdown popup for LSM media pickers (Font, Texture). Fully self-owned layout: a search bar
--- pinned at the top, a virtualized row list below it, Orbit-* entries sorted first. Because the
--- layout is ours, the search bar genuinely stays fixed and rows never render behind it.
---
--- The consuming picker supplies createRow / renderRow / onSelect; MediaMenu owns search, sorting,
--- virtualization, scrolling and the open/close lifecycle.
+-- self-owned layout (search bar + virtualized rows) so the search stays pinned; rows can't render behind it the way a Blizzard scroll frame would.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine

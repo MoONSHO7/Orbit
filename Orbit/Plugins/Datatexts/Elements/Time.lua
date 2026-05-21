@@ -1,5 +1,3 @@
--- Time.lua
--- Time datatext: local/realm time with calendar tooltip
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

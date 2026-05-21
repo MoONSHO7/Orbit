@@ -17,8 +17,9 @@ blizzard ships the data, we ship the UI. users create up to `MaxMeters` meters (
 | DamageMeterDisable.lua | neutralizes blizzard's `DamageMeter` frame and its session windows — offscreen, invisible, no mouse. hooks `UpdateShownState` to re-hide on every show attempt. the hidden session window keeps blizzard's event pipeline alive. |
 | DamageMeterSettings.lua | two-tab settings dialog. footer carries a **New Meter** extraButton (labelled `New Meter (n/max)` at cap). **Layout**: per-meter styling (bar height, bar gap, icon position, title, border, background) routed through plugin Get/Set overrides into `MeterDefs[id]`. **Behaviour**: plugin-global toggles — `AutoSwitchToCurrent` (Orbit profile setting) and a CVar proxy for `damageMeterResetOnNewInstance`. |
 | DamageMeterUI.lua | the meter. multi-instance factory: one frame per meter def, rendered from `C_DamageMeter` via sink-only writes. three view modes (chart / breakdown / history) toggled by clicks. mouse-wheel scrolls rank offset. edit-mode preview renders dummy class-colored data. drag-to-reposition stores absolute pixel offset; no quadrant snapping. |
+| DamageMeterComparison.lua | popup `OrbitDamageMeterComparison` window opened by `Plugin:OpenSpecComparison(meterID, originSource)`. compares the meter's current source against per-spec averages — class-coloured stack bars per spell, M+ gold-timer crown atlas on the overall winner. sink-only rendering and `SafeFormatDuration` for the durations. |
 
-removed vs the earlier draft: phases, session archive, compare window, chat report, smart-anchor quadrant flipping. if you're reintroducing any of these, update this table.
+removed vs the earlier draft: phases, session archive, chat report, smart-anchor quadrant flipping. if you're reintroducing any of these, update this table.
 
 ## secret value discipline
 

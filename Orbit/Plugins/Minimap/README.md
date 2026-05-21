@@ -17,7 +17,10 @@ orbit's minimap plugin. reparents blizzard's `Minimap` into a clean, borderless 
 
 | file                     | responsibility                                                    |
 | ------------------------ | ----------------------------------------------------------------- |
-| `Minimap.lua`            | plugin registration, lifecycle, capture, components, teardown     |
+| `Minimap.lua`            | plugin registration, lifecycle orchestration, ApplySettings entry, event fan-out |
+| `MinimapConstants.lua`   | `Orbit.MinimapConstants` — single source of truth for SYSTEM_ID, size/zoom defaults, mask textures, border-ring options |
+| `MinimapCapture.lua`     | blizzard `Minimap`/`MinimapCluster` capture, art stripping, FrameGuard, reparenting of difficulty/missions/mail/crafting indicators |
+| `MinimapComponents.lua`  | per-component creators + updaters (Clock, Coords, ZoomButtons, ZoneText, CalendarInvites) and shape/mask resolution |
 | `MinimapCompartment.lua` | compartment button, flyout, button collection, hover orchestrator |
 | `MinimapSettings.lua`    | settings UI (sliders)                                             |
 

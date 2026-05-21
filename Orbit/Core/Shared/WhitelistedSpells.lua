@@ -1,8 +1,5 @@
 -- [ WHITELISTED SPELLS ]-----------------------------------------------------------------------------
--- Blizzard-whitelisted spell IDs where aura/cooldown fields are NON-SECRET even in combat.
--- Update this file when Blizzard patches add new whitelisted spells.
--- See UNSECRETED.md in project root for full Blizzard whitelist documentation.
--- No executable logic. Only declarations.
+-- Blizzard-whitelisted spell IDs where aura/cooldown fields are non-secret even in combat. see UNSECRETED.md.
 local _, Orbit = ...
 
 ---@class OrbitWhitelistedSpells

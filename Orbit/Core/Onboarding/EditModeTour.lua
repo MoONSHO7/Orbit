@@ -1,6 +1,5 @@
 -- [ EDIT MODE - GUIDED TOUR (PLAYGROUND) ] ----------------------------------------------------------
--- Strings live in Orbit/Localization/Domains/Tours.lua under the TOUR_EM_* prefix.
--- When adding or renaming tour steps here, update the matching keys there.
+-- strings live in Orbit/Localization/Domains/Tours.lua under TOUR_EM_*.
 ---@type Orbit
 local Orbit = Orbit
 local Engine = Orbit.Engine

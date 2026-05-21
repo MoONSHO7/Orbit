@@ -1,5 +1,3 @@
--- Haste.lua
--- Haste datatext: shows current Haste percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

@@ -1,5 +1,3 @@
--- Spec.lua
--- Spec datatext: shows all specialization icons with the gold talent ring. Click to change.
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

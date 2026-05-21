@@ -1,5 +1,3 @@
--- Performance.lua
--- System performance datatext: FPS, latency, memory, addon usage, sparkline graph
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

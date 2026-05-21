@@ -88,3 +88,5 @@ function Mixin:Update(frame, plugin, iconSize)
     self:CreateAnchors(frame, plugin, iconSize)
     anchor:Show()
 end
+
+if table.freeze then table.freeze(Orbit.PrivateAuraMixin) end

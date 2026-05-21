@@ -3,8 +3,6 @@ local Orbit = addonTable
 local L = Orbit.L
 
 -- [ ORBIT API ]--------------------------------------------------------------------------------------
--- Public-facing methods for troubleshooting, automation, and advanced usage.
------------------------------------------------------------------------------------------------------
 
 ---@class OrbitAPI
 Orbit.API = {}

@@ -1,7 +1,5 @@
 -- [ CANVAS MODE - COMPONENT SETTINGS SCHEMA ] -------------------------------------------------------
--- Schema definitions, presets, titles, and type detection for component settings.
--- All `label = L.KEY` values are captured at file-load time, so the construction is wrapped in
--- Schema.Build() and re-run when ORBIT_LOCALE_REBUILT fires (after a runtime locale override).
+-- `label = L.KEY` captures at file-load time, so construction is wrapped in Schema.Build() and re-run on ORBIT_LOCALE_REBUILT (runtime locale override).
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode

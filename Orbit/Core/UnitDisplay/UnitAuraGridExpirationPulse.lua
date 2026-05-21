@@ -1,12 +1,5 @@
 -- [ UNIT AURA GRID EXPIRATION PULSE ]----------------------------------------------------------------
--- Shared expiration pulse ticker for UnitAuraGridMixin. When an aura icon is within
--- EXPIRATION_THRESHOLD of expiry, pulses its alpha between EXPIRATION_ALPHA_MIN and 1 at
--- EXPIRATION_PULSE_SPEED. The ticker is lazy: it starts only when the first icon registers and
--- cancels itself once the pulse list drains.
---
--- Extracted from UnitAuraGridMixin.lua so the shared pulse list does not sit as module-level
--- state on a mixin file (mixins must be stateless per CLAUDE.md). The state now lives inside
--- this module and is reached only through Orbit.UnitAuraGridMixin._RegisterExpirationPulse.
+-- lives outside the mixin file so the pulse list isn't module-level state on a stateless mixin. lazy ticker — starts on first register, cancels on drain.
 
 local _, Orbit = ...
 local Mixin = Orbit.UnitAuraGridMixin

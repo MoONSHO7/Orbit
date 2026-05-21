@@ -1,5 +1,3 @@
--- Quest.lua
--- Quest datatext: active quest count and tracker
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

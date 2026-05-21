@@ -49,3 +49,5 @@ function PG:Apply(icon, aura, unit, skinSettings)
     if not typeName or not options then self:Stop(icon); return end
     GC:ShowPandemic(icon, typeName, options, alpha)
 end
+
+if table.freeze then table.freeze(Orbit.PandemicGlow) end

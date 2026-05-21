@@ -24,7 +24,8 @@ each tier has independent settings (width, height, spacing, layout mode, compone
 | GroupFrame.lua | main plugin. tier detection, frame creation, event handling, settings application. |
 | GroupFrameSettings.lua | settings schema builder with tier selector and sub-tabs (layout, colors, indicators). |
 | GroupFrameFactory.lua | unit button factory for group member frames. |
-| GroupFrameHelpers.lua | layout helpers (party stacking, raid grid, border merging, sorting). |
+| GroupFrameHelpers.lua | layout constants (`Helpers.LAYOUT`), sort modes, border merging, group-membership utilities consumed by GroupFrameLayout. |
+| GroupFrameLayout.lua | `Orbit.GroupFrameLayoutMixin` — positions frames per tier (party stacking vs. raid grid), draws group-number overlays, computes container size. combat-guarded entry points. |
 | GroupFramePreview.lua | canvas mode and edit mode preview with mock data (adapts to current tier). |
 
 ## how it works

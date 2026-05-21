@@ -1,5 +1,3 @@
--- Formatting.lua
--- Number, money, time formatting and RingBuffer for Datatexts datatexts
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 

@@ -676,3 +676,5 @@ function Mixin:UpdateAllPartyStatusIcons(frame, plugin)
     self:UpdateIncomingRes(frame, plugin)
     self:UpdateIncomingSummon(frame, plugin)
 end
+
+if table.freeze then table.freeze(Orbit.StatusIconMixin) end

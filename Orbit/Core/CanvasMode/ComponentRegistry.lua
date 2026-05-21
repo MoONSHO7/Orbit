@@ -1,12 +1,5 @@
 -- [ COMPONENT REGISTRY ]-----------------------------------------------------------------------------
--- Registers internal frame components (Name, HealthText, Level, etc.)
--- and restores their positions from saved ComponentPositions data.
--- Component positioning is managed exclusively through Canvas Mode.
--- Usage:
---   Engine.ComponentDrag:Attach(component, parentFrame, {
---       key = "Name",
---       onPositionChange = function(component, alignment, x, y) end
---   })
+-- usage: `Engine.ComponentDrag:Attach(component, parentFrame, { key = "Name", onPositionChange = function(component, alignment, x, y) end })`.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine

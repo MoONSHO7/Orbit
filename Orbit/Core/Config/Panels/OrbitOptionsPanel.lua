@@ -1,7 +1,4 @@
 -- [ ORBIT OPTIONS PANEL ]----------------------------------------------------------------------------
--- Shell for the Orbit Options dialog. Owns tab registration, open/hide/refresh lifecycle, and the
--- shared helpers each tab uses to build a Global-scoped settings plugin. Individual tab schemas
--- and plugins live in `Tabs/` and register themselves into `Panel.Tabs`.
 
 local _, Orbit = ...
 local OrbitEngine = Orbit.Engine

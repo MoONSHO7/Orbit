@@ -1,5 +1,3 @@
--- Mastery.lua
--- Mastery datatext: shows current Mastery percentage or rating
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

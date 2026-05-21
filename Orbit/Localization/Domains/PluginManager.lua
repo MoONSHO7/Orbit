@@ -1,8 +1,4 @@
 -- [ LOCALIZATION - PLUGIN MANAGER ] -----------------------------------------------------------------
--- PLG_ keys. Strings specific to the Plugin Manager panel: section headers,
--- tri-state tooltips, spec-lock messages, reload prompts.
--- To translate: uncomment your locale block and mirror the keys from enUS.
--- Missing keys fall back to enUS automatically.
 local _, Orbit = ...
 
 local LOCALE_STRINGS = {

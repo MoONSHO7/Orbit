@@ -1,9 +1,4 @@
 -- [ LOCALIZATION - SLASH COMMANDS ] -----------------------------------------------------------------
--- CMD_ keys. Strings printed by /orbit subcommands, confirmation popup text and
--- button labels, minimap button tooltip lines.
--- Keys ending in _F are format strings passed to :format() at the call site.
--- To translate: uncomment your locale block and mirror the keys from enUS.
--- Missing keys fall back to enUS automatically.
 local _, Orbit = ...
 
 local LOCALE_STRINGS = {

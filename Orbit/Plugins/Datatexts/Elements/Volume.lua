@@ -1,5 +1,3 @@
--- Volume.lua
--- Volume datatext: master volume display with scroll-to-adjust
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

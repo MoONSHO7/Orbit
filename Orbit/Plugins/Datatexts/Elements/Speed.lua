@@ -1,5 +1,3 @@
--- Speed.lua
--- Movement speed datatext: shows current speed percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

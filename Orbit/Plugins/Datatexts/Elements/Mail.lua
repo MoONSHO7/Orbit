@@ -1,5 +1,3 @@
--- Mail.lua
--- Mail datatext: shows pending mail indicator
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

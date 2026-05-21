@@ -1,10 +1,5 @@
 -- [ ORBIT SELECTION - RESIZE HANDLE ] ---------------------------------------------------------------
--- Attaches a bottom-right resize handle to selection overlays for frames
--- whose orbitPlugin exposes size settings. Reads per-plugin config from
--- frame.orbitResizeBounds = { minW, maxW, minH, maxH, widthKey, heightKey, square }.
--- widthKey/heightKey default to "Width"/"Height" when omitted. square=true (Minimap)
--- locks aspect: the dominant drag axis drives both dimensions through widthKey,
--- clamped to minW/maxW.
+-- contract: frames opt in via `orbitResizeBounds = { minW, maxW, minH, maxH, widthKey, heightKey, square }`. widthKey/heightKey default to "Width"/"Height"; square=true (Minimap) locks aspect — dominant drag axis drives both dimensions via widthKey, clamped to minW/maxW.
 
 local _, Orbit = ...
 local Engine = Orbit.Engine

@@ -1,5 +1,3 @@
--- Durability.lua
--- Equipment durability datatext: shows lowest item durability percentage
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

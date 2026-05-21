@@ -1,6 +1,5 @@
 -- [ UNIT POWER BAR MIXIN ]---------------------------------------------------------------------------
--- Shared mixin for Target/Focus power bar plugins.
--- Follows the CastBarMixin pattern: consumer files Mixin(Plugin, ...) then call config methods.
+-- shared by Target/Focus power-bar plugins; same Mixin(Plugin, ...) → config-methods shape as CastBarMixin.
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
@@ -295,3 +294,5 @@ function Mixin:UpdateAll()
         end
     end
 end
+
+if table.freeze then table.freeze(Orbit.UnitPowerBarMixin) end

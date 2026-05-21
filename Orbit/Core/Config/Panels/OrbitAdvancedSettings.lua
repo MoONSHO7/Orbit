@@ -1,11 +1,4 @@
 -- [ ORBIT ADVANCED SETTINGS ]------------------------------------------------------------------------
--- Orchestrator for the Orbit AddOns settings panel. Hosts three tabs:
--- 1. Plugin Manager — enable/disable Orbit plugins
--- 2. Visibility Engine — centralized frame visibility settings
--- 3. Quality of Life — expandable sections for misc QoL features
--- Content builders live in Config/Advanced/. This file provides the tab bar,
--- panel shell, and Settings API registration.
--- Accessible via /orbit plugins or Game Menu > Options > AddOns > Orbit.
 
 local _, Orbit = ...
 Orbit._AC = Orbit._AC or {}

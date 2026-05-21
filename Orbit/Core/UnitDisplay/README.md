@@ -25,6 +25,7 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | AuraMixin.lua | aura (buff/debuff) display and filtering. caches per-container layout via `_auraFingerprint` keyed by aura instance IDs to skip unchanged rebuilds; settings-changing call sites (e.g. plugin `ApplySettings`) must call `Mixin:InvalidateContainerLayout(frame)` before the next update or the container will keep its old layout. reads `ComponentPositions` via `plugin:GetComponentPositions` (transaction-aware) — never via raw `GetSetting`. |
 | AuraLayout.lua | aura icon grid layout math. |
 | AuraPreview.lua | aura preview generation for canvas mode. |
+| PreviewAnimator.lua | shared OnUpdate-throttled animator for edit-mode preview frames (health drift, shield/necrotic pulses, damage-bar decay, death-fade, periodic aura swap). per-owner enable list keeps the ticker idle when no preview is open. |
 | GroupAuraFilters.lua | aura filter rules for party/raid (dispellable, defensive, etc.). |
 | GroupFrameMixin.lua | shared group frame behavior (party/raid header management). |
 | GroupFrameEventHandler.lua | shared OnEvent/OnShow handler factory for group frames. builds per-event aura snapshot (`_auraSnapshot`) via 2 `GetUnitAuras` calls (HARMFUL + HELPFUL). all aura consumers (containers, single icons, healer auras, dispel) read from the snapshot with zero additional C API aura fetches. |

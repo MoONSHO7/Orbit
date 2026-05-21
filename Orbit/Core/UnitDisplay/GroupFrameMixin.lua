@@ -61,3 +61,5 @@ function Mixin.UpdateInRange(frame)
     end
     frame:ApplyHealthColor()
 end
+
+if table.freeze then table.freeze(Orbit.GroupFrameMixin) end

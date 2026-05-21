@@ -1,5 +1,3 @@
--- Location.lua
--- Location datatext: current zone name with PvP type coloring
 local _, Orbit = ...
 local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip

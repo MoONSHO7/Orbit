@@ -1,13 +1,4 @@
 -- [ LOCALIZATION - TOURS ] --------------------------------------------------------------------------
--- TOUR_ keys. Onboarding and help tour strings migrated from file-local tables in
--- Core/CanvasMode/CanvasModeTour.lua and Core/Onboarding/EditModeTour.lua.
---
--- TOUR_CM_*  Canvas Mode tour (in-canvas help tooltips).
--- TOUR_EM_*  Edit Mode tour (onboarding playground, 9 steps + Canvas callout).
--- TOUR_CDM_* Cooldown Viewer Settings hints (single-shot teach moments).
---
--- Generic "Next"/"Done" button labels are shared via CMN_NEXT/CMN_DONE in Common.lua.
--- To translate: add or extend your locale block below. Missing keys fall back to enUS.
 local _, Orbit = ...
 
 local LOCALE_STRINGS = {

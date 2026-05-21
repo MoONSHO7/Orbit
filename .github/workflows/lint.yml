@@ -26,3 +26,48 @@ jobs:
 
       - name: Run localization lint
         run: python .scripts/check-localization.py
+
+  readmes:
+    name: READMEs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run README lint
+        run: python .scripts/check-readmes.py
+
+  comments:
+    name: Comments
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run comment lint
+        run: python .scripts/check-comments.py
+
+  mixin-freeze:
+    name: Mixin Freeze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run mixin-freeze lint
+        run: python .scripts/check_mixin_freeze.py
