@@ -63,8 +63,8 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
     canvasMode = true,
     defaults = {
         Hidden = false,
-        Width = 200,
-        Height = 12,
+        Width = 202,
+        Height = 10,
         ShowText = false,
         ManaColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 1, a = 1 } } } },
         RageColorCurve = { pins = { { position = 0, color = { r = 1, g = 0, b = 0, a = 1 } } } },
@@ -82,8 +82,9 @@ local Plugin = Orbit:RegisterPlugin("Player Power", SYSTEM_ID, {
         SmoothAnimation = true,
         FrequentUpdates = false,
         TickSize = TICK_SIZE_DEFAULT,
+        DisabledComponents = { "Status" },
         ComponentPositions = {
-            Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            Text = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, posX = 135, posY = 0, justifyH = "RIGHT", selfAnchorY = "CENTER" },
         },
     },
 })

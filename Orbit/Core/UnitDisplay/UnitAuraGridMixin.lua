@@ -10,26 +10,28 @@ Orbit.UnitAuraGridMixin = {}
 local Mixin = Orbit.UnitAuraGridMixin
 
 Mixin.sharedDebuffDefaults = {
-    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34,
-    PandemicGlowType = Constants.Glow.Type.Pixel,
+    IconsPerRow = 5, MaxRows = 1, Spacing = 2, Width = 200, IconSize = 34, Scale = 100,
+    PandemicGlowType = Constants.Glow.Type.Thin,
     PandemicGlowColor = Constants.Glow.DefaultColor,
-    PandemicGlowColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.8, b = 0, a = 1 } } } },
+    PandemicGlowColorCurve = { pins = { { position = 0.5, color = { r = 1, g = 0.227, b = 0, a = 1 } } } },
 }
 
 Mixin.sharedBuffDefaults = {
-    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34,
+    IconsPerRow = 8, MaxRows = 2, Spacing = 2, Width = 200, IconSize = 34, Scale = 100,
 }
 
 Mixin.playerBuffDefaults = {
-    IconLimit = 20, Rows = 1, Spacing = 2, IconSize = 34, aspectRatio = "1:1",
+    IconLimit = 30, Rows = 1, Spacing = 1, IconSize = 34, aspectRatio = "1:1",
+    Collapsed = true,
+    DisabledComponents = { "Status" },
     ComponentPositions = {
-        Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
-        Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },
+        Timer  = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, posX = 0,  posY = 0,   justifyH = "CENTER", selfAnchorY = "CENTER", overrides = { FontSize = 14 } },
+        Stacks = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 0, offsetY = 5, posX = 10, posY = -10, justifyH = "RIGHT",  selfAnchorY = "BOTTOM" },
     },
 }
 
 Mixin.playerDebuffDefaults = {
-    IconLimit = 10, Rows = 1, Spacing = 0, IconSize = 34, aspectRatio = "1:1",
+    IconLimit = 10, Rows = 1, Spacing = 1, IconSize = 34, aspectRatio = "1:1",
     ComponentPositions = {
         Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0 },
         Stacks = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 1 },

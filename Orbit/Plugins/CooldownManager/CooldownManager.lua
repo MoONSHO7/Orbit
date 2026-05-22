@@ -22,29 +22,31 @@ local Plugin = Orbit:RegisterPlugin("Cooldown Manager", "Orbit_CooldownViewer", 
     defaults = {
         aspectRatio = "4:3",
         IconSize = Constants.Cooldown.DefaultIconSize,
-        IconPadding = Constants.Cooldown.DefaultPadding,
-        ActiveSwipeColorCurve = { pins = { { position = 0, color = { r = 1, g = 0.95, b = 0.57, a = 0.7 } } } },
-        CooldownSwipeColorCurve = { pins = { { position = 0, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
+        IconPadding = 2,
+        ActiveSwipeColorCurve = { pins = { { position = 0.5, color = { r = 1, g = 0.91, b = 0.28, a = 0.77 } } } },
+        CooldownSwipeColorCurve = { pins = { { position = 0.5, color = { r = 0, g = 0, b = 0, a = 0.821 } } } },
         Opacity = 100,
         Orientation = 0,
         IconLimit = Constants.Cooldown.DefaultLimit,
         ShowGCDSwipe = true,
-        DisabledComponents = { "Keybind" },
+        AlwaysShow = false,
+        HideBorders = false,
+        DisabledComponents = { "Status", "Keybind" },
         ComponentPositions = {
-            Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
-            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "LEFT" },
-            Charges = { anchorX = "RIGHT", anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "RIGHT" },
-            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
+            Timer   = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0,   posY = 0 },
+            Stacks  = { anchorX = "LEFT",   anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "LEFT",   selfAnchorY = "BOTTOM", posX = -15, posY = -10 },
+            Charges = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 1, offsetY = 5, justifyH = "RIGHT",  selfAnchorY = "BOTTOM", posX = 15,  posY = -10 },
+            Keybind = { anchorX = "RIGHT",  anchorY = "TOP",    offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
             BuffBarName  = { anchorX = "LEFT",  anchorY = "CENTER", offsetX = 5, offsetY = 0, justifyH = "LEFT" },
             BuffBarTimer = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 5, offsetY = 0, justifyH = "RIGHT" },
         },
-        PandemicGlowType = Constants.Glow.Type.Pixel,
-        PandemicGlowColor = Constants.Glow.DefaultColor,
-        ProcGlowType = Constants.Glow.Type.Medium,
-        ProcGlowColor = Constants.Glow.DefaultColor,
+        PandemicGlowType = Constants.Glow.Type.Thin,
+        PandemicGlowColor = { r = 1, g = 0.102, b = 0, a = 1 },
+        ProcGlowType = Constants.Glow.Type.Classic,
+        ProcGlowColor = { r = 1, g = 0.91, b = 0.078, a = 1 },
         OutOfCombatFade = false,
         ShowOnMouseover = true,
-        KeypressColor = { r = 1, g = 1, b = 1, a = 0 },
+        KeypressColor = { r = 1, g = 1, b = 1, a = 0.492 },
         AssistedHighlight = false,
     },
 })
@@ -55,10 +57,32 @@ Plugin.viewerMap = VIEWER_MAP
 
 -- Per-system-index defaults (overrides shared defaults for specific viewers)
 Plugin.indexDefaults = {
-    [1] = { IconSize = 34, IconLimit = 12 }, -- Essential
-    [2] = { IconSize = 34, IconLimit = 8 }, -- Utility
-    [3] = { PandemicGlowType = 1 }, -- BuffIcon
-    [30] = { PandemicGlowType = 1 }, -- BuffBar
+    [1] = { IconSize = 50, IconLimit = 20 }, -- Essential
+    [2] = { IconSize = 34, IconLimit = 20 }, -- Utility
+    [3] = { -- BuffIcon
+        IconSize = 34, IconLimit = 20,
+        PandemicGlowType = Constants.Glow.Type.Thin,
+        PandemicGlowColor = { r = 1, g = 0.22, b = 0, a = 1 },
+        ProcGlowType = Constants.Glow.Type.Medium,
+        ActiveSwipeColorCurve = { pins = { { position = 0.434, color = { r = 1, g = 0.949, b = 0.569, a = 0.77 } } } },
+        CooldownSwipeColorCurve = { pins = { { position = 0.465, color = { r = 0, g = 0, b = 0, a = 0.8 } } } },
+        AlwaysShow = true,
+        HideBorders = true,
+    },
+    [4] = { aspectRatio = "1:1" }, -- BuffIconExtended
+    [30] = { -- BuffBar
+        Height = 22, Spacing = 8,
+        DisabledComponents = { "Status" },
+        BarColor1 = { pins = { { position = 0.5, color = { r = 1, g = 0.702, b = 0.302, a = 1 } } } },
+        BarColor2 = { pins = { { position = 0.5, color = { r = 1, g = 0.702, b = 0.302, a = 1 } } } },
+        BarColor3 = { pins = { { position = 0.5, color = { r = 1, g = 0.702, b = 0.302, a = 1 } } } },
+        BarColor4 = { pins = { { position = 0.5, color = { r = 1, g = 0.702, b = 0.302, a = 1 } } } },
+        BarColor5 = { pins = { { position = 0.5, color = { r = 1, g = 0.702, b = 0.302, a = 1 } } } },
+        ComponentPositions = {
+            BuffBarName  = { anchorX = "LEFT",  anchorY = "CENTER", offsetX = 25, offsetY = 0, justifyH = "LEFT",  posX = -47, posY = 0 },
+            BuffBarTimer = { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 5,  offsetY = 0, justifyH = "RIGHT", posX = 86,  posY = 0 },
+        },
+    },
 }
 
 

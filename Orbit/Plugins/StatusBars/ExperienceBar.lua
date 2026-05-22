@@ -52,9 +52,9 @@ local Plugin = Orbit:RegisterPlugin("Experience Bar", SYSTEM_ID, {
         MinLevel = 1,
         XPColor = { pins = { { position = 0, color = { r = XP_COLOR.r, g = XP_COLOR.g, b = XP_COLOR.b, a = 1 } } } },
         ComponentPositions = {
-            Name     = { anchorX = "LEFT",   anchorY = "CENTER", offsetX = 5,  offsetY = 0, posX = -240, posY = 0, justifyH = "LEFT",   selfAnchorY = "CENTER" },
-            BarLevel = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0,  offsetY = 0, posX = 0,    posY = 0, justifyH = "CENTER", selfAnchorY = "CENTER" },
-            BarValue = { anchorX = "RIGHT",  anchorY = "CENTER", offsetX = -5, offsetY = 0, posX = 240,  posY = 0, justifyH = "RIGHT",  selfAnchorY = "CENTER" },
+            Name     = { anchorX = "LEFT",   anchorY = "CENTER", offsetX = 4, offsetY = 0, posX = -172, posY = 0, justifyH = "LEFT",   selfAnchorY = "CENTER" },
+            BarLevel = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, posX = 0,    posY = 0, justifyH = "CENTER", selfAnchorY = "CENTER" },
+            BarValue = { anchorX = "RIGHT",  anchorY = "CENTER", offsetX = 0, offsetY = 0, posX = 203,  posY = 0, justifyH = "RIGHT",  selfAnchorY = "CENTER" },
         },
         DisabledComponents = {},
     },

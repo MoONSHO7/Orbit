@@ -13,7 +13,7 @@ Orbit.UnitPowerBarMixin = {}
 local Mixin = Orbit.UnitPowerBarMixin
 
 Mixin.sharedDefaults = {
-    Hidden = false, Width = 200, Height = 10,
+    Hidden = false, Width = 200, Height = 7,
     ShowText = true, ShowPercent = false, TextSize = 12, TextAlignment = "CENTER",
     ComponentPositions = { Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" } },
 }

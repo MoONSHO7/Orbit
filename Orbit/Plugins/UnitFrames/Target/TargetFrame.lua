@@ -15,7 +15,7 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
         Width = 160,
-        Height = 30,
+        Height = 38,
         SyncSize = TARGET_FRAME_INDEX,
         ReactionColour = true,
         ShowAuras = true,
@@ -27,16 +27,20 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
         HealthTextMode = "percent_short",
         EnableTargetTarget = true,
         EnableTargetPower = true,
-        -- Disabled components (Canvas Mode drag-to-disable)
+        Is3D = false,
+        PortraitStyle = "2d",
+        PortraitMirror = true,
+        PortraitShape = "square",
+        PortraitBorder = true,
+        PortraitScale = 125,
         DisabledComponents = { "Portrait" },
-        -- Default component positions (Canvas Mode is single source of truth)
         ComponentPositions = {
-            Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", overrides = { FontSize = 14 } },
-            HealthText = { anchorX = "RIGHT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT" },
-            LevelText = { anchorX = "RIGHT", offsetX = -3, anchorY = "TOP", offsetY = 6, justifyH = "LEFT" },
-            RareEliteIcon = { anchorX = "RIGHT", offsetX = -8, anchorY = "BOTTOM", offsetY = 10, justifyH = "LEFT" },
-            MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 0 },
-            Portrait = { anchorX = "LEFT", offsetX = 4, anchorY = "CENTER", offsetY = 0 },
+            Name          = { anchorX = "LEFT",   offsetX = 5,  anchorY = "CENTER", offsetY = 0, justifyH = "LEFT",   selfAnchorY = "CENTER", posX = -75, posY = 0,  overrides = { FontSize = 14 } },
+            HealthText    = { anchorX = "RIGHT",  offsetX = 5,  anchorY = "CENTER", offsetY = 0, justifyH = "RIGHT",  selfAnchorY = "CENTER", posX = 75,  posY = 0 },
+            LevelText     = { anchorX = "RIGHT",  offsetX = -6, anchorY = "TOP",    offsetY = 8, justifyH = "RIGHT",  selfAnchorY = "TOP",    posX = 78,  posY = 11 },
+            RareEliteIcon = { anchorX = "RIGHT",  offsetX = 0,  anchorY = "BOTTOM", offsetY = 8, justifyH = "RIGHT",  selfAnchorY = "BOTTOM", posX = 78,  posY = -10 },
+            MarkerIcon    = { anchorX = "CENTER", offsetX = 0,  anchorY = "TOP",    offsetY = 0, justifyH = "CENTER", selfAnchorY = "TOP",    posX = 0,   posY = 19 },
+            Portrait      = { anchorX = "LEFT",   offsetX = 4,  anchorY = "CENTER", offsetY = 0 },
         },
     },
 })

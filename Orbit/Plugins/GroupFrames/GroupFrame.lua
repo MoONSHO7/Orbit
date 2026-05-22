@@ -70,14 +70,14 @@ local TIER_DEFAULTS = {
             DispelIcon = { anchorX = "RIGHT", offsetX = 2, anchorY = "BOTTOM", offsetY = 2, justifyH = "RIGHT", selfAnchorY = "BOTTOM", posX = 65, posY = -10, overrides = { IconSize = 18 } },
         },
         DisabledComponents = (function()
-            local d = { "CrowdControlIcon", "RoleIcon" }
+            local d = { "CrowdControlIcon" }
             for _, k in ipairs(Orbit.HealerAuraRegistry:AllSlotKeys()) do d[#d + 1] = k end
             d[#d + 1] = "RaidBuff"
             d[#d + 1] = "Status"
             return d
         end)(),
         DisabledComponentsMigrated = true,
-        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 4, DispelLength = 30, DispelBorder = true,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
@@ -124,7 +124,7 @@ local TIER_DEFAULTS = {
         AggroIndicatorEnabled = true, AggroColor = { r = 1.0, g = 0.0, b = 0.0, a = 1 },
         SelectionColor = { r = 0.8, g = 0.9, b = 1.0, a = 1 },
         AggroThickness = 1,
-        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 8, DispelLength = 15, DispelBorder = false,
+        DispelIndicatorEnabled = true, DispelGlowType = Orbit.Constants.Glow.Type.Pixel, DispelThickness = 2, DispelFrequency = 0.0, DispelNumLines = 4, DispelLength = 30, DispelBorder = true,
         DispelColorMagic = { r = 0.2, g = 0.6, b = 1.0, a = 1 },
         DispelColorCurse = { r = 0.6, g = 0.0, b = 1.0, a = 1 },
         DispelColorDisease = { r = 0.6, g = 0.4, b = 0.0, a = 1 },
