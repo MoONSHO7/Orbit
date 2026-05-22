@@ -19,6 +19,7 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
         BackgroundOpacity = C.BG_OPACITY_DEFAULT,
         HeaderSeparators = true,
         AutoCollapseCombat = false,
+        ShowQuestCount = true,
         Opacity = C.OPACITY_DEFAULT,
         ProgressBarMode = "Percent",
         TitleFontSize = C.TITLE_FONT_SIZE_DEFAULT,

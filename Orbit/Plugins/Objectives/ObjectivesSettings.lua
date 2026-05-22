@@ -116,6 +116,15 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "AutoCollapseCombat"),
         })
 
+        -- Show Quest Count
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowQuestCount",
+            label = "Show Quest Count",
+            default = true,
+            onChange = OnChange(self, systemIndex, "ShowQuestCount"),
+        })
+
     elseif currentTab == "Colours" then
         -- Custom Quest Colors (classification / tag colouring)
         table.insert(schema.controls, {
