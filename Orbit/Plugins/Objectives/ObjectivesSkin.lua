@@ -23,38 +23,43 @@ function Plugin:SetSkinEnabled(state)
     _enabled = state
 end
 
--- [ HELPERS ]----------------------------------------------------------------------------------------
-local function GetGlobalFont()
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    local fontName = gs and gs.Font
-    return fontName and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-end
+-- [ SETTING CACHES ]----------------------------------------------------------------------------------
+-- Populated once per ApplySkins() call to avoid per-block GetSetting() / Orbit.db reads.
+local _cachedFont              = nil  -- nil until first ApplySkins(); falls back to STANDARD_TEXT_FONT
+local _cachedTitleFontSize     = C.TITLE_FONT_SIZE_DEFAULT
+local _cachedObjectiveFontSize = C.OBJECTIVE_FONT_SIZE_DEFAULT
+local _cachedProgressBarMode   = "Percent"
+local _cachedSkinProgressBars  = true
+local _cachedCustomColors      = true
+local _cachedNormalColor       = C.TITLE_COLOR_DEFAULT
+local _cachedCompletedColor    = C.COMPLETED_COLOR_DEFAULT
+local _cachedFocusColor        = C.FOCUS_COLOR_DEFAULT
 
 -- Super-tracked quest ID (updated by SUPER_TRACKING_CHANGED)
 local _superTrackedQuestID = nil
 
-local function GetTitleFontSize()
-    return Plugin:GetSetting(SYSTEM_ID, "TitleFontSize") or C.TITLE_FONT_SIZE_DEFAULT
-end
-
-local function GetObjectiveFontSize()
-    return Plugin:GetSetting(SYSTEM_ID, "ObjectiveFontSize") or C.OBJECTIVE_FONT_SIZE_DEFAULT
-end
-
+-- [ HELPERS ]----------------------------------------------------------------------------------------
+-- Resolves a stored color value, including the class-color sentinel { type = "class", a = ... }.
 local POI_COLOR_DEFAULT_FALLBACK  = C.TITLE_COLOR_DEFAULT
 local POI_COLOR_COMPLETE_FALLBACK = C.COMPLETED_COLOR_DEFAULT
 
-local function GetNormalQuestColor()
-    return C.ValidateColor(Plugin:GetSetting(SYSTEM_ID, "TitleColor"), POI_COLOR_DEFAULT_FALLBACK)
+local function ResolveColor(raw, fallback)
+    if type(raw) == "table" and raw.type == "class" and OrbitEngine.ClassColor then
+        local cc = OrbitEngine.ClassColor:GetCurrentClassColor()
+        return { r = cc.r, g = cc.g, b = cc.b, a = raw.a or 1 }
+    end
+    return C.ValidateColor(raw, fallback)
 end
 
-local function GetCompletedQuestColor()
-    return C.ValidateColor(Plugin:GetSetting(SYSTEM_ID, "CompletedColor"), POI_COLOR_COMPLETE_FALLBACK)
+local function GetGlobalFont()
+    return _cachedFont or STANDARD_TEXT_FONT
 end
 
-local function GetFocusQuestColor()
-    return C.ValidateColor(Plugin:GetSetting(SYSTEM_ID, "FocusColor"), C.FOCUS_COLOR_DEFAULT)
-end
+local function GetTitleFontSize()     return _cachedTitleFontSize     end
+local function GetObjectiveFontSize() return _cachedObjectiveFontSize end
+local function GetNormalQuestColor()    return _cachedNormalColor    end
+local function GetCompletedQuestColor() return _cachedCompletedColor end
+local function GetFocusQuestColor()     return _cachedFocusColor     end
 
 local function IsUnderObjectivesTracker(frame)
     local p = frame
@@ -344,7 +349,7 @@ local function GetPOIColor(block)
 
     -- When custom colours are disabled, all non-focus/non-complete quests
     -- use the plain title colour (Blizzard default behaviour).
-    if not Plugin:GetSetting(SYSTEM_ID, "CustomColors") then
+    if not _cachedCustomColors then
         return GetNormalQuestColor()
     end
 
@@ -521,7 +526,7 @@ local function FormatProgressLabel(bar)
     local val = bar:GetValue()
     if not max or max == 0 then return end
 
-    local mode = Plugin:GetSetting(SYSTEM_ID, "ProgressBarMode") or "Percent"
+    local mode = _cachedProgressBarMode
     local text
     if mode == "XY" then
         text = math.floor(val) .. " / " .. math.floor(max)
@@ -559,7 +564,7 @@ end
 -- [ SKIN: PROGRESS BAR ]-----------------------------------------------------------------------------
 local function SkinProgressBar(tracker, key)
     if not _enabled then return end
-    if not Plugin:GetSetting(SYSTEM_ID, "SkinProgressBars") then return end
+    if not _cachedSkinProgressBars then return end
     local progressBar = tracker.usedProgressBars and tracker.usedProgressBars[key]
     local bar = progressBar and progressBar.Bar
     if not bar then return end
@@ -889,6 +894,21 @@ end
 function Plugin:ApplySkins()
     if not self._hooksInstalled then return end
 
+    -- Refresh all caches before any skin pass reads them
+    do
+        local gs = Orbit.db and Orbit.db.GlobalSettings
+        local fontName = gs and gs.Font
+        _cachedFont = fontName and LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
+    end
+    _cachedTitleFontSize     = self:GetSetting(SYSTEM_ID, "TitleFontSize") or C.TITLE_FONT_SIZE_DEFAULT
+    _cachedObjectiveFontSize = self:GetSetting(SYSTEM_ID, "ObjectiveFontSize") or C.OBJECTIVE_FONT_SIZE_DEFAULT
+    _cachedProgressBarMode   = self:GetSetting(SYSTEM_ID, "ProgressBarMode") or "Percent"
+    _cachedSkinProgressBars  = self:GetSetting(SYSTEM_ID, "SkinProgressBars") ~= false
+    _cachedCustomColors      = self:GetSetting(SYSTEM_ID, "CustomColors") ~= false
+    _cachedNormalColor       = ResolveColor(self:GetSetting(SYSTEM_ID, "TitleColor"), POI_COLOR_DEFAULT_FALLBACK)
+    _cachedCompletedColor    = ResolveColor(self:GetSetting(SYSTEM_ID, "CompletedColor"), POI_COLOR_COMPLETE_FALLBACK)
+    _cachedFocusColor        = ResolveColor(self:GetSetting(SYSTEM_ID, "FocusColor"), C.FOCUS_COLOR_DEFAULT)
+
     local classColorHeaders = self:GetSetting(SYSTEM_ID, "ClassColorHeaders")
     local headerSeparators = self:GetSetting(SYSTEM_ID, "HeaderSeparators")
 
@@ -950,7 +970,7 @@ function Plugin:ReSkinExistingBlocks()
             end
 
             -- Progress bar label hooks (gated on SkinProgressBars)
-            if self:GetSetting(SYSTEM_ID, "SkinProgressBars") and tracker.usedProgressBars then
+            if _cachedSkinProgressBars and tracker.usedProgressBars then
                 for _, progressBar in pairs(tracker.usedProgressBars) do
                     local bar = progressBar and progressBar.Bar
                     if bar then

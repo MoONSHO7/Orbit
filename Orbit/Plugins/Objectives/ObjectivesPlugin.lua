@@ -30,7 +30,9 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
     },
 })
 
--- Apply NativeBarMixin for mouseOver helpers
+-- Key binding label for ORBIT_OBJECTIVES_TOGGLE (Bindings.xml); shown under BINDING_HEADER_ORBIT.
+_G.BINDING_NAME_ORBIT_OBJECTIVES_TOGGLE = Orbit.L.PLU_OBJ_BINDING_TOGGLE
+
 Mixin(Plugin, Orbit.NativeBarMixin)
 
 -- [ COLOUR MIGRATION ]--------------------------------------------------------------------------------
@@ -61,6 +63,14 @@ function Plugin:OnLoad()
     self.frame:SetClipsChildren(true)
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Objectives"
+    self.frame.orbitResizeBounds = {
+        minW     = C.WIDTH_MIN,
+        maxW     = C.WIDTH_MAX,
+        minH     = C.HEIGHT_MIN,
+        maxH     = C.HEIGHT_MAX,
+        widthKey = "Width",
+        heightKey = "Height",
+    }
 
     self.frame.anchorOptions = {
         horizontal = true,
