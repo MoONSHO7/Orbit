@@ -60,7 +60,9 @@ function Plugin:OnLoad()
     self.frame = CreateFrame("Frame", "OrbitObjectivesContainer", UIParent)
     self.frame:SetSize(C.DEFAULT_WIDTH, C.DEFAULT_HEIGHT)
     self.frame:SetClampedToScreen(true)
-    self.frame:SetClipsChildren(true)
+    -- NOTE: SetClipsChildren must NOT be on self.frame — the Edit Mode selection (and its
+    -- resize handle) are parented to self.frame and extend outside its bounds. Instead we
+    -- clip at a dedicated inner frame so only the scroll content is cropped.
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = "Objectives"
     self.frame.orbitResizeBounds = {
@@ -77,7 +79,13 @@ function Plugin:OnLoad()
         vertical = true,
     }
 
-    self.scrollChild = CreateFrame("Frame", "OrbitObjectivesScrollChild", self.frame)
+    -- Clip frame: same bounds as self.frame but clips its children so tracker content
+    -- doesn't overflow, while the selection/resize handle (children of self.frame) remain visible.
+    self.clipFrame = CreateFrame("Frame", nil, self.frame)
+    self.clipFrame:SetAllPoints(self.frame)
+    self.clipFrame:SetClipsChildren(true)
+
+    self.scrollChild = CreateFrame("Frame", "OrbitObjectivesScrollChild", self.clipFrame)
     self.scrollChild:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, 0)
     self.scrollChild:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", 0, 0)
     self.scrollChild:SetSize(C.DEFAULT_WIDTH, C.DEFAULT_HEIGHT)
