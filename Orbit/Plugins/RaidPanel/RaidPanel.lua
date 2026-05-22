@@ -19,7 +19,7 @@ local Plugin = Orbit:RegisterPlugin("Raid Panel", SYSTEM_ID, {
         DisplayMode  = 3,
         DisplayShape = 1,
         Compactness  = 0,
-        Position     = { y = 0, x = 200, point = "LEFT" },
+        FadeEffect   = 0,
         Anchor       = false,
     },
 })

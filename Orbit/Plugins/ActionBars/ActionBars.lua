@@ -51,16 +51,16 @@ local BAR_CONFIG = {
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     displayName = L.PLG_NAME_ACTION_BARS,
     defaults = {
-        IconSize = 34, IconPadding = 2, Rows = 1, NumIcons = 12,
-        Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
+        IconSize = 34, IconPadding = 1, Rows = 1, NumIcons = 12, NumActionBars = 6,
+        Scale = 100, Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
         DisabledComponents = {},
         ComponentPositions = {}, GlobalComponentPositions = {
-            Keybind = { anchorX = "RIGHT", anchorY = "TOP", offsetX = 2, offsetY = 2, justifyH = "RIGHT" },
-            MacroText = { anchorX = "CENTER", anchorY = "BOTTOM", offsetX = 0, offsetY = 2, justifyH = "CENTER" },
-            Timer = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER" },
-            Stacks = { anchorX = "LEFT", anchorY = "BOTTOM", offsetX = 2, offsetY = 2, justifyH = "LEFT" },
+            Timer     = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0,  posY = 0,   overrides = { FontSize = 18 } },
+            Stacks    = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 0, offsetY = 5, justifyH = "RIGHT",  selfAnchorY = "BOTTOM", posX = 10, posY = -10 },
+            MacroText = { anchorX = "LEFT",   anchorY = "BOTTOM", offsetX = 1, offsetY = 6, justifyH = "LEFT",   selfAnchorY = "BOTTOM", posX = -7, posY = -14, overrides = { FontSize = 10 } },
+            Keybind   = { anchorX = "RIGHT",  anchorY = "TOP",    offsetX = 0, offsetY = 5, justifyH = "RIGHT",  selfAnchorY = "TOP",    posX = 10, posY = 10 },
         },
-        GlobalDisabledComponents = {},
+        GlobalDisabledComponents = { "Status" },
         OutOfCombatFade = false, ShowOnMouseover = true,
         KeypressColor = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 0.6 } } } },
         -- IconBackdropColor unset → inherits global "Background"; Colors-tab override falls through per-bar.

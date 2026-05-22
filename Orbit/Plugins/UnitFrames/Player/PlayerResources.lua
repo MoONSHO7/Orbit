@@ -57,7 +57,7 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
     },
     defaults = {
         Hidden = false,
-        Width = DEFAULTS.Width,
+        Width = 100,
         Height = DEFAULTS.Height,
         Spacing = 2,
         ShowText = true,
@@ -91,8 +91,10 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         SmoothAnimation = true,
         FrequentUpdates = false,
         TickSize = TICK_SIZE_DEFAULT,
+        DisabledComponents = { "HealthText" },
         ComponentPositions = {
-            Text = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            Text       = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER" },
+            HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, posX = 0, posY = 0, justifyH = "CENTER", selfAnchorY = "CENTER" },
         },
     },
 })
