@@ -263,7 +263,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
 
     for cb in pairs(self._beforeOpenCallbacks) do
-        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, frame, plugin, systemIndex)
+        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, "CanvasMode.BeforeOpen")(frame, plugin, systemIndex)
         else cb(frame, plugin, systemIndex) end
     end
 
@@ -545,7 +545,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
 
     for cb in pairs(self._afterOpenCallbacks) do
-        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, frame, plugin, systemIndex)
+        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, "CanvasMode.AfterOpen")(frame, plugin, systemIndex)
         else cb(frame, plugin, systemIndex) end
     end
 
