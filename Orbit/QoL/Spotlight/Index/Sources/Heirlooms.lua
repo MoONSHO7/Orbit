@@ -1,6 +1,7 @@
 -- [ HEIRLOOMS SOURCE ]-------------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = Orbit.Spotlight.Search.Tokenize
+local ItemKeywords = Orbit.Spotlight.Index.ItemKeywords
 local Sources = Orbit.Spotlight.Index.Sources
 
 local Heirlooms = {
@@ -27,7 +28,7 @@ function Heirlooms:Build()
                     kind = "heirlooms",
                     id = itemID,
                     name = name,
-                    lowerName = Tokenize:Fold(name),
+                    lowerName = Tokenize:Fold(name .. " " .. ItemKeywords:Build(itemID)),
                     icon = icon,
                     quality = Enum.ItemQuality.Heirloom,
                     secure = { type = "item", item = tostring(itemID) },

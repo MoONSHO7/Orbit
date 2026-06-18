@@ -66,6 +66,13 @@ Constants.DamageMeter = {
         Right = 3,
     },
 
+    -- How a chart-bar drill-in is triggered/shown (per-meter). Click is the legacy in-place behavior.
+    BreakdownMode = {
+        Click     = 1,
+        Mouseover = 2,
+        Detached  = 3,
+    },
+
     -- Default styling baseline shared by seed creation, CreateMeter, and NormalizeMeterDefs.
     DefaultDef = {
         barCount     = 10,
@@ -78,6 +85,7 @@ Constants.DamageMeter = {
         background   = 3,
         title        = 2,
         titleSize    = 14,
+        breakdownMode = 2,
     },
 
     -- Default position when a def has none (CreateMeter uses CENTER; seed overrides explicitly).
@@ -110,6 +118,11 @@ Constants.DamageMeter = {
     -- View-mode auto-exit + ticker cadence (seconds).
     ViewTimeoutSeconds = 20,
     UITickerSeconds    = 0.5,
+
+    -- Breakdown popup placement + mouseover-hover poll cadence.
+    BreakdownPopupGap        = 6,
+    BreakdownPopupLevelBump  = 40,
+    MouseoverThrottleSeconds = 0.05,
 
     -- Session windows Blizzard persists and we must neutralize on each disable pass.
     SessionWindowCount = 3,

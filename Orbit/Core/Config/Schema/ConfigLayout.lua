@@ -382,6 +382,34 @@ function Layout:GetRegisteredTypes()
     return types
 end
 
+-- Sliders/dropdowns/pickers don't render a schema tooltip natively (only the checkbox creator does); wire one onto the label area.
+function Layout:AttachLabelTooltip(control, label, tooltip)
+    if not control then return end
+    local hover = control._tooltipHover
+    if not tooltip then
+        if hover then hover:Hide() end
+        return
+    end
+    if not hover then
+        hover = CreateFrame("Frame", nil, control)
+        hover:SetPoint("TOPLEFT", control, "TOPLEFT", 0, 0)
+        hover:SetPoint("BOTTOMLEFT", control, "BOTTOMLEFT", 0, 0)
+        hover:SetWidth(Constants.Widget.LabelWidth + Constants.Widget.LabelGap)
+        hover:EnableMouse(true)
+        control._tooltipHover = hover
+    end
+    hover._label, hover._tooltip = label, tooltip
+    hover:Show()
+    hover:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self._label or "", 1, 1, 1)
+        local tt = self._tooltip
+        GameTooltip:AddLine(type(tt) == "function" and tt(control) or tt, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    hover:SetScript("OnLeave", GameTooltip_Hide)
+end
+
 -- Initialize default widget creators
 function Layout:InitializeWidgetTypes()
     self:RegisterWidgetType("checkbox", function(container, def, getValue, callback)
@@ -395,6 +423,7 @@ function Layout:InitializeWidgetTypes()
     self:RegisterWidgetType("slider", function(container, def, getValue, callback)
         local slider = self:CreateSlider(container, def.label, def.min, def.max, def.step, def.formatter, getValue(), callback, def)
         if slider then slider.SettingKey = def.key end
+        self:AttachLabelTooltip(slider, def.label, def.tooltip)
         return slider
     end)
 
@@ -403,7 +432,9 @@ function Layout:InitializeWidgetTypes()
         if type(options) == "function" then
             options = options()
         end
-        return self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox, def.valueColor)
+        local dropdown = self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox, def.valueColor)
+        self:AttachLabelTooltip(dropdown, def.label, def.tooltip)
+        return dropdown
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
@@ -431,11 +462,15 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("texture", function(container, def, getValue, callback)
-        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox, def.valueColor, def.mediaCategory)
+        local picker = self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox, def.valueColor, def.mediaCategory)
+        self:AttachLabelTooltip(picker, def.label, def.tooltip)
+        return picker
     end)
 
     self:RegisterWidgetType("font", function(container, def, getValue, callback)
-        return self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
+        local picker = self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
+        self:AttachLabelTooltip(picker, def.label, def.tooltip)
+        return picker
     end)
 
     self:RegisterWidgetType("editbox", function(container, def, getValue, callback)

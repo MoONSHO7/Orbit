@@ -7,6 +7,8 @@ local TAB_GAP_Y = -3
 local TARGET_ADDON = "Blizzard_CooldownViewer"
 -- Fixed icon size + SetChecked re-apply: the mixin's SetChecked re-applies the atlas with UseAtlasSize=true, overflowing the 43x55 tab for atlases larger than the native cooldown viewer icons.
 local TAB_ICON_SIZE = 28
+-- CooldownViewerSettings sets no strata (default MEDIUM), which renders below HIGH frames like raid frames. Pin tabs to DIALOG, WoW's standard menu/dialog altitude.
+local TAB_STRATA = "DIALOG"
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local Plugin = Orbit:RegisterPlugin("Cooldown Viewer Extensions", "Orbit_CooldownViewerExtensions", {
@@ -98,7 +100,7 @@ end
 function Plugin:CreateTab(parent, spec, anchorTo)
     -- Parented to UIParent so per-tab hooks can't cascade taint into the settings panel.
     local tab = CreateFrame("CheckButton", nil, UIParent, TAB_TEMPLATE)
-    tab:SetFrameStrata(parent:GetFrameStrata())
+    tab:SetFrameStrata(TAB_STRATA)
     tab:SetFrameLevel(parent:GetFrameLevel() + 10)
     tab.activeAtlas = spec.atlas
     tab.inactiveAtlas = spec.atlas

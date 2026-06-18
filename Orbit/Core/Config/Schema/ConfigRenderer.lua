@@ -246,33 +246,36 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
 
     -- Default Reset Button (unless hidden by schema)
     if not schema.hideResetButton then
-        local resetBtn = Layout:CreateButton(footer, "Reset to Defaults", function()
-            -- Reset Logic
-            if schema.controls then
-                for _, def in ipairs(schema.controls) do
-                    if def.key then
-                        plugin:SetSetting(systemIndex, def.key, nil)
+        local resetBtn = Layout:CreateButton(footer, L.CMN_RESET_TO_DEFAULTS, function()
+            Layout:ShowConfirm({
+                title = L.CMN_RESET_TO_DEFAULTS,
+                text = L.CFG_RESET_CONFIRM,
+                acceptText = L.CMN_RESET_TO_DEFAULTS,
+                onAccept = function()
+                    if schema.controls then
+                        for _, def in ipairs(schema.controls) do
+                            if def.key then
+                                plugin:SetSetting(systemIndex, def.key, nil)
+                            end
+                        end
                     end
-                end
-            end
-            if schema.onReset then
-                schema.onReset()
-            end
-
-            if plugin.ApplySettings then
-                plugin:ApplySettings(systemFrame)
-            end
-
-            -- Refresh UI
-            local dialog = footer:GetParent():GetParent()
-            Layout:Reset(dialog) -- Reset Dialog
-            self:Render(dialog, systemFrame, plugin, schema)
+                    if schema.onReset then
+                        schema.onReset()
+                    end
+                    if plugin.ApplySettings then
+                        plugin:ApplySettings(systemFrame)
+                    end
+                    local dialog = footer:GetParent():GetParent()
+                    Layout:Reset(dialog)
+                    self:Render(dialog, systemFrame, plugin, schema)
+                end,
+            })
         end)
         table.insert(buttons, resetBtn)
     end
 
     if schema.openPluginManager then
-        local pmBtn = Layout:CreateButton(footer, "Advanced", function()
+        local pmBtn = Layout:CreateButton(footer, L.CMN_ADVANCED, function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
                 securecall("HideUIPanel", EditModeManagerFrame)
             end

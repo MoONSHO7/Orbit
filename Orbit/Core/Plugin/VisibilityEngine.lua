@@ -205,6 +205,23 @@ function VE:GetBlizzardFrames()
     return result
 end
 
+function VE:ResetAll()
+    if Orbit.db then Orbit.db.VisibilityEngine = {} end
+    for _, entry in ipairs(self:GetBlizzardFrames()) do
+        local f = _G[entry.blizzardFrame]
+        if f then f:SetAlpha(1) end
+    end
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+    Orbit.MountedVisibility:Refresh(true)
+    local systems = Orbit.Engine and Orbit.Engine.systems
+    if systems then
+        for _, plugin in pairs(systems) do
+            if plugin.ApplySettings then plugin:ApplySettings() end
+        end
+    end
+    Orbit:Print(L.MSG_VE_RESET)
+end
+
 function VE:GetThirdPartyFrames()
     local active = {}
     local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded

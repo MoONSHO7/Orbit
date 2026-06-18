@@ -22,6 +22,8 @@ local VISUAL_POLL_INTERVAL = 0.3
 local COOLDOWN_THROTTLE = 0.1
 local TALENT_REPARSE_DELAY = 0.5
 local EQUIPMENT_SLOTS = { 13, 14 }
+local DROP_HINT_LABEL_GAP = 4
+local DROP_HINT_LABEL_ALPHA = 0.7
 
 -- [ TOOLTIP PARSER ALIASES ] ------------------------------------------------------------------------
 local Parser = Orbit.TooltipParser
@@ -209,6 +211,18 @@ function Container:Apply(plugin, frame, record)
     local extMinX, extMaxX, extMinY, extMaxY = minX, maxX, minY, maxY
     local edgePositions
     local showHints = plugin:ShouldShowDropHints(not hasItems)
+    if (not hasItems) and showHints then
+        if not frame.dropHintLabel then
+            frame.dropHintLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            frame.dropHintLabel:SetPoint("TOP", frame, "BOTTOM", 0, -DROP_HINT_LABEL_GAP)
+            frame.dropHintLabel:SetTextColor(0.8, 0.8, 0.8)
+            frame.dropHintLabel:SetAlpha(DROP_HINT_LABEL_ALPHA)
+            frame.dropHintLabel:SetText(L.PLU_TRK_DROP_HINT)
+        end
+        frame.dropHintLabel:Show()
+    elseif frame.dropHintLabel then
+        frame.dropHintLabel:Hide()
+    end
     if showHints then
         edgePositions = self:ComputeEdgePositions(frame, grid, minX, maxX, minY, maxY, hasItems)
         for _, pos in ipairs(edgePositions) do

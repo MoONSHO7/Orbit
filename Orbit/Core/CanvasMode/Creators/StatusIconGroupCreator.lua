@@ -10,6 +10,7 @@ local CC = CanvasMode.CreatorConstants
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HOLD_DURATION = 2.0
 local FADE_DURATION = 0.5
+local MISSIONS_DEFAULT_ATLAS = "midnight-landingbutton-up"
 
 local CYCLING_ATLASES = {
     StatusIcons = {
@@ -37,16 +38,6 @@ local CYCLING_ATLASES = {
         { atlas = "icons_64x64_poison" },
         { atlas = "icons_64x64_bleed" },
     },
-    -- Expansion landing page button — cycles through all known expansion icons
-    Missions = {
-        { atlas = "GarrLanding-MinimapIcon-Horde-Up" },           -- WoD (Horde)
-        { atlas = "GarrLanding-MinimapIcon-Alliance-Up" },        -- WoD (Alliance)
-        { atlas = "legionmission-landingbutton-warrior-up" },     -- Legion
-        { atlas = "BFAMission-LandingButton-Horde-Up" },          -- BfA
-        { atlas = "Shadowlands-landingbutton-venthyr-up" },       -- Shadowlands
-        { atlas = "dragonflight-landingbutton-up" },              -- Dragonflight
-        { atlas = "TWWLandingPage-ButtonIcon-Earthen" },          -- The War Within
-    },
 }
 
 local ROUND_ROLE_ATLASES = {
@@ -68,6 +59,18 @@ local HEADER_LEADER_ATLASES = {
 }
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
+local function ResolveMissionsAtlas()
+    local elp = ExpansionLandingPage
+    local info = elp and elp.GetOverlayMinimapDisplayInfo and elp:GetOverlayMinimapDisplayInfo()
+    local atlas = info and info.normalAtlas
+    if not atlas then
+        local btn = ExpansionLandingPageMinimapButton
+        local normal = btn and btn.GetNormalTexture and btn:GetNormalTexture()
+        atlas = normal and normal:GetAtlas()
+    end
+    return atlas or MISSIONS_DEFAULT_ATLAS
+end
+
 local function CreateFadeGroup(tex, fromAlpha, toAlpha)
     local group = tex:CreateAnimationGroup()
     local anim = group:CreateAnimation("Alpha")
@@ -98,6 +101,8 @@ local function Create(container, preview, key, source, data)
         end
     elseif key == "LeaderIcon" then
         if overrides and overrides.LeaderIconStyle == "header" then atlases = HEADER_LEADER_ATLASES end
+    elseif key == "Missions" then
+        atlases = { { atlas = ResolveMissionsAtlas() } }
     end
 
     if not atlases or #atlases == 0 then return nil end

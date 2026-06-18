@@ -65,6 +65,19 @@ function Orbit.Localization.Install(LOCALE_STRINGS, domainName)
     MergeDomain(LOCALE_STRINGS, domainName, false)
 end
 
+function Orbit.Localization.SetLocaleOverride(code)
+    if not OrbitDB then return end
+    local L = Orbit.L
+    OrbitDB.AccountSettings = OrbitDB.AccountSettings or {}
+    if code == nil or code == "auto" or code == "default" then
+        OrbitDB.AccountSettings.LocaleOverride = nil
+        Orbit:Print(L.CMD_LANG_CLEARED)
+    else
+        OrbitDB.AccountSettings.LocaleOverride = code
+        Orbit:Print(L.CMD_LANG_SET_F:format(code))
+    end
+end
+
 -- Re-resolves activeLocale from OrbitDB and re-merges every registered domain.
 function Orbit.Localization.Rebuild()
     Orbit.Localization.activeLocale, Orbit.Localization.localeIsOverridden = ResolveActiveLocale()

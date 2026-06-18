@@ -1,24 +1,29 @@
 [start]
 
-### Message
-Been a lot of hard work, but I think the Addon is now in a very stable place right now, so finnaly going to give it the 1.0 release!
-More to come, more quality of life, more features planned.
-Going on a Holiday for a few weeks so nothing major until next patch (12.0.7) - please continue to give feedback and suggestions.
+### Updates & Bugfixes
+- Added/Updated older dialogue boxes for Hotkeys, Tours, Resets, etc
+- Added new dialogue boxes for various confirmations (exiting Orbit Tour, Welcome to Orbit)
+- Fixed Raid Bar (Wrong World Markers)
+- Orbit Button has Mouse Middle Click to open Spotlight
+- Other minor changes to Raid Bar
 
-Thanks everyone for your support :)
+## Spotlight
+- Removed all `/orbit` chat commands, these can now be found in Spotlight which is always enabled by default. Just type "Help" for a bunch of information and clickable featues (example: help reset)"
+- Added a bunch of tooltip information for things Orbit does that you might not know about, just use 'help' in Spotlight, ie. 'help damage meter', 'help cdm'.
+- Added even more detailed parsing for various things (ie. 'items rings', 'reagents')
+- Adjusted some QoL settings for Spotlight
+- Can now shift-click items from Spotlight into Chat
 
-### Updates
-- Orbit 1.0!
-- I recommend an `/Orbit HardReset` to any older users of Orbit, freshen up them SavedVariables.
+## Damage Meter
+- Clicking the title now does the same thing as Shift-Right Click (Selecting different metrics)
+- Added `Breakdown` option to damage meters, allowing mouseover or detachement for player breakdowns.
+- Changed drag-stretch graphic
 
-### Hints
-You can always open this window again by typing `/orbit whatsnew`
-You can always disable a plugin in `/orbit plugins`
-Visibility settings are found in the VE Engine `/orbit ve`
-Click in four corners of the screen to open the `Datatext Drawer`
+## Orbit Portal
+- Added new Animation option (Slide or Fade)
 
-### Message
-Please report bugs in discord and I will address them ASAP.
-Orbit can do a lot, a lot of it is obfuscated as we don't do bloated menus, but I plan on a how-to video soon, but Discord is the best place for advice in sculpting your UI for now.
+## Minimap
+- Missions Icon is now static in Canvas Mode and shows based on current Zone
+- Missions Icon now has an override setting to make it show on mouseover only.
 
 [end]

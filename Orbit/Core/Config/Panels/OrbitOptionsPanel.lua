@@ -114,6 +114,18 @@ function Panel:Hide()
     if dialog and dialog:IsShown() then dialog:Hide() end
 end
 
+-- [ EDIT MODE TOGGLE ]-------------------------------------------------------------------------------
+function Panel:ToggleEditMode()
+    if not EditModeManagerFrame then Orbit:Print(L.MSG_EDIT_MODE_UNAVAILABLE); return end
+    if EditModeManagerFrame:IsShown() then
+        securecall("HideUIPanel", EditModeManagerFrame)
+        self:Hide()
+    else
+        securecall("ShowUIPanel", EditModeManagerFrame)
+        self:Open(L.CFG_TAB_GLOBAL)
+    end
+end
+
 -- [ TOGGLE LOGIC ]-----------------------------------------------------------------------------------
 function Panel:Toggle(tab)
     local dialog = Orbit.SettingsDialog

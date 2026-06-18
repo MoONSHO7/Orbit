@@ -425,16 +425,26 @@ local function GetProfilesSchema()
                         for _, n in ipairs(Orbit.Profile:GetProfiles()) do
                             if n == importName then ShowFlashMessage(L.MSG_PROFILE_EXISTS_F:format(importName)); return end
                         end
-                        local ok, err = Orbit.Profile:ImportProfile(importString, importName)
-                        if ok then
-                            Orbit:Print(L.MSG_IMPORT_SUCCESS)
-                            profilesSubView = nil
-                            importString = ""
-                            importName = ""
-                            ReopenProfiles()
-                        else
-                            ShowFlashMessage(L.MSG_INVALID_IMPORT)
+                        local function applyImport(confirmed)
+                            local ok, err = Orbit.Profile:ImportProfile(importString, importName, confirmed)
+                            if ok then
+                                Orbit:Print(L.MSG_IMPORT_SUCCESS)
+                                profilesSubView = nil
+                                importString = ""
+                                importName = ""
+                                ReopenProfiles()
+                            elseif err == "COLLECTION_CONFIRM" then
+                                Layout:ShowConfirm({
+                                    title = L.CFG_IMPORT_COLLECTION_TITLE,
+                                    text = L.CFG_IMPORT_COLLECTION_WARNING,
+                                    acceptText = L.CMN_IMPORT,
+                                    onAccept = function() applyImport(true) end,
+                                })
+                            else
+                                ShowFlashMessage(L.MSG_INVALID_IMPORT)
+                            end
                         end
+                        applyImport(false)
                     end,
                 },
             },

@@ -383,7 +383,7 @@ function Orbit.Profile:ExportSingleProfile(profileName)
     return "--OrbitProfile--" .. LibDeflate:EncodeForPrint(LibDeflate:CompressDeflate(LibSerialize:Serialize(exportData)))
 end
 
-function Orbit.Profile:ImportProfile(str, name)
+function Orbit.Profile:ImportProfile(str, name, confirmed)
     str = str:gsub("^%-%-OrbitProfile%-%-", "")
     local decoded = LibDeflate:DecodeForPrint(str)
     if not decoded then return false, "Decoding Failed" end
@@ -394,6 +394,9 @@ function Orbit.Profile:ImportProfile(str, name)
     if type(t) ~= "table" or not t.meta or t.meta.addon ~= "Orbit" then return false, "Not an Orbit Profile" end
 
     if t.meta.type == "Collection" then
+        if not confirmed then
+            return false, "COLLECTION_CONFIRM"
+        end
         Orbit.db.profiles = {}
         local count = 0
         for profileName, profileData in pairs(t.data) do

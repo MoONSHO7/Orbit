@@ -230,7 +230,7 @@ function Plugin:OnLoad()
         -- Preview TexCoords for Canvas Mode (frame 20 of 7x6 grid - shows full zZZ)
         self.frame.RestingIcon.Icon.orbitPreviewTexCoord = { 2 / 6, 3 / 6, 3 / 7, 4 / 7 }
 
-        -- FlipBook animation parameters (matches Blizzard's native implementation)
+        -- flipbook* fields are read by Canvas Mode preview, not by the engine-driven animation below
         local FLIPBOOK_ROWS = 7
         local FLIPBOOK_COLS = 6
         local FLIPBOOK_FRAMES = 42
@@ -239,28 +239,15 @@ function Plugin:OnLoad()
         self.frame.RestingIcon.flipbookCols = FLIPBOOK_COLS
         self.frame.RestingIcon.flipbookFrames = FLIPBOOK_FRAMES
         self.frame.RestingIcon.flipbookDuration = FLIPBOOK_DURATION
-        local frameTime = FLIPBOOK_DURATION / FLIPBOOK_FRAMES
-        local frameWidth = 1 / FLIPBOOK_COLS
-        local frameHeight = 1 / FLIPBOOK_ROWS
 
-        self.frame.RestingIcon.currentFrame = 0
-        self.frame.RestingIcon.elapsed = 0
-
-        local function SetFlipBookFrame(frameIndex)
-            local col = frameIndex % FLIPBOOK_COLS
-            local row = math.floor(frameIndex / FLIPBOOK_COLS)
-            self.frame.RestingIcon.Texture:SetTexCoord(col * frameWidth, (col + 1) * frameWidth, row * frameHeight, (row + 1) * frameHeight)
-        end
-        SetFlipBookFrame(0)
-
-        self.frame.RestingIcon:SetScript("OnUpdate", function(restFrame, elapsed)
-            restFrame.elapsed = restFrame.elapsed + elapsed
-            if restFrame.elapsed >= frameTime then
-                restFrame.elapsed = restFrame.elapsed - frameTime
-                restFrame.currentFrame = (restFrame.currentFrame + 1) % FLIPBOOK_FRAMES
-                SetFlipBookFrame(restFrame.currentFrame)
-            end
-        end)
+        local anim = self.frame.RestingIcon.Texture:CreateAnimationGroup()
+        anim:SetLooping("REPEAT")
+        local flip = anim:CreateAnimation("FlipBook")
+        flip:SetDuration(FLIPBOOK_DURATION)
+        flip:SetFlipBookRows(FLIPBOOK_ROWS)
+        flip:SetFlipBookColumns(FLIPBOOK_COLS)
+        flip:SetFlipBookFrames(FLIPBOOK_FRAMES)
+        self.frame.RestingIcon.Anim = anim
         self.frame.RestingIcon:Hide()
     end
 
@@ -427,13 +414,11 @@ function Plugin:UpdateRestingIcon(frame)
     if not frame or not frame.RestingIcon then
         return
     end
-    if self:IsComponentDisabled("RestingIcon") then
-        frame.RestingIcon:Hide()
-        return
-    end
-    if IsResting() then
+    if not self:IsComponentDisabled("RestingIcon") and IsResting() then
         frame.RestingIcon:Show()
+        frame.RestingIcon.Anim:Play()
     else
+        frame.RestingIcon.Anim:Stop()
         frame.RestingIcon:Hide()
     end
 end

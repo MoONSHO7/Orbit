@@ -2,6 +2,8 @@
 
 hotkey-driven universal search across bags, equipped gear, spellbook, toys, mounts, pets, heirlooms, professions, currencies, macros, and quest items. account-wide. no user-arranged ui.
 
+a `help` kind (gated behind the `help` / `orbit` prefix) also surfaces curated Orbit actions and explanations of non-obvious interactions — see [Index/Help/README.md](Index/Help/README.md).
+
 ## layout
 
 ```
@@ -16,7 +18,9 @@ Index/
   Favorites.lua                 -- right-click favorite toggle for kinds that support it (mounts, pets, toys)
   Recents.lua                   -- recent-activation tracking for sort priority
   MountTypeTags.lua             -- ground / flying / aquatic / dragonriding tags for mount filtering
+  ItemKeywords.lua              -- :Build(itemRef) → localized type/subtype/slot/binding/reagent terms folded into item lowerName so items search by attribute ("ring", "warbound", "crafting reagent"), not just name
   Sources/                      -- one file per source. each defines kind, events, persistent, Build, signature.
+  Help/                         -- the "help" kind: authored actions + explainers. see Index/Help/README.md.
 UI/
   ResultRow.lua                 -- secure-action-button row with orbit-skinned icon + label; mouse-only activation
   RowPool.lua                   -- lazy row creation and reuse
@@ -74,9 +78,9 @@ right-click toggles the entry's favorite for kinds that support it (`mounts`, `p
 
 all settings are account-scoped in `Orbit.db.AccountSettings`:
 
-- `Spotlight` (boolean) — module enabled
-- `Spotlight_Src_<Source>` (boolean, default true) — per-source toggle; disabled sources are filtered out of query results
-- `Spotlight_MaxResults` (10 – 100, default 25)
+- (Spotlight is always enabled — there is no module on/off toggle; `Spotlight:Enable()` runs unconditionally on `PLAYER_LOGIN`.)
+- `Spotlight_Src_<Source>` (boolean, default true) — per-source toggle; disabled sources are filtered out of query results. includes `Spotlight_Src_Help` for the help category.
+- `Spotlight_MaxResults` (10 – 100, default 100)
 - `Spotlight_Scale` (0.70 – 1.30 in 0.05 steps, default 1.00) — applied via `root:SetScale` on each Open; borders re-skin against the new effective scale so edge thickness stays at constant physical pixels
 - `Spotlight_Fuzzy` (boolean, default true)
 - `SpotlightIndex` (internal cache)
@@ -85,6 +89,8 @@ all settings are account-scoped in `Orbit.db.AccountSettings`:
 
 1. create `Index/Sources/<NewSource>.lua` following the source contract above.
 2. add a `<Script>` line to [Spotlight.xml](Spotlight.xml) in the Sources block before `IndexManager.lua` loads (order doesn't affect behaviour, but convention is alphabetical).
-3. add the source to the `SPOTLIGHT_SOURCES` list in [Orbit/Core/Config/Advanced/QoL.lua](../../Core/Config/Advanced/QoL.lua) so it gets a category toggle.
-4. add a matching `PLU_SPT_SRC_<NAME>` key to [Orbit/Localization/Domains/Plugins.lua](../../Localization/Domains/Plugins.lua).
-5. add the new kind to `GetEnabledKinds()` in [UI/SpotlightFrame.lua](UI/SpotlightFrame.lua) and to `KIND_PRIORITY` in [Search/Matcher.lua](Search/Matcher.lua).
+3. add a row to the `Spotlight.Kinds` table in [Spotlight.lua](Spotlight.lua) (`{ kind, settingKey, labelKey }`). this single row data-drives the category toggle in [QoL.lua](../../Core/Config/Advanced/QoL.lua), the enabled-kinds filter in [UI/SpotlightFrame.lua](UI/SpotlightFrame.lua), and the row's kind label — none need a manual edit.
+4. add a matching `PLU_SPT_SRC_<NAME>` key to [Orbit/Localization/Domains/Plugins.lua](../../Localization/Domains/Plugins.lua) in every locale.
+5. add the new kind to `KIND_PRIORITY` in [Search/Matcher.lua](Search/Matcher.lua).
+
+a `Spotlight.Kinds` row may also carry `aliasTokens = { "..." }` (extra exact-match prefix words that select the kind) and `prefixOnly = true` (the kind is excluded from un-prefixed searches and only appears behind its own token). the `help` kind uses both — `help`/`orbit` reach it, and it never pollutes item/spell results.

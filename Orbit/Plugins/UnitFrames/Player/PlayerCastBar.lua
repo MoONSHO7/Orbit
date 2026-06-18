@@ -220,6 +220,8 @@ function Plugin:AddSettings(dialog, systemFrame, forceAnchorMode)
             min = 1, max = 5, step = 1, default = 1,
         })
         table.insert(schema.controls, { type = "checkbox", key = "ShowLatency", label = L.PLU_CAST_SHOW_LATENCY, default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = L.PLU_CAST_SHOW_NAME, default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = L.PLU_CAST_SHOW_TIMER, default = true })
     elseif currentTab == L.PLU_CAST_TAB_COLOUR then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve", label = L.PLU_CAST_NORMAL,
@@ -851,8 +853,12 @@ function Plugin:ApplySettings(systemFrame)
 
     local savedPositions = self:NormalizeCanvasComponentPositions(self:GetComponentPositions(systemIndex), systemIndex) or {}
 
+    local showText = self:GetSetting(systemIndex, "CastBarText")
+    if showText == nil then showText = true end
+    local showTimer = self:GetSetting(systemIndex, "CastBarTimer")
+    if showTimer == nil then showTimer = true end
     if bar.Text then
-        if not OrbitEngine.ComponentDrag:IsDisabled(bar.Text) then
+        if showText and not OrbitEngine.ComponentDrag:IsDisabled(bar.Text) then
             bar.Text:Show()
             local overrides = savedPositions.Text and savedPositions.Text.overrides or {}
             OrbitEngine.OverrideUtils.ApplyOverrides(bar.Text, overrides, { fontSize = textSize, fontPath = fontPath })
@@ -861,7 +867,7 @@ function Plugin:ApplySettings(systemFrame)
         end
     end
     if bar.Timer then
-        if not OrbitEngine.ComponentDrag:IsDisabled(bar.Timer) then
+        if showTimer and not OrbitEngine.ComponentDrag:IsDisabled(bar.Timer) then
             bar.Timer:Show()
             local overrides = savedPositions.Timer and savedPositions.Timer.overrides or {}
             OrbitEngine.OverrideUtils.ApplyOverrides(bar.Timer, overrides, { fontSize = textSize, fontPath = fontPath })

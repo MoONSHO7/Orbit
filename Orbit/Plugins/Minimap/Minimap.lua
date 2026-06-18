@@ -48,7 +48,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
             Compartment    = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 15,  offsetY = 15, posX = 135,  posY = -135, justifyH = "RIGHT",  selfAnchorY = "BOTTOM" },
             Tracking       = { anchorX = "LEFT",   anchorY = "BOTTOM", offsetX = -15, offsetY = -10, posX = -110, posY = -135, justifyH = "LEFT",   selfAnchorY = "BOTTOM" },
             Zoom           = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 15,  offsetY = 35, posX = 110,  posY = -90,  justifyH = "RIGHT",  selfAnchorY = "BOTTOM" },
-            Missions       = { anchorX = "LEFT",   anchorY = "BOTTOM", offsetX = 20,  offsetY = 20, posX = -130, posY = -130, justifyH = "CENTER", selfAnchorY = "BOTTOM" },
+            Missions       = { anchorX = "LEFT",   anchorY = "BOTTOM", offsetX = 20,  offsetY = 20, posX = -130, posY = -130, justifyH = "CENTER", selfAnchorY = "BOTTOM", overrides = { MissionsHoverReveal = false } },
             Coords         = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 30,  offsetY = 10, posX = 95,   posY = -115, justifyH = "RIGHT",  selfAnchorY = "BOTTOM" },
             CraftingOrder  = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 16,  offsetY = 71, posX = 134,  posY = -79,  justifyH = "RIGHT",  selfAnchorY = "BOTTOM" },
             DifficultyIcon = { anchorX = "LEFT",   anchorY = "TOP",    offsetX = 15,  offsetY = 20, posX = -135, posY = 130,  justifyH = "LEFT",   selfAnchorY = "TOP",    overrides = { IconSize = 42 } },
@@ -850,6 +850,7 @@ function Plugin:ApplySettings()
             frame.Missions:Hide()
             frame.Missions:SetScript("OnShow", function(f) f:Hide() end)
         end
+        self:ApplyMissionsHoverReveal()
     end
 
     -- Mail indicator (disabled via Canvas Mode dock)

@@ -347,10 +347,16 @@ trigger:SetScript("OnEvent", function(self)
         if InCombatLockdown() then
             return
         end
-        if not Orbit.db then
+        if not Orbit.db or not Orbit.db.AccountSettings then
             return
         end
-        if Orbit.db.AccountSettings and Orbit.db.AccountSettings.WhatsNewRead == Orbit.LatestChangelogVersion then
+        local as = Orbit.db.AccountSettings
+        -- Brand-new install (no version ever acknowledged): suppress patch notes so onboarding leads instead.
+        if as.WhatsNewRead == nil then
+            as.WhatsNewRead = Orbit.LatestChangelogVersion
+            return
+        end
+        if as.WhatsNewRead == Orbit.LatestChangelogVersion then
             return
         end
         Orbit:ShowWhatsNew()

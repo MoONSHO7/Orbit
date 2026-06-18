@@ -72,9 +72,12 @@ function Plugin:ApplyShape()
 end
 
 -- [ BORDER COLOR ] ----------------------------------------------------------------------------------
--- Resolves the class-pin sentinel (`{ type = "class", a = ... }`) to a flat {r,g,b,a}.
+-- The color picker saves a single-pin curve; resolve that (and the legacy class sentinel) to a flat {r,g,b,a}.
 function Plugin:GetResolvedBorderColor()
     local raw = self:GetSetting(SYSTEM_ID, "BorderColor") or Orbit.MinimapConstants.BORDER_COLOR
+    if raw.pins then
+        return OrbitEngine.ColorCurve:SampleColorCurve(raw, 0) or Orbit.MinimapConstants.BORDER_COLOR
+    end
     if raw.type == "class" and OrbitEngine.ClassColor then
         local cc = OrbitEngine.ClassColor:GetCurrentClassColor()
         return { r = cc.r, g = cc.g, b = cc.b, a = raw.a or 1 }
@@ -559,6 +562,63 @@ function Plugin:ApplyTrackingButton()
         btn:SetAlpha(0)
         btn:Hide()
     end
+end
+
+-- [ MISSIONS HOVER REVEAL ]--------------------------------------------------------------------------
+local MISSIONS_IDLE_THROTTLE = 0.1
+
+function Plugin:ApplyMissionsHoverReveal()
+    local frame = self.frame
+    local missions = frame and frame.Missions
+    if not missions then return end
+
+    local positions = self:GetComponentPositions(SYSTEM_ID) or {}
+    local overrides = (positions.Missions or {}).overrides or {}
+    local enabled = overrides.MissionsHoverReveal and not self:IsComponentDisabled("Missions")
+    frame._missionsHoverRevealEnabled = enabled or nil
+
+    if not enabled then
+        if frame._missionsIdleWatcher then frame._missionsIdleWatcher:SetScript("OnUpdate", nil) end
+        UIFrameFadeRemoveFrame(missions)
+        missions:SetAlpha(1)
+        return
+    end
+
+    UIFrameFadeRemoveFrame(missions)
+    missions:SetAlpha(0)
+    if frame._missionsHoverHooked then return end
+
+    local minimap = Minimap
+    local function MissionsIdle()
+        return not missions:IsMouseOver()
+            and not (minimap and minimap:IsMouseOver())
+            and not frame:IsMouseOver()
+    end
+    local function RevealMissions()
+        if not frame._missionsHoverRevealEnabled or not missions:IsShown() then return end
+        UIFrameFadeIn(missions, TRACKING_FADE_IN, missions:GetAlpha(), 1)
+        local watcher = frame._missionsIdleWatcher
+        if not watcher then
+            watcher = CreateFrame("Frame")
+            frame._missionsIdleWatcher = watcher
+        end
+        watcher.elapsed = 0
+        watcher:SetScript("OnUpdate", function(self, elapsed)
+            self.elapsed = self.elapsed + elapsed
+            if self.elapsed < MISSIONS_IDLE_THROTTLE then return end
+            self.elapsed = 0
+            if not frame._missionsHoverRevealEnabled or MissionsIdle() then
+                self:SetScript("OnUpdate", nil)
+                if frame._missionsHoverRevealEnabled and missions:IsShown() then
+                    UIFrameFadeOut(missions, TRACKING_FADE_OUT, missions:GetAlpha(), 0)
+                end
+            end
+        end)
+    end
+    if minimap then minimap:HookScript("OnEnter", RevealMissions) end
+    missions:HookScript("OnEnter", RevealMissions)
+    if frame.ClickCapture then frame.ClickCapture:HookScript("OnEnter", RevealMissions) end
+    frame._missionsHoverHooked = true
 end
 
 -- [ CALENDAR PENDING INVITES ]-----------------------------------------------------------------------

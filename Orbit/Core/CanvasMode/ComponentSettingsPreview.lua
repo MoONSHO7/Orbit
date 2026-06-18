@@ -150,11 +150,11 @@ function Settings:ApplyPortraitPreview()
                 SetFrame(0)
                 comp._flipDriver:SetScript("OnUpdate", function(driver, elapsed)
                     driver._elapsed = driver._elapsed + elapsed
-                    if driver._elapsed >= frameTime then
-                        driver._elapsed = driver._elapsed - frameTime
-                        driver._current = (driver._current + 1) % ringData.frames
-                        SetFrame(driver._current)
-                    end
+                    if driver._elapsed < frameTime then return end
+                    local advance = math.floor(driver._elapsed / frameTime)
+                    driver._elapsed = driver._elapsed - advance * frameTime
+                    driver._current = (driver._current + advance) % ringData.frames
+                    SetFrame(driver._current)
                 end)
                 comp._flipDriver:Show()
             else

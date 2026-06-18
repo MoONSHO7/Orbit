@@ -24,6 +24,8 @@ Spotlight.Kinds = {
     { kind = "currencies",  settingKey = "Currencies",  labelKey = "PLU_SPT_SRC_CURRENCIES" },
     { kind = "macros",      settingKey = "Macros",      labelKey = "PLU_SPT_SRC_MACROS" },
     { kind = "questitems",  settingKey = "QuestItems",  labelKey = "PLU_SPT_SRC_QUESTITEMS" },
+    -- Help is authored content, not live game data: gated behind its "help"/"orbit" prefix (prefixOnly).
+    { kind = "help",        settingKey = "Help",        labelKey = "PLU_SPT_SRC_HELP", aliasTokens = { "orbit" }, prefixOnly = true },
 }
 
 -- [ BINDING GLOBALS ]--------------------------------------------------------------------------------
@@ -86,10 +88,10 @@ end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
-    C_Timer.After(0.5, function()
-        if Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.Spotlight then
-            Spotlight:Enable()
-        end
-    end)
+    Spotlight:Enable()
     loader:UnregisterAllEvents()
 end)
+
+-- [ EVENT BUS ]--------------------------------------------------------------------------------------
+-- Lets other modules (e.g. the minimap button) request a toggle without referencing Spotlight directly.
+Orbit.EventBus:On("ORBIT_SPOTLIGHT_TOGGLE", function() Spotlight:Toggle() end)
