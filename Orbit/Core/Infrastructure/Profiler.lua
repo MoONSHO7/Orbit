@@ -84,16 +84,3 @@ function Profiler:Stop()
             i, color, name, d.totalMs, d.maxSpike, d.calls))
     end
 end
-
--- [ SLASH COMMAND ] ---------------------------------------------------------------------------------
-_G.SLASH_ORBITPERF1 = "/orbitperf"
-SlashCmdList["ORBITPERF"] = function(msg)
-    local cmd = string.lower(strtrim(msg))
-    if cmd == "start" then
-        Profiler:Start()
-    elseif cmd == "stop" then
-        Profiler:Stop()
-    else
-        Orbit:Print("Usage: /orbitperf start | stop")
-    end
-end

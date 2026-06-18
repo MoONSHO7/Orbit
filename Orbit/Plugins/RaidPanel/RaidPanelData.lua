@@ -12,6 +12,9 @@ PD.RAID_TARGET_COLUMNS  = 4
 PD.RAID_TARGET_ROWS     = 4
 PD.MARKER_COUNT         = 8
 
+-- raid-target-icon index (Star..Skull) -> PlaceRaidMarker index; the two index sets differ, mapping verified in-game.
+PD.WORLD_MARKER_ORDER   = { 5, 6, 3, 2, 7, 1, 4, 8 }
+
 -- [ SLOT ORDER ] ------------------------------------------------------------------------------------
 PD.SLOT_ORDER = {
     "DIFFICULTY",
@@ -58,10 +61,7 @@ PD.SLOTS = {
     },
     CLEAR_MARKERS = {
         kind          = "clearmarkers",
-        action        = RemoveRaidTargets,
         atlas         = "GM-raidMarker-reset",
-        atlasHover    = "GM-raidMarker-reset-hover",
-        atlasPressed  = "GM-raidMarker-reset-pressed",
         label         = L.PLU_RAIDPANEL_CLEAR_MARKERS,
     },
 }

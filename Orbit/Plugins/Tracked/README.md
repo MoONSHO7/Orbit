@@ -287,9 +287,9 @@ shift-right-click deletion is gated on `InCombatLockdown()` — the handler sile
 
 note: when the cooldown viewer settings panel is open (or in edit mode), an empty icon container's drop zone covers the container body and intercepts mouse input, so the shift-right-click delete is handled on the drop zone itself (it routes to `DeleteContainer` when the grid is empty). bars don't have this problem because their drop hint is a child texture of the bar frame, not a separate child frame, so clicks bubble straight to the bar's mouse handler.
 
-## bulk flush — `/orbit tracked flush`
+## bulk flush — Spotlight "Reset Tracked (this spec)"
 
-`Plugin:FlushCurrentSpec` walks the store and calls `DeleteContainer` on every record whose `spec` field matches the current spec. records for other specs are left untouched. used to recover from a desync where the per-spec cap blocks new containers because the store holds dormant records the user can't see (e.g. seeded by an earlier dev iteration that never built into a frame). exposed via `/orbit tracked flush` (slash dispatch in `Core/Config/Entry/SlashCommands.lua`).
+`Plugin:FlushCurrentSpec` walks the store and calls `DeleteContainer` on every record whose `spec` field matches the current spec. records for other specs are left untouched. used to recover from a desync where the per-spec cap blocks new containers because the store holds dormant records the user can't see (e.g. seeded by an earlier dev iteration that never built into a frame). exposed via Spotlight (search `orbit` → **Reset Tracked (this spec)**), which calls `Orbit:GetPlugin("Orbit_Tracked"):FlushCurrentSpec()`.
 
 ## spec switching
 

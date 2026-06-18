@@ -185,7 +185,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_GRP_SPACING, min = 0, max = 50, step = 1, default = 0, onChange = TierMOC("Spacing") })
             table.insert(schema.controls, { type = "slider", key = "OutOfRangeOpacity", label = L.PLU_GRP_OUT_OF_RANGE_OPACITY, min = 0, max = 80, step = 5, default = 30, suffix = "%", onChange = TierMOC("OutOfRangeOpacity") })
             table.insert(schema.controls, {
-                type = "checkbox", key = "IncludePlayer", label = L.PLU_GRP_INCLUDE_PLAYER, default = false,
+                type = "checkbox", key = "IncludePlayer", label = L.PLU_GRP_INCLUDE_PLAYER, default = true,
                 onChange = TierMOC("IncludePlayer", function()
                     if plugin.frames and plugin.frames[1] and plugin.frames[1].preview then plugin:ShowPreview() else plugin:UpdateFrameUnits() end
                 end),

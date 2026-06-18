@@ -190,13 +190,13 @@ local function Create(container, preview, key, source, data)
         local ticker = CreateFrame("Frame", nil, container)
         ticker:SetScript("OnUpdate", function(_, dt)
             elapsed = elapsed + dt
-            if elapsed >= perFrame then
-                elapsed = elapsed - perFrame
-                curFrame = (curFrame + 1) % total
-                local col = curFrame % cols
-                local row = math.floor(curFrame / cols)
-                visual:SetTexCoord(col * fw, (col + 1) * fw, row * fh, (row + 1) * fh)
-            end
+            if elapsed < perFrame then return end
+            local advance = math.floor(elapsed / perFrame)
+            elapsed = elapsed - advance * perFrame
+            curFrame = (curFrame + advance) % total
+            local col = curFrame % cols
+            local row = math.floor(curFrame / cols)
+            visual:SetTexCoord(col * fw, (col + 1) * fw, row * fh, (row + 1) * fh)
         end)
     else
         local btn = CreateFrame("Button", nil, container, "BackdropTemplate")

@@ -1,6 +1,7 @@
 -- [ BAGS SOURCE ]------------------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = Orbit.Spotlight.Search.Tokenize
+local ItemKeywords = Orbit.Spotlight.Index.ItemKeywords
 local Sources = Orbit.Spotlight.Index.Sources
 
 -- Covers slots 0..5: backpack (0), four main bags (1-4), and the reagent bag (5).
@@ -28,7 +29,7 @@ function Bags:Build()
                     kind = "bags",
                     id = info.itemID,
                     name = name,
-                    lowerName = Tokenize:Fold(name),
+                    lowerName = Tokenize:Fold(name .. " " .. ItemKeywords:Build(info.hyperlink)),
                     icon = info.iconFileID,
                     count = GetItemCount(info.itemID),
                     quality = quality,

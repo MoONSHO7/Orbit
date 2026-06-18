@@ -180,8 +180,6 @@ function Orbit:OnLoad()
             end
         end)
     end
-
-    self:Print(self.L.MSG_LOADED)
 end
 
 function Orbit:Print(...) print("|cFF00FFFF" .. self.title .. ":|r", ...) end

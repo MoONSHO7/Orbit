@@ -36,7 +36,7 @@ all components below are individually positionable via canvas mode and can be di
 | **Compartment**   | collects all LibDBIcon + legacy minimap buttons into a hover-reveal drawer with icon, name, click/tooltip handlers. hidden if a minimap click is bound to `Addons` |
 | **Zoom**          | zoom in/out buttons, fade in on minimap hover, fade out on leave. dimmed/disabled at min/max zoom                                 |
 | **Difficulty**    | reparented blizzard instance difficulty indicator. icon mode and text mode now use separate internal canvas components, each with its own bounds and saved position |
-| **Missions**      | reparented blizzard expansion landing page button (garrison/covenant/etc.)                                                        |
+| **Missions**      | reparented blizzard expansion landing page button (garrison/covenant/etc.). Canvas **Reveal on Mouseover** override fades it unless the minimap is hovered (mirrors the Compartment/Zoom hover-reveal); the canvas preview shows the current expansion's live icon, falling back to the latest expansion graphic |
 | **Mail**          | reparented blizzard new mail indicator                                                                                            |
 | **CraftingOrder** | reparented blizzard crafting order indicator                                                                                      |
 

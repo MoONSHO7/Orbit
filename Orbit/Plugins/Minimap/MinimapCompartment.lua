@@ -711,6 +711,8 @@ function Plugin:ApplyAddonCompartment()
             frame._compartmentHoverHooked = true
         end
 
+        self:HideCompartmentButtonIfIdle()
+
         -- Re-collect after ADDON_LOADED / PLAYER_ENTERING_WORLD so late-attaching addon buttons get picked up.
         if not self._rescanHook then
             local f = CreateFrame("Frame")

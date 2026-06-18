@@ -160,6 +160,7 @@ the two-frame defer matches the spec path — `RefreshForCurrentSpec` (Tracked) 
 ## rules
 
 - edit mode code must work without any specific plugin loaded
+- a frame may set `frame.orbitSelectionOutset = N` before `AttachSettingsListener` to grow its selection highlight N px on every side (default flush to the frame); honoured by `Selection.AnchorSelectionToParent`.
 - position data format: `{ point, relativeTo, relativePoint, x, y }`
 - anchor chains resolve recursively. guard against cycles with depth limits.
 - all pixel offsets must be snapped via `Pixel:Snap()`

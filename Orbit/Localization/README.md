@@ -62,17 +62,9 @@ Orbit.Localization.Install(LOCALE_STRINGS, "Common")
 
 `Boot.lua` resolves the active locale from `GetLocale()` unless a dev/test override is stored at `OrbitDB.AccountSettings.LocaleOverride`, which takes precedence. `SavedVariables` are restored before an addon's files run, so `Boot.lua` reads `OrbitDB` ahead of the domain files installing — the override applies on the very next load, including schema `label = L.KEY` fields baked at file-load time.
 
-switch with the in-game command:
+switch it from **Spotlight → Tools → Orbit Language** (open Spotlight, type `orbit`): pick a locale to write the override, or **Default** to clear it.
 
-```
-/orbit lang            -- show the active locale and list available locales
-/orbit lang deDE       -- write a deDE override (then /reload manually to apply)
-/orbit lang auto       -- clear the override (then /reload manually)
-```
-
-`/orbit lang` writes the override to `OrbitDB.AccountSettings.LocaleOverride` and prints "Please Reload UI". The reload is **not** triggered automatically: `ReloadUI()` is protected and the user-action context is lost once the slash-command body returns, so a deferred call would be blocked with `ADDON_ACTION_BLOCKED`. The user types `/reload` themselves; `Boot.lua` reads the override on the next load.
-
-the command is intentionally absent from `/orbit help` — it is a translation-testing tool, not a player feature.
+`Orbit.Localization.SetLocaleOverride(code)` writes the override to `OrbitDB.AccountSettings.LocaleOverride` and prints "Please Reload UI". The reload is **not** triggered automatically: `ReloadUI()` is protected and the user-action context is lost once the click handler returns, so a deferred call would be blocked with `ADDON_ACTION_BLOCKED`. The user types `/reload` themselves; `Boot.lua` reads the override on the next load.
 
 ## key naming convention
 

@@ -6,6 +6,7 @@
     <Script file="DamageMeterEventBridge.lua"/>
     <Script file="DamageMeterDisable.lua"/>
     <Script file="DamageMeterUI.lua"/>
+    <Script file="DamageMeterBreakdownPopup.lua"/>
     <Script file="DamageMeterComparison.lua"/>
     <Script file="DamageMeterSettings.lua"/>
 

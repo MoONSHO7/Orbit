@@ -526,17 +526,16 @@ end
 
 local function ButtonReverseOnUpdate(self, elapsed)
     self.reverseElapsed = self.reverseElapsed + elapsed
-    if self.reverseElapsed >= self.throttle then
-        self.frameIndex = self.frameIndex - 1
-        if self.frameIndex < 1 then self.frameIndex = BUTTON_ANT_TOTAL_FRAMES end
-        self.reverseElapsed = self.reverseElapsed - self.throttle
-        local currentFrame = self.frameIndex - 1
-        local col = currentFrame % BUTTON_ANT_COLS
-        local row = math.floor(currentFrame / BUTTON_ANT_COLS)
-        local frameW = BUTTON_ANT_FRAME_SIZE / BUTTON_ANT_SHEET_SIZE
-        local frameH = BUTTON_ANT_FRAME_SIZE / BUTTON_ANT_SHEET_SIZE
-        self.ants:SetTexCoord(col * frameW, (col + 1) * frameW, row * frameH, (row + 1) * frameH)
-    end
+    if self.reverseElapsed < self.throttle then return end
+    local advance = math.floor(self.reverseElapsed / self.throttle)
+    self.reverseElapsed = self.reverseElapsed - advance * self.throttle
+    self.frameIndex = (self.frameIndex - 1 - advance) % BUTTON_ANT_TOTAL_FRAMES + 1
+    local currentFrame = self.frameIndex - 1
+    local col = currentFrame % BUTTON_ANT_COLS
+    local row = math.floor(currentFrame / BUTTON_ANT_COLS)
+    local frameW = BUTTON_ANT_FRAME_SIZE / BUTTON_ANT_SHEET_SIZE
+    local frameH = BUTTON_ANT_FRAME_SIZE / BUTTON_ANT_SHEET_SIZE
+    self.ants:SetTexCoord(col * frameW, (col + 1) * frameW, row * frameH, (row + 1) * frameH)
 end
 
 local function ButtonForwardOnUpdate(self, elapsed)

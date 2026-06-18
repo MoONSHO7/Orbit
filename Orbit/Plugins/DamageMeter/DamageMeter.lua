@@ -47,6 +47,7 @@ local DEF_KEY_MAP = {
     Background          = "background",
     Title               = "title",
     TitleSize           = "titleSize",
+    BreakdownMode       = "breakdownMode",
     Position            = "position",
     Anchor              = "anchor",
     ComponentPositions  = "componentPositions",
@@ -262,6 +263,9 @@ function Plugin:DeleteMeter(id)
     local defs = self:GetMeterDefs()
     if not defs[id] then return end
 
+    -- Close this meter's transient breakdown windows before the frame goes away.
+    self:CloseBreakdownPopups(id)
+
     -- Wipe edit-mode state + anchor graph so a recycled id starts clean in a future CreateMeter.
     local frame = self:GetFrameBySystemIndex(id)
     if frame then
@@ -418,6 +422,7 @@ function Plugin:OnLoad()
 
     self:InitEventBridge()
     self:InitUI()
+    self:InitBreakdownPopups()
 
     -- Eager build so mid-session enables draw immediately rather than waiting on the next zone change.
     self:RebuildAllMeters()
@@ -452,7 +457,7 @@ function Plugin:OnLoad()
 end
 
 function Plugin:ApplySettings()
-    -- `/orbit reset` wipes defs without tearing frames; detect drift so we recover without /reload.
+    -- a settings reset wipes defs without tearing frames; detect drift so we recover without /reload.
     self:EnsureSeedMeter()
     local frames = self:GetMeterFrames()
     local defs = self:GetMeterDefs()

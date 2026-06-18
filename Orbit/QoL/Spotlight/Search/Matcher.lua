@@ -22,22 +22,38 @@ local SCORE_RECENT_BASE = 40
 local KIND_PRIORITY     = {
     macros = 12, equipped = 11, bags = 10, questitems = 9, spellbook = 8,
     professions = 7, toys = 6, mounts = 5, pets = 4, heirlooms = 3,
-    currencies = 2,
+    currencies = 2, help = 1,
 }
 
 -- [ CATEGORY TOKEN MAP ]-----------------------------------------------------------------------------
 -- Built lazily so localization is loaded before we fold label strings.
 local categoryTokens
+-- Alias tokens are exact-match only (kept out of the LCP loop) so "orbit" reaches help but "orbital" does not.
+local aliasExact
 local function EnsureCategoryTokens()
     if categoryTokens then return categoryTokens end
     local L = Orbit.L
     categoryTokens = {}
+    aliasExact = {}
     for _, k in ipairs(Orbit.Spotlight.Kinds) do
         categoryTokens[k.kind] = k.kind
         local label = L[k.labelKey]
         if label then categoryTokens[Tokenize:Fold(label)] = k.kind end
+        if k.aliasTokens then
+            for _, alias in ipairs(k.aliasTokens) do aliasExact[Tokenize:Fold(alias)] = k.kind end
+        end
     end
     return categoryTokens
+end
+
+local prefixOnlyKinds
+local function EnsurePrefixOnly()
+    if prefixOnlyKinds then return prefixOnlyKinds end
+    prefixOnlyKinds = {}
+    for _, k in ipairs(Orbit.Spotlight.Kinds) do
+        if k.prefixOnly then prefixOnlyKinds[k.kind] = true end
+    end
+    return prefixOnlyKinds
 end
 
 -- LCP match on category labels — tolerates plurals/short typos; ambiguous ties fall through to name search.
@@ -54,6 +70,7 @@ end
 local function MatchToken(word, requireMultiWordToken)
     local tokens = EnsureCategoryTokens()
     if tokens[word] then return tokens[word] end
+    if aliasExact[word] then return aliasExact[word] end
     if #word < CATEGORY_MIN_PREFIX then return nil end
     local winner, bestLCP, ambiguous = nil, 0, false
     for tok, kind in pairs(tokens) do
@@ -171,9 +188,11 @@ function Matcher:Query(entries, query, enabledKinds, maxResults, fuzzy, hidePass
         local queryWords = {}
         for w in effectiveQuery:gmatch("%S+") do queryWords[#queryWords + 1] = w end
         if #queryWords == 0 then return {} end
+        local po = EnsurePrefixOnly()
         for i = 1, #entries do
             local entry = entries[i]
-            local passKind = kindFilter and (entry.kind == kindFilter) or (not kindFilter and enabledKinds[entry.kind])
+            -- prefixOnly kinds (help) never surface in an un-prefixed search — only when their own token leads.
+            local passKind = kindFilter and (entry.kind == kindFilter) or (not kindFilter and enabledKinds[entry.kind] and not po[entry.kind])
             if passKind and enabledKinds[entry.kind] and not (hidePassives and entry.passive) then
                 -- Every word must hit (AND semantics); sum scores so strong matches on multiple words rank higher.
                 local score = 0

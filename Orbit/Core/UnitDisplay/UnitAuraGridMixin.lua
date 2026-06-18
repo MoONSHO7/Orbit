@@ -22,7 +22,7 @@ Mixin.sharedBuffDefaults = {
 
 Mixin.playerBuffDefaults = {
     IconLimit = 30, Rows = 1, Spacing = 1, IconSize = 34, aspectRatio = "1:1",
-    Collapsed = true,
+    Collapsed = false,
     DisabledComponents = { "Status" },
     ComponentPositions = {
         Timer  = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, posX = 0,  posY = 0,   justifyH = "CENTER", selfAnchorY = "CENTER", overrides = { FontSize = 14 } },
@@ -54,6 +54,7 @@ local ARROW_TEX_SIZE = { w = 10, h = 16 }
 local COLLAPSED_AURA_COUNT = 3
 local ARROW_ATLAS = "bag-arrow"
 local ARROW_HOVER_POLL = 0.1
+local ARROW_REST_ALPHA = 0.25
 
 local function CreateCollapseArrow(frame, plugin)
     local btn = CreateFrame("Button", nil, frame)
@@ -66,7 +67,7 @@ local function CreateCollapseArrow(frame, plugin)
     btn.tex:SetSize(Pixel:Snap(ARROW_TEX_SIZE.w, bScale), Pixel:Snap(ARROW_TEX_SIZE.h, bScale))
     btn.tex:SetPoint("CENTER")
     btn.tex:SetAtlas(ARROW_ATLAS)
-    btn.tex:SetAlpha(0)
+    btn.tex:SetAlpha(ARROW_REST_ALPHA)
     btn:SetScript("OnClick", function(self)
         local collapsed = not plugin:GetSetting(1, "Collapsed")
         plugin:SetSetting(1, "Collapsed", collapsed)
@@ -87,7 +88,7 @@ local function CreateCollapseArrow(frame, plugin)
         self.elapsed = self.elapsed + elapsed
         if self.elapsed < ARROW_HOVER_POLL then return end
         self.elapsed = 0
-        local target = MouseIsOver(self) and 1 or (MouseIsOver(frame) and 0.7 or 0)
+        local target = MouseIsOver(self) and 1 or (MouseIsOver(frame) and 0.7 or ARROW_REST_ALPHA)
         if self.tex:GetAlpha() ~= target then self.tex:SetAlpha(target) end
     end)
     btn.tooltipText = plugin:GetSetting(1, "Collapsed") and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS

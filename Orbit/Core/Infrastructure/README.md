@@ -20,7 +20,7 @@ provides foundational services: event dispatch, pixel-perfect math, combat state
 | HealerAuraRegistry.lua | healer-specific spell and raid buff registry. maps aura slots by class/spec. |
 | ErrorHandler.lua | trust-boundary error catcher. `Wrap` guards plugin lifecycle / event callbacks so a single misbehaving module can't take down the addon; failures print to chat and ring-buffer (max 50) in the standalone `OrbitErrorLogDB` SavedVariable, split out of `OrbitDB` so a corrupt log cannot take down user settings. |
 | StrataEngine.lua | frame-level allocation (`GetFrameLevel`, `PopulateDefaults`); no scope-level Bump controls. |
-| Profiler.lua | opt-in CPU profiler, `Begin`/`End` instrumentation. Toggle via `/orbitperf`. |
+| Profiler.lua | opt-in CPU profiler, `Begin`/`End` instrumentation. Start/Stop from Spotlight (**Tools → Performance Profiler**) via `Orbit.Profiler:Start()` / `:Stop()`. |
 
 ## adding a new system
 

@@ -120,6 +120,8 @@ function Schema.Build()
         LeaderIcon      = { controls = { SCALE_CONTROL, { type = "dropdown", key = "LeaderIconStyle", label = L.CFG_STYLE,
             options = { { text = L.CFG_LEADER_STYLE_DEFAULT, value = "default" }, { text = L.CFG_ROLE_STYLE_HEADER, value = "header" } }, default = "default" } } },
         PvpIcon         = { controls = { ICON_SIZE_CONTROL } },
+        Missions        = { controls = { ICON_SIZE_CONTROL,
+            { type = "checkbox", key = "MissionsHoverReveal", label = L.CFG_MISSIONS_HOVER_REVEAL, default = false } } },
         Buffs           = Compose(AURA_GRID, BuildGlowControls("PandemicGlow", L.CFG_PANDEMIC_GLOW, "PandemicGlowColorCurve", L.CFG_PANDEMIC_COLOR)),
         Debuffs         = Compose(AURA_GRID, BuildGlowControls("PandemicGlow", L.CFG_PANDEMIC_GLOW, "PandemicGlowColorCurve", L.CFG_PANDEMIC_COLOR, "supportsPandemicGlow")),
         PrivateAuraAnchor = { controls = { ICON_SIZE_CONTROL } },

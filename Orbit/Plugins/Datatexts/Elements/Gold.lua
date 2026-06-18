@@ -27,7 +27,7 @@ W.history = RingBuffer:New(HISTORY_SIZE)
 W.sessionStart = 0
 W.sessionStartTime = 0
 W.lastHistoryTime = 0
-W.autoSellEnabled = true
+W.autoSellEnabled = false
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function FormatProfit(profit)

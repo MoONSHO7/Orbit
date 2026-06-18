@@ -164,10 +164,10 @@ local function ApplyAccentDirection(tooltipPoint)
     if pt:find("RIGHT") then tip.accentBars.right:Show() end
 end
 
--- Step counter (e.g. "1 / 3")
-local tipPad = OrbitEngine.Pixel:Multiple(TOOLTIP_PAD, tipScale)
-local titleInset = OrbitEngine.Pixel:Multiple(TOOLTIP_PAD + 4, tipScale)
-local textWidth = OrbitEngine.Pixel:Multiple(TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4, tipScale)
+-- Step counter (e.g. "1 / 3"). Layout dims are logical units to match the box; Pixel:Multiple is for pixel counts.
+local tipPad = TOOLTIP_PAD
+local titleInset = TOOLTIP_PAD + 4
+local textWidth = TOOLTIP_MAX_WIDTH - TOOLTIP_PAD * 2 - 4
 tip.counter = tip:CreateFontString(nil, "OVERLAY", FONT)
 tip.counter:SetPoint("TOPLEFT", titleInset, -tipPad)
 tip.counter:SetTextColor(0.5, 0.5, 0.5)
