@@ -5,7 +5,6 @@ local OrbitEngine = Orbit.Engine
 local Pixel = Orbit.Engine.Pixel
 local LSM = LibStub("LibSharedMedia-3.0")
 
-local Helpers = nil
 local CB = Orbit.BossFrameCastBar
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
@@ -16,6 +15,8 @@ local DEFAULT_BUFF_ICON_SIZE = 20
 local MARKER_ICON_SIZE = 16
 local DEFAULT_BOSS_OFFSET_X = -100
 local DEFAULT_BOSS_OFFSET_Y = 100
+local AURA_CONTAINER_PLACEHOLDER_W = 100
+local AURA_CONTAINER_PLACEHOLDER_H = 20
 
 -- [ PLUGIN REGISTRATION ] ---------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_BossFrames"
@@ -141,8 +142,8 @@ local function CreateBossFrame(bossIndex, plugin)
         self:UpdateAll(); UpdatePowerBar(self); UpdateFrameLayout(self, Orbit.db.GlobalSettings.BorderSize)
         UpdateDebuffs(self, plugin); UpdateBuffs(self, plugin); plugin:UpdateMarkerIcon(self, plugin)
     end)
-    frame.debuffContainer = CreateFrame("Frame", nil, frame); frame.debuffContainer:SetSize(100, 20)
-    frame.buffContainer = CreateFrame("Frame", nil, frame); frame.buffContainer:SetSize(100, 20)
+    frame.debuffContainer = CreateFrame("Frame", nil, frame); frame.debuffContainer:SetSize(AURA_CONTAINER_PLACEHOLDER_W, AURA_CONTAINER_PLACEHOLDER_H)
+    frame.buffContainer = CreateFrame("Frame", nil, frame); frame.buffContainer:SetSize(AURA_CONTAINER_PLACEHOLDER_W, AURA_CONTAINER_PLACEHOLDER_H)
     frame.StatusOverlay = CreateFrame("Frame", nil, frame)
     frame.StatusOverlay:SetAllPoints()
     frame.StatusOverlay:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
@@ -480,6 +481,24 @@ function Plugin:ApplySettings()
     local cbTimerDisabled = self.IsComponentDisabled and self:IsComponentDisabled("CastBar.Timer")
     local textSubPos = subComps.Text or { anchorX = "LEFT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "LEFT" }
     local timerSubPos = subComps.Timer or { anchorX = "RIGHT", anchorY = "CENTER", offsetX = 4, offsetY = 0, justifyH = "RIGHT" }
+    local function ApplySubPos(element, anchorTo, subPos, defaultJustify)
+        if not element or not subPos then return end
+        element:ClearAllPoints()
+        local aX = subPos.anchorX or defaultJustify
+        local aY = subPos.anchorY or "CENTER"
+        local oX = subPos.offsetX or 4
+        local oY = subPos.offsetY or 0
+        local jH = subPos.justifyH or defaultJustify
+        local anchor = OrbitEngine.PositionUtils.BuildAnchorPoint(aX, aY)
+        local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(true, false, aY, jH)
+        local fX, fY = oX, oY
+        if aX == "RIGHT" then fX = -fX end
+        if aY == "TOP" then fY = -fY end
+        local elemScale = element:GetEffectiveScale()
+        fX, fY = Pixel:SnapPosition(fX, fY, selfAnchor, element:GetWidth() or 0, element:GetHeight() or 0, elemScale)
+        element:SetPoint(selfAnchor, anchorTo, anchor, fX, fY)
+        element:SetJustifyH(jH)
+    end
     for _, frame in ipairs(self.frames) do
         Orbit.AuraMixin:InvalidateContainerLayout(frame)
         frame.borderSize = borderSize
@@ -507,27 +526,9 @@ function Plugin:ApplySettings()
                 if frame.CastBar.Bar and textureName then Orbit.Skin:SkinStatusBar(frame.CastBar.Bar, textureName, nil, true) end
                 if frame.CastBar.Text then frame.CastBar.Text:SetFont(fontPath, cbTextSize, fontOutline) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetFont(fontPath, cbTextSize, fontOutline) end
-                -- `frame` is captured per-iteration via upvalue so the closure can still be hoisted.
-                local function ApplySubPos(element, subPos, defaultJustify)
-                    if not element or not subPos then return end
-                    element:ClearAllPoints()
-                    local aX = subPos.anchorX or defaultJustify
-                    local aY = subPos.anchorY or "CENTER"
-                    local oX = subPos.offsetX or 4
-                    local oY = subPos.offsetY or 0
-                    local jH = subPos.justifyH or defaultJustify
-                    local anchor = OrbitEngine.PositionUtils.BuildAnchorPoint(aX, aY)
-                    local selfAnchor = OrbitEngine.PositionUtils.BuildComponentSelfAnchor(true, false, aY, jH)
-                    local fX, fY = oX, oY
-                    if aX == "RIGHT" then fX = -fX end
-                    if aY == "TOP" then fY = -fY end
-                    local elemScale = element:GetEffectiveScale()
-                    fX, fY = Pixel:SnapPosition(fX, fY, selfAnchor, element:GetWidth() or 0, element:GetHeight() or 0, elemScale)
-                    element:SetPoint(selfAnchor, frame.CastBar.Bar or frame.CastBar, anchor, fX, fY)
-                    element:SetJustifyH(jH)
-                end
-                ApplySubPos(frame.CastBar.Text, textSubPos, "LEFT")
-                ApplySubPos(frame.CastBar.Timer, timerSubPos, "RIGHT")
+                local castBarAnchor = frame.CastBar.Bar or frame.CastBar
+                ApplySubPos(frame.CastBar.Text, castBarAnchor, textSubPos, "LEFT")
+                ApplySubPos(frame.CastBar.Timer, castBarAnchor, timerSubPos, "RIGHT")
                 if frame.CastBar.Text then frame.CastBar.Text:SetShown(not cbTextDisabled) end
                 if frame.CastBar.Timer then frame.CastBar.Timer:SetShown(not cbTimerDisabled) end
             end

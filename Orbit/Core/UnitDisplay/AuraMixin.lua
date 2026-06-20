@@ -3,7 +3,7 @@
 local _, addonTable = ...
 local Orbit = addonTable
 local L = Orbit.L
-local pcall, type, ipairs = pcall, type, ipairs
+local type, ipairs = type, ipairs
 local math_max = math.max
 local tinsert = table.insert
 
@@ -19,7 +19,7 @@ local DEFAULT_AURA_COUNT = 40
 local TIMER_MIN_ICON_SIZE = 14
 local AURA_MIN_DISPLAY_COUNT = 2
 local AURA_MAX_DISPLAY_COUNT = 99
-local DEFAULT_FONT_PATH = "Fonts\\FRIZQT____.TTF"
+local DEFAULT_FONT_PATH = "Fonts\\FRIZQT__.TTF"
 local AURA_COUNT_SIZE = 8
 local AURA_TIMER_SIZE = 8
 
@@ -31,17 +31,14 @@ local IDENTITY_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
     return c
 end)()
 
--- [ CACHED FONT ]------------------------------------------------------------------------------------
-local cachedFontPath, cachedFontOutline
+-- [ FONT ]-------------------------------------------------------------------------------------------
 local function GetAuraFont()
-    if cachedFontPath then return cachedFontPath, cachedFontOutline end
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
-    cachedFontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or DEFAULT_FONT_PATH
-    cachedFontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
-    return cachedFontPath, cachedFontOutline
+    local fontPath = (LSM and fontName and LSM:Fetch("font", fontName)) or DEFAULT_FONT_PATH
+    local fontOutline = Orbit.Skin and Orbit.Skin.GetFontOutline and Orbit.Skin:GetFontOutline() or ""
+    return fontPath, fontOutline
 end
-function Mixin:InvalidateFontCache() cachedFontPath = nil; cachedFontOutline = nil end
 
 -- [ SKIN FACADE ]------------------------------------------------------------------------------------
 function Mixin:ApplyAuraSkin(icon, settings)
@@ -268,7 +265,13 @@ function Mixin:ApplyAuraCooldown(icon, aura, unit)
     if not icon or not icon.Cooldown then return end
     if aura.auraInstanceID and unit then
         local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
-        if durObj then icon.Cooldown:SetCooldownFromDurationObject(durObj); return end
+        if durObj then
+            icon.Cooldown:SetCooldownFromDurationObject(durObj)
+            -- Round the swipe AFTER SetCooldown (which resets the swipe texture) — like the swipe-colour-curve
+            -- paths do. Orbit-owned unnamed cooldown, so no taint; square (SwipeCustom) under a flat style.
+            icon.Cooldown:SetSwipeTexture(Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom)
+            return
+        end
     end
     icon.Cooldown:Clear()
 end
@@ -488,7 +491,6 @@ end
 
 -- [ SPELL-ID AURA ICON DISPLAY ] --------------------------------------------------------------------
 local SPELL_AURA_SCAN_MAX = 40
-local IsSecret = issecretvalue
 
 -- OnUpdate: samples remaining-percent via IDENTITY_CURVE for healer aura curve-driven visuals.
 local function HealerCurveOnUpdate(icon)
@@ -801,3 +803,5 @@ function Mixin:EnsureRaidBuffContainer(frame, containerKey, raidBuffs, iconSize)
     if container._raidIcons[1] then container.Icon = container._raidIcons[1].Icon end
     return container
 end
+
+if table.freeze then table.freeze(Orbit.AuraMixin) end

@@ -100,8 +100,6 @@ function Tooltip:ShowRep(owner, record, isAccountWide, paragonCycles)
         GameTooltip:AddDoubleLine(L.PLU_REP_PARAGON_CYCLES, tostring(paragonCycles), 1.0, 0.5, 0.0, 1.0, 0.8, 0.0)
     end
 
-    AddSession("Orbit_ExperienceBar", L.PLU_REP_SESSION_GAINED, L.PLU_REP_PER_HOUR, { 0.9, 0.9, 0.5 })
-
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("|cff888888" .. L.PLU_REP_HINT_REP_PANEL .. "|r", 1, 1, 1)
     GameTooltip:AddLine("|cff888888" .. L.PLU_XP_HINT_LINK_CHAT .. "|r", 1, 1, 1)

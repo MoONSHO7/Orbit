@@ -39,6 +39,8 @@ end
 
 function Data:ResolveSessionSource(sessionID, sessionType, meterType, sourceGUID, sourceCreatureID)
     if not self:IsAvailable() then return nil end
+    -- AllowedWhenUntainted C API: a secret sourceGUID/creatureID (combat-transition race) would throw — bail.
+    if issecretvalue(sourceGUID) or issecretvalue(sourceCreatureID) then return nil end
     meterType = meterType or METER_TYPE.Dps
     if sessionID then
         return C_DamageMeter.GetCombatSessionSourceFromID(sessionID, meterType, sourceGUID, sourceCreatureID)

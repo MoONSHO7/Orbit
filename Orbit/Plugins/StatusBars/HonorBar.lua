@@ -100,11 +100,7 @@ function Plugin:UpdateBar()
     local max = UnitHonorMax("player")
     local level = UnitHonorLevel("player") or 0
 
-    if self:GetSetting(SYSTEM_ID, "SmoothFill") then
-        Orbit.StatusBarBase:SetSmoothFill(frame, current, max)
-    else
-        Orbit.StatusBarBase:SetFill(frame, current, max)
-    end
+    Orbit.StatusBarBase:SetFill(frame, current, max)
 
     local c = self:GetBarColor()
     frame.Bar:SetStatusBarColor(c.r, c.g, c.b, c.a or 1)

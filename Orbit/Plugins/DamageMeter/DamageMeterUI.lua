@@ -226,7 +226,9 @@ local function PickHistoryAtlas(entry)
         if entry.sessionType == DM.SessionType.Current then return HISTORY_ATLAS_CURRENT end
         if entry.sessionType == DM.SessionType.Overall then return HISTORY_ATLAS_OVERALL end
     end
-    local name = entry.name or ""
+    -- entry.name can be secret in combat (see the line-751 guard); :sub/== would throw, so fall back to normal.
+    local name = entry.name
+    if not name or issecretvalue(name) then return HISTORY_ATLAS_NORMAL end
     if name:sub(1, 3) == "(!)" then return HISTORY_ATLAS_ELITE end
     return HISTORY_ATLAS_NORMAL
 end
@@ -470,10 +472,10 @@ local function BuildTitleText(def)
     local metricLabel = L[DM.MetricLabelKeys[def.meterType] or "PLU_DM_METRIC_DAMAGE"] or ""
     if def.viewMode == "breakdown" then
         local name
-        -- Skip API call on secret GUID: returned name would be secret and concat/equality would throw.
+        -- Skip the API on a secret GUID, and re-check the return: a non-secret GUID can still yield a secret name in combat.
         if def.breakdownGUID and not issecretvalue(def.breakdownGUID) then
             local _, _, _, _, _, apiName = GetPlayerInfoByGUID(def.breakdownGUID)
-            if apiName and apiName ~= "" then name = apiName end
+            if apiName and not issecretvalue(apiName) and apiName ~= "" then name = apiName end
         end
         if not name or name == "" then name = def.breakdownName end
         if name and name ~= "" then
@@ -617,11 +619,12 @@ local function RefreshBorders(frame, def)
     end
 
     for _, bar in ipairs(frame.bars) do
-        HideBorder(bar)
+        HideBorder(bar.StatusBar)
+        -- Skin the whole row, not just the StatusBar, so the icon sits inside the per-bar border (cf. the cast bar).
         if mode == BORDER.PerBar then
-            Orbit.Skin:SkinBorder(bar.StatusBar, bar.StatusBar, borderSize)
+            Orbit.Skin:SkinBorder(bar, bar, borderSize)
         else
-            HideBorder(bar.StatusBar)
+            HideBorder(bar)
         end
     end
 end
@@ -748,7 +751,7 @@ local function BuildMeterFrame(id, def)
                 -- Drop-time capture: session names from C_DamageMeter can be secret in combat; skip if so.
                 local capturedName
                 if entry.kind == "id" and entry.name
-                   and (not issecretvalue or not issecretvalue(entry.name)) then
+                   and not issecretvalue(entry.name) then
                     capturedName = entry.name
                 end
                 Plugin:UpdateMeterDef(id, {
@@ -767,6 +770,8 @@ local function BuildMeterFrame(id, def)
             if not bar._source then return end
             if InCombatLockdown() then return end
             local src = bar._source
+            -- Combat gate can race; bail on any secret identifier before either drill-in path reads or stores it.
+            if issecretvalue(src.sourceGUID) or issecretvalue(src.sourceCreatureID) then return end
             if IsShiftKeyDown() and src.sourceGUID and src.classFilename and src.classFilename ~= "" then
                 Plugin:OpenSpecComparison(id, src)
                 return
@@ -775,8 +780,9 @@ local function BuildMeterFrame(id, def)
                 local displayName = src.name
                 if src.sourceGUID then
                     local _, _, _, _, _, apiName = GetPlayerInfoByGUID(src.sourceGUID)
-                    if apiName and apiName ~= "" then displayName = apiName end
+                    if apiName and not issecretvalue(apiName) and apiName ~= "" then displayName = apiName end
                 end
+                if issecretvalue(displayName) then displayName = "" end
                 if (def2.breakdownMode or BREAKDOWN.Click) == BREAKDOWN.Detached then
                     Plugin:OpenDetachedBreakdown(id, src, displayName)
                 else
@@ -1297,6 +1303,8 @@ local function RenderBreakdownView(frame, def)
             if not issecretvalue(rowName) and (not rowName or rowName == "") then
                 rowName = "?"
             end
+            -- GetSpellTexture returns a secret for a secret spellID; PaintBar's `~= 0` test would throw, so drop it and fall back to the class icon.
+            if issecretvalue(iconID) then iconID = nil end
             _breakdownSource.name            = rowName
             _breakdownSource.classFilename   = rowClass
             _breakdownSource.specIconID      = iconID

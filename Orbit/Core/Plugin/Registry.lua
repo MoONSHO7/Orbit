@@ -28,6 +28,8 @@ function Engine.SystemMixin:SetSetting(systemIndex, key, value)
     error("Orbit: SetSetting not implemented by plugin " .. (self.name or "unknown"))
 end
 
+if table.freeze then table.freeze(Engine.SystemMixin) end
+
 ---@return OrbitSystem
 function Engine:RegisterSystem(name, system, mixin)
     local plugin = CreateFromMixins(Engine.SystemMixin, mixin)

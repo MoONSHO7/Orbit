@@ -18,7 +18,6 @@ local function Compose(...)
     return { controls = controls }
 end
 
-local ALL_ANIMATED_TYPES = { 1, 2, 3, 4, 6, 7 }
 local GD = Orbit.Constants.Glow.Defaults
 local FMT2 = function(v) return string.format("%.2f", v) end
 
@@ -46,7 +45,6 @@ local function BuildGlowControls(prefix, label, colorKey, colorLabel, capability
         { type = "slider", key = prefix .. "ClassicFrequency", label = L.CFG_GLOW_FREQUENCY, plugin = true, min = 0.05, max = 1.0, step = 0.05, default = GD.Classic.Frequency, formatter = FMT2, showIfValue = { key = typeKey, value = 4 }, capability = cap },
         { type = "slider", key = prefix .. "ThinSpeed", label = L.CFG_GLOW_SPEED, plugin = true, min = 0, max = 5.0, step = 0.1, default = GD.Thin.Speed, showIfValue = { key = typeKey, value = 6 }, capability = cap },
         { type = "slider", key = prefix .. "ThickSpeed", label = L.CFG_GLOW_SPEED, plugin = true, min = 0, max = 5.0, step = 0.1, default = GD.Thick.Speed, showIfValue = { key = typeKey, value = 7 }, capability = cap },
-        { type = "checkbox", key = prefix .. "Reverse", label = L.CFG_REVERSE, plugin = true, default = false, showIfValue = { key = typeKey, values = ALL_ANIMATED_TYPES }, capability = cap },
     }
 end
 
@@ -150,20 +148,8 @@ function Schema.Build()
         },
         HealthText = {
             controls = {
-                { type = "checkbox", key = "ShowHealthValue", label = L.CFG_SHOW_HEALTH_VALUE, plugin = true, default = true, capability = "supportsHealthText" },
-                { type = "dropdown", key = "HealthTextMode", label = L.CFG_FORMAT, plugin = true, showIf = "ShowHealthValue", capability = "supportsHealthText",
-                  options = {
-                    { text = L.CFG_HEALTH_FMT_PERCENT, value = "percent" },
-                    { text = L.CFG_HEALTH_FMT_SHORT, value = "short" },
-                    { text = L.CFG_HEALTH_FMT_RAW, value = "raw" },
-                    { text = L.CFG_HEALTH_FMT_SHORT_PCT, value = "short_and_percent" },
-                    { text = L.CFG_HEALTH_FMT_PCT_SHORT, value = "percent_short" },
-                    { text = L.CFG_HEALTH_FMT_PCT_RAW, value = "percent_raw" },
-                    { text = L.CFG_HEALTH_FMT_SHORT_PCT2, value = "short_percent" },
-                    { text = L.CFG_HEALTH_FMT_SHORT_RAW, value = "short_raw" },
-                    { text = L.CFG_HEALTH_FMT_RAW_SHORT, value = "raw_short" },
-                    { text = L.CFG_HEALTH_FMT_RAW_PCT, value = "raw_percent" },
-                  }, default = "percent_short" },
+                { type = "formatinput", key = "HealthTextFormat", label = L.CFG_FORMAT, plugin = true,
+                  capability = "supportsHealthText", tokenSet = "health", legacyKey = "HealthTextMode" },
                 { type = "font", key = "Font", label = L.CMN_FONT },
                 { type = "slider", key = "FontSize", label = L.CMN_SIZE, min = 6, max = 32, step = 1 },
                 { type = "colorcurve", key = "CustomColorCurve", label = L.CMN_COLOR, singleColor = false },
@@ -250,6 +236,22 @@ function Schema.ResolveTitle(key)
     local HealerReg = Orbit.HealerAuraRegistry
     if HealerReg then return HealerReg:GetSlotLabel(key) end
     return key
+end
+
+-- [ FORMAT INPUT TOOLTIP ]---------------------------------------------------------------------------
+-- Builds the tooltip rows for the format input box from the token vocabulary (UnitDisplay owns the canonical
+-- health tokens; canvas reads them as data). Each row is `{ key, value }` (gold key, example value); plus a title and hint.
+function Schema.GetFormatTooltipLines(setName)
+    local lines = { { title = L.CFG_FORMAT_TOOLTIP_TITLE } }
+    local source = setName == "health" and OrbitEngine.UnitButton and OrbitEngine.UnitButton.HEALTH_TOKENS
+    if source then
+        for _, t in ipairs(source) do
+            lines[#lines + 1] = { key = t.key, value = t.sample }
+        end
+    end
+    lines[#lines + 1] = { key = "&", value = L.CFG_FORMAT_MOUSEOVER }
+    lines[#lines + 1] = { hint = L.CFG_FORMAT_TOOLTIP_HINT }
+    return lines
 end
 
 function Schema.GetComponentFamily(container)

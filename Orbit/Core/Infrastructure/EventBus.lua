@@ -1,5 +1,6 @@
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 
 ---@class OrbitEventBus
 Orbit.EventBus = {}
@@ -79,7 +80,7 @@ function EventBus:Fire(event, ...)
             Orbit.Profiler:RecordContext(listener.context, event, debugprofilestop() - start)
         end
         if not ok then
-            Orbit:Print("|cFFFF0000EventBus Error|r in", event, ":", tostring(err))
+            Orbit:Print(L.MSG_EVENTBUS_ERROR_F:format(event, tostring(err)))
             if Orbit.ErrorHandler then
                 Orbit.ErrorHandler:LogError("EventBus", event, err)
             end

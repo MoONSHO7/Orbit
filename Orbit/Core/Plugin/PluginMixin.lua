@@ -114,19 +114,20 @@ function Orbit.PluginMixin:GetComponentPositions(systemIndex)
     return (txn and txn:GetPositions()) or self:GetSetting(systemIndex or 1, "ComponentPositions") or {}
 end
 
--- Weak-keyed side cache so we never pollute SavedVariables with the lazy hash set.
+-- Weak-keyed side cache; entry tracks array length so an in-place mutation (Canvas dock inserts/removes without changing identity) invalidates the cached hash.
 local _disabledHashCache = setmetatable({}, { __mode = "k" })
 
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
     local disabled = txn and txn:GetDisabledComponents() or self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
-    local hash = _disabledHashCache[disabled]
-    if not hash then
-        hash = {}
+    local entry = _disabledHashCache[disabled]
+    if not entry or entry.count ~= #disabled then
+        local hash = {}
         for _, key in ipairs(disabled) do hash[key] = true end
-        _disabledHashCache[disabled] = hash
+        entry = { hash = hash, count = #disabled }
+        _disabledHashCache[disabled] = entry
     end
-    return hash[componentKey] or false
+    return entry.hash[componentKey] or false
 end
 
 -- Single entry point for Canvas Mode Apply — updates live frames + edit mode previews
@@ -290,3 +291,5 @@ function Orbit.PluginMixin:UpdateVisibility()
         for _, container in pairs(self.containers) do container:SetAlpha(opacity) end
     end
 end
+
+if table.freeze then table.freeze(Orbit.PluginMixin) end

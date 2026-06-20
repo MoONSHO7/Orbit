@@ -20,13 +20,7 @@ function W:Update()
     local isUnlocked = DT.DatatextManager:CanDrag()
     local reg = DT.DatatextManager:GetDatatext(self.name)
     local isPlaced = reg and reg.isPlaced
-    
-    if not self.overlayHooked and self.frame.overlay then
-        self.frame.overlay:HookScript("OnShow", function() self:Update() end)
-        self.frame.overlay:HookScript("OnHide", function() self:Update() end)
-        self.overlayHooked = true
-    end
-    
+
     -- Abort if the datatext is not actually placed on the screen
     if not isPlaced then
         self.frame:Hide()
@@ -99,6 +93,8 @@ end
 
 function W:Init()
     self:CreateFrame()
+    self.frame.overlay:HookScript("OnShow", function() self:Update() end)
+    self.frame.overlay:HookScript("OnHide", function() self:Update() end)
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
     self:RegisterEvent("UPDATE_PENDING_MAIL")

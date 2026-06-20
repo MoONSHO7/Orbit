@@ -30,6 +30,7 @@ local PLUGIN_GROUPS = {
         "Minimap", "Minimap Button", "Datatexts",
         { label = L.PLG_NAME_EXPERIENCE_BAR, plugins = { "Experience Bar" }, triState = true },
         { label = L.PLG_NAME_HONOR_BAR,      plugins = { "Honor Bar" },      triState = true },
+        { label = L.PLG_NAME_STATUS_BAR_V2,  plugins = { "Status Bar v2" } },
     }},
 }
 
@@ -70,11 +71,11 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
     local function CheckPendingChanges()
         pendingChanges = false
         for _, w in ipairs(widgets) do
-            if w._allLiveToggle then
-            elseif w._isTriState then
-                if w._initialTriState ~= w:GetTriState() then pendingChanges = true; break end
-            else
-                if w._initialState ~= w:GetChecked() then pendingChanges = true; break end
+            -- Live-toggle plugins apply immediately, so they never count toward a pending reload.
+            if not w._allLiveToggle then
+                if w._isTriState then
+                    if w._initialTriState ~= w:GetTriState() then pendingChanges = true; break end
+                elseif w._initialState ~= w:GetChecked() then pendingChanges = true; break end
             end
         end
         UpdateReloadButton()

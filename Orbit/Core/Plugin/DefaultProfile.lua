@@ -1,16 +1,7 @@
 local _, Orbit = ...
 
 -- [ DEFAULT PROFILE ]--------------------------------------------------------------------------------
--- LAYOUT-ONLY snapshot. Schema defaults belong in each plugin's `RegisterPlugin({ defaults = {...} })`
--- block and in the shared mixins under Core/UnitDisplay/. This file seeds ONLY what a clean install
--- needs that the schemas cannot express:
---   - Position / Anchor — where each plugin frame sits on screen and what it docks to.
---   - Per-instance state without a schema seed — DamageMeter MeterDefs (array shape), Datatexts
---     placements, StrataEngine entity Z-order.
---   - Cross-instance conflicts the shared mixin can't carry — e.g. TargetPower Width vs FocusPower.
---   - GlobalSettings theming the user installs into (font, texture, border, theme colors).
--- Do NOT add per-setting defaults here. If a new key needs a default, put it in the plugin's
--- registration block; ProfileManager will fall through to it. See Core/Plugin/README.md.
+-- Layout-only seed (positions, per-instance state, GlobalSettings) — not per-setting defaults; see Core/Plugin/README.md "default values".
 Orbit.Profile = Orbit.Profile or {}
 Orbit.Profile.defaults = {
     Layouts = {
@@ -39,11 +30,7 @@ Orbit.Profile.defaults = {
             },
             ["Orbit_DamageMeter"] = {
                 [1] = {
-                    -- MeterDefs is per-instance state, not a schema setting. NormalizeMeterDefs backfills
-                    -- missing fields from DamageMeter's DM.DefaultDef; only fields that DIFFER from the
-                    -- field-level defaults are retained on each meter here (barCount/barHeight/border/
-                    -- background are the seed-meter overrides; barWidth/barGap/iconPosition/style/title/
-                    -- titleSize/viewMode all match DefaultDef and would be redundant).
+                    -- Per-instance state, not schema settings; NormalizeMeterDefs backfills the rest from DM.DefaultDef, so only fields that differ are seeded here.
                     MeterDefs = {
                         [1] = {
                             id = 1, meterType = 0, sessionType = 0,
@@ -249,7 +236,7 @@ Orbit.Profile.defaults = {
         Font = "Barlow Condensed Bold", HideWhenMounted = false, BorderSize = 1,
         PixelBorderSize = 1, IconPixelBorderSize = 1,
         ClassColorBackground = false, IconBorderSize = 1, OverlayAllFrames = false,
-        IconBorderColor = { a = 1, r = 0, g = 0, b = 0 },
+        IconBorderColor = { none = true },
         FontOutline = "OUTLINE", FontShadow = false, UseClassColors = true, Texture = "Orbit Gradient Top-Bottom",
         TrackedContainers = {}, NextTrackedContainerId = 1000,
     },

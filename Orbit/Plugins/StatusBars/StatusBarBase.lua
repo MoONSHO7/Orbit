@@ -300,10 +300,6 @@ end
 function StatusBarBase:EnableSmoothFill(container)
 end
 
-function StatusBarBase:SetSmoothFill(container, current, max)
-    self:SetFill(container, current, max)
-end
-
 -- [ BLOCK TICK MARKS ]-------------------------------------------------------------------------------
 function StatusBarBase:SetTickMarks(container, percent, color)
     percent = tonumber(percent) or 0

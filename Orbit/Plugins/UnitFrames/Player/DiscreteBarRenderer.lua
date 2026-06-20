@@ -75,15 +75,6 @@ function Renderer:UpdateMaxPower(plugin, frame, systemIndex)
     if not frame or not plugin.powerType then return end
     local max = plugin.powerType == Enum.PowerType.Runes and 6 or UnitPowerMax("player", plugin.powerType)
     frame.maxPower = max
-    if not frame.StatusBar then
-        frame.StatusBarContainer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        frame.StatusBarContainer:SetAllPoints()
-        frame.StatusBarContainer:SetBackdrop(nil)
-        frame.StatusBar = CreateFrame("StatusBar", nil, frame.StatusBarContainer)
-        frame.StatusBar:SetAllPoints()
-        frame.StatusBar:SetMinMaxValues(0, 1)
-        frame.StatusBar:SetValue(0)
-    end
     frame.Spacers = frame.Spacers or {}
     for i = 1, MAX_SPACER_COUNT do
         if not frame.Spacers[i] then

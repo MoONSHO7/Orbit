@@ -330,9 +330,11 @@ function Plugin:SnapAllMetersToCurrent()
     local defs = self:GetMeterDefs()
     local changed = false
     for _, def in pairs(defs) do
+        -- breakdownGUID can be secret (race); treat secret as "needs reset" so the `~= nil` compare never throws.
+        local hasBreakdown = issecretvalue(def.breakdownGUID) or def.breakdownGUID ~= nil
         if def.sessionType ~= DM.SessionType.Current or def.sessionID ~= nil
            or (def.viewMode ~= nil and def.viewMode ~= "chart")
-           or def.breakdownGUID ~= nil or def.scrollOffset ~= 0 then
+           or hasBreakdown or def.scrollOffset ~= 0 then
             def.sessionType         = DM.SessionType.Current
             def.sessionID           = nil
             def.sessionName         = nil

@@ -25,9 +25,6 @@ local function NeutralizeNativeAnchoring()
     if MicroMenuMixin then
         MicroMenuMixin.UpdateQueueStatusAnchors = function() end
     end
-    if MicroMenuContainerMixin and MicroMenuContainerMixin.UpdateQueueStatusAnchors then
-        MicroMenuContainerMixin.UpdateQueueStatusAnchors = function() end
-    end
 end
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------

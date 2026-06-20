@@ -217,13 +217,15 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            -- Health text
+            -- Health text — mirror the live frame's at-rest render: the chosen tokens' samples, blank when the
+            -- at-rest side is empty (a blank format or an empty-rest "& Current"). noFallback keeps parity with live.
             if frame.HealthText then
-                local showHealthValue = self:GetTierSetting("ShowHealthValue")
-                if showHealthValue == nil then showHealthValue = true end
-                if isDisabled("HealthText") or not showHealthValue then frame.HealthText:Hide()
+                local fmt = self:GetTierSetting("HealthTextFormat")
+                local mode = self:GetTierSetting("HealthTextMode")
+                local sample = OrbitEngine.UnitButton.HealthFormatRestSample(fmt, mode, true)
+                if isDisabled("HealthText") or sample == "" then frame.HealthText:Hide()
                 else
-                    frame.HealthText:SetText("100%")
+                    frame.HealthText:SetText(sample)
                     frame.HealthText:SetTextColor(1, 1, 1, 1)
                     frame.HealthText:Show()
                 end
@@ -490,3 +492,5 @@ function Orbit.GroupFramePreviewMixin:RefreshDispelPreview()
         Orbit.PreviewAnimator:StopDispels(self)
     end
 end
+
+table.freeze(Orbit.GroupFramePreviewMixin)

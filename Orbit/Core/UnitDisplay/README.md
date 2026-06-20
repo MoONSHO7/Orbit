@@ -14,7 +14,7 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 | UnitButton.lua | clickable unit button (secure frame). target, assist, focus on click. |
 | UnitButton/UnitButtonCore.lua | unit button initialization and lifecycle orchestration. |
 | UnitButton/UnitButtonHealth.lua | health bar display and update logic. |
-| UnitButton/UnitButtonText.lua | name, level, and status text rendering. |
+| UnitButton/UnitButtonText.lua | name, level, and health text rendering. Health text is a **typed format string** (set via `SetHealthTextFormat`) that `ParseFormat` turns into an ordered **segment** list (`{t="value",v=tokenId}` / `{t="sep",v=text}` / `{t="mo"}` mouseover divider). The typed keys live in `UnitButton.HEALTH_TOKENS` (`%`→percentage, `Current`→full current `466095`, `CurrentK`→abbreviated current `466K`, `Max`→full max `500000`, `MaxK`→abbreviated max `500K`, plus `&` mouseover) — each token has a `key`, `sample`, and live `format(unit)`; Canvas Mode reads them as data for the input-box tooltip. Since `UnitHealth`/`UnitHealthMax` are secret in 12.0, the short tokens abbreviate via `AbbreviateNumbers` + a cached `CreateAbbreviateConfig` (which accept secret values, unlike Lua arithmetic) — custom breakpoints yield a clean `466K`/`1.5M` above 10,000 — and the full tokens forward the raw secret to the FontString sink, which renders a plain number with no separators. The parser matches keys longest-first, so `CurrentK`/`MaxK` win over the `Current`/`Max` prefixes. Everything between/around tokens is literal text; the whole string (and whitespace adjacent to `&`) is trimmed. An empty side of the `&` divider renders blank on the live frame (so `& Current` shows nothing until mouseover, and `Current &` shows nothing on mouseover); `HealthFormatRestSample` (the per-component Canvas Mode preview) falls back to the other side when the at-rest side is empty, so the component stays visible and selectable while editing; group-frame preview rows pass `noFallback=true` to instead mirror the live at-rest render exactly (blank when the rest side is empty), per that plugin's preview-parity rule. `UnitButton.ValidateHealthFormat` rejects more than one `&` or a value token repeated within the same side (used by the canvas input to drive a red border). When no custom string is set, the legacy `HealthTextMode` preset is mapped to segments by `LegacyModeToSegments` (and to a seed string by `LegacyHealthModeToFormatString`). `RenderHealthText` builds a `%s`-slot format string (values) + literal separators and fills it via `SetFormattedText`, which accepts secret arguments C-side — so several secret values combine (e.g. `466K - 500K`) without the Lua concatenation that would throw on a secret. The mouseover rest/hover split is cached per frame. `UpdateHealthText` applies status before value: a disconnected unit shows `PLAYER_OFFLINE` and a dead/ghost unit shows `DEAD` (Blizzard globals, both plain booleans from `UnitIsConnected`/`UnitIsDeadOrGhost`) regardless of the format string — including a blank one. The format distinguishes `""` (blank/whitespace → renders no value; status still shows) from `nil` (no custom string → falls back to the legacy `HealthTextMode` preset); `RecomputeHealthSegments` and `HealthFormatRestSample` both key off `type(fmt) == "string"` so the live frame and the Canvas Mode preview never diverge. |
 | UnitButton/UnitButtonCanvas.lua | canvas mode component registration for unit buttons. |
 | UnitButton/UnitButtonPortrait.lua | portrait frame creation and class/race portrait rendering. |
 | UnitButton/UnitButtonPrediction.lua | incoming heal prediction overlay. |
@@ -44,12 +44,14 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 1. create the mixin file: `NewBehaviorMixin.lua`
 2. define it as `Orbit.NewBehaviorMixin = {}`
 3. implement methods that accept `(self, frame, settings)` — where self is the mixin, frame is the unit frame, settings is the plugin config
-4. plugins call the mixin in their `ApplySettings`
-5. add the new file to `Core/UnitDisplay/UnitDisplay.xml` as a `<Script file="NewFile.lua"/>` entry; ensure it loads after its dependencies
+4. after the table is fully populated, freeze it with `if table.freeze then table.freeze(NewBehaviorMixin) end` (12.0.5+) so a stray runtime write errors immediately
+5. plugins call the mixin in their `ApplySettings`
+6. add the new file to `Core/UnitDisplay/UnitDisplay.xml` as a `<Script file="NewFile.lua"/>` entry; ensure it loads after its dependencies
 
 ## rules
 
 - mixins must be **stateless**. state lives on the frame (`frame._mixinState`), not on the mixin table
+- freeze the mixin table with `table.freeze` once it is fully populated (12.0.5+) so a stray runtime write fails loud instead of silently corrupting the shared table
 - mixins must never reference a specific plugin by name
 - a mixin is justified only when **two or more** plugins share the behavior. one-off logic stays in the plugin
 - unit display modules may depend on skinning and infrastructure, never on config or canvas

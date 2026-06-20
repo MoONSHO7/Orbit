@@ -12,7 +12,7 @@ function Engine.GlowUtils:GetOptionsHash(options)
     h = h .. "_" .. tostring(options.lines or "") .. "_" .. tostring(options.frequency or "")
     h = h .. "_" .. tostring(options.length or "") .. "_" .. tostring(options.thickness or "")
     h = h .. "_" .. tostring(options.speed or "") .. "_" .. tostring(options.particles or "")
-    h = h .. "_" .. tostring(options.reverse) .. "_" .. tostring(options.padding)
+    h = h .. "_" .. tostring(options.padding)
     if options.color then
         local c1, c2, c3, c4 = options.color[1] or 1, options.color[2] or 1, options.color[3] or 1, options.color[4] or 1
         if issecretvalue(c1) then h = h .. "_secret" else h = h .. string.format("_%.2f_%.2f_%.2f_%.2f", c1, c2, c3, c4) end
@@ -78,9 +78,6 @@ function Engine.GlowUtils:BuildOptionsFromLookup(optionsLookup, prefix, defaultC
         local def = Constants.Glow.Defaults[defKey]
         options.speed = Get(defKey .. "Speed", def.Speed)
     end
-
-    -- Reverse: user setting inverts the default rotation direction
-    options.reverse = Get(prefix .. "Reverse", false) or false
 
     -- Pixel padding: 0 = glow matches icon exactly, positive = extend outward
     options.padding = 0

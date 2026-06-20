@@ -10,7 +10,7 @@ anchor graph, cross-axis size sync, persistence, and pixel utilities for orbit f
 | AnchorGraph.lua | pure-data directed graph: virtual / disabled state, cycle detection, targeted reconciliation. |
 | Anchor.lua | physical + logical anchor graph, parent→child cross-axis size sync, merge-border state. |
 | Persistence.lua | position / anchor save+restore to saved variables; pending queue for load-order races; per-spec routing. |
-| PositionUtils.lua | position math helpers (offset calculation, bounds). |
+| PositionUtils.lua | position math helpers (offset calculation, bounds, scale-relative icon offsets via `baseSize`). |
 
 ## axis model
 

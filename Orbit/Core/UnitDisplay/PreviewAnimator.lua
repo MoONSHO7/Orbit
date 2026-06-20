@@ -18,7 +18,6 @@ local NECROTIC_FREQUENCY = 0.3
 local DAMAGE_BAR_DECAY = 0.08
 local TWO_PI = math.pi * 2
 local OFFLINE_ALPHA = 0.35
-local OOR_ALPHA = 0.55
 local DEATH_FADE_RATE = 0.016
 local REVIVE_RATE = 0.024
 local RESHUFFLE_INTERVAL = 12
@@ -45,8 +44,6 @@ local CHUNK_NEXT_BASE = 2
 local CHUNK_NEXT_RANGE = 4
 local DEAD_DURATION_BASE = 5
 local DEAD_DURATION_RANGE = 5
-local OOR_DURATION_BASE = 3
-local OOR_DURATION_RANGE = 4
 local CHUNK_DROP_BASE = 0.20
 local CHUNK_DROP_RANGE = 0.20
 local CHUNK_MIN_HEALTH = 0.10
@@ -62,7 +59,6 @@ local B_NORMAL = 1
 local B_DYING = 2
 local B_DEAD = 3
 local B_REVIVING = 4
-local B_OOR = 5
 local B_EXIT = 6
 local EXIT_RATE = 0.05
 local EXIT_ALPHA_RATE = 0.03
@@ -99,9 +95,9 @@ local function AssignRandomBehaviors(activeCfg)
         local cfg = activeCfg[idx]
         assigned = assigned + 1
         if assigned == 1 then
-            cfg.canDie = true; cfg.dyingDelay = DYING_DELAY_BASE + math.random() * DYING_DELAY_RANGE; cfg.canOOR = false
+            cfg.canDie = true; cfg.dyingDelay = DYING_DELAY_BASE + math.random() * DYING_DELAY_RANGE
         else
-            cfg.canDie = false; cfg.canOOR = false
+            cfg.canDie = false
         end
         cfg.showShield = (math.random() < SHIELD_CHANCE)
         cfg.showNecrotic = (math.random() < NECROTIC_CHANCE)
@@ -120,8 +116,6 @@ local function TransitionBehavior(cfg, frame)
         cfg.elapsed = cfg.elapsed + TICK_INTERVAL
         if cfg.canDie and cfg.elapsed > cfg.dyingDelay then
             cfg.behavior = B_DYING; cfg.elapsed = 0
-        elseif cfg.canOOR and cfg.elapsed > cfg.oorDelay then
-            cfg.behavior = B_OOR; cfg.oorDuration = OOR_DURATION_BASE + math.random() * OOR_DURATION_RANGE; cfg.elapsed = 0
         end
     elseif b == B_DYING then
         cfg.currentHealth = math.max(0, cfg.currentHealth - DEATH_FADE_RATE)
@@ -134,7 +128,7 @@ local function TransitionBehavior(cfg, frame)
             cfg.currentHealth = 0
             cfg.behavior = B_DEAD; cfg.deadDuration = DEAD_DURATION_BASE + math.random() * DEAD_DURATION_RANGE; cfg.elapsed = 0
             frame.Health:SetValue(0)
-            if frame.HealthText and frame.HealthText:IsShown() then frame.HealthText:SetText(Orbit.L.CMN_DEAD) end
+            if frame.HealthText and frame.HealthText:IsShown() then frame.HealthText:SetText(DEAD) end
             cfg.alpha = OFFLINE_ALPHA; frame:SetAlpha(OFFLINE_ALPHA)
             if frame.ResIcon then frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez"); frame.ResIcon:Show() end
             Orbit.AuraPreview:HideFrameAuras(frame)
@@ -157,22 +151,11 @@ local function TransitionBehavior(cfg, frame)
         end
         if cfg.alpha < 1 then cfg.alpha = math.min(1, cfg.alpha + 0.02); frame:SetAlpha(cfg.alpha) end
         if cfg.currentHealth >= cfg.baseHealth then
-            cfg.behavior = B_NORMAL; cfg.elapsed = 0; cfg.canDie = false; cfg.canOOR = false
+            cfg.behavior = B_NORMAL; cfg.elapsed = 0; cfg.canDie = false
             cfg.alpha = 1; frame:SetAlpha(1)
             frame._previewDead = nil
         end
         return true
-    elseif b == B_OOR then
-        cfg.elapsed = cfg.elapsed + TICK_INTERVAL
-        if cfg.elapsed < cfg.oorDuration then
-            if cfg.alpha > OOR_ALPHA then cfg.alpha = math.max(OOR_ALPHA, cfg.alpha - 0.02); frame:SetAlpha(cfg.alpha) end
-        else
-            if cfg.alpha < 1 then cfg.alpha = math.min(1, cfg.alpha + 0.02); frame:SetAlpha(cfg.alpha) end
-            if cfg.alpha >= 0.99 then
-                cfg.behavior = B_NORMAL; cfg.elapsed = 0; cfg.canOOR = false; cfg.canDie = false
-                cfg.alpha = 1; frame:SetAlpha(1)
-            end
-        end
     elseif b == B_EXIT then
         local done = true
         -- Lerp health to 1.0
@@ -661,7 +644,7 @@ function PA:ExitAll(plugin)
     if session then
         for _, cfg in ipairs(session.cfg) do
             cfg.behavior = B_EXIT
-            cfg.canDie = false; cfg.canOOR = false; cfg.exitDone = false
+            cfg.canDie = false; cfg.exitDone = false
             if cfg.currentHealth <= 0 then cfg.currentHealth = EXIT_MIN_HEALTH end
         end
         session.exitPlugin = plugin
@@ -674,6 +657,7 @@ function PA:ExitAll(plugin)
     end
 end
 function PA:WatchCanvas(plugin)
+    if plugin._canvasWatched then return end
     if not plugin._canvasSettingsCallback then
         plugin._canvasSettingsCallback = function(targetPlugin)
             if targetPlugin ~= plugin then return end
@@ -681,10 +665,12 @@ function PA:WatchCanvas(plugin)
         end
     end
     Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
+    plugin._canvasWatched = true
 end
 
 function PA:UnwatchCanvas(plugin)
     if plugin._canvasSettingsCallback then
         Orbit.EventBus:Off("ORBIT_CANVAS_SETTINGS_CHANGED", plugin._canvasSettingsCallback)
     end
+    plugin._canvasWatched = nil
 end

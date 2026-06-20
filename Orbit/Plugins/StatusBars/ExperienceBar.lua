@@ -14,7 +14,6 @@ local DEFAULT_Y = 28
 local XP_COLOR = { r = 0.58, g = 0.0, b = 0.55, a = 1 }
 local RESTED_COLOR = { r = 0.25, g = 0.25, b = 1.0, a = 0.6 }
 local PENDING_COLOR = { r = 0.2, g = 0.9, b = 0.2, a = 0.5 }
-local WARBAND_PREFIX = ""
 
 local REACTION_LABEL = {
     [1] = L.PLU_REP_REACTION_1, [2] = L.PLU_REP_REACTION_2, [3] = L.PLU_REP_REACTION_3, [4] = L.PLU_REP_REACTION_4,
@@ -265,11 +264,7 @@ function Plugin:UpdateXP(level)
     local frame = self.frame
     local currentXP = UnitXP("player")
     local maxXP = UnitXPMax("player")
-    if self:GetSetting(SYSTEM_ID, "SmoothFill") then
-        Orbit.StatusBarBase:SetSmoothFill(frame, currentXP, maxXP)
-    else
-        Orbit.StatusBarBase:SetFill(frame, currentXP, maxXP)
-    end
+    Orbit.StatusBarBase:SetFill(frame, currentXP, maxXP)
 
     local rested = GetXPExhaustion() or 0
     if rested > 0 and not issecretvalue(currentXP) and not issecretvalue(maxXP) and maxXP > 0 then
@@ -305,20 +300,16 @@ end
 
 function Plugin:UpdateRep(record)
     local frame = self.frame
-    if self:GetSetting(SYSTEM_ID, "SmoothFill") then
-        Orbit.StatusBarBase:SetSmoothFill(frame, record.current, record.max)
-    else
-        frame.Bar:SetMinMaxValues(record.min, record.max)
-        frame.Bar:SetValue(record.current)
-    end
+    -- Reputation floor can be nonzero (reaction thresholds); use the explicit span so the fill ratio stays correct (SetFill hardcodes min=0).
+    frame.Bar:SetMinMaxValues(record.min, record.max)
+    frame.Bar:SetValue(record.current)
 
     local ctx = {
         cur = record.current - record.min, max = record.max - record.min,
         level = record.level, name = record.name,
         paragonCycles = record.paragonCycles or 0,
     }
-    local displayName = record.isAccountWide and (WARBAND_PREFIX .. record.name) or record.name
-    Orbit.StatusBarBase:SetComponentText(frame.Name, displayName)
+    Orbit.StatusBarBase:SetComponentText(frame.Name, record.name)
     Orbit.StatusBarBase:SetComponentText(frame.Level, record.level)
     Orbit.StatusBarBase:SetComponentText(frame.Value, Orbit.StatusBarTextTemplate:Render(Orbit.StatusBarBase:ResolveTemplate(self, SYSTEM_ID), ctx))
     Orbit.StatusBarBase:SyncPreviewText(self, frame)

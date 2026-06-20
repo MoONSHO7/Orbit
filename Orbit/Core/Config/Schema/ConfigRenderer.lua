@@ -267,7 +267,7 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
                     end
                     local dialog = footer:GetParent():GetParent()
                     Layout:Reset(dialog)
-                    self:Render(dialog, systemFrame, plugin, schema)
+                    self:Render(dialog, systemFrame, plugin, schema, footer:GetParent().CurrentTabKey)
                 end,
             })
         end)

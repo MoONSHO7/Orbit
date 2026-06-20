@@ -11,6 +11,7 @@ local WIDGET_SIZE = { width = 260, height = 32 }
 local CHECKERBOARD = "Interface\\AddOns\\Orbit\\Core\\assets\\Other\\Orbit_Checkerboard.tga"
 
 function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
+    opts = opts or {}
     if not self.colorPool then self.colorPool = {} end
     local frame = table.remove(self.colorPool)
 
@@ -70,7 +71,7 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
                     if pin and pin.color then
                         frame.UpdateColor(pin.color.r, pin.color.g, pin.color.b, pin.color.a, pin.type)
                     else
-                        if opts.allowClear then
+                        if frame.allowClear then
                             frame.ClearColor()
                         end
                     end
@@ -80,6 +81,8 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
     end
 
     frame:SetParent(parent)
+    -- Store per-acquire so the create-time OnClick (installed once) reads this call's value, not the first caller's.
+    frame.allowClear = opts.allowClear
 
     local c = initialColor or { r = 1, g = 1, b = 1, a = 1 }
     frame.pinType = c.type
@@ -111,7 +114,6 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
     end
 
     local C = Constants
-    opts = opts or {}
 
     frame.Label:SetText(label)
     frame.Label:SetJustifyH("LEFT")

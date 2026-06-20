@@ -24,11 +24,10 @@ function CoreMixin:OnLoad(skipEventRegistration)
         self:RegisterUnitEvent("UNIT_ABSORB_AMOUNT_CHANGED", self.unit)
         self:RegisterUnitEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED", self.unit)
         self:RegisterUnitEvent("UNIT_HEAL_PREDICTION", self.unit)
-        self:RegisterUnitEvent("UNIT_PET", "player")
     end
 
-    Orbit.EventBus:On("ORBIT_NICKNAME_UPDATED", function() self:UpdateName() end)
-    Orbit.EventBus:On("ORBIT_ABSORB_STYLE_CHANGED", function() self:UpdateHealPrediction() end)
+    Orbit.EventBus:On("ORBIT_NICKNAME_UPDATED", function(frame) frame:UpdateName() end, self)
+    Orbit.EventBus:On("ORBIT_ABSORB_STYLE_CHANGED", function(frame) frame:UpdateHealPrediction() end, self)
 
     self:UpdateAll()
 end
@@ -46,7 +45,7 @@ function CoreMixin:CreateCanvasPreview(options)
     local scale = self:GetEffectiveScale()
     local borderInset = Engine.Pixel:Multiple(borderSize, scale)
 
-    -- [ CONTAINER ]-------------------------------------------------------------------------------------
+    -- [ CONTAINER ]----------------------------------------------------------------------------------
     local preview = CreateFrame("Frame", nil, parent)
     preview:SetSize(width, height)
     preview.sourceFrame = self
@@ -56,13 +55,13 @@ function CoreMixin:CreateCanvasPreview(options)
     preview.previewScale = 1
     preview.components = {}
 
-    -- [ BACKGROUND ]------------------------------------------------------------------------------------
+    -- [ BACKGROUND ]---------------------------------------------------------------------------------
     preview.bg = preview:CreateTexture(nil, "BACKGROUND", nil, Orbit.Constants.Layers.BackdropDeep)
     preview.bg:SetAllPoints()
     Orbit.Skin:ApplyGradientBackground(preview, globalSettings.UnitFrameBackdropColourCurve, Orbit.Constants.Colors.Background)
     Orbit.Skin:RegisterMaskedSurface(preview, preview.bg)
 
-    -- [ HEALTH BAR ]-------------------------------------------------------------------------------------
+    -- [ HEALTH BAR ]---------------------------------------------------------------------------------
     local bar = CreateFrame("StatusBar", nil, preview)
     bar:SetPoint("TOPLEFT", 0, 0)
     bar:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -72,7 +71,7 @@ function CoreMixin:CreateCanvasPreview(options)
     Orbit.Skin:SkinStatusBar(bar, textureName, nil, true)
     Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
 
-    -- [ BORDERS ]----------------------------------------------------------------------------------------
+    -- [ BORDERS ]------------------------------------------------------------------------------------
     Orbit.Skin:SkinBorder(preview, preview, borderSize)
 
     local barCurve = globalSettings.BarColorCurve
@@ -107,13 +106,6 @@ function CoreMixin:OnEvent(event, unit)
         self:UpdateHealthText()
     elseif event == "UNIT_ABSORB_AMOUNT_CHANGED" or event == "UNIT_HEAL_ABSORB_AMOUNT_CHANGED" or event == "UNIT_HEAL_PREDICTION" then
         self:UpdateHealPrediction()
-    elseif event == "UNIT_PET" then
-        if self.unit == "pet" then
-            self:UpdateAll()
-        end
-    elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_CONNECTION" then
-        self:UpdateName()
-        self:UpdateHealth() -- Disconnect status affects health bar color/alpha
     end
 
     if start then
@@ -135,3 +127,5 @@ end
 function CoreMixin:UpdatePower() end
 
 UnitButton.CoreMixin = CoreMixin
+
+if table.freeze then table.freeze(CoreMixin) end

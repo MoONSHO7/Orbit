@@ -69,7 +69,6 @@ Plugin.indexDefaults = {
         AlwaysShow = true,
         HideBorders = true,
     },
-    [4] = { aspectRatio = "1:1" }, -- BuffIconExtended
     [30] = { -- BuffBar
         Height = 22, Spacing = 8,
         DisabledComponents = { "Status" },
@@ -122,10 +121,6 @@ function Plugin:GetBaseFontSize()
     return 12
 end
 function Plugin:GetGlobalFont()
-    local fontName = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Font
-    if fontName and LSM then
-        return LSM:Fetch("font", fontName) or STANDARD_TEXT_FONT
-    end
     return STANDARD_TEXT_FONT
 end
 function Plugin:GetTextOverlay() end
@@ -278,13 +273,6 @@ function Plugin:OnLoad()
             if data.anchor then
                 if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(data.anchor, self, systemIndex, "OutOfCombatFade", enableHover) end
             end
-            for _, childData in pairs(self.activeChildren or {}) do
-                if childData.frame then
-                    local csi = childData.frame.systemIndex
-                    local hover = self:GetSetting(csi, "ShowOnMouseover") ~= false
-                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(childData.frame, self, csi, "OutOfCombatFade", hover) end
-                end
-            end
             if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
         end
     end, self)
@@ -307,19 +295,6 @@ function Plugin:UpdateVisibility()
                 else data.anchor:Show() end
             end
             data.anchor:SetAlpha(frameHideAlpha)
-        end
-    end
-    for _, childData in pairs(self.activeChildren or {}) do
-        if childData.frame then
-            local csi = childData.frame.systemIndex
-            local isMountedHidden = Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, csi)
-            local frameHideAlpha = isMountedHidden and 0 or ((self:GetSetting(csi, "Opacity") or 100) / 100)
-            childData.frame.orbitMountedSuppressed = isMountedHidden or nil
-            if not inCombat then
-                if isPetBattle then childData.frame.orbitHiddenByAlpha = false; childData.frame:Hide()
-                else childData.frame:Show() end
-            end
-            childData.frame:SetAlpha(frameHideAlpha)
         end
     end
     if not isPetBattle then

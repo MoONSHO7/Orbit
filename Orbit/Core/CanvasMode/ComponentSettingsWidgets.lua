@@ -5,8 +5,12 @@ local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 local Layout = OrbitEngine.Layout
 local CanvasMode = OrbitEngine.CanvasMode
+local Constants = Orbit.Constants
 
 local WIDGET_HEIGHT = 28
+local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
+local INPUT_BORDER = { 0.3, 0.3, 0.3, 1 }
+local INVALID_BORDER = { 0.9, 0.2, 0.2, 1 }
 
 local Widgets = {}
 CanvasMode.SettingsWidgets = Widgets
@@ -43,6 +47,71 @@ function Widgets.CreateFontPicker(parent, control, currentValue, callback)
     frame.Label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     frame.Label:SetPoint("LEFT", frame, "LEFT", 0, 0)
     frame.Label:SetText(control.label .. ": " .. (currentValue or L.CMN_DEFAULT))
+    return frame
+end
+
+-- A label + a text input where the user types the format string (keys like % / CurrentK / & + literal text).
+-- Hovering shows a tooltip of the keys; `validate(text)` drives a red border and blocks committing invalid input.
+function Widgets.CreateFormatInput(parent, control, currentValue, callback, tooltipLines, validate)
+    local frame = CreateFrame("Frame", nil, parent)
+    SnapHeight(frame, 32)
+    frame:EnableMouse(true)
+    frame.Label = frame:CreateFontString(nil, "ARTWORK", Constants.UI.LabelFont)
+    frame.Label:SetJustifyH("LEFT")
+    frame.Label:SetPoint("LEFT", frame, "LEFT", 0, 0)
+    frame.Label:SetText(control.label)
+
+    local input = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    input:SetHeight(22)
+    input:SetBackdrop({ bgFile = WHITE8x8, edgeFile = WHITE8x8, edgeSize = 1 })
+    input:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    frame.Control = input
+
+    local editBox = CreateFrame("EditBox", nil, input)
+    editBox:SetFontObject(ChatFontNormal)
+    editBox:SetAutoFocus(false)
+    editBox:SetTextInsets(5, 5, 0, 0)
+    editBox:SetAllPoints(input)
+    editBox:SetText(currentValue or "")
+    editBox:SetCursorPosition(0)
+    frame.EditBox = editBox
+
+    local function isValid() return (not validate) or validate(editBox:GetText()) end
+    local function refreshBorder() input:SetBackdropBorderColor(unpack(isValid() and INPUT_BORDER or INVALID_BORDER)) end
+    local function commit()
+        if not isValid() then return end
+        local text = strtrim(editBox:GetText())
+        if text ~= editBox:GetText() then editBox:SetText(text) end
+        if callback then callback(control.key, text) end
+    end
+    editBox:SetScript("OnTextChanged", refreshBorder)
+    editBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    editBox:SetScript("OnEditFocusLost", commit)
+    editBox:SetScript("OnEscapePressed", function(self) self:SetText(currentValue or ""); refreshBorder(); self:ClearFocus() end)
+    input:EnableMouse(true)
+    input:SetScript("OnMouseDown", function() editBox:SetFocus() end)
+    refreshBorder()
+
+    if tooltipLines and #tooltipLines > 0 then
+        local function showTip(owner)
+            GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+            for _, line in ipairs(tooltipLines) do
+                if line.title then
+                    GameTooltip:AddLine(line.title, 1, 0.82, 0)
+                elseif line.hint then
+                    GameTooltip:AddLine(line.hint, 0.6, 0.6, 0.6)
+                else
+                    GameTooltip:AddDoubleLine(line.key, line.value, 1, 0.82, 0, 1, 1, 1)
+                end
+            end
+            GameTooltip:Show()
+        end
+        local function hideTip() GameTooltip:Hide() end
+        frame:SetScript("OnEnter", function(self) showTip(self) end)
+        frame:SetScript("OnLeave", hideTip)
+        editBox:SetScript("OnEnter", function(self) showTip(self) end)
+        editBox:SetScript("OnLeave", hideTip)
+    end
     return frame
 end
 

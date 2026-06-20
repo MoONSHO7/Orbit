@@ -91,9 +91,9 @@ local function InvalidateColorCache() cachedOORColor = nil; cachedOOMColor = nil
 local function RefreshIconColor(plugin, button)
     if not button or not button.icon or not button.action then return end
     if not C_ActionBar.HasAction(button.action) then return end
-    local _, spellID = GetActionInfo(button.action)
+    local actionType, spellID = GetActionInfo(button.action)
     local isUsable, notEnoughMana = IsUsableAction(button.action)
-    local outOfRange = spellID and C_Spell.SpellHasRange(spellID) and C_Spell.IsSpellInRange(spellID) == false
+    local outOfRange = actionType == "spell" and spellID and C_Spell.SpellHasRange(spellID) and C_Spell.IsSpellInRange(spellID) == false
     if not cachedOORColor then cachedOORColor = plugin:GetSetting(1, "OORColor") or DEFAULT_OOR_COLOR end
     if not cachedOOMColor then cachedOOMColor = plugin:GetSetting(1, "OOMColor") or DEFAULT_OOM_COLOR end
     if not cachedUnusableColor then cachedUnusableColor = plugin:GetSetting(1, "UnusableColor") or DEFAULT_UNUSABLE_COLOR end

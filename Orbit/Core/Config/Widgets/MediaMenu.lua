@@ -137,7 +137,7 @@ function MediaMenu:Create(owner, opts)
         popup:SetHeight(SEARCH_HEIGHT + rows * rowHeight + PAD * 3)
     end
 
-    -- [ FILTER + SORT ]
+    -- [ FILTER + SORT ]------------------------------------------------------------------------------
     local function ApplyFilter()
         local query = strlower(search:GetText() or "")
         local filtered = {}
@@ -188,7 +188,7 @@ function MediaMenu:Create(owner, opts)
         search:SetFocus()
     end
 
-    -- [ CLOSE LIFECYCLE ]
+    -- [ CLOSE LIFECYCLE ]----------------------------------------------------------------------------
     popup:SetScript("OnKeyDown", function(self, key)
         if key == "ESCAPE" then
             self:SetPropagateKeyboardInput(false)

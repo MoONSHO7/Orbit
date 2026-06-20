@@ -16,7 +16,8 @@ end
 
 function Toys:Build()
     local entries = {}
-    local count = C_ToyBox.GetNumToys() or 0
+    -- GetToyFromIndex indexes the filtered/displayed list, so its count must come from GetNumFilteredToys, not GetNumToys.
+    local count = C_ToyBox.GetNumFilteredToys() or 0
     for i = 1, count do
         local itemID = C_ToyBox.GetToyFromIndex(i)
         if itemID and itemID > 0 and PlayerHasToy(itemID) then

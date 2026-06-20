@@ -262,7 +262,7 @@ function Plugin:OnLoad()
         bar:SetMinMaxValues(0, 1)
         bar:SetValue(1)
 
-        local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture") or Orbit.db.GlobalSettings.Texture
+        local textureName = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
         bar:SetStatusBarTexture(LSM:Fetch("statusbar", textureName))
         Orbit.Skin:RegisterMaskedSurface(preview, bar:GetStatusBarTexture())
 

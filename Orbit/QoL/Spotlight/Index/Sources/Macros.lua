@@ -4,7 +4,6 @@ local Tokenize = Orbit.Spotlight.Search.Tokenize
 local Sources = Orbit.Spotlight.Index.Sources
 
 local MAX_GLOBAL = 120
-local MAX_CHAR = 138
 
 local Macros = {
     kind = "macros",

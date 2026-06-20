@@ -327,6 +327,13 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
 
     if not ApplyAnchorPosition(child, parent, edge, padding, align, opts) then
         self.anchors[child] = nil
+        if self.childrenOf[parent] then
+            self.childrenOf[parent][child] = nil
+            if not next(self.childrenOf[parent]) then self.childrenOf[parent] = nil end
+        end
+        if not skipLogical then
+            self:ClearLogicalAnchor(child)
+        end
         return false
     end
 
@@ -438,7 +445,7 @@ local function IsRescued(frame)
     return Graph:IsSkipped(logical.parent) and not Graph:IsSkipped(physical.parent)
 end
 
--- Profile-level disable: skip frame in graph, park it, and batch-reconcile children. Idempotent.
+-- Profile-level disable: skip frame in graph, park it, and batch-reconcile children. Graph state is idempotent; the park re-runs on every disabled call, so callers should guard redundant invocations.
 function Anchor:SetFrameDisabled(frame, disabled)
     local changed = Graph:SetDisabled(frame, disabled)
     frame.orbitDisabled = Graph:IsSkipped(frame)
@@ -455,7 +462,7 @@ function Anchor:SetFrameDisabled(frame, disabled)
     if root then Graph:ScheduleReconcileChain(root, self) end
 end
 
--- Content-empty toggle: skip frame in graph and park it; batched and idempotent like SetFrameDisabled.
+-- Content-empty toggle: skip frame in graph and park it; batched like SetFrameDisabled. Graph state is idempotent; the park re-runs on every virtual call, so callers should guard redundant invocations.
 function Anchor:SetFrameVirtual(frame, virtual)
     local changed = Graph:SetVirtual(frame, virtual)
     frame.orbitDisabled = Graph:IsSkipped(frame)

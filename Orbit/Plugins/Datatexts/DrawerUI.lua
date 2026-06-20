@@ -197,18 +197,29 @@ function DrawerUI:LayoutDrawer()
                 cell.label:SetTextColor(0.4, 0.4, 0.4, 1)
                 cell:SetAlpha(0.6)
                 cell.isDraggingFromDrawer = true
-                if not cell.dragTicker then
-                    cell.dragTicker = C_Timer.NewTicker(0.05, function()
-                        local cx, cy = GetCursorPosition()
-                        local uipScale = UIParent:GetEffectiveScale()
-                        local uipX = UIParent:GetWidth() / 2
-                        local uipY = UIParent:GetHeight() / 2
-                        local offsetX = ((cx / uipScale) - uipX) / wf:GetScale()
-                        local offsetY = ((cy / uipScale) - uipY) / wf:GetScale()
-                        offsetX, offsetY = Orbit.Engine.Pixel:SnapPosition(offsetX, offsetY, "CENTER", wf:GetWidth(), wf:GetHeight(), wf:GetEffectiveScale())
 
-                        wf:ClearAllPoints()
-                        wf:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
+                -- Non-secure frames glide C-side (positioned under the cursor first); secure frames move on the frame-synced OnUpdate below (combat-guarded).
+                if not datatext.isSecure then
+                    local cx, cy = GetCursorPosition()
+                    local uipScale = UIParent:GetEffectiveScale()
+                    local offsetX = ((cx / uipScale) - UIParent:GetWidth() / 2) / wf:GetScale()
+                    local offsetY = ((cy / uipScale) - UIParent:GetHeight() / 2) / wf:GetScale()
+                    wf:ClearAllPoints()
+                    wf:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
+                    wf:StartMoving()
+                end
+
+                if wf.overlay then
+                    wf.overlay:SetScript("OnUpdate", function()
+                        if datatext.isSecure and not InCombatLockdown() then
+                            local cx, cy = GetCursorPosition()
+                            local uipScale = UIParent:GetEffectiveScale()
+                            local ox = ((cx / uipScale) - UIParent:GetWidth() / 2) / wf:GetScale()
+                            local oy = ((cy / uipScale) - UIParent:GetHeight() / 2) / wf:GetScale()
+                            ox, oy = Orbit.Engine.Pixel:SnapPosition(ox, oy, "CENTER", wf:GetWidth(), wf:GetHeight(), wf:GetEffectiveScale())
+                            wf:ClearAllPoints()
+                            wf:SetPoint("CENTER", UIParent, "CENTER", ox, oy)
+                        end
                         DT.DrawerUI:OnDatatextDragUpdate(datatext.name)
                         if Orbit.Engine.SelectionTooltip then
                             Orbit.Engine.SelectionTooltip:ShowPosition(wf, nil, true)
@@ -217,8 +228,9 @@ function DrawerUI:LayoutDrawer()
                 end
             end)
             cell:SetScript("OnDragStop", function()
-                if not cell.isDraggingFromDrawer then return end
                 local wf = datatext.frame
+                if wf and not datatext.isSecure then wf:StopMovingOrSizing() end
+                if not cell.isDraggingFromDrawer then return end
                 if not wf then return end
                 cell.isDraggingFromDrawer = false
                 wf:SetFrameStrata(Orbit.Constants.Strata.HUD)
@@ -238,7 +250,7 @@ function DrawerUI:LayoutDrawer()
                 
                 wf:ClearAllPoints()
                 wf:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
-                if cell.dragTicker then cell.dragTicker:Cancel(); cell.dragTicker = nil end
+                if wf.overlay then wf.overlay:SetScript("OnUpdate", nil) end
                 if Orbit.Engine.SelectionTooltip then Orbit.Engine.SelectionTooltip:ShowPosition(wf, nil, false) end
                 DT.DatatextManager:OnDatatextDragStop(datatext.name)
                 self:LayoutDrawer()
@@ -285,7 +297,8 @@ function DrawerUI:Open(anchor)
     
     self:LayoutDrawer()
     DT.DatatextManager:SetLocked(false)
-    
+    DT.DatatextManager:ApplyInstanceVisibility()
+
     drawerPanel:SetAlpha(0)
     drawerPanel:Show()
     UIFrameFadeIn(drawerPanel, SLIDE_DURATION, 0, 1)
@@ -296,6 +309,7 @@ function DrawerUI:Close()
     isOpen = false
     DT.DatatextManager:SetLocked(true)
     DT.DatatextManager:SavePositions()
+    DT.DatatextManager:ApplyInstanceVisibility()
     
     UIFrameFadeOut(drawerPanel, SLIDE_DURATION, 1, 0)
     C_Timer.After(SLIDE_DURATION, function()

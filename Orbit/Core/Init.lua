@@ -101,10 +101,11 @@ function Orbit:InitializePlugins()
             return
         end
         local plugin = systems[i]
-        if self:IsPluginEnabled(plugin.name) and plugin.ApplySettings then
-            plugin:ApplySettings()
-        end
+        -- Schedule the next tick first so a throw in one plugin's first ApplySettings can't strand the rest of the chain.
         C_Timer.After(0, ApplyNext)
+        if self:IsPluginEnabled(plugin.name) and plugin.ApplySettings then
+            self.ErrorHandler:Wrap(function() plugin:ApplySettings() end, plugin.name .. ".ApplySettings")()
+        end
     end
     ApplyNext()
 end

@@ -41,4 +41,27 @@ Reg("statusbar", "Orbit Frost Overlay", mediaPath .. "Statusbar\\orbit-frost.tga
 Reg("statusbar", "Orbit Galaxy Overlay", mediaPath .. "Statusbar\\orbit-galaxy.tga")
 Reg("statusbar", "Orbit Starfield Overlay", mediaPath .. "Statusbar\\orbit-starfield.tga")
 
--- Borders (none currently registered)
+-- Borders — edge-file format (256x32, 8-segment Blizzard layout). Grayscale (Orbit draws them at white
+-- vertex = identity multiply, so the grayscale IS the look). Each is a crisp keyline-defined metal
+-- cross-section (black silhouette edge + body) modelled on ls_Borders. Thickness via Border Edge Size.
+Reg("border", "Orbit Silver", mediaPath .. "Border\\orbit-edge-silver.tga")
+Reg("border", "Orbit Steel", mediaPath .. "Border\\orbit-edge-steel.tga")
+Reg("border", "Orbit Bold", mediaPath .. "Border\\orbit-edge-bold.tga")
+Reg("border", "Orbit Round", mediaPath .. "Border\\orbit-edge-round.tga")
+Reg("border", "Orbit Notch", mediaPath .. "Border\\orbit-edge-notch.tga")
+Reg("border", "Orbit Groove", mediaPath .. "Border\\orbit-edge-groove.tga")
+Reg("border", "Orbit Ornate", mediaPath .. "Border\\orbit-edge-ornate.tga")
+Reg("border", "Orbit Glow", mediaPath .. "Border\\orbit-edge-glow.tga")
+-- Decorative-corner borders (ornament + a matching edge).
+Reg("border", "Orbit Spike", mediaPath .. "Border\\orbit-edge-spike.tga")
+Reg("border", "Orbit Bracket", mediaPath .. "Border\\orbit-edge-bracket.tga")
+Reg("border", "Orbit Bolt", mediaPath .. "Border\\orbit-edge-bolt.tga")
+Reg("border", "Orbit Arrow", mediaPath .. "Border\\orbit-edge-arrow.tga")
+Reg("border", "Orbit Gem", mediaPath .. "Border\\orbit-edge-gem.tga")
+Reg("border", "Orbit Flare", mediaPath .. "Border\\orbit-edge-flare.tga")
+Reg("border", "Orbit Cross", mediaPath .. "Border\\orbit-edge-cross.tga")
+Reg("border", "Orbit Crown", mediaPath .. "Border\\orbit-edge-crown.tga")
+Reg("border", "Orbit Scroll", mediaPath .. "Border\\orbit-edge-scroll.tga")
+Reg("border", "Orbit Anchor", mediaPath .. "Border\\orbit-edge-anchor.tga")
+Reg("border", "Orbit Fan", mediaPath .. "Border\\orbit-edge-fan.tga")
+Reg("border", "Orbit Claw", mediaPath .. "Border\\orbit-edge-claw.tga")

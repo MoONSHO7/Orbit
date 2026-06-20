@@ -3,6 +3,7 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 local type, ipairs = type, ipairs
 local math_floor = math.floor
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -487,7 +488,7 @@ function Mixin:UpdateGroupPosition(frame, plugin)
     if isInRaid and unit then
         local raidIndex = UnitInRaid(unit)
         if raidIndex then
-            local _, _, subgroup = GetRaidRosterInfo(raidIndex + 1)
+            local _, _, subgroup = GetRaidRosterInfo(raidIndex)
             if subgroup then
                 frame.GroupPositionText:SetText("G" .. subgroup)
                 frame.GroupPositionText:Show()
@@ -553,7 +554,7 @@ function Mixin:UpdatePhaseIcon(frame, plugin)
     if phaseReason then
         frame.PhaseIcon:SetAtlas("RaidFrame-Icon-Phasing")
         frame.PhaseIcon:Show()
-        frame.PhaseIcon.tooltip = PartyUtil and PartyUtil.GetPhasedReasonString and PartyUtil.GetPhasedReasonString(phaseReason, unit) or "Out of Phase"
+        frame.PhaseIcon.tooltip = PartyUtil and PartyUtil.GetPhasedReasonString and PartyUtil.GetPhasedReasonString(phaseReason, unit) or L.CMN_OUT_OF_PHASE
     elseif inEditMode or inCanvasMode then
         frame.PhaseIcon:SetAtlas("RaidFrame-Icon-Phasing")
         frame.PhaseIcon:Show()
@@ -644,8 +645,8 @@ function Mixin:UpdateStatusText(frame, plugin)
     if frame.healthTextEnabled then return end
     local unit = frame.unit
     if not unit or not UnitExists(unit) then frame.HealthText:Hide(); return end
-    if not UnitIsConnected(unit) then frame.HealthText:SetText(Orbit.L.CMN_OFFLINE); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
-    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText(Orbit.L.CMN_DEAD); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if not UnitIsConnected(unit) then frame.HealthText:SetText(PLAYER_OFFLINE); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText(DEAD); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
     frame.HealthText:Hide()
 end
 

@@ -29,7 +29,6 @@ local DEFAULT_KEYPRESS_COLOR = { r = 1, g = 1, b = 1, a = 0 }
 
 -- Reusable child buffer alias
 local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
-local _activeChildBuf = {}
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0.0)
@@ -860,28 +859,6 @@ do
                         if child:IsShown() and GetIconSpellID(child) == nextSpell then
                             SetHighlightShown(child, true)
                             highlightedIcons[child] = true
-                        end
-                    end
-                end
-                if entry.anchor and entry.anchor.activeIcons then
-                    for _, icon in pairs(entry.anchor.activeIcons) do
-                        if icon:IsShown() and GetIconSpellID(icon) == nextSpell then
-                            SetHighlightShown(icon, true)
-                            highlightedIcons[icon] = true
-                        end
-                    end
-                end
-            end
-        end
-
-        for _, childData in pairs(CDM.activeChildren or {}) do
-            if childData.frame and childData.frame.activeIcons then
-                local csi = childData.frame.systemIndex
-                if not csi or IsEnabledForSystem(csi) then
-                    for _, icon in pairs(childData.frame.activeIcons) do
-                        if icon:IsShown() and GetIconSpellID(icon) == nextSpell then
-                            SetHighlightShown(icon, true)
-                            highlightedIcons[icon] = true
                         end
                     end
                 end

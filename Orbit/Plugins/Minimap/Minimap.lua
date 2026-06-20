@@ -43,7 +43,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         AutoZoomOut = true,
         ZoneTextColoring = true,
         DifficultyShowBackground = false,
-        DisabledComponents = { "Status", "Zoom", "Coords" },
+        DisabledComponents = { "Zoom", "Coords" },
         ComponentPositions = {
             Compartment    = { anchorX = "RIGHT",  anchorY = "BOTTOM", offsetX = 15,  offsetY = 15, posX = 135,  posY = -135, justifyH = "RIGHT",  selfAnchorY = "BOTTOM" },
             Tracking       = { anchorX = "LEFT",   anchorY = "BOTTOM", offsetX = -15, offsetY = -10, posX = -110, posY = -135, justifyH = "LEFT",   selfAnchorY = "BOTTOM" },
@@ -280,24 +280,19 @@ function Plugin:OnLoad()
     self.frame.ZoneText:SetFrameLevel(clickCapture:GetFrameLevel() + 1)
     self.frame.Clock:SetFrameLevel(clickCapture:GetFrameLevel() + 1)
 
-    -- Mouse-wheel zoom: propagate scroll to the Blizzard minimap zoom buttons.
+    -- Mouse-wheel zoom: propagate scroll to the Blizzard minimap zoom buttons, then sync Orbit zoom state + auto-zoom.
     self.frame:EnableMouseWheel(true)
     self.frame:SetScript("OnMouseWheel", function(_, delta)
         local minimap = self:GetBlizzardMinimap()
         if not minimap then return end
         if delta > 0 then minimap.ZoomIn:Click() else minimap.ZoomOut:Click() end
+        self:UpdateZoomState()
+        self:StartAutoZoomOut()
     end)
 
-    -- [ Compartment component ]
     self:CreateCompartmentButton()
-
-    -- [ Tracking component ]
     self:CreateTrackingButton()
-
-    -- [ Zoom component ] — two stacked buttons, shown on minimap hover
     self:CreateZoomButtons()
-
-    -- [ Blizzard reparented components ]
     self:ReparentBlizzardComponents()
 
     -- Register all canvas components for drag
@@ -352,12 +347,13 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("ZONE_CHANGED_NEW_AREA", OnZoneChanged, self)
 
     -- HUD view isn't a positionable edit-mode frame; entering edit mode while in HUD forces minimap view.
+    -- Unique owner so this coexists with RegisterStandardEvents' owner=self EditMode.Enter handler.
     EventRegistry:RegisterCallback("EditMode.Enter", function()
         if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then
             self:SetSetting(SYSTEM_ID, "View", "minimap")
             self:ApplySettings()
         end
-    end, self)
+    end, "OrbitMinimap_HudGuard")
 
     -- Canvas preview only needs the bg preview + seeded live data — live frames (ZoneText, Clock, Coords, icons) are already self.frame children registered as draggable components.
     self.frame.CreateCanvasPreview = function(frame, options)
@@ -366,7 +362,6 @@ function Plugin:OnLoad()
         local w = frame:GetWidth()
         local h = frame:GetHeight()
         local shape = self:GetSetting(SYSTEM_ID, "Shape") or "square"
-        local borderSize = Orbit.db.GlobalSettings.BorderSize or 2
         local bgColor = { r = 0.05, g = 0.05, b = 0.05, a = 1 }
 
         local preview = CreateFrame("Frame", nil, parent)

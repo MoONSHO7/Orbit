@@ -92,8 +92,8 @@ local function CalculateSparkPos(bar, value, maxValue)
     return SnapToPixel(pos, bar:GetEffectiveScale())
 end
 
-local function SampleColorCurve(curveData, position)
-    return OrbitEngine.ColorCurve:SampleColorCurve(curveData, position)
+local function SampleColorCurveUnpacked(curveData, position)
+    return OrbitEngine.ColorCurve:SampleColorCurveUnpacked(curveData, position)
 end
 
 -- Alpha-only visibility (cast bar can be protected); fire ORBIT_BORDER_LAYOUT_CHANGED so merged borders update on show/hide.
@@ -433,22 +433,6 @@ function Plugin:OnLoad()
             end
         end, 0.5)
     end, self)
-    Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() self:UpdateVisibility() end, self)
-end
-
--- [ MOUNTED VISIBILITY ]-----------------------------------------------------------------------------
-function Plugin:UpdateVisibility()
-    local bar = self.CastBar
-    if not bar then return end
-    if not InCombatLockdown() then
-        if Orbit.VisibilityEngine and Orbit.VisibilityEngine:IsFrameMountedHidden(self.name, bar.systemIndex or 1) then
-            HideBar(bar)
-            return
-        end
-    end
-    if not bar.casting and not bar.channeling and not bar.empowering and not bar.preview then
-        HideBar(bar)
-    end
 end
 
 -- [ SKINNING LOGIC ] --------------------------------------------------------------------------------
@@ -622,8 +606,10 @@ function Plugin:OnCastEvent(event, unit, castGUID, spellID)
         end
     elseif event == "UNIT_SPELLCAST_INTERRUPTIBLE" then
         bar.notInterruptible = false
+        self:ApplyColor()
     elseif event == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" then
         bar.notInterruptible = true
+        self:ApplyColor()
 
     -- EMPOWER EVENTS
     elseif event == "UNIT_SPELLCAST_EMPOWER_START" then
@@ -725,9 +711,9 @@ function Plugin:OnUpdate(elapsed)
             -- Apply color from curve based on progress
             if bar.colorCurve and not bar.notInterruptible then
                 local progress = value / bar.maxValue
-                local color = SampleColorCurve(bar.colorCurve, progress)
-                if color then
-                    targetBar:SetStatusBarColor(color.r, color.g, color.b)
+                local r, g, b = SampleColorCurveUnpacked(bar.colorCurve, progress)
+                if r then
+                    targetBar:SetStatusBarColor(r, g, b)
                 end
             end
         end
@@ -749,9 +735,9 @@ function Plugin:OnUpdate(elapsed)
             -- Apply color from curve (channels drain, so invert progress)
             if bar.colorCurve and not bar.notInterruptible then
                 local progress = 1 - (value / bar.maxValue)
-                local color = SampleColorCurve(bar.colorCurve, progress)
-                if color then
-                    targetBar:SetStatusBarColor(color.r, color.g, color.b)
+                local r, g, b = SampleColorCurveUnpacked(bar.colorCurve, progress)
+                if r then
+                    targetBar:SetStatusBarColor(r, g, b)
                 end
             end
         end
@@ -794,7 +780,7 @@ end
 
 function Plugin:ApplySettings(systemFrame)
     local bar = self.CastBar
-    if not bar or InCombatLockdown() then
+    if not bar then
         return
     end
 

@@ -477,7 +477,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             else
                 local comp = CanvasMode.CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
                 if comp then
-                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
+                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + Orbit.Constants.Levels.CanvasOverlay)
                 end
                 self.previewComponents[key] = comp
             end

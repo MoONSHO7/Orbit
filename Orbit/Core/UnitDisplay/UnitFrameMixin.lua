@@ -97,7 +97,6 @@ function Mixin:ApplyTextStyling(frame, textSize)
         return
     end
     if not textSize or textSize <= 0 then
-        local height = frame:GetHeight() or 40
         textSize = 14
     end
     Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
@@ -205,6 +204,7 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     local borderSize = Orbit.db.GlobalSettings.BorderSize
     local textureName = self:GetSetting(systemIndex, "Texture")
     local healthTextMode = self:GetInheritedSetting(systemIndex, "HealthTextMode", options.inheritFromPlayer) or "percent_short"
+    local healthTextFormat = self:GetInheritedSetting(systemIndex, "HealthTextFormat", options.inheritFromPlayer)
 
     -- Apply texture
     self:ApplyTexture(frame, textureName)
@@ -220,15 +220,15 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     -- Apply text styling
     self:ApplyTextStyling(frame)
 
-    -- Apply health text mode (replaces simple enabled boolean)
+    -- Health text has no separate visibility toggle — a blank format hides the value (status still shows).
+    -- legacy mode first, then the custom format string (which wins when set).
+    if frame.SetHealthTextEnabled then frame:SetHealthTextEnabled(true) end
     if frame.SetHealthTextMode then
         frame:SetHealthTextMode(healthTextMode)
     end
-
-    -- Apply health value visibility
-    local showHealthValue = self:GetInheritedSetting(systemIndex, "ShowHealthValue", options.inheritFromPlayer)
-    if showHealthValue == nil then showHealthValue = true end
-    if frame.SetHealthTextEnabled then frame:SetHealthTextEnabled(showHealthValue) end
+    if frame.SetHealthTextFormat then
+        frame:SetHealthTextFormat(healthTextFormat)
+    end
 
     -- Apply absorbs (if available)
     if frame.SetAbsorbsEnabled then
@@ -427,3 +427,5 @@ function Mixin:CreateOverlayIcons(frame, systemIndex)
     OrbitEngine.ComponentDrag:Attach(frame.MarkerIcon, frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
     OrbitEngine.ComponentDrag:Attach(frame.Portrait, frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
 end
+
+if table.freeze then table.freeze(Mixin) end

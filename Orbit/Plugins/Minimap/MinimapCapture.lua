@@ -8,6 +8,11 @@ local C = Orbit.MinimapConstants
 
 local SYSTEM_ID = C.SYSTEM_ID
 local MISSIONS_BASE_SIZE = C.MISSIONS_BASE_SIZE
+local CORNER_INSET = C.COMPONENT_CORNER_INSET
+local CRAFTING_ORDER_OFFSET_Y = C.CRAFTING_ORDER_OFFSET_Y
+local DIFFICULTY_DEFAULT_ICON_SIZE = C.DIFFICULTY_DEFAULT_ICON_SIZE
+local MAIL_ICON_SIZE = C.MAIL_ICON_SIZE
+local CRAFTING_ICON_SIZE = C.CRAFTING_ICON_SIZE
 
 local Plugin = Orbit:GetPlugin(SYSTEM_ID)
 
@@ -51,8 +56,8 @@ local function UpdateDifficultyBounds(difficulty)
         height = math.max(height, icon:GetHeight() or 0)
     end
 
-    difficulty.orbitOriginalWidth = width > 0 and width or 16
-    difficulty.orbitOriginalHeight = height > 0 and height or 16
+    difficulty.orbitOriginalWidth = width > 0 and width or DIFFICULTY_DEFAULT_ICON_SIZE
+    difficulty.orbitOriginalHeight = height > 0 and height or DIFFICULTY_DEFAULT_ICON_SIZE
 end
 
 local function GetDifficultyIconTexture(difficulty)
@@ -94,7 +99,7 @@ local function SyncDifficultyPreviewIcon(difficulty)
 
     local width = sourceTexture:GetWidth()
     local height = sourceTexture:GetHeight()
-    difficulty.Icon:SetSize(width and width > 0 and width or 16, height and height > 0 and height or 16)
+    difficulty.Icon:SetSize(width and width > 0 and width or DIFFICULTY_DEFAULT_ICON_SIZE, height and height > 0 and height or DIFFICULTY_DEFAULT_ICON_SIZE)
     difficulty.Icon:SetAlpha(0)
 end
 
@@ -170,16 +175,16 @@ function Plugin:ReparentBlizzardComponents()
         local iconFrame = self.frame.DifficultyIcon
         if not iconFrame then
             iconFrame = CreateFrame("Frame", nil, overlay)
-            iconFrame:SetPoint("CENTER", self.frame, "TOPLEFT", 20, -20)
-            iconFrame.orbitOriginalWidth = 16
-            iconFrame.orbitOriginalHeight = 16
+            iconFrame:SetPoint("CENTER", self.frame, "TOPLEFT", CORNER_INSET, -CORNER_INSET)
+            iconFrame.orbitOriginalWidth = DIFFICULTY_DEFAULT_ICON_SIZE
+            iconFrame.orbitOriginalHeight = DIFFICULTY_DEFAULT_ICON_SIZE
             self.frame.DifficultyIcon = iconFrame
         end
 
         local textFrame = self.frame.DifficultyText
         if not textFrame then
             textFrame = CreateFrame("Frame", nil, overlay)
-            textFrame:SetPoint("CENTER", self.frame, "TOPLEFT", 20, -20)
+            textFrame:SetPoint("CENTER", self.frame, "TOPLEFT", CORNER_INSET, -CORNER_INSET)
             textFrame.Text = textFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             textFrame.Text:SetPoint("CENTER")
             textFrame.Text:SetJustifyH("CENTER")
@@ -205,7 +210,7 @@ function Plugin:ReparentBlizzardComponents()
 
         if not difficulty.Icon then
             difficulty.Icon = difficulty:CreateTexture(nil, "ARTWORK")
-            difficulty.Icon:SetSize(16, 16)
+            difficulty.Icon:SetSize(DIFFICULTY_DEFAULT_ICON_SIZE, DIFFICULTY_DEFAULT_ICON_SIZE)
             difficulty.Icon:SetPoint("CENTER")
             difficulty.Icon:SetAlpha(0)
         end
@@ -215,8 +220,8 @@ function Plugin:ReparentBlizzardComponents()
         iconFrame.Icon = difficulty.Icon
         SyncDifficultyPreviewIcon(difficulty)
         UpdateDifficultyBounds(difficulty)
-        iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or 16
-        iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or 16
+        iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or DIFFICULTY_DEFAULT_ICON_SIZE
+        iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or DIFFICULTY_DEFAULT_ICON_SIZE
         iconFrame:SetSize(iconFrame.orbitOriginalWidth, iconFrame.orbitOriginalHeight)
         if self.UpdateDifficultyVisuals then self:UpdateDifficultyVisuals() end
 
@@ -224,8 +229,8 @@ function Plugin:ReparentBlizzardComponents()
             local function RefreshDifficultyPreview()
                 SyncDifficultyPreviewIcon(difficulty)
                 UpdateDifficultyBounds(difficulty)
-                iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or 16
-                iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or 16
+                iconFrame.orbitOriginalWidth = difficulty.orbitOriginalWidth or DIFFICULTY_DEFAULT_ICON_SIZE
+                iconFrame.orbitOriginalHeight = difficulty.orbitOriginalHeight or DIFFICULTY_DEFAULT_ICON_SIZE
                 iconFrame:SetSize(iconFrame.orbitOriginalWidth, iconFrame.orbitOriginalHeight)
                 if self.UpdateDifficultyVisuals then self:UpdateDifficultyVisuals() end
             end
@@ -249,7 +254,7 @@ function Plugin:ReparentBlizzardComponents()
         self._origMissionsParent = missions:GetParent()
         missions:SetParent(overlay)
         missions:ClearAllPoints()
-        missions:SetPoint("CENTER", self.frame, "BOTTOMLEFT", 20, 20)
+        missions:SetPoint("CENTER", self.frame, "BOTTOMLEFT", CORNER_INSET, CORNER_INSET)
         missions:SetSize(MISSIONS_BASE_SIZE, MISSIONS_BASE_SIZE)
         -- Size to MISSIONS_BASE_SIZE so CyclingAtlas's GetSourceSize feeds correct dimensions to the crossfade preview.
         if not missions.Icon then
@@ -267,13 +272,13 @@ function Plugin:ReparentBlizzardComponents()
         self._origMailParent = mail:GetParent()
         mail:SetParent(overlay)
         mail:ClearAllPoints()
-        mail:SetPoint("CENTER", self.frame, "TOPRIGHT", -20, -20)
+        mail:SetPoint("CENTER", self.frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
         mail:Show()
         -- Call via mixin so NewMailAnim/MailReminderAnim flipbook animations play — manual MailIcon visibility bypasses them.
         if mail.TryPlayMailNotification and HasNewMail and HasNewMail() then mail:TryPlayMailNotification() end
         if not mail.Icon then
             mail.Icon = mail:CreateTexture(nil, "ARTWORK")
-            mail.Icon:SetSize(16, 16)
+            mail.Icon:SetSize(MAIL_ICON_SIZE, MAIL_ICON_SIZE)
             mail.Icon:SetPoint("CENTER")
             mail.Icon:SetAlpha(0)
         end
@@ -286,7 +291,7 @@ function Plugin:ReparentBlizzardComponents()
         self._origCraftingOrderParent = craftingOrder:GetParent()
         craftingOrder:SetParent(overlay)
         craftingOrder:ClearAllPoints()
-        craftingOrder:SetPoint("CENTER", self.frame, "TOPRIGHT", -20, -38)
+        craftingOrder:SetPoint("CENTER", self.frame, "TOPRIGHT", -CORNER_INSET, CRAFTING_ORDER_OFFSET_Y)
         
         -- Native texture has a baked-in border + tight scaling → low-res; hide it and use a borderless high-res anvil atlas.
         if MiniMapCraftingOrderIcon then
@@ -295,7 +300,7 @@ function Plugin:ReparentBlizzardComponents()
         
         if not craftingOrder.Icon then
             craftingOrder.Icon = craftingOrder:CreateTexture(nil, "ARTWORK")
-            craftingOrder.Icon:SetSize(20, 20)
+            craftingOrder.Icon:SetSize(CRAFTING_ICON_SIZE, CRAFTING_ICON_SIZE)
             craftingOrder.Icon:SetPoint("CENTER")
             craftingOrder.Icon:SetAtlas("UI-HUD-Minimap-CraftingOrder-Over-2x", true)
             

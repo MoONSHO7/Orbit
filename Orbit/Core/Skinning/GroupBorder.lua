@@ -10,6 +10,14 @@ local Constants = Orbit.Constants
 -- Snapshot lets Phase 4 reach ex-members whose anchors left the chain — Phase 1's walk only sees still-anchored frames.
 Skin._groupMembers = setmetatable({}, { __mode = "k" })
 
+-- Group-manages surfaces unless: per-icon container (Icon Padding > 0; child icons own their masks via Icons:ApplyCustom) or aura grid (UnitAuraGridMixin masks per-icon on UNIT_AURA).
+local function GroupManagesMask(frame)
+    if frame._auraGridFrame then return false end
+    -- A live merge member always manages its own surfaces — covers icon containers whose ApplyIconGroupBorder
+    -- early-returned (born merged) and so never set _activeBorderMode. Padding>0 containers never merge.
+    return (not frame._isIconContainer) or frame._activeBorderMode ~= nil or frame._groupBorderActive
+end
+
 function Skin:UpdateGroupBorder(rootFrame)
     if not rootFrame then return end
     if rootFrame._mergeSuspended then return self:ClearGroupBorder(rootFrame) end
@@ -22,7 +30,7 @@ function Skin:UpdateGroupBorder(rootFrame)
 
     local ShouldMergeBorders = FrameAnchor.ShouldMergeBorders
 
-    local function walk(frame)
+    local function Walk(frame)
         local children = FrameAnchor.childrenOf[frame]
         if not children then return end
         for child in pairs(children) do
@@ -39,12 +47,12 @@ function Skin:UpdateGroupBorder(rootFrame)
                 if merged then
                     hasMerge = true
                     allFrames[#allFrames + 1] = child
-                    walk(child)
+                    Walk(child)
                 end
             end
         end
     end
-    walk(rootFrame)
+    Walk(rootFrame)
 
     if not hasMerge then
         self:ClearGroupBorder(rootFrame)
@@ -107,7 +115,7 @@ function Skin:UpdateGroupBorder(rootFrame)
     -- Bounding box from anchor edges (deterministic, no screen coords) — each frame's position relative to rootFrame TOPLEFT.
     local positions = {}
     positions[rootFrame] = { x = 0, y = 0 }
-    local function computePositions(frame)
+    local function ComputePositions(frame)
         local pos = positions[frame]
         local children = FrameAnchor.childrenOf[frame]
         if not children then return end
@@ -116,18 +124,26 @@ function Skin:UpdateGroupBorder(rootFrame)
                 local a = FrameAnchor.anchors[child]
                 if a and a.padding == 0 then
                     local cx, cy = pos.x, pos.y
-                    if a.edge == "BOTTOM" then cy = pos.y + frame:GetHeight()
-                    elseif a.edge == "TOP" then cy = pos.y - child:GetHeight()
-                    elseif a.edge == "RIGHT" then cx = pos.x + frame:GetWidth()
-                    elseif a.edge == "LEFT" then cx = pos.x - child:GetWidth()
+                    local pw, ph = frame:GetWidth(), frame:GetHeight()
+                    local cw, ch = child:GetWidth(), child:GetHeight()
+                    -- Offset the CROSS axis by anchor.align so the box matches ApplyAnchorPosition; without
+                    -- it a narrower centred/right-aligned row computes a misplaced box and its corners mis-round.
+                    if a.edge == "BOTTOM" or a.edge == "TOP" then
+                        cy = (a.edge == "BOTTOM") and (pos.y + ph) or (pos.y - ch)
+                        if a.align == "RIGHT" then cx = pos.x + (pw - cw)
+                        elseif a.align ~= "LEFT" then cx = pos.x + (pw - cw) / 2 end
+                    elseif a.edge == "RIGHT" or a.edge == "LEFT" then
+                        cx = (a.edge == "RIGHT") and (pos.x + pw) or (pos.x - cw)
+                        if a.align == "BOTTOM" then cy = pos.y + (ph - ch)
+                        elseif a.align ~= "TOP" then cy = pos.y + (ph - ch) / 2 end
                     end
                     positions[child] = { x = cx, y = cy }
-                    computePositions(child)
+                    ComputePositions(child)
                 end
             end
         end
     end
-    computePositions(rootFrame)
+    ComputePositions(rootFrame)
 
     local minX, maxX = 0, rootFrame:GetWidth()
     local minY, maxY = 0, rootFrame:GetHeight()
@@ -168,13 +184,10 @@ function Skin:UpdateGroupBorder(rootFrame)
     local offsetX = -minX
     local offsetY = -minY
 
-
-
-    local hideOverlay = false
-
     if isPixelMode then
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
+        rootFrame._groupRoundedMask = nil          -- drop the cached rounded mask so the aura-grid cross-merge read unmasks under a flat group
         local borderSize = isIconStyle and (gs and gs.IconBorderSize or Constants.Settings.BorderSize.Default) or (gs and gs.BorderSize or Constants.Settings.BorderSize.Default)
         if borderSize <= 0 then
             overlay:Hide()
@@ -192,20 +205,34 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
 
         overlay:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = pixelSize })
-        local colorKey = isIconStyle and "IconBorderColor" or "BorderColor"
-        local raw = gs and gs[colorKey]
-        local c
-        if raw and raw.type == "class" then
-            c = Engine.ClassColor:GetCurrentClassColor()
-            c.a = raw.a or 1
+        local c = self:ResolveBorderColor(isIconStyle)
+        overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
+    elseif styleEntry.rounded then
+        -- Rounded slice border on the merged bounding box; one slice mask over the box clips every member's
+        -- surfaces, so only the group's four outer corners round (interior members sit inside the rect).
+        overlay:ClearAllPoints()
+        if canNativeAnchor then
+            overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
+            overlay:SetPoint("BOTTOMRIGHT", brFrame, "BOTTOMRIGHT", 0, 0)
         else
-            c = (Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw) or raw) or { r = 0, g = 0, b = 0, a = 1 }
+            overlay:SetPoint("TOPLEFT", rootFrame, "TOPLEFT", Engine.Pixel:Snap(-offsetX, rootScale), Engine.Pixel:Snap(offsetY, rootScale))
+            overlay:SetSize(Engine.Pixel:Snap(totalW, rootScale), Engine.Pixel:Snap(totalH, rootScale))
         end
-        overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a)
+        self:_RenderSliceTexture(overlay, styleEntry, self:ResolveBorderTint(isIconStyle))
+        self:_ClearGroupRoundedMask(rootFrame, allFrames)
+        local mask = self:EnsureSliceMask(rootFrame, "_groupRoundedMask", styleEntry, function(m) m:SetAllPoints(overlay) end)
+        for _, frame in ipairs(allFrames) do
+            if GroupManagesMask(frame) then
+                for _, tex in ipairs(frame._maskedSurfaces or {}) do
+                    self:_SetSurfaceMask(tex, mask)
+                end
+            end
+        end
     else
         -- LibSharedMedia edge-file border drawn on the merged bounding box.
         if overlay._sliceTexture then overlay._sliceTexture:Hide() end
         self:_ClearGroupRoundedMask(rootFrame, allFrames)
+        rootFrame._groupRoundedMask = nil          -- drop the cached rounded mask so the aura-grid cross-merge read unmasks under an edge-file group
         local edgeSize, borderOffset
         if isIconStyle then
             local iconStyle = self:BuildIconStyle(styleEntry)
@@ -232,16 +259,18 @@ function Skin:UpdateGroupBorder(rootFrame)
         end
 
         overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
-        overlay:SetBackdropBorderColor(1, 1, 1, 1)
-    end
-    if hideOverlay then
-        overlay:Hide()
-    else
-        overlay:Show()
-        -- Re-hide if any merged frame is OOC-faded (prevents refresh from undoing OOCFadeMixin's hide)
-        for _, frame in ipairs(allFrames) do
-            if frame._oocFadeHidden then overlay:Hide(); break end
+        -- Tint the grayscale edge-file by Border Color, or natural art when "none", matching ApplyNineSliceBorder.
+        local c = self:ResolveBorderTint(isIconStyle)
+        if c then
+            overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
+        else
+            overlay:SetBackdropBorderColor(1, 1, 1, 1)
         end
+    end
+    overlay:Show()
+    -- Re-hide if any merged frame is OOC-faded (prevents refresh from undoing OOCFadeMixin's hide)
+    for _, frame in ipairs(allFrames) do
+        if frame._oocFadeHidden then overlay:Hide(); break end
     end
 
     -- Visibility hooks so merges update immediately on show/hide (e.g. target frame via RegisterUnitWatch); persistent and debounced.
@@ -254,14 +283,8 @@ function Skin:UpdateGroupBorder(rootFrame)
     end
 end
 
--- Group-manages surfaces unless: per-icon container (Icon Padding > 0; child icons own their masks via Icons:ApplyCustom) or aura grid (UnitAuraGridMixin masks per-icon on UNIT_AURA).
-local function GroupManagesMask(frame)
-    if frame._auraGridFrame then return false end
-    return (not frame._isIconContainer) or frame._activeBorderMode ~= nil
-end
-
 -- Sweep whatever Orbit mask sits on each surface (not just rootFrame's), so a hopped-group or pixel-fallback frame leaves no residue from an ex-rounded profile.
-function Skin:_ClearGroupRoundedMask(rootFrame, frames)
+function Skin:_ClearGroupRoundedMask(_, frames)
     if not frames then return end
     for _, frame in ipairs(frames) do
         if GroupManagesMask(frame) then
@@ -270,16 +293,12 @@ function Skin:_ClearGroupRoundedMask(rootFrame, frames)
             end
         end
     end
-    -- A MaskTexture cross-anchored onto a member frame blocks that frame's StartMoving from re-latching — must be fully unanchored at teardown.
-    if rootFrame and rootFrame._groupRoundedMask then
-        rootFrame._groupRoundedMask:ClearAllPoints()
-    end
 end
 
 function Skin:ClearGroupBorder(rootFrame)
     if not rootFrame then return end
     local walked = {}
-    local function restoreFrame(frame)
+    local function RestoreFrame(frame)
         walked[#walked + 1] = frame
         local wasActive = frame._groupBorderActive
         frame._groupBorderActive = nil
@@ -289,17 +308,17 @@ function Skin:ClearGroupBorder(rootFrame)
         if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
         if wasActive and frame.SetBorderHidden then frame:SetBorderHidden(false) end
     end
-    restoreFrame(rootFrame)
+    RestoreFrame(rootFrame)
     local FrameAnchor = Orbit.Engine.FrameAnchor
-    local function walk(frame)
+    local function Walk(frame)
         local children = FrameAnchor.childrenOf[frame]
         if not children then return end
         for child in pairs(children) do
-            restoreFrame(child)
-            walk(child)
+            RestoreFrame(child)
+            Walk(child)
         end
     end
-    walk(rootFrame)
+    Walk(rootFrame)
     self:_ClearGroupRoundedMask(rootFrame, walked)
     for _, frame in ipairs(walked) do
         if GroupManagesMask(frame) then
@@ -321,6 +340,11 @@ function Skin:_RestoreExMergeMember(frame)
     if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
     if frame.SetBorderHidden then frame:SetBorderHidden(false) end
     if GroupManagesMask(frame) then
+        -- Sweep any leftover GROUP mask first — owner-guarded ClearRoundedMaskFromSurfaces (keyed on
+        -- frame._roundedMask) can't remove the _groupRoundedMask this ex-member still carries.
+        for _, tex in ipairs(frame._maskedSurfaces or {}) do
+            self:_SetSurfaceMask(tex, nil)
+        end
         if frame._isIconContainer then
             self:ApplyRoundedMaskToSurfaces(frame, self:GetActiveIconBorderStyle())
         else

@@ -19,8 +19,6 @@ local Plugin = Orbit:RegisterPlugin("Raid Panel", SYSTEM_ID, {
         DisplayMode  = 3,
         DisplayShape = 1,
         Compactness  = 0,
-        FadeEffect   = 0,
-        Anchor       = false,
     },
 })
 
@@ -40,6 +38,7 @@ local DOCK_FRAME_LEVEL        = 100
 local DOCK_FRAME_STRATA       = "MEDIUM"
 local CLAMP_VISIBLE_MARGIN    = 30
 local DOCK_THICKNESS_PAD      = 2
+local EDIT_MODE_PREVIEW_OWNER = "OrbitRaidPanelEditModePreview"
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 local dock
@@ -224,8 +223,9 @@ function Plugin:OnLoad()
     end)
 
     if EventRegistry then
-        EventRegistry:RegisterCallback("EditMode.Enter", function() self:UpdateVisibility() end, self)
-        EventRegistry:RegisterCallback("EditMode.Exit",  function() self:UpdateVisibility() end, self)
+        -- Unique owner so RegisterStandardEvents' (event, self) ApplySettings callbacks don't clobber these.
+        EventRegistry:RegisterCallback("EditMode.Enter", function() self:UpdateVisibility() end, EDIT_MODE_PREVIEW_OWNER)
+        EventRegistry:RegisterCallback("EditMode.Exit",  function() self:UpdateVisibility() end, EDIT_MODE_PREVIEW_OWNER)
     end
 
     self:RegisterStandardEvents()
@@ -258,8 +258,8 @@ function Plugin:OnDisable()
         self.eventFrame:SetScript("OnEvent", nil)
     end
     if EventRegistry then
-        EventRegistry:UnregisterCallback("EditMode.Enter", self)
-        EventRegistry:UnregisterCallback("EditMode.Exit", self)
+        EventRegistry:UnregisterCallback("EditMode.Enter", EDIT_MODE_PREVIEW_OWNER)
+        EventRegistry:UnregisterCallback("EditMode.Exit", EDIT_MODE_PREVIEW_OWNER)
     end
     OrbitEngine.NativeFrame:Unpark(CompactRaidFrameManager)
     -- Reset module-level state so re-enable (without /reload) builds a fresh dock.

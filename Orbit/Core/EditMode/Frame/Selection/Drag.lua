@@ -19,6 +19,7 @@ if GameTooltip then
 end
 
 local MAX_PADDING = 500
+local SNAP_THROTTLE = 1 / 30
 local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
 local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
@@ -161,7 +162,12 @@ local function OnDragUpdate(selectionOverlay, elapsed)
         return
     end
 
-    local targets = Selection:GetSnapTargets(parent)
+    -- Snap detection + anchor-line rendering is the expensive path; throttle it. Cursor-follow above stays every-frame.
+    selectionOverlay.snapElapsed = (selectionOverlay.snapElapsed or 0) + (elapsed or 0)
+    if selectionOverlay.snapElapsed < SNAP_THROTTLE then return end
+    selectionOverlay.snapElapsed = 0
+
+    local targets = parent._drag and parent._drag.snapTargets or Selection:GetSnapTargets(parent)
     local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, true, targets, nil)
 
     local isOrbitFrame = Selection.selections[anchorTarget] ~= nil
@@ -269,10 +275,14 @@ function Drag:OnDragStart(selectionOverlay)
             Engine.FrameOrientation:StartTracking(parent)
         end
 
+        -- Snap-target membership doesn't change during a single drag; cache it so OnDragUpdate doesn't rebuild the list every frame.
+        parent._drag.snapTargets = Engine.FrameSelection:GetSnapTargets(parent)
+
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
         selectionOverlay.precisionMode = false
         selectionOverlay.anchorSuppressedPreview = false
+        selectionOverlay.snapElapsed = 0
 
         if IsShiftKeyDown() then
             SetNonSelectedOverlaysVisible(selectionOverlay, false)
@@ -304,6 +314,11 @@ local function TeardownDrag(selectionOverlay, parent)
     Selection:ShowAnchorLine(selectionOverlay, nil)
     selectionOverlay:SetScript("OnUpdate", nil)
     SetBlizzardSnapPreview(parent, false)
+
+    -- Paired with StartTracking in OnDragStart; teardown runs before any combat/canvas early-return so a combat-interrupted drag can't strand the orientation OnUpdate.
+    if parent.orbitAutoOrient and Engine.FrameOrientation then
+        Engine.FrameOrientation:StopTracking(parent)
+    end
 
     if selectionOverlay.precisionMode then
         SetNonSelectedOverlaysVisible(selectionOverlay, true)
@@ -337,7 +352,7 @@ local function ResolveDrop(parent)
         return { kind = "precision", point = point, x = x, y = y }
     end
 
-    local targets = Selection:GetSnapTargets(parent)
+    local targets = parent._drag and parent._drag.snapTargets or Selection:GetSnapTargets(parent)
     local _, _, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, false, targets, nil)
 
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
@@ -420,10 +435,6 @@ function Drag:OnDragStop(selectionOverlay)
 
     parent.orbitIsDragging = nil
     parent._drag = nil
-
-    if parent.orbitAutoOrient and Engine.FrameOrientation then
-        Engine.FrameOrientation:StopTracking(parent)
-    end
 end
 
 -- [ MOUSE DOWN (SELECTION) ]-------------------------------------------------------------------------

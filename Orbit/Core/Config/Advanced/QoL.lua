@@ -58,9 +58,7 @@ local function BuildMoveMore(body)
     Layout:AddControl(body, saveCb)
 
     local resetBtn = Layout:CreateButton(body, L.PLU_MM_RESET_ALL, function()
-        if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then
-            Orbit.MoveMore:ClearSavedPositions()
-        end
+        Orbit.MoveMore:ClearSavedPositions()
     end)
     Layout:AddControl(body, resetBtn)
 
@@ -416,7 +414,6 @@ local function BuildColors(body)
     local _, gridH2 = Layout:ComputeGridContainerSize(#reactions, limitsPerLine, 0, colWidth, rowHeight, padding)
     yPos = yPos - gridH2 - 15
 
-    -- [ REPUTATION BAR COLORS ]
     local headerRep = Layout:CreateSectionHeader(body, L.PLU_COLORS_REPUTATION)
     Layout:AddControl(body, headerRep)
     headerRep:SetPoint("TOPLEFT", body, "TOPLEFT", 10, yPos)
@@ -498,16 +495,12 @@ function Orbit._AC.CreateQoLContent(parent)
 
     -- Scrollable area
     local scrollFrame, scrollChild = Layout:CreateScrollArea(content)
-    -- "Keys"/"Markers"/"Inventory" are placeholders for unshipped features — not localized until implemented.
     local sectionDefs = {
         { L.PLU_QOL_SEC_UI, BuildUserInterface },
         { L.PLU_QOL_SEC_COLORS, BuildColors },
         { L.PLU_QOL_SEC_MOVEMORE, BuildMoveMore },
         { L.PLU_QOL_SEC_MOUSE, BuildMouse },
         { L.PLU_SPT_SECTION_TITLE, BuildSpotlight },
-        { "Keys", nil },
-        { "Markers", nil },
-        { "Inventory", nil },
     }
     -- Build accordion sections
     local sections = {}

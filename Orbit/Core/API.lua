@@ -3,7 +3,6 @@ local Orbit = addonTable
 local L = Orbit.L
 
 -- [ ORBIT API ]--------------------------------------------------------------------------------------
-
 ---@class OrbitAPI
 Orbit.API = {}
 local API = Orbit.API
@@ -31,8 +30,8 @@ function API:ResetProfile(profileName)
 
     profileName = profileName or pm:GetActiveProfileName()
 
-    -- Safety: Ensure Default profile exists before nuking
-    if not Orbit.db.profiles["Default"] then
+    -- Safety: Ensure the active profile exists before nuking
+    if not Orbit.db.profiles[pm:GetActiveProfileName()] then
         pm:Initialize()
     end
 
@@ -114,7 +113,7 @@ function API:UnlockFrames()
         Orbit.Engine.PositionManager:FlushToStorage()
     end
 
-    Orbit:Print(string.format("Reset positions for %d frames.", count))
+    Orbit:Print(L.MSG_FRAMES_RESET_F:format(count))
 end
 
 function API:DumpDebugInfo()

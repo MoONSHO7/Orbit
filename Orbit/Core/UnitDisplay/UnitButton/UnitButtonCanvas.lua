@@ -134,3 +134,4 @@ function CanvasMixin:SetBorder(size)
 end
 
 UnitButton.CanvasMixin = CanvasMixin
+if table.freeze then table.freeze(CanvasMixin) end

@@ -19,7 +19,7 @@ function Plugin:OnLoad()
     self:CreatePowerBarPlugin({
         unit = "target",
         frameName = "TargetPower",
-        displayName = "Target Power",
+        displayName = self.displayName,
         parentPlugin = "Orbit_TargetFrame",
         parentIndex = Enum.EditModeUnitFrameSystemIndices.Target,
         enableKey = "EnableTargetPower",

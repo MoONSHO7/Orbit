@@ -17,6 +17,8 @@ local BASE_VISIBILITY_DRIVER = "[petbattle][vehicleui] hide; show"
 local PET_BAR_BASE_DRIVER = "[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide"
 local BAR1_BASE_DRIVER = "[petbattle][overridebar] hide; show"
 local DEFAULT_BOTTOM_OFFSET_Y = 40
+local DEFAULT_CENTER_OFFSET_Y = -150
+local CENTER_OFFSET_STEP_Y = 50
 
 Orbit.ActionBarsContainer = {}
 local ABC = Orbit.ActionBarsContainer
@@ -40,7 +42,7 @@ function ABC:Create(plugin, config)
     frame.Selection:SetColorTexture(1, 1, 1, 0.1)
     frame.Selection:SetAllPoints()
     frame.Selection:Hide()
-    local yOffset = -150 - ((config.index - 1) * 50)
+    local yOffset = DEFAULT_CENTER_OFFSET_Y - ((config.index - 1) * CENTER_OFFSET_STEP_Y)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, yOffset)
     plugin.blizzBars[config.index] = _G[config.blizzName]
     frame.GetSpellFlyoutDirection = function(f)
@@ -125,7 +127,6 @@ function ABC:ReparentButtons(plugin, index, barConfig)
         if blizzBar.QuickKeybindHighlightTexture then blizzBar.QuickKeybindHighlightTexture:SetAlpha(0) end
     end
     if #buttons == 0 then return end
-    plugin.buttons[index] = buttons
     -- Pre-scan for conflicts before reparenting any buttons
     for _, button in ipairs(buttons) do
         local parent = button:GetParent()
@@ -143,6 +144,7 @@ function ABC:ReparentButtons(plugin, index, barConfig)
             if not isNative then plugin.conflicted = true; return end
         end
     end
+    plugin.buttons[index] = buttons
     for _, button in ipairs(buttons) do
         button:SetParent(container)
         button:Show()

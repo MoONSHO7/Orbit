@@ -115,7 +115,7 @@ function Mixin:_updateBlizzardBuffs()
     skinSettings.iconBorder = isPlayerGrid or nil
     skinSettings.padding = spacing
     skinSettings.aspectRatio = self:GetSetting(1, "aspectRatio") or "1:1"
-    local componentPositions = self:GetSetting(1, "ComponentPositions") or {}
+    local componentPositions = self:GetComponentPositions(1)
     local OverrideUtils = OrbitEngine.OverrideUtils
 
     Frame._scratchDurObjByIndex = Frame._scratchDurObjByIndex or {}
@@ -300,3 +300,6 @@ function Mixin:_updateBlizzardBuffs()
     skinSettings._growthY = growthY
     self:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, iconW, iconH)
 end
+
+-- Frozen here, not in UnitAuraGridMixin.lua: this file is the last to write the mixin (_updateBlizzardBuffs above).
+if table.freeze then table.freeze(Mixin) end

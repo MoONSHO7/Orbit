@@ -567,7 +567,11 @@ function Container:StartSpellCastWatcher(plugin, frame)
     watcher:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     watcher:SetScript("OnEvent", function(_, event, unit, _, spellId)
         if event == "TRAIT_CONFIG_UPDATED" then
+            -- Debounced: TRAIT_CONFIG_UPDATED can fire several times per commit; one reparse+Apply suffices.
+            if frame._talentReparsePending then return end
+            frame._talentReparsePending = true
             C_Timer.After(TALENT_REPARSE_DELAY, function()
+                frame._talentReparsePending = false
                 if InCombatLockdown() then return end
                 Container:ReparseActiveDurations(plugin, frame)
                 local record = plugin:GetContainerRecord(frame.recordId)
@@ -581,7 +585,8 @@ function Container:StartSpellCastWatcher(plugin, frame)
         end
         if unit ~= "player" then return end
         for _, icon in pairs(frame.iconItems) do
-            local isMatch = (icon.trackedType == "spell" and icon.trackedId == spellId) or (icon.trackedType == "item" and icon._useSpellId == spellId)
+            local activeId = (icon.trackedType == "spell") and GetActiveSpellID(icon.trackedId) or nil
+            local isMatch = (icon.trackedType == "spell" and (icon.trackedId == spellId or activeId == spellId)) or (icon.trackedType == "item" and icon._useSpellId == spellId)
             if isMatch then
                 if icon._activeDuration then
                     icon._activeGlowExpiry = GetTime() + icon._activeDuration

@@ -7,6 +7,7 @@ local L = Orbit.L
 local MAX_QUESTS = 35
 local QUEST_LOW = 25
 local QUEST_HIGH = 30
+local MAX_SHOWN_QUESTS = 20
 
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Quests", L.PLU_DT_QUEST_NAME)
@@ -37,7 +38,7 @@ function W:ShowTooltip()
         if info then
             if info.isHeader then
                 lastHeader = info.title
-            elseif not info.isHidden and shown < 20 then
+            elseif not info.isHidden and shown < MAX_SHOWN_QUESTS then
                 if lastHeader then
                     GameTooltip:AddLine(" ")
                     GameTooltip:AddLine(lastHeader, 1, 0.82, 0)

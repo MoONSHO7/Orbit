@@ -33,6 +33,7 @@ local SELECTED_BG_COLOR = { r = 1, g = 1, b = 1, a = 0.18 }
 local LABEL_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 local KIND_LABEL_COLOR = { r = 0.6, g = 0.6, b = 0.6, a = 1 }
 local COUNT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
+local TOOLTIP_HINT_COLOR = { 0.40, 0.73, 0.40 }
 local SECURE_ATTR_KEYS = { "type", "type1", "item", "spell", "toy", "macro", "macrotext", "battlepet", "mount", "unit", "shift-type1", "shift-macrotext1" }
 
 local function FormatCount(n)
@@ -51,8 +52,10 @@ for _, k in ipairs(Orbit.Spotlight.Kinds) do KIND_LABEL[k.kind] = L[k.labelKey] 
 -- [ PICKUP DISPATCH ]--------------------------------------------------------------------------------
 local function PickupEntry(entry)
     local k = entry.kind
-    if k == "spellbook" or k == "professions" then
+    if k == "spellbook" then
         C_Spell.PickupSpell(entry.id)
+    elseif k == "professions" then
+        C_Spell.PickupSpell(entry.spellID)
     elseif k == "mounts" then
         local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
         if spellID then C_Spell.PickupSpell(spellID) end
@@ -78,8 +81,10 @@ local function ShowTooltip(row)
         if entry.secure and entry.secure.item then GameTooltip:SetHyperlink(entry.secure.item) end
     elseif k == "heirlooms" then
         GameTooltip:SetItemByID(entry.id)
-    elseif k == "spellbook" or k == "professions" then
+    elseif k == "spellbook" then
         GameTooltip:SetSpellByID(entry.id)
+    elseif k == "professions" then
+        GameTooltip:SetSpellByID(entry.spellID)
     elseif k == "toys" then
         GameTooltip:SetToyByItemID(entry.id)
     elseif k == "mounts" then
@@ -97,10 +102,13 @@ local function ShowTooltip(row)
         GameTooltip:SetText(name or entry.name, 1, 1, 1)
         if body and body ~= "" then GameTooltip:AddLine(body, 0.8, 0.8, 0.8, true) end
     elseif k == "help" then
-        GameTooltip:SetText(entry.name, 1, 1, 1)
-        if entry.trigger then GameTooltip:AddLine(entry.trigger, 0.40, 0.73, 0.40, true) end
-        if entry.desc then GameTooltip:AddLine(entry.desc, 0.8, 0.8, 0.8, true) end
-        if entry.note then GameTooltip:AddLine(entry.note, 0.55, 0.55, 0.55, true) end
+        GameTooltip:SetText(entry.name, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+        if entry.trigger then GameTooltip:AddLine(entry.trigger, TOOLTIP_HINT_COLOR[1], TOOLTIP_HINT_COLOR[2], TOOLTIP_HINT_COLOR[3], true) end
+        if entry.desc then GameTooltip:AddLine(entry.desc, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true) end
+        if entry.note then
+            if entry.desc then GameTooltip:AddLine(" ") end
+            GameTooltip:AddLine(entry.note, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true)
+        end
     end
     GameTooltip:Show()
 end
@@ -114,8 +122,10 @@ local function GetEntryLink(entry)
         return select(2, C_Item.GetItemInfo(entry.id))
     elseif k == "toys" then
         return C_ToyBox.GetToyLink(entry.id)
-    elseif k == "spellbook" or k == "professions" then
+    elseif k == "spellbook" then
         return C_Spell.GetSpellLink(entry.id)
+    elseif k == "professions" then
+        return C_Spell.GetSpellLink(entry.spellID)
     elseif k == "mounts" then
         local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
         return spellID and C_MountJournal.GetMountLink(spellID)

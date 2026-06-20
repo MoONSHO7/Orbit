@@ -1,5 +1,5 @@
 -- [ STRATA ENGINE ] ---------------------------------------------------------------------------------
--- Root-container Z-index only; new plugins must be added to PopulateDefaults() and call GetFrameLevel("Global_HUD", "Orbit_PluginName") in OnLoad. Session-only offsets.
+-- Root-container Z-index only; new plugins must be added to PopulateDefaults() and call GetFrameLevel("Global_HUD", "Orbit_PluginName") in OnLoad. Entity ordering is profile-persisted; only _volatileBase is session-only.
 local _, Orbit = ...
 local C = Orbit.Constants
 
@@ -49,56 +49,6 @@ function Engine:GetFrameLevel(scopeID, entityID)
         end
     end
     error("StrataEngine: Unregistered entity: " .. tostring(entityID) .. " in scope: " .. tostring(scopeID))
-end
-
--- [ BUMPING ] ---------------------------------------------------------------------------------------
--- Swap entity with its neighbor. Fires ORBIT_STRATA_UPDATED so plugins re-apply.
-function Engine:BumpUp(scopeID, entityID)
-    local scope = self:GetScopeData(scopeID)
-    local index
-    for i, id in ipairs(scope.entities) do
-        if id == entityID then index = i; break end
-    end
-    assert(index, "StrataEngine: Unregistered entity: " .. tostring(entityID))
-    if index < #scope.entities then
-        scope.entities[index], scope.entities[index + 1] = scope.entities[index + 1], scope.entities[index]
-        self:_NotifyScope(scopeID)
-    end
-end
-
-function Engine:BumpDown(scopeID, entityID)
-    local scope = self:GetScopeData(scopeID)
-    local index
-    for i, id in ipairs(scope.entities) do
-        if id == entityID then index = i; break end
-    end
-    assert(index, "StrataEngine: Unregistered entity: " .. tostring(entityID))
-    if index > 1 then
-        scope.entities[index], scope.entities[index - 1] = scope.entities[index - 1], scope.entities[index]
-        self:_NotifyScope(scopeID)
-    end
-end
-
-function Engine:BumpAbove(scopeID, entityID, targetEntityID)
-    local scope = self:GetScopeData(scopeID)
-    local sourceIndex, targetIndex
-    for i, id in ipairs(scope.entities) do
-        if id == entityID then sourceIndex = i end
-        if id == targetEntityID then targetIndex = i end
-    end
-    assert(sourceIndex, "StrataEngine: Unregistered entity: " .. tostring(entityID))
-    assert(targetIndex, "StrataEngine: Unregistered target: " .. tostring(targetEntityID))
-    if sourceIndex == targetIndex then return end
-    table.remove(scope.entities, sourceIndex)
-    for i, id in ipairs(scope.entities) do
-        if id == targetEntityID then targetIndex = i; break end
-    end
-    table.insert(scope.entities, targetIndex + 1, entityID)
-    self:_NotifyScope(scopeID)
-end
-
-function Engine:_NotifyScope(scopeID)
-    Orbit.EventBus:Fire("ORBIT_STRATA_UPDATED", scopeID)
 end
 
 -- [ STARTUP POPULATION ] ----------------------------------------------------------------------------

@@ -43,6 +43,8 @@ local function ReanchorContainer(container)
     end
 end
 
+OrbitEngine.CanvasMode.ReanchorContainer = ReanchorContainer
+
 local function ApplyDifficultySavedPosition(settings, container, display)
     if not ((settings.componentKey == "DifficultyIcon") or (settings.componentKey == "DifficultyText")) or not settings.plugin or not settings.plugin.GetComponentPositions or not container then return end
     local parent = container:GetParent()
@@ -203,22 +205,11 @@ function Settings:ApplyHealthTextPreview()
         return nil
     end
 
-    local showValue = GetValue("ShowHealthValue")
-    if showValue == nil then showValue = true end
-    local mode = GetValue("HealthTextMode") or "percent_short"
-
-    if showValue then
-        local SAMPLE_TEXT = {
-            percent = "100%", short = "106K", raw = "106000",
-            short_and_percent = "106K - 100%",
-            percent_short = "100%", percent_raw = "100%",
-            short_percent = "106K", short_raw = "106K",
-            raw_short = "106000", raw_percent = "106000",
-        }
-        visual:SetText(SAMPLE_TEXT[mode] or "100%")
-    else
-        visual:SetText(Orbit.L.CMN_OFFLINE)
-    end
+    local UnitButton = OrbitEngine.UnitButton
+    local sample = UnitButton and UnitButton.HealthFormatRestSample
+        and UnitButton.HealthFormatRestSample(GetValue("HealthTextFormat"), GetValue("HealthTextMode")) or ""
+    -- A blank format shows nothing on the live frame (status still shows); in canvas it previews as "Status" so the component stays visible and selectable.
+    visual:SetText(sample ~= "" and sample or Orbit.L.CFG_FORMAT_STATUS)
     visual:Show()
 end
 
@@ -267,6 +258,12 @@ end
 
 -- [ FLUSH PENDING ]----------------------------------------------------------------------------------
 function Settings:FlushPendingPluginSettings()
+    -- ClearFocus a focused text input first: its OnEditFocusLost stages the final edit synchronously. Must precede the guard, which a text-only edit could otherwise trip with pendingPluginSettings still nil.
+    if self.widgetsByKey then
+        for _, w in pairs(self.widgetsByKey) do
+            if w.EditBox and w.EditBox:HasFocus() then w.EditBox:ClearFocus() end
+        end
+    end
     if not self.pendingPluginSettings or not self.plugin then return end
     for k, v in pairs(self.pendingPluginSettings) do
         self.plugin:SetSetting(self.systemIndex, k, v)
@@ -437,17 +434,6 @@ function Settings:ApplyInitialPluginPreviews(plugin, systemIndex)
     self:ApplyCastBarPreview()
 
     self.currentOverrides = nil
-
-    local showValue = plugin:GetSetting(sysIdx, "ShowHealthValue")
-    local textMode = plugin:GetSetting(sysIdx, "HealthTextMode")
-
-    self.currentOverrides = {
-        ShowHealthValue = showValue,
-        HealthTextMode = textMode or "percent_short",
-    }
-    if self.currentOverrides.ShowHealthValue == nil then self.currentOverrides.ShowHealthValue = true end
-    self:ApplyHealthTextPreview()
-
-    self.currentOverrides = nil
     self.pendingPluginSettings = pendingPluginSettings
+    self:ApplyHealthTextPreview()
 end

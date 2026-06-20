@@ -22,6 +22,7 @@ function Professions:Build()
             entries[#entries + 1] = {
                 kind = "professions",
                 id = lineID,
+                spellID = info.professionID,
                 name = info.professionName,
                 lowerName = Tokenize:Fold(info.professionName),
                 icon = iconID,

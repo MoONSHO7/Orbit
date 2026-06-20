@@ -91,7 +91,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                     return ""
                 end
                 local cols = numButtons / r
-                return r .. " Row" .. (r > 1 and "s" or "") .. " (" .. cols .. " Col" .. (cols > 1 and "s" or "") .. ")"
+                return L.PLU_MENU_LAYOUT_VALUE_F:format(r, cols)
             end,
             onChange = function(val)
                 local r = factors[val]
@@ -284,10 +284,8 @@ function Plugin:ApplySettings()
     for _, f in ipairs({ MicroMenu, MicroMenuContainer }) do
         if f then
             OrbitEngine.NativeFrame:SecureHide(f)
-            if not InCombatLockdown() then
-                f:ClearAllPoints()
-                f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
-            end
+            f:ClearAllPoints()
+            f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -OFFSCREEN_OFFSET, OFFSCREEN_OFFSET)
         end
     end
 end

@@ -22,6 +22,7 @@ Plugins/
   Minimap/                    -- minimap replacement with canvas-mode component layout
   RaidPanel/                  -- party / raid frame extensions and raid-marker management
   StatusBars/                 -- experience / reputation / honor progression bars with canvas text components
+  StatusBar_v2/               -- circular (radial) xp bar; swaps to honor on hover, hollow center for level-up
   Tracked/                    -- user-authored tracked ability icons and bars
   UnitFrames/                 -- player, target, focus frames and their sub-frames
 ```

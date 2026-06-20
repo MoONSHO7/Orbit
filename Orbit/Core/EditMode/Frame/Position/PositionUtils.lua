@@ -58,7 +58,7 @@ function PositionUtils.AnchorToCenter(anchorX, anchorY, offsetX, offsetY, halfW,
     return centerX, centerY
 end
 
--- [ ANCHOR POINT BUILDER ] -------------------------------------------------------------------------
+-- [ ANCHOR POINT BUILDER ] --------------------------------------------------------------------------
 function PositionUtils.BuildAnchorPoint(anchorX, anchorY)
     if anchorY == "CENTER" and anchorX == "CENTER" then
         return "CENTER"
@@ -151,6 +151,15 @@ function PositionUtils.ApplyTextPosition(element, parent, pos, defaultAnchor, de
         -- Calculate offset signs (positive = inward)
         local offsetX = pos.offsetX or 0
         local offsetY = pos.offsetY or 0
+        -- Scale the inset by current/authored icon size so text keeps its relative spot when the icon is resized.
+        if pos.baseSize and pos.baseSize > 0 and parent.GetWidth then
+            local cur = parent:GetWidth()
+            if cur and cur > 0 then
+                local ratio = cur / pos.baseSize
+                offsetX = offsetX * ratio
+                offsetY = offsetY * ratio
+            end
+        end
         if pos.anchorX == "RIGHT" then
             offsetX = -offsetX
         end

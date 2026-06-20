@@ -12,7 +12,7 @@ local LANG_NAMES = {
 }
 
 local function CurrentOverride()
-    return OrbitDB and OrbitDB.AccountSettings and OrbitDB.AccountSettings.LocaleOverride
+    return Orbit.db.AccountSettings.LocaleOverride
 end
 
 local function OpenLangMenu(_, row)

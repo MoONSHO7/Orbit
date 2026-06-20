@@ -18,6 +18,7 @@ local DOCK_ICON_ALPHA = 0.7
 local DOCK_TEXT_KEYS = { Missions = true } -- keys that have no reliable dock icon; show text label instead
 local DOCK_BG_COLOR = { 0.2, 0.2, 0.2, 0.6 }
 local DOCK_BG_HOVER = { 0.3, 0.5, 0.3, 0.8 }
+local DOCK_DROP_GREEN = { 0.3, 0.8, 0.3 }
 local function DisplayName(key)
     local Schema = CanvasMode and CanvasMode.SettingsSchema
     if Schema and Schema.ResolveTitle then return Schema.ResolveTitle(key) end
@@ -50,7 +51,7 @@ Dialog.DisabledDock.IconContainer:SetPoint("BOTTOMRIGHT", Dialog.DisabledDock, "
 -- Drop highlight for dock
 Dialog.DisabledDock.DropHighlight = Dialog.DisabledDock:CreateTexture(nil, "ARTWORK")
 Dialog.DisabledDock.DropHighlight:SetAllPoints()
-Dialog.DisabledDock.DropHighlight:SetColorTexture(0.3, 0.8, 0.3, 0.2)
+Dialog.DisabledDock.DropHighlight:SetColorTexture(DOCK_DROP_GREEN[1], DOCK_DROP_GREEN[2], DOCK_DROP_GREEN[3], 0.2)
 Dialog.DisabledDock.DropHighlight:Hide()
 
 -- [ DIVIDER (between dock and override settings, shown on component selection) ] --------------------
@@ -237,9 +238,9 @@ function Dialog:AddToDock(key, sourceComponent)
     end
     if not alreadyTracked then table.insert(self.disabledComponentKeys, key) end
 
-    -- Stage into transaction for live preview
+    -- Stage a fresh copy so PluginMixin's identity-keyed disabled cache re-resolves
     local Txn = OrbitEngine.CanvasMode.Transaction
-    if Txn and Txn:IsActive() then Txn:SetDisabledComponents(self.disabledComponentKeys) end
+    if Txn and Txn:IsActive() then Txn:SetDisabledComponents({ unpack(self.disabledComponentKeys) }) end
 
     self:LayoutDockIcons()
 
@@ -266,9 +267,9 @@ function Dialog:RemoveFromDock(key)
         if k == key then table.remove(self.disabledComponentKeys, i) break end
     end
 
-    -- Stage into transaction for live preview
+    -- Stage a fresh copy so PluginMixin's identity-keyed disabled cache re-resolves
     local Txn = OrbitEngine.CanvasMode.Transaction
-    if Txn and Txn:IsActive() then Txn:SetDisabledComponents(self.disabledComponentKeys) end
+    if Txn and Txn:IsActive() then Txn:SetDisabledComponents({ unpack(self.disabledComponentKeys) }) end
 
     self:LayoutDockIcons()
 end

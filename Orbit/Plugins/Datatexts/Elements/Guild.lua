@@ -3,6 +3,9 @@ local DT = Orbit.Datatexts
 local GameTooltip = Orbit.Tooltip
 local L = Orbit.L
 
+-- [ CONSTANTS ] -------------------------------------------------------------------------------------
+local MAX_ROSTER_LINES = 25
+
 -- [ DATATEXT ] --------------------------------------------------------------------------------------
 local W = DT.BaseDatatext:New("Guild", L.PLU_DT_GUILD_NAME)
 
@@ -34,7 +37,7 @@ function W:ShowTooltip()
         local name, rankName, rankIndex, level, classDisplayName, zone, _, _, isOnline, _, class, _, _, isMobile = GetGuildRosterInfo(i)
         if isOnline and not isMobile then
             online = online + 1
-            if #rosterLines < 25 then
+            if #rosterLines < MAX_ROSTER_LINES then
                 local r, g, b = 1, 1, 1
                 if class and Orbit.Engine.ClassColor then
                     r, g, b = Orbit.Engine.ClassColor:GetOverridesUnpacked(class)
@@ -54,8 +57,8 @@ function W:ShowTooltip()
         for _, line in ipairs(rosterLines) do
             GameTooltip:AddDoubleLine(line.name, line.zone, line.r, line.g, line.b, 0.7, 0.7, 0.7)
         end
-        if online > 25 then
-            GameTooltip:AddLine(L.PLU_DT_GUILD_MORE_F:format(online - 25), 0.7, 0.7, 0.7)
+        if online > MAX_ROSTER_LINES then
+            GameTooltip:AddLine(L.PLU_DT_GUILD_MORE_F:format(online - MAX_ROSTER_LINES), 0.7, 0.7, 0.7)
         end
     end
     

@@ -18,6 +18,8 @@ function Nudge:Enable(Selection)
 
         Selection.keyboardHandler:SetScript("OnKeyDown", function(_, key)
             if InCombatLockdown() then
+                -- Combat may begin between an arrow nudge and the next keydown; restore propagation so it isn't stranded false.
+                Selection.keyboardHandler:SetPropagateKeyboardInput(true)
                 return
             end
 

@@ -4,7 +4,6 @@ local OrbitEngine = Orbit.Engine
 local CanvasMode = OrbitEngine.CanvasMode
 local Dialog = CanvasMode.Dialog
 local CC = CanvasMode.CreatorConstants
-local LSM = LibStub("LibSharedMedia-3.0")
 
 local CalculateAnchor = OrbitEngine.PositionUtils.CalculateAnchor
 local CalculateAnchorWithWidthCompensation = OrbitEngine.PositionUtils.CalculateAnchorWithWidthCompensation
@@ -15,7 +14,7 @@ local AnchorOffsetsToFinal = OrbitEngine.PositionUtils.AnchorOffsetsToFinal
 local SmartGuides = OrbitEngine.SmartGuides
 local SnapEngine = CanvasMode.SnapEngine
 local ApplyTextAlignment = CanvasMode.ApplyTextAlignment
-local SetBorderColor = CanvasMode.SetBorderColor
+local RefreshComponentMarker = CanvasMode.RefreshComponentMarker
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local DRAG_THRESHOLD = 3
@@ -26,6 +25,7 @@ local DEFAULT_CONTAINER_WIDTH = 100
 local DEFAULT_CONTAINER_HEIGHT = 20
 local SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD, gridSize = SnapEngine.SNAP_SIZE }
 local PRECISION_OPTIONS = { precisionMode = true }
+local DRAG_MAGNET_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD }
 
 -- [ TYPE DETECTION ]---------------------------------------------------------------------------------
 local AURA_ICON_KEYS = { DefensiveIcon = true, CrowdControlIcon = true, PrivateAuraAnchor = true }
@@ -62,10 +62,6 @@ end
 
 -- [ CONTAINER STATE ]--------------------------------------------------------------------------------
 local function SetupContainerState(container, preview, key, isFontString, isAuraContainer, startX, startY, data)
-    container.border = container:CreateTexture(nil, "BACKGROUND")
-    container.border:SetAllPoints()
-    SetBorderColor(container.border, CC.BORDER_COLOR_IDLE)
-
     container.posX = container.posX or startX
     container.posY = container.posY or startY
     container.key = key
@@ -110,6 +106,39 @@ local function SetupContainerState(container, preview, key, isFontString, isAura
 end
 
 -- [ DRAG HANDLERS ]----------------------------------------------------------------------------------
+-- On release the grid quantization + pixel-snap land here; the live drag glides under magnet-only snapping.
+local function FinalizeComponentPosition(self, preview)
+    local innerHalfW = preview.sourceWidth / 2 - (preview.borderInset or 0)
+    local innerHalfH = preview.sourceHeight / 2 - (preview.borderInset or 0)
+    local compHalfW, compHalfH = self:GetWidth() / 2, self:GetHeight() / 2
+    local doSnap = not IsShiftKeyDown()
+    local snapOpts = doSnap and SNAP_OPTIONS or PRECISION_OPTIONS
+    local centerRelX, centerRelY = SnapEngine:Calculate(self.posX or 0, self.posY or 0, innerHalfW, innerHalfH, compHalfW, compHalfH, snapOpts)
+
+    local needsWidthComp = NeedsEdgeCompensation(self.isFontString, self.isAuraContainer)
+    local anchorX, anchorY, edgeOffX, edgeOffY, justifyH, selfAnchorY = CalculateAnchorWithWidthCompensation(
+        centerRelX, centerRelY, innerHalfW, innerHalfH, needsWidthComp, self:GetWidth(), self:GetHeight(), self.isAuraContainer)
+
+    if doSnap then
+        local g = SnapEngine.SNAP_SIZE
+        edgeOffX = math.floor(edgeOffX / g + 0.5) * g
+        edgeOffY = math.floor(edgeOffY / g + 0.5) * g
+    end
+
+    self.anchorX, self.anchorY, self.selfAnchorY = anchorX, anchorY, selfAnchorY
+    self.offsetX, self.offsetY, self.justifyH = edgeOffX, edgeOffY, justifyH
+    self.posX, self.posY = centerRelX, centerRelY
+
+    self:ClearAllPoints()
+    local selfAnchor = BuildComponentSelfAnchor(self.isFontString, self.isAuraContainer, selfAnchorY, justifyH)
+    local anchorPoint = BuildAnchorPoint(anchorX, anchorY)
+    local fx, fy = AnchorOffsetsToFinal(anchorX, anchorY, edgeOffX, edgeOffY, centerRelX, centerRelY)
+    local dScale = self:GetEffectiveScale()
+    fx, fy = OrbitEngine.Pixel:SnapPosition(fx, fy, selfAnchor, self:GetWidth(), self:GetHeight(), dScale)
+    self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
+    if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, justifyH or "CENTER") end
+end
+
 local function SetupDragHandlers(container, preview, key, data)
     local function StartDrag(self)
         if InCombatLockdown() then return end
@@ -125,7 +154,8 @@ local function SetupDragHandlers(container, preview, key, data)
         self.dragGripX = (parentCenterX + (self.posX or 0) * zoomLevel) - mx
         self.dragGripY = (parentCenterY + (self.posY or 0) * zoomLevel) - my
         self.isDragging = true
-        SetBorderColor(self.border, CC.BORDER_COLOR_DRAG)
+        self._markerDragging = true
+        RefreshComponentMarker(self)
     end
 
     local function DragUpdate(self)
@@ -161,7 +191,8 @@ local function SetupDragHandlers(container, preview, key, data)
         local compHalfW = self:GetWidth() / 2
         local compHalfH = self:GetHeight() / 2
         local doSnap = not IsShiftKeyDown()
-        local snapOpts = doSnap and SNAP_OPTIONS or PRECISION_OPTIONS
+        -- Live drag applies the edge-magnet only; grid quantization is deferred to release so the component glides 1:1.
+        local snapOpts = doSnap and DRAG_MAGNET_OPTIONS or PRECISION_OPTIONS
         local snapX, snapY
         centerRelX, centerRelY, snapX, snapY = SnapEngine:Calculate(centerRelX, centerRelY, innerHalfW, innerHalfH, compHalfW, compHalfH, snapOpts)
 
@@ -170,13 +201,6 @@ local function SetupDragHandlers(container, preview, key, data)
             centerRelX, centerRelY, innerHalfW, innerHalfH, needsWidthComp,
             self:GetWidth(), self:GetHeight(), self.isAuraContainer
         )
-
-        -- Mismatched parities between preview and container widths can leave edge offsets fractional.
-        if doSnap then
-            local g = SnapEngine.SNAP_SIZE
-            edgeOffX = math.floor(edgeOffX / g + 0.5) * g
-            edgeOffY = math.floor(edgeOffY / g + 0.5) * g
-        end
 
         if SmartGuides and preview.guides then SmartGuides:Update(preview.guides, snapX, snapY, preview.sourceWidth, preview.sourceHeight) end
         if self.isFontString and self.visual then ApplyTextAlignment(self, self.visual, justifyH) end
@@ -225,9 +249,11 @@ local function SetupDragHandlers(container, preview, key, data)
         self.pendingDrag = false
         if self.isDragging then
             self.isDragging = false
-            SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
+            self._markerDragging = false
+            RefreshComponentMarker(self)
             if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
             Dialog.DisabledDock.DropHighlight:Hide()
+            FinalizeComponentPosition(self, preview)
             CanvasMode.Transaction:StagePositionFromContainer(self)
         elseif not self.wasDragged and self.mouseDownTime then
             if (GetTime() - self.mouseDownTime) < CLICK_THRESHOLD then
@@ -247,13 +273,15 @@ local function SetupDragHandlers(container, preview, key, data)
     container:SetScript("OnDragStop", function(self)
         self:SetScript("OnUpdate", nil)
         self.isDragging = false
-        SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
+        self._markerDragging = false
+        RefreshComponentMarker(self)
         Dialog.DisabledDock.DropHighlight:Hide()
 
         if SmartGuides and preview.guides then SmartGuides:Hide(preview.guides) end
 
         if Dialog.DisabledDock:IsMouseOver() then
             local compKey = self.key
+            if CanvasMode._selectedComponent == self then CanvasMode:SetSelectedComponent(nil) end
             self:Hide()
             Dialog.previewComponents[compKey] = nil
             Dialog:AddToDock(compKey, data and data.component)
@@ -263,16 +291,7 @@ local function SetupDragHandlers(container, preview, key, data)
             return
         end
 
-        self:ClearAllPoints()
-        local selfAnchor = BuildComponentSelfAnchor(self.isFontString, self.isAuraContainer, self.selfAnchorY, self.justifyH)
-        local anchorPoint = BuildAnchorPoint(self.anchorX, self.anchorY)
-        local fx, fy = AnchorOffsetsToFinal(self.anchorX, self.anchorY, self.offsetX, self.offsetY, self.posX, self.posY)
-        local dScale = self:GetEffectiveScale()
-        fx, fy = OrbitEngine.Pixel:SnapPosition(fx, fy, selfAnchor, self:GetWidth(), self:GetHeight(), dScale)
-        self:SetPoint(selfAnchor, preview, anchorPoint, fx, fy)
-
-        if self.visual and self.isFontString then ApplyTextAlignment(self, self.visual, self.justifyH or "CENTER") end
-
+        FinalizeComponentPosition(self, preview)
         CanvasMode.Transaction:StagePositionFromContainer(self)
     end)
 end
@@ -280,11 +299,13 @@ end
 -- [ HOVER ]------------------------------------------------------------------------------------------
 local function SetupHoverEffects(container)
     container:SetScript("OnEnter", function(self)
-        SetBorderColor(self.border, CC.BORDER_COLOR_HOVER)
+        self._markerHovered = true
+        RefreshComponentMarker(self)
         Dialog.hoveredComponent = self
     end)
     container:SetScript("OnLeave", function(self)
-        SetBorderColor(self.border, CC.BORDER_COLOR_IDLE)
+        self._markerHovered = false
+        RefreshComponentMarker(self)
         if Dialog.hoveredComponent == self then
             Dialog.hoveredComponent = nil
         end

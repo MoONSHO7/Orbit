@@ -33,15 +33,36 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then nineSliceStyle = nil end
     local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
 
-    -- LSM edge-file → "legacy" path; built-in flat "Orbit" (nil style) → "pixel" WHITE8x8 backdrop.
-    local pathType = (nineSliceStyle and nineSliceStyle.edgeFile) and "legacy" or "pixel"
+    -- Rounded styles → slice border tinted with the highlight colour; LSM edge-file → "legacy"; flat "Orbit"
+    -- (nil style) → "pixel" WHITE8x8 backdrop.
+    local pathType
+    if nineSliceStyle and nineSliceStyle.rounded then pathType = "rounded"
+    elseif nineSliceStyle and nineSliceStyle.edgeFile then pathType = "legacy"
+    else pathType = "pixel" end
+    -- soft vs rounded share pathType but differ in slice texture — cache it so a swap rebuilds, not just re-tints.
+    local roundedFile = (pathType == "rounded") and nineSliceStyle.edgeFile or nil
+
+    local ownScale = frame:GetScale() or 1
+    if ownScale < 0.01 then ownScale = 1 end
+    local borderSize = math.max(1, (gs and gs.BorderSize) or 1)
+    local edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
+    local borderOffset = (gs and gs.BorderOffset) or 0
 
     local overlay = frame[storageKey]
     if overlay and overlay._hlCacheValid
         and overlay._hlBlendMode == mode
         and overlay._hlPathType == pathType
-        and overlay._hlAnchorTarget == anchorTarget then
-        overlay:SetBackdropBorderColor(r, g, b, a)
+        and overlay._hlAnchorTarget == anchorTarget
+        and overlay._hlBorderSize == borderSize
+        and overlay._hlEdgeSize == edgeSize
+        and overlay._hlBorderOffset == borderOffset
+        and overlay._hlOwnScale == ownScale
+        and overlay._hlRoundedFile == roundedFile then
+        if pathType == "rounded" then
+            if overlay._sliceTexture then overlay._sliceTexture:SetVertexColor(r, g, b, a) end
+        else
+            overlay:SetBackdropBorderColor(r, g, b, a)
+        end
         if anchorTarget then
             local off = (levelOffset or (Constants.Levels.Border + 1)) - Constants.Levels.Border
             overlay:SetFrameLevel(anchorTarget:GetFrameLevel() + off)
@@ -65,15 +86,15 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         overlay:SetFrameLevel(frame:GetFrameLevel() + (levelOffset or (Constants.Levels.Border + 1)))
     end
 
-    local ownScale = frame:GetScale() or 1
-    if ownScale < 0.01 then ownScale = 1 end
     local hlScale = frame:GetEffectiveScale()
     if not hlScale or hlScale < 0.01 then hlScale = 1 end
-    local borderOffset = (gs and gs.BorderOffset) or 0
 
-    if pathType == "legacy" then
+    if pathType == "rounded" then
+        overlay:ClearAllPoints()
+        if anchorTarget then overlay:SetAllPoints(anchorTarget) else overlay:SetAllPoints(frame) end
+        self:_RenderSliceTexture(overlay, nineSliceStyle, { r = r, g = g, b = b, a = a }, mode)
+    elseif pathType == "legacy" then
         self:HideSliceTexture(overlay)
-        local edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
         local adjEdge = edgeSize / ownScale
         overlay:ClearAllPoints()
         if anchorTarget then
@@ -90,7 +111,6 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         end
     else
         self:HideSliceTexture(overlay)
-        local borderSize = math.max(1, (gs and gs.BorderSize) or 1)
         overlay:ClearAllPoints()
         if anchorTarget then
             overlay:SetAllPoints(anchorTarget)
@@ -109,6 +129,11 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     overlay._hlBlendMode = mode
     overlay._hlAnchorTarget = anchorTarget
     overlay._hlPathType = pathType
+    overlay._hlBorderSize = borderSize
+    overlay._hlEdgeSize = edgeSize
+    overlay._hlBorderOffset = borderOffset
+    overlay._hlOwnScale = ownScale
+    overlay._hlRoundedFile = roundedFile
 end
 
 function Skin:ClearHighlightBorder(frame, storageKey)

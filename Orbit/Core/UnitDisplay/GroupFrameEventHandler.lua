@@ -100,8 +100,9 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             return
         end
         if event == "UNIT_THREAT_SITUATION_UPDATE" then
-            if eventUnit == f.unit and plugin.UpdateAggroIndicator then
-                plugin:UpdateAggroIndicator(f, plugin)
+            if eventUnit == f.unit then
+                if plugin.UpdateAggroIndicator then plugin:UpdateAggroIndicator(f, plugin) end
+                StatusDispatch(f, plugin, "UpdateAggroHighlight")
             end
             return
         end

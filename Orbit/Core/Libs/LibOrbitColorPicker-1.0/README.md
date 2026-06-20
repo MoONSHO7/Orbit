@@ -14,7 +14,7 @@ lib:Open({
     initialData = self.curveData,
     forceSingleColor = self.singleColorMode,
     recentColorsDb = mySavedVar.RecentColors,
-    callback = function(result, isPreview)
+    callback = function(result, wasCancelled)
         if result and result.pins and #result.pins > 0 then
             self.curveData = result
         else
@@ -79,7 +79,7 @@ lib:GetColorCurve()    -- last built native ColorCurve (or nil if never built)
 | `forceSingleColor` | `boolean` | restrict to one pin when `true` (default: `false`) |
 | `hasDesaturation` | `boolean` | show desaturation checkbox when `true` (default: `false`) |
 | `recentColorsDb` | `table` or `nil` | array reference to enable the persistent 8-slot color history row |
-| `callback` | `function(result, isPreview)` | called both on every pin/curve change (`isPreview = false` for live updates, but the rolled-back snapshot fires with `isPreview = true` on cancel) and on picker close. The two-arg form lets consumers throttle expensive previews vs. final commits; ignoring `isPreview` is safe. |
+| `callback` | `function(result, wasCancelled)` | called on every pin/curve change (`wasCancelled = false`) and on picker close. On cancel (escape / close) it fires once with the rolled-back snapshot and `wasCancelled = true`. Consumers branch on `wasCancelled` to discard the cancel payload. |
 | `onOpen` | `function(picker)` | called after picker is fully shown and initialized |
 | `anchor` | `table` or `nil` | `{ frame, point, relativePoint, x, y }` to anchor the picker to a caller-owned frame. defaults to `TOPLEFT` of the picker → `TOPRIGHT` of `frame`. omit to use the library default (top-left of screen, fixed offset). |
 

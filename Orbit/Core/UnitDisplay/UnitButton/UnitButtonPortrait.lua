@@ -244,3 +244,4 @@ function PortraitMixin:ApplyPortraitBackdrop(style)
 end
 
 UnitButton.PortraitMixin = PortraitMixin
+if table.freeze then table.freeze(PortraitMixin) end

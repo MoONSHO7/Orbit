@@ -257,7 +257,7 @@ function Orbit.Profile:SetActiveProfile(name)
     local oldHidden = CopyTable(Orbit.db.HideBlizzardFrames or {}, {})
     Orbit.db.DisabledPlugins = CopyTable(profile.DisabledPlugins or {}, {})
     Orbit.db.HideBlizzardFrames = CopyTable(profile.HideBlizzardFrames or {}, {})
-    Orbit:Print(name .. " Profile Loaded.")
+    Orbit:Print(L.MSG_PROFILE_LOADED_F:format(name))
 
     -- Diff plugin states: live-toggle clean plugins, flag dirty ones for reload
     local needsReload = false
@@ -342,7 +342,9 @@ function Orbit.Profile:CheckSpecProfile()
 end
 
 function Orbit.Profile:InitializeSpecSwitching()
+    if self._specSwitchFrame then return end
     local frame = CreateFrame("Frame")
+    self._specSwitchFrame = frame
     frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     frame:SetScript("OnEvent", function(_, event)
         Orbit.Async:Debounce(DEBOUNCE_KEY, function() self:CheckSpecProfile() end, DEBOUNCE_DELAY)
@@ -412,13 +414,13 @@ function Orbit.Profile:ImportProfile(str, name, confirmed)
         if not Orbit.db.profiles[DEFAULT_PROFILE] then
             Orbit.db.profiles[DEFAULT_PROFILE] = CopyTable(self.defaults, {})
         end
-        Orbit:Print(string.format("Imported Collection (%d profiles). Existing profiles wiped.", count))
+        Orbit:Print(L.MSG_PROFILE_COLLECTION_IMPORTED_F:format(count))
         self:SetActiveProfile(Orbit.db.activeProfile)
         return true
     end
 
     if not name or name == "" then name = t.meta.name or ("Imported " .. date("%Y%m%d")) end
-    Orbit:Print(string.format("Importing profile '%s' (from %s)...", name, t.meta.date or "Unknown"))
+    Orbit:Print(L.MSG_PROFILE_IMPORTING_F:format(name, t.meta.date or "Unknown"))
     Orbit.db.profiles[name] = t.data
     if name == self:GetActiveProfileName() then self:SetActiveProfile(name) end
     return true

@@ -51,6 +51,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "Datatexts",
         PLG_NAME_EXPERIENCE_BAR    = "Experience Bar",
         PLG_NAME_HONOR_BAR         = "Honor Bar",
+        PLG_NAME_STATUS_BAR_V2    = "Status Bar v2",
     },
     deDE = {
         PLG_UNIT_FRAMES       = "Einheitenfenster",
@@ -101,6 +102,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "Datentexte",
         PLG_NAME_EXPERIENCE_BAR    = "Erfahrungsleiste",
         PLG_NAME_HONOR_BAR         = "Ehreleiste",
+        PLG_NAME_STATUS_BAR_V2    = "Statusleiste v2",
     },
     frFR = {
         PLG_UNIT_FRAMES       = "Cadres d'unité",
@@ -151,6 +153,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "Barres d'infos",
         PLG_NAME_EXPERIENCE_BAR    = "Barre d'expérience",
         PLG_NAME_HONOR_BAR         = "Barre d'honneur",
+        PLG_NAME_STATUS_BAR_V2    = "Barre de statut v2",
     },
     esES = {
         PLG_UNIT_FRAMES       = "Marcos de unidad",
@@ -201,6 +204,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "Textos de datos",
         PLG_NAME_EXPERIENCE_BAR    = "Barra de experiencia",
         PLG_NAME_HONOR_BAR         = "Barra de honor",
+        PLG_NAME_STATUS_BAR_V2    = "Barra de estado v2",
     },
     ptBR = {
         PLG_UNIT_FRAMES       = "Quadros de Unidade",
@@ -251,6 +255,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "Datatexts",
         PLG_NAME_EXPERIENCE_BAR    = "Barra de Experiência",
         PLG_NAME_HONOR_BAR         = "Barra de Honra",
+        PLG_NAME_STATUS_BAR_V2    = "Barra de Status v2",
     },
     ruRU = {
         PLG_UNIT_FRAMES       = "Рамки юнитов",
@@ -301,6 +306,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "Информблоки",
         PLG_NAME_EXPERIENCE_BAR    = "Шкала опыта",
         PLG_NAME_HONOR_BAR         = "Шкала чести",
+        PLG_NAME_STATUS_BAR_V2    = "Панель статуса v2",
     },
     koKR = {
         PLG_UNIT_FRAMES       = "유닛 프레임",
@@ -351,6 +357,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "데이터텍스트",
         PLG_NAME_EXPERIENCE_BAR    = "경험치 막대",
         PLG_NAME_HONOR_BAR         = "명예 막대",
+        PLG_NAME_STATUS_BAR_V2    = "상태 막대 v2",
     },
     zhCN = {
         PLG_UNIT_FRAMES       = "单位框体",
@@ -401,6 +408,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "数据文本",
         PLG_NAME_EXPERIENCE_BAR    = "经验条",
         PLG_NAME_HONOR_BAR         = "荣誉条",
+        PLG_NAME_STATUS_BAR_V2    = "状态条 v2",
     },
     zhTW = {
         PLG_UNIT_FRAMES       = "單位框架",
@@ -451,6 +459,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_DATATEXTS         = "資料文字",
         PLG_NAME_EXPERIENCE_BAR    = "經驗條",
         PLG_NAME_HONOR_BAR         = "榮譽條",
+        PLG_NAME_STATUS_BAR_V2    = "狀態列 v2",
     }
 }
 Orbit.Localization.Install(LOCALE_STRINGS, "PluginManager")

@@ -118,10 +118,16 @@ local function StopListening(btn)
 end
 
 local function ProcessBindInput(btn, input)
+    -- Screenshot binding is sacrosanct: run it and bail without rebinding, matching KeybindListener.
+    if GetBindingFromClick(input) == "SCREENSHOT" then RunBinding("SCREENSHOT"); return end
     local key = GetConvertedKeyOrButton(input)
     if key == "ESCAPE" then StopListening(btn); return end
     if IsKeyPressIgnoredForBinding(key) then return end
     local newKey = CreateKeyChordStringUsingMetaKeyState(key)
+    -- Clear the action's existing keys first so a single action never holds two binds.
+    local key1, key2 = GetBindingKey(btn.action)
+    if key1 then SetBinding(key1, nil) end
+    if key2 then SetBinding(key2, nil) end
     SetBinding(newKey, btn.action)
     SaveBindings(GetCurrentBindingSet())
     StopListening(btn)

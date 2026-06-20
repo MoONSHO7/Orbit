@@ -20,7 +20,8 @@ Selection.selectedFrames = {}
 Selection.isNativeFrame = false
 Selection.keyboardHandler = nil
 Selection.editModeHooked = false
-Selection.combatDeferredCallback = nil
+Selection.combatDeferredQueue = Selection.combatDeferredQueue or {}
+Selection.combatDrainRegistered = false
 
 -- [ VISIBILITY HELPERS ] ----------------------------------------------------------------------------
 local function ShouldShowOrbitFrames()
@@ -127,17 +128,19 @@ local ANCHOR_ALIGN_COLORS = {
 }
 local DEFAULT_ANCHOR_COLOR = { 0, 1, 0 }
 
+-- One permanent combat-end drain; registering per-defer would leak a listener each time and clobber an earlier deferred action.
 local function DeferUntilOutOfCombat(callback)
     if not InCombatLockdown() then
         callback()
         return
     end
-    Selection.combatDeferredCallback = callback
+    table.insert(Selection.combatDeferredQueue, callback)
+    if Selection.combatDrainRegistered then return end
+    Selection.combatDrainRegistered = true
     Orbit.CombatManager:RegisterCombatCallback(nil, function()
-        if Selection.combatDeferredCallback then
-            Selection.combatDeferredCallback()
-            Selection.combatDeferredCallback = nil
-        end
+        local queue = Selection.combatDeferredQueue
+        Selection.combatDeferredQueue = {}
+        for _, fn in ipairs(queue) do fn() end
     end)
 end
 
@@ -159,14 +162,16 @@ end
 function Selection:GetSnapTargets(excludeFrame)
     local targets = {}
 
-    -- BFS through Orbit anchors AND UI parentage — catches circular deps across interleaved chains.
+    -- BFS through Orbit anchors AND UI parentage — catches circular deps across interleaved chains. Scratch tables are reused per candidate to avoid per-call allocation.
+    local visited, queue = {}, {}
     local function IsDependent(target, root)
         if not target or not root then
             return false
         end
 
-        local visited = {}
-        local queue = { target }
+        wipe(visited)
+        wipe(queue)
+        queue[1] = target
         local head = 1
 
         while head <= #queue do

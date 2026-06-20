@@ -2,6 +2,7 @@
 -- Scrollable table for frame visibility, opacity, and fade behavior.
 local _, Orbit = ...
 local L = Orbit.L
+local C = Orbit.Constants
 local Layout = Orbit.Engine.Layout
 local A = Layout.Advanced
 
@@ -17,6 +18,9 @@ local VE_CHECK_WIDTH = 26
 local VE_CHECK_COL_WIDTH = 72
 local VE_OPACITY_COL_WIDTH = 130
 local VE_EDGE_EXTEND = 5  -- Stretch table 5px beyond A.PADDING on both sides
+local VE_SCROLL_GUTTER = 14  -- Right-edge inset reserving the scrollbar gutter (matches CreateScrollArea)
+local VE_HEADER_BG = C.Colors.Background
+local VE_CHECK_ALL_BG = { r = 0.12, g = 0.10, b = 0.06 }
 local VE_SLIDER_WIDTH = 85
 local VE_VALUE_WIDTH = 36
 local VE_LABEL_PAD = 4
@@ -67,10 +71,10 @@ function Orbit._AC.CreateVEContent(parent)
     headerRow:SetHeight(VE_ROW_HEIGHT)
     headerRow:SetFrameLevel(content:GetFrameLevel() + 10)
     headerRow:SetPoint("TOPLEFT", A.PADDING - VE_EDGE_EXTEND, stickyTop)
-    headerRow:SetPoint("TOPRIGHT", -A.PADDING - 14 + VE_EDGE_EXTEND, stickyTop)
+    headerRow:SetPoint("TOPRIGHT", -A.PADDING - VE_SCROLL_GUTTER + VE_EDGE_EXTEND, stickyTop)
     local headerBG = headerRow:CreateTexture(nil, "BACKGROUND")
     headerBG:SetAllPoints()
-    headerBG:SetColorTexture(0.08, 0.08, 0.08, 1)
+    headerBG:SetColorTexture(VE_HEADER_BG.r, VE_HEADER_BG.g, VE_HEADER_BG.b, 1)
     local colX = VE_LABEL_WIDTH
     for i, text in ipairs(VE_COLUMNS) do
         local colWidth = (i == 2) and VE_OPACITY_COL_WIDTH or VE_CHECK_COL_WIDTH
@@ -101,7 +105,7 @@ function Orbit._AC.CreateVEContent(parent)
     checkAllRow:SetPoint("TOPRIGHT", headerRow, "BOTTOMRIGHT", 0, 0)
     local checkAllBG = checkAllRow:CreateTexture(nil, "BACKGROUND")
     checkAllBG:SetAllPoints()
-    checkAllBG:SetColorTexture(0.12, 0.10, 0.06, 1)
+    checkAllBG:SetColorTexture(VE_CHECK_ALL_BG.r, VE_CHECK_ALL_BG.g, VE_CHECK_ALL_BG.b, 1)
     local checkAllLabel = checkAllRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
     checkAllLabel:SetPoint("LEFT", VE_LABEL_PAD, 0)
     checkAllLabel:SetText("|cFFFFD100" .. L.CFG_CHECK_ALL .. "|r")
@@ -109,7 +113,7 @@ function Orbit._AC.CreateVEContent(parent)
     -- Modern scrollable data area (below sticky rows)
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "ScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", checkAllRow, "BOTTOMLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -A.PADDING - 14 + VE_EDGE_EXTEND, A.PADDING + 10)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -A.PADDING - VE_SCROLL_GUTTER + VE_EDGE_EXTEND, A.PADDING + 10)
     if scrollFrame.ScrollBar then scrollFrame.ScrollBar:SetAlpha(0) end
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetWidth(1)

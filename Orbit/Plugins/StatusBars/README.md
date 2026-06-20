@@ -2,7 +2,7 @@
 
 progression bars with canvas-managed text components. experience bar auto-switches across three modes — **xp** (while leveling), **delve companion** (while inside a delve), **watched reputation** (at max level or when xp is user-disabled). honor is a separate bar. both support canvas mode with three independently-positionable text components (Name / Level / Value).
 
-supporting features: rich tooltips, session rate + eta, pending-quest xp overlay, percentage block tick marks, warband-rep indicator, click-to-open-panel, shift-click chat link, shift-right-click to reset session, configurable text templates, minimum-level gate.
+supporting features: rich tooltips, session rate + eta, pending-quest xp overlay, percentage block tick marks, warband-rep indicator (tooltip only), click-to-open-panel, shift-click chat link, shift-right-click to reset session, configurable text templates, minimum-level gate.
 
 > **Note**: `SmoothFill` setting is currently inert. The Blizzard `SmoothStatusBarMixin` caused taint in 12.0.5+ and the implementation was removed; the toggle exists in the Behaviour tab for forward-compat but `EnableSmoothFill` is a no-op (`StatusBarBase.lua`). Re-introducing it requires a taint-safe replacement.
 
@@ -22,7 +22,7 @@ supporting features: rich tooltips, session rate + eta, pending-quest xp overlay
 | `SessionTracker.lua` | per-bar session state persisted in `AccountSettings.StatusBarSessions`; survives `/reload`, new session after 30m idle |
 | `Tooltip.lua` | rich hover tooltips for XP / Rep / Honor / Delve with session stats, ETA, pending-xp, warband indicator, paragon cycles |
 | `StatusBarBase.lua` | shared factory: container + bar/overlay/bg/pending/ticks, canvas attachment, click dispatch, blizzard hide helper. registers `BarLevel` + `BarValue` canvas-dock schemas at file load. block ticks via `SetTickMarks(container, percent)` — percent ∈ {10, 25, 33, 50}. `EnableSmoothFill` is currently a no-op stub (see note in intro). |
-| `ExperienceBar.lua` | three-mode (xp / delve / rep) plugin: auto-switch, rested overlay, percentage block tick marks, warband indicator, auto-watched faction, tabbed schema (Layout + Color + Behaviour) |
+| `ExperienceBar.lua` | three-mode (xp / delve / rep) plugin: auto-switch, rested overlay, percentage block tick marks, tooltip-only warband indicator, auto-watched faction, tabbed schema (Layout + Color + Behaviour) |
 | `HonorBar.lua` | honor plugin: honor value + level, optional pvp-only gate, tabbed schema |
 | `StatusBars.xml` | load bundle — helpers (TextTemplate/PendingXP/SessionTracker/Tooltip) load first so they're available when plugins register; then StatusBarBase; then the two plugins. |
 

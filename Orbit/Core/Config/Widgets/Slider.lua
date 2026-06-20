@@ -29,6 +29,8 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
         return math_floor(value * 10 or 0) / 10
     end
     frame.OnOrbitChange = callback
+    -- Stepper hooks are permanent across pool reuse; the hook body checks this so a reused slider in normal mode doesn't double-fire.
+    frame._updateOnRelease = options and options.updateOnRelease or false
 
     if frame.Slider then
         -- Unregister before re-registering — pool reuse would otherwise stack callbacks each acquire.
@@ -94,6 +96,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
             -- Create debounced stepper callback to prevent rapid-click spam
             local function createStepperCallback()
                 return function()
+                    if not frame._updateOnRelease then return end
                     -- Cancel any pending stepper timer
                     if frame._stepperTimer then
                         frame._stepperTimer:Cancel()

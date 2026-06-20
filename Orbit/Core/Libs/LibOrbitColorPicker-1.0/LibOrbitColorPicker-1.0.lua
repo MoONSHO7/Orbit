@@ -54,6 +54,7 @@ local NOTCH_POSITION_DELAY = 0.1
 local INFO_BUTTON_SIZE = 32
 local PIN_NUDGE_STEP = 0.01
 local PIN_NUDGE_FINE = 0.001
+local PIN_TOOLTIP_THROTTLE = 0.03
 local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
 local LIB_PATH = debugstack(1, 1, 0):match("Interface.*LibOrbitColorPicker%-1%.0[\\/]")
 local CHECKERBOARD_TEXTURE = LIB_PATH .. "checkerboard.tga"
@@ -76,9 +77,11 @@ lib.colorCurve = nil
 lib.callback = nil
 lib.wasCancelled = false
 lib.snapshotPins = nil
+lib.snapshotDesaturated = false
 lib.multiPinMode = false
 lib.desaturated = false
 lib.hasDesaturation = false
+lib.suppressCallback = false
 
 lib.ui = lib.ui or {}
 lib.drag = lib.drag or {}
@@ -340,13 +343,18 @@ function lib:CreatePinHandle(gradientBar)
         self:StartMoving()
         self:SetFrameStrata("TOOLTIP")
         self:SetClampedToScreen(true)
-        self:SetScript("OnUpdate", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        self.tooltipThrottle = 0
+        self:SetScript("OnUpdate", function(self, elapsed)
+            self.tooltipThrottle = self.tooltipThrottle + elapsed
+            if self.tooltipThrottle < PIN_TOOLTIP_THROTTLE then return end
+            self.tooltipThrottle = 0
             local handleX = self:GetCenter()
             if not handleX then return end
             local barLeft = gradientBar.SegmentContainer:GetLeft()
             local barWidth = gradientBar.SegmentContainer:GetWidth()
             local pct = ClampPosition((handleX - barLeft) / barWidth) * 100
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:ClearLines()
             GameTooltip:AddLine(string.format(CL.POS_TT, pct))
             GameTooltip:Show()
         end)
@@ -604,9 +612,11 @@ end
 
 -- [ COLORCURVE INTEGRATION ] -----------------------------------------------------------------------
 
-function lib:BuildColorCurve()
+function lib:BuildColorCurve(pins)
+    local sorted = pins and { unpack(pins) } or GetSortedPins()
+    if pins then table.sort(sorted, SortPinsByPosition) end
     local curve = C_CurveUtil.CreateColorCurve()
-    for _, pin in ipairs(GetSortedPins()) do
+    for _, pin in ipairs(sorted) do
         curve:AddPoint(pin.position, ToColorMixin(ResolveClassColorPin(pin)))
     end
     return curve
@@ -614,7 +624,7 @@ end
 
 function lib:UpdateCurve()
     self.colorCurve = self:BuildColorCurve()
-    if self.callback then
+    if self.callback and not self.suppressCallback then
         local result = { curve = self.colorCurve, pins = SerializePins(self.pins) }
         if self.hasDesaturation then result.desaturated = self.desaturated end
         self.callback(result, false)
@@ -866,13 +876,13 @@ function lib:CreatePickerFrame()
         lib:EndDrag()
 
         if lib.callback then
-            local function BuildResult(pins)
-                local result = { curve = lib.colorCurve, pins = SerializePins(pins) }
-                if lib.hasDesaturation then result.desaturated = lib.desaturated end
+            local function BuildResult(pins, curve, desaturated)
+                local result = { curve = curve, pins = SerializePins(pins) }
+                if lib.hasDesaturation then result.desaturated = desaturated end
                 return result
             end
             if lib.wasCancelled then
-                lib.callback(BuildResult(lib.snapshotPins), true)
+                lib.callback(BuildResult(lib.snapshotPins, lib:BuildColorCurve(lib.snapshotPins), lib.snapshotDesaturated), true)
             elseif lib.pins and #lib.pins > 0 then
                 -- Multi-color mode saves recents at each AddPin (drop); single-color has no drop,
                 -- so we save the picked color once on Apply here.
@@ -880,7 +890,7 @@ function lib:CreatePickerFrame()
                     lib:AddRecentColor(lib.pins[1])
                     lib:UpdateRecentColors()
                 end
-                lib.callback(BuildResult(lib.pins), false)
+                lib.callback(BuildResult(lib.pins, lib.colorCurve, lib.desaturated), false)
             else
                 lib.callback(nil, false)
             end
@@ -965,6 +975,10 @@ function lib:OnColorChanged(r, g, b)
     end
 
     if #self.pins > 0 and not self.multiPinMode then
+        -- A genuine wheel edit drops the class type so the picked color is honored, not resolved back on Apply.
+        if not self.suppressCallback and self.pins[1].type == "class" then
+            self.pins[1].type = nil
+        end
         self.pins[1].color = { r = r, g = g, b = b, a = a }
         if self.pins[1].type ~= "class" then
             self:UpdateCurve()
@@ -1695,6 +1709,8 @@ function lib:Open(options)
     options = options or {}
     self.wasCancelled = false
     self.callback = options.callback
+    -- SetColorRGB fires OnColorSelect synchronously; suppress callbacks so loading emits no spurious change.
+    self.suppressCallback = true
 
     local data = options.initialData or options.initialCurve or options.initialColor
     self.multiPinMode = not options.forceSingleColor
@@ -1718,6 +1734,7 @@ function lib:Open(options)
     if self.ui.desatCheckbox then self.ui.desatCheckbox:SetChecked(self.desaturated) end
 
     self.snapshotPins = DeepCopyPins(self.pins)
+    self.snapshotDesaturated = self.desaturated
 
     if self.ui.gradientBar then
         for _, handle in ipairs(self.ui.gradientBar.pinHandles) do handle:Hide() end
@@ -1729,6 +1746,7 @@ function lib:Open(options)
     self.ui.colorSelect:SetColorRGB(initialColor.r, initialColor.g, initialColor.b)
 
     self.ui.colorSelect:SetColorAlpha(initialColor.a or 1)
+    self.suppressCallback = false
     self:LayoutControls()
 
     if self.ui.modeTitle then
@@ -1749,6 +1767,8 @@ function lib:Open(options)
     self.ui.frame:Show()
 
     C_Timer.After(REFRESH_DELAY, function()
+        -- A close within REFRESH_DELAY already hid the UIParent-parented bar; don't re-show it orphaned.
+        if not lib:IsOpen() then return end
         if lib.ui.gradientBar then
             lib.ui.gradientBar:Show()
             lib.ui.gradientBar:Refresh()

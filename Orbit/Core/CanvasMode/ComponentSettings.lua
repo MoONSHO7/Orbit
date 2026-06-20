@@ -51,6 +51,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     self.container = container
     self.plugin = plugin
     self.systemIndex = systemIndex or 1
+    OrbitEngine.CanvasMode:SetSelectedComponent(container)
 
     local family = Schema.GetComponentFamily(container)
     local schema = KEY_SCHEMAS[componentKey] or (family and TYPE_SCHEMAS[family])
@@ -65,7 +66,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
     if canvasDialog.ViewportDivider then canvasDialog.ViewportDivider:Show() end
 
     if not schema then
-        overrideContainer.Title:SetText(Schema.ResolveTitle(componentKey) .. " (no settings)")
+        overrideContainer.Title:SetText(L.CFG_CM_NO_SETTINGS_F:format(Schema.ResolveTitle(componentKey)))
         canvasDialog:RecalculateHeight()
         return
     end
@@ -212,6 +213,15 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
                     callback
                 )
             end
+        elseif control.type == "formatinput" then
+            local current = self.currentOverrides[control.key]
+            if type(current) ~= "string" then
+                local UnitButton = OrbitEngine.UnitButton
+                local legacy = control.legacyKey and plugin and plugin:GetSetting(systemIndex, control.legacyKey)
+                current = (UnitButton and UnitButton.LegacyHealthModeToFormatString and UnitButton.LegacyHealthModeToFormatString(legacy)) or ""
+            end
+            local validate = OrbitEngine.UnitButton and OrbitEngine.UnitButton.ValidateHealthFormat
+            widget = Widgets.CreateFormatInput(overrideContainer, control, current, callback, Schema.GetFormatTooltipLines(control.tokenSet), validate)
         end
 
         if widget then
@@ -281,6 +291,7 @@ end
 -- [ CLOSE (INLINE) ]---------------------------------------------------------------------------------
 function Settings:Close()
     self:HideWidgets()
+    OrbitEngine.CanvasMode:SetSelectedComponent(nil)
     self.componentKey = nil
     self.container = nil
     self.plugin = nil
@@ -297,9 +308,9 @@ function Settings:Close()
 end
 
 function Settings:HideWidgets()
-    for _, widget in ipairs(self.widgets) do
-        widget:Hide()
-    end
+    Layout:RecycleControls(self.widgets)
+    wipe(self.widgets)
+    if self.widgetsByKey then wipe(self.widgetsByKey) end
 end
 
 -- [ CONTROL LOOKUP ]---------------------------------------------------------------------------------

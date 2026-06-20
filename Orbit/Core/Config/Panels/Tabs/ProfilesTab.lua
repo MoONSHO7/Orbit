@@ -290,7 +290,7 @@ local ProfilesPlugin = {
             else
                 if Orbit.db.specMappings then wipe(Orbit.db.specMappings) end
             end
-            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel.currentTab = nil; Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES) end
+            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES) end
         elseif key == "CreateProfile" then
             Orbit.Profile._selectedToCreate = value
         elseif key == "ExportProfile" then
@@ -359,13 +359,14 @@ local flashActive = false
 local function ShowFlashMessage(msg)
     if not flashLabel or flashActive then return end
     flashActive = true
-    flashLabel.Text:SetText(msg)
-    flashLabel:SetAlpha(0)
-    flashLabel:Show()
-    UIFrameFadeIn(flashLabel, 0.2, 0, 1)
+    -- Capture the live label so a recreated statusmessage widget can't strand flashActive on a dead frame.
+    local lbl = flashLabel
+    lbl.Text:SetText(msg)
+    lbl:SetAlpha(0)
+    lbl:Show()
+    UIFrameFadeIn(lbl, 0.2, 0, 1)
     C_Timer.After(2, function()
-        if not flashLabel then flashActive = false; return end
-        UIFrameFadeOut(flashLabel, 0.5, 1, 0)
+        UIFrameFadeOut(lbl, 0.5, 1, 0)
         C_Timer.After(0.5, function() flashActive = false end)
     end)
 end
@@ -373,7 +374,6 @@ end
 local function ReopenProfiles()
     if Orbit.OptionsPanel then
         Orbit.OptionsPanel.lastTab = nil
-        Orbit.OptionsPanel.currentTab = nil
         Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES)
     end
 end

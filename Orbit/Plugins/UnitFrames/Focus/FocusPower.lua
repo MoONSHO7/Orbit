@@ -19,7 +19,7 @@ function Plugin:OnLoad()
     self:CreatePowerBarPlugin({
         unit = "focus",
         frameName = "FocusPower",
-        displayName = "Focus Power",
+        displayName = self.displayName,
         parentPlugin = "Orbit_FocusFrame",
         parentIndex = Enum.EditModeUnitFrameSystemIndices.Focus,
         enableKey = "EnableFocusPower",

@@ -41,6 +41,7 @@ if UnitButton.CanvasMixin then Mixin(UnitButtonMixin, UnitButton.CanvasMixin) en
 if UnitButton.PortraitMixin then Mixin(UnitButtonMixin, UnitButton.PortraitMixin) end
 
 UnitButton.Mixin = UnitButtonMixin
+table.freeze(UnitButtonMixin)
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
 local function CreatePredictionBar(parent, healthBar, color)
@@ -146,14 +147,15 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.TotalAbsorbPattern:SetSize(ABSORB_PATTERN_SIZE, ABSORB_PATTERN_SIZE)
     f.TotalAbsorbPattern:SetPoint("TOPLEFT", f.TotalAbsorbMask, "TOPLEFT", 0, 0)
     f.TotalAbsorbPattern:SetTexture(LSM:Fetch("statusbar", "Orbit Absorb"), "REPEAT", "REPEAT")
-    f.TotalAbsorbPattern:SetHorizTile(true)
-    f.TotalAbsorbPattern:SetVertTile(true)
+    -- UV-repeat tiling (TexCoord > 1 over a REPEAT-wrapped texture), NOT SetHorizTile: identical constant
+    -- tile scale, but maskable — so the pattern rounds under a rounded border style instead of bleeding.
     f.TotalAbsorbPattern:SetTexCoord(0, ABSORB_PATTERN_SIZE / ABSORB_TILE_W, 0, ABSORB_PATTERN_SIZE / ABSORB_TILE_H)
     f.TotalAbsorbPattern:SetBlendMode("MOD")
     -- Stamp tileCoord so ApplyAbsorbTexture re-asserts them after texture swap (all tiling fills share 256x64).
     f.TotalAbsorbPattern.tileCoordX = ABSORB_PATTERN_SIZE / ABSORB_TILE_W
     f.TotalAbsorbPattern.tileCoordY = ABSORB_PATTERN_SIZE / ABSORB_TILE_H
     f.TotalAbsorbBar.TiledPattern = f.TotalAbsorbPattern
+    Orbit.Skin:RegisterMaskedSurface(f, f.TotalAbsorbPattern)
 
     hooksecurefunc(f.TotalAbsorbBar, "Show", function() f.TotalAbsorbMask:Show() end)
     hooksecurefunc(f.TotalAbsorbBar, "Hide", function() f.TotalAbsorbMask:Hide() end)
@@ -184,11 +186,10 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.HealAbsorbPattern:SetSize(HEAL_ABSORB_PATTERN_SIZE, HEAL_ABSORB_PATTERN_SIZE)
     f.HealAbsorbPattern:SetPoint("TOPLEFT", f.HealAbsorbMask, "TOPLEFT", 0, 0)
     f.HealAbsorbPattern:SetTexture(NECROTIC_PATH, "REPEAT", "REPEAT")
-    f.HealAbsorbPattern:SetHorizTile(true)
-    f.HealAbsorbPattern:SetVertTile(true)
     f.HealAbsorbPattern:SetTexCoord(0, HEAL_ABSORB_TEXCOORD, 0, HEAL_ABSORB_TEXCOORD)
     f.HealAbsorbPattern:SetBlendMode("BLEND")
     f.HealAbsorbPattern:SetAlpha(HEAL_ABSORB_ALPHA)
+    Orbit.Skin:RegisterMaskedSurface(f, f.HealAbsorbPattern)
 
     hooksecurefunc(f.HealAbsorbBar, "Show", function() f.HealAbsorbMask:Show() end)
     hooksecurefunc(f.HealAbsorbBar, "Hide", function() f.HealAbsorbMask:Hide() end)

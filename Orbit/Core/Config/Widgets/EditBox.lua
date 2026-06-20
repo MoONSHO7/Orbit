@@ -9,6 +9,7 @@ local DEFAULT_HEIGHT_MULTI = 100
 local SCROLL_SPEED = 20
 
 -- [ EDITBOX WIDGET ]---------------------------------------------------------------------------------
+-- Intentionally unpooled: inner structure varies by isMultiLine/hideScrollBar/readOnly, so cross-variant reuse is unsafe. RecycleControls drops it.
 function Layout:CreateEditBox(parent, label, value, callback, width, height, isMultiLine, opts)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame.OrbitType = "EditBox"
