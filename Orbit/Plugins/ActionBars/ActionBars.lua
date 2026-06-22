@@ -299,7 +299,7 @@ function Plugin:OnLoad()
         if self.petDebounce then self.petDebounce:Cancel() end
         self.petDebounce = C_Timer.NewTimer(0.05, function()
             self.petDebounce = nil
-            if self.containers[PET_BAR_INDEX] then self:LayoutButtonPositions(PET_BAR_INDEX) end
+            if self.containers[PET_BAR_INDEX] then self:LayoutButtons(PET_BAR_INDEX) end
         end)
     end
 

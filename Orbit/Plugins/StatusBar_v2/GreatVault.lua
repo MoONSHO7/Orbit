@@ -9,6 +9,9 @@ local VAULT_TOAST_TYPES = {
     [Enum.EventToastDisplayType.WeeklyRewardUnlock] = true,
     [Enum.EventToastDisplayType.WeeklyRewardUpgrade] = true,
 }
+local UPGRADE_TYPE = Enum.EventToastDisplayType.WeeklyRewardUpgrade
+-- Spell/ability learned rides the same EventToast queue (SingleLineWithIcon), keyed by eventType.
+local SPELL_LEARNED = (Enum.EventToastEventType and Enum.EventToastEventType.SpellLearned) or 21
 
 -- [ GREAT VAULT ]------------------------------------------------------------------------------------
 -- Replace Blizzard's Great Vault toast with our own center flourish. We drain the vault toasts off the
@@ -26,14 +29,18 @@ function Plugin:SetupGreatVault()
     -- Replace the insecure instance method: when enabled, replicate orig's advance-remove, drain any
     -- vault toasts (firing our flourish), then display the front via orig(self, true) so it won't re-remove.
     mgr.DisplayToast = function(frame, firstToast)
-        if not plugin:GetSetting(plugin.system, "ReplaceVaultToast") then
-            return orig(frame, firstToast)
-        end
+        local doVault = plugin:GetSetting(plugin.system, "ReplaceVaultToast")
+        local doSpell = plugin:GetSetting(plugin.system, "ShowRewardToasts")
+        if not (doVault or doSpell) then return orig(frame, firstToast) end
         if not firstToast then C_EventToastManager.RemoveCurrentToast() end
         local info = C_EventToastManager.GetNextToastToDisplay()
-        while info and VAULT_TOAST_TYPES[info.displayType] do
-            -- info.subtitle is an item link for the Upgrade type; a FontString renders it as the item name.
-            plugin:PlayVaultFlourish(info.title, info.subtitle)
+        while info and ((doVault and VAULT_TOAST_TYPES[info.displayType]) or (doSpell and info.eventType == SPELL_LEARNED)) do
+            if VAULT_TOAST_TYPES[info.displayType] then
+                -- info.subtitle is an item link for the Upgrade type; a FontString renders it as the item name.
+                plugin:PlayVaultFlourish(info.title, info.subtitle, info.displayType == UPGRADE_TYPE)
+            else
+                plugin:PlayIconFlourish(info.iconFileID, plugin.FlourishColors.arcane, L.PLU_SB_V2_SPELL_F:format(info.title or ""))
+            end
             C_EventToastManager.RemoveCurrentToast()
             info = C_EventToastManager.GetNextToastToDisplay()
         end

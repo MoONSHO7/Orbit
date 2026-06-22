@@ -127,6 +127,7 @@ per-component overrides (font, size, color) are written via `ComponentSettings:F
 - canvas mode code may depend on edit mode infrastructure (`HandleCore`, `Pixel`), never on specific plugins
 - all color constants for the dock and dialog must be at file top
 - component settings modifications are applied via `OverrideUtils`
+- the generic `ApplyStyle` only models font / size / colour overrides. an override that changes a component's **content** (e.g. DamageMeter's number-format override re-running its formatter) is handled by the preview component itself: set `container.ApplyCustomOverride(key, value, overrides)` in the plugin's `CreateCanvasPreview`, and `ApplyStyle` calls it for any key the generic applicators don't recognize. canvas core stays plugin-agnostic — the logic lives in the plugin
 - the dialog must render correctly regardless of which plugin is active
 - component drag functions run frequently — they must be performant (no allocations, no string concat)
 - the apply action must update both live frames and edit mode previews in one pass via `ApplySettings`

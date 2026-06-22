@@ -25,7 +25,7 @@ local function GetEditModeSchema()
             { type = "checkbox", key = "ShowOrbitFrames", label = L.CFG_SHOW_ORBIT_FRAMES, default = true, tooltip = L.CFG_SHOW_ORBIT_FRAMES_TT },
             { type = "checkbox", key = "AnchoringEnabled", label = L.CFG_ENABLE_FRAME_ANCHORING, default = true, tooltip = L.CFG_ENABLE_FRAME_ANCHORING_TT },
             {
-                type = "colorcurve", key = "EditModeColorCurve", label = L.CFG_ORBIT_FRAME_COLOR,
+                type = "colorcurve", key = "EditModeColorCurve", label = L.CFG_ORBIT_FRAME_COLOR, singleColor = true,
                 default = { pins = { { position = 0, color = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 } } } },
                 tooltip = L.CFG_ORBIT_FRAME_COLOR_TT,
             },
@@ -36,7 +36,6 @@ local function GetEditModeSchema()
                 d.ShowBlizzardFrames = true
                 d.ShowOrbitFrames = true
                 d.AnchoringEnabled = true
-                d.EditModeColor = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 }
                 d.EditModeColorCurve = { pins = { { position = 0, color = { r = 0.7, g = 0.6, b = 1.0, a = 1.0 } } } }
             end
             if Orbit.Engine.FrameSelection then Orbit.Engine.FrameSelection:RefreshVisuals() end

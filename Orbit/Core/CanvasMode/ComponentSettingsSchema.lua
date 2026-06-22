@@ -226,6 +226,7 @@ function Schema.Build()
         DungeonScore = L.CFG_TITLE_DUNGEON_SCORE, DungeonShort = L.CFG_TITLE_DUNGEON_SHORT,
         FavouriteStar = L.CFG_TITLE_FAVOURITE_STAR,
         BarLevel = L.CFG_TITLE_BAR_LEVEL, BarValue = L.CFG_TITLE_BAR_VALUE,
+        DPS = L.CFG_TITLE_DM_PER_SECOND, DamageDone = L.CFG_TITLE_DM_TOTAL,
     }
 end
 

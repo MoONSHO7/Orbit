@@ -53,7 +53,6 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
 
             lib:Open({
                 initialData = self.curveData,
-                hasOpacity = true,
                 forceSingleColor = self.singleColorMode,
                 hasDesaturation = self.hasDesaturation,
                 recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,

@@ -44,6 +44,7 @@ function CC:GetOverridesUnpacked(classFile)
 end
 
 function CC:SetOverride(classFile, colorTable)
+    if colorTable then colorTable.type = nil end
     SetAccountSetting("ClassColor_" .. classFile, colorTable)
     Orbit.EventBus:Fire("ORBIT_COLORS_CHANGED")
 end

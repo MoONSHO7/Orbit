@@ -393,6 +393,9 @@ function Settings:ApplyStyle(container, key, value)
         end
         local plugin = self.plugin
         if plugin and plugin.SchedulePreviewUpdate then plugin:SchedulePreviewUpdate() end
+    elseif container.ApplyCustomOverride then
+        -- Content-changing overrides the generic applicators don't model (e.g. DamageMeter number format) self-render.
+        container:ApplyCustomOverride(key, value, self.currentOverrides)
     end
 end
 

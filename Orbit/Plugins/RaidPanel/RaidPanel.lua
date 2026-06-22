@@ -31,8 +31,8 @@ local SHAPE_CIRCLE = 1
 local SHAPE_SQUARE = 2
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
-local INITIAL_DOCK_WIDTH      = 44
-local INITIAL_DOCK_HEIGHT     = 400
+-- Square placeholder so the first orientation probe isn't biased toward the long axis before RefreshDock sets the real size.
+local INITIAL_DOCK_SIZE       = 44
 local INITIAL_DOCK_X_OFFSET   = 200
 local DOCK_FRAME_LEVEL        = 100
 local DOCK_FRAME_STRATA       = "MEDIUM"
@@ -163,7 +163,7 @@ end
 -- [ DOCK CREATION ] ---------------------------------------------------------------------------------
 local function CreateDock()
     dock = CreateFrame("Frame", "OrbitRaidPanel", UIParent)
-    dock:SetSize(INITIAL_DOCK_WIDTH, INITIAL_DOCK_HEIGHT)
+    dock:SetSize(INITIAL_DOCK_SIZE, INITIAL_DOCK_SIZE)
     dock:SetPoint("LEFT", UIParent, "LEFT", INITIAL_DOCK_X_OFFSET, 0)
     OrbitEngine.Pixel:Enforce(dock)
 

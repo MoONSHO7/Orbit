@@ -443,9 +443,7 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
-        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
-        if widget then widget.singleColorMode = true; widget.hasDesaturation = def.hasDesaturation end
-        return widget
+        return self:CreateColorPicker(container, def.label, getValue(), callback)
     end)
 
     self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)

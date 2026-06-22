@@ -1,6 +1,6 @@
 -- [ LibOrbitColorPicker-1.0 ] ----------------------------------------------------------------------
 
-local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 5
+local MAJOR, MINOR = "LibOrbitColorPicker-1.0", 6
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -23,6 +23,7 @@ local SWATCH_WIDTH = 44
 local SWATCH_HEIGHT = 28
 local SWATCH_BORDER = 2
 local SWATCH_GAP = 8
+local DESAT_CHECKBOX_SIZE = 18
 local HEX_BOX_WIDTH = 72
 local HEX_BOX_HEIGHT = 22
 local GRADIENT_BAR_HEIGHT = 24
@@ -63,6 +64,8 @@ local DEFAULT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 
 local RECENT_SWATCH_SIZE = 31
 local RECENT_SWATCH_SPACING = 8
+local RECENT_COLORS_MAX = 8
+local RECENT_ALPHA_EPSILON = 0.05
 local RECENT_COLORS_LEVEL_OFFSET = 50
 local PINS_CONTAINER_LEVEL = 50
 
@@ -77,7 +80,9 @@ lib.colorCurve = nil
 lib.callback = nil
 lib.wasCancelled = false
 lib.snapshotPins = nil
+lib.snapshotRecent = nil
 lib.snapshotDesaturated = false
+lib.sessionId = lib.sessionId or 0
 lib.multiPinMode = false
 lib.desaturated = false
 lib.hasDesaturation = false
@@ -286,8 +291,7 @@ function GradientBarMixin:RefreshPinHandles()
         handle.Circle:SetColorTexture(resolved.r, resolved.g, resolved.b, resolved.a or 1)
         handle:SetFrameStrata("TOOLTIP")
         handle:SetFrameLevel(PIN_HANDLE_FRAME_LEVEL)
-        -- Keyboard state lives on the handle (toggled by its own OnEnter/OnLeave); no module-level
-        -- focus tracker needed. Re-paint reuses the same handles, so the per-handle state persists.
+        -- Keyboard state lives per-handle (its own OnEnter/OnLeave); reused handles persist it.
         handle:Show()
     end
 end
@@ -439,7 +443,6 @@ function lib:CreateClassColorSwatch()
 end
 
 -- [ DESATURATION CHECKBOX ] ------------------------------------------------------------------------
-local DESAT_CHECKBOX_SIZE = 18
 
 function lib:CreateDesaturationCheckbox()
     if self.ui.desatCheckbox then return self.ui.desatCheckbox end
@@ -639,13 +642,13 @@ function lib:LoadFromCurve(curveData)
 
     if curveData.pins then
         for _, pin in ipairs(curveData.pins) do
-            local newPin = { position = pin.position or 0, color = NormalizeColor(pin.color) }
+            local newPin = { position = ClampPosition(pin.position or 0), color = NormalizeColor(pin.color) }
             if pin.type then newPin.type = pin.type end
             self.pins[#self.pins + 1] = newPin
         end
     elseif curveData.GetPoints then
         for _, point in ipairs(curveData:GetPoints()) do
-            self.pins[#self.pins + 1] = { position = point.x, color = NormalizeColor(point.y) }
+            self.pins[#self.pins + 1] = { position = ClampPosition(point.x), color = NormalizeColor(point.y) }
         end
     end
 
@@ -733,26 +736,24 @@ function lib:AddRecentColor(pin)
     if not pin or pin.type == "class" then return end
     local color = pin.color
     local hex = ColorToHex(color.r, color.g, color.b)
-    
-    -- Deduplicate
+
     for i = #self.recentColors, 1, -1 do
         local rc = self.recentColors[i]
-        if ColorToHex(rc.r, rc.g, rc.b) == hex and math.abs((rc.a or 1) - (color.a or 1)) < 0.05 then
+        if ColorToHex(rc.r, rc.g, rc.b) == hex and math.abs((rc.a or 1) - (color.a or 1)) < RECENT_ALPHA_EPSILON then
             table.remove(self.recentColors, i)
         end
     end
     
     table.insert(self.recentColors, 1, { r = color.r, g = color.g, b = color.b, a = color.a or 1 })
-    
-    -- Trim to 8
-    while #self.recentColors > 8 do
+
+    while #self.recentColors > RECENT_COLORS_MAX do
         table.remove(self.recentColors)
     end
 end
 
 function lib:UpdateRecentColors()
     if not self.ui.recentColorsBar then return end
-    for i = 1, 8 do
+    for i = 1, RECENT_COLORS_MAX do
         local swatch = self.ui.recentColorsBar.swatches[i]
         local c = self.recentColors[i]
         if c then
@@ -785,8 +786,8 @@ function lib:CreateRecentColorsBar()
     
     container.swatches = {}
 
-    -- 8 boxes of RECENT_SWATCH_SIZE with RECENT_SWATCH_SPACING gaps = 304px total at defaults.
-    for i = 1, 8 do
+    -- RECENT_COLORS_MAX swatches + gaps ~304px wide at default sizing.
+    for i = 1, RECENT_COLORS_MAX do
         local swatch = CreateFrame("Frame", nil, container, "BackdropTemplate")
         swatch:SetSize(RECENT_SWATCH_SIZE, RECENT_SWATCH_SIZE)
         if i == 1 then
@@ -841,8 +842,7 @@ function lib:CreatePickerFrame()
     if self.ui.frame then return self.ui.frame end
 
     local f = CreateFrame("Frame", nil, UIParent)
-    -- Hide before any OnHide script is attached: frames are created shown by default, and a
-    -- post-script :Hide() would fire OnHide, consuming the callback before the user clicks Apply.
+    -- Hide before wiring OnHide: a post-script :Hide() would fire OnHide and consume the callback.
     f:Hide()
     f:SetSize(PICKER_WIDTH, PICKER_HEIGHT)
     f:SetPoint("CENTER")
@@ -882,11 +882,21 @@ function lib:CreatePickerFrame()
                 return result
             end
             if lib.wasCancelled then
+                if lib.snapshotRecent then
+                    wipe(lib.recentColors)
+                    for i = 1, #lib.snapshotRecent do lib.recentColors[i] = lib.snapshotRecent[i] end
+                end
                 lib.callback(BuildResult(lib.snapshotPins, lib:BuildColorCurve(lib.snapshotPins), lib.snapshotDesaturated), true)
             elseif lib.pins and #lib.pins > 0 then
-                -- Multi-color mode saves recents at each AddPin (drop); single-color has no drop,
-                -- so we save the picked color once on Apply here.
                 if not lib.multiPinMode then
+                    -- Alpha-thumb edits never fire OnColorSelect, so re-read the live color on commit.
+                    local cs = lib.ui.colorSelect
+                    if cs and lib.pins[1].type ~= "class" then
+                        local r, g, b = cs:GetColorRGB()
+                        lib.pins[1].color = { r = r, g = g, b = b, a = cs:GetColorAlpha() }
+                    end
+                    lib.colorCurve = lib:BuildColorCurve()
+                    -- Single-color has no drop event, so commit the picked color to recents here.
                     lib:AddRecentColor(lib.pins[1])
                     lib:UpdateRecentColors()
                 end
@@ -896,6 +906,7 @@ function lib:CreatePickerFrame()
             end
         end
         lib.snapshotPins = nil
+        lib.snapshotRecent = nil
         lib.wasCancelled = false
         lib.callback = nil
     end)
@@ -1060,7 +1071,11 @@ function lib:CreateHexInput()
 
     box:SetScript("OnEnterPressed", function(self)
         local r, g, b = HexToColor(self:GetText())
-        if r then lib.ui.colorSelect:SetColorRGB(r, g, b) end
+        if r then
+            lib.ui.colorSelect:SetColorRGB(r, g, b)
+        elseif lib.ui.colorSelect then
+            self:SetText(ColorToHex(lib.ui.colorSelect:GetColorRGB()))
+        end
         self:ClearFocus()
     end)
 
@@ -1189,11 +1204,11 @@ end
 
 -- [ TOUR SYSTEM ] ----------------------------------------------------------------------------------
 
-local TOUR_ACCENT = { r = 0.3, g = 0.8, b = 0.3 }
-local TOUR_BG = { r = 0.08, g = 0.08, b = 0.08, a = 0.95 }
+local TOUR_ACCENT_CLR = { r = 0.3, g = 0.8, b = 0.3 }
+local TOUR_BG_CLR = { r = 0.08, g = 0.08, b = 0.08, a = 0.95 }
 local TOUR_BORDER_CLR = { r = 0.25, g = 0.25, b = 0.25, a = 0.9 }
 local TOUR_TEXT_CLR = { r = 0.85, g = 0.85, b = 0.85 }
-local TOUR_TITLE_CLR = { r = TOUR_ACCENT.r, g = TOUR_ACCENT.g, b = TOUR_ACCENT.b }
+local TOUR_TITLE_CLR = { r = TOUR_ACCENT_CLR.r, g = TOUR_ACCENT_CLR.g, b = TOUR_ACCENT_CLR.b }
 local TOUR_PAD = 8
 local TOUR_MAX_WIDTH = 220
 local TOUR_BORDER = 1
@@ -1202,7 +1217,7 @@ local TOUR_BTN_W = 60
 local TOUR_BTN_GAP = 6
 local TOUR_PULSE_LEVEL = 512
 
--- [ TOUR LOCALIZATION ]-----------------------------------------------------------------------------
+-- [ TOUR LOCALIZATION ] ----------------------------------------------------------------------------
 local CP_LOCALE = {
     enUS = {
         TOUR_TIP = "Color Picker Tour",
@@ -1473,7 +1488,7 @@ CL = CP_LOCALE[GetLocale()] or CP_LOCALE.enUS
 local isCJK_CP = ({ koKR = true, zhCN = true, zhTW = true })[GetLocale()]
 if isCJK_CP then TOUR_MAX_WIDTH = 240 end
 
--- [ TOUR STOPS ]------------------------------------------------------------------------------------
+-- [ TOUR STOPS ] -----------------------------------------------------------------------------------
 local TOUR_STOPS_CP = {
     { anchor = function() return lib.ui.colorSelect end,
       tooltipPoint = "TOPLEFT", tooltipRel = "TOPRIGHT", tpX = 8, tpY = 0,
@@ -1495,9 +1510,8 @@ local TOUR_STOPS_CP = {
       title = CL.APPLY_TITLE, text = CL.APPLY_TEXT },
 }
 
--- [ TOUR TOOLTIP ]---------------------------------------------------------------------------------
--- Lazy-created on first StartTour; users who never open the picker (or never run the tour) pay zero
--- cost for ~9 textures + 3 fontstrings + 1 button at file load.
+-- [ TOUR TOOLTIP ] ---------------------------------------------------------------------------------
+-- Lazy-created on first StartTour so non-tour users pay zero file-load cost.
 local cpTip
 
 local function MakeCPBorder(parent, horiz, p1, r1, p2, r2)
@@ -1517,7 +1531,7 @@ local function EnsureCpTip()
 
     cpTip.bg = cpTip:CreateTexture(nil, "BACKGROUND")
     cpTip.bg:SetAllPoints()
-    cpTip.bg:SetColorTexture(TOUR_BG.r, TOUR_BG.g, TOUR_BG.b, TOUR_BG.a)
+    cpTip.bg:SetColorTexture(TOUR_BG_CLR.r, TOUR_BG_CLR.g, TOUR_BG_CLR.b, TOUR_BG_CLR.a)
 
     MakeCPBorder(cpTip, true, "TOPLEFT", "TOPLEFT", "TOPRIGHT", "TOPRIGHT")
     MakeCPBorder(cpTip, true, "BOTTOMLEFT", "BOTTOMLEFT", "BOTTOMRIGHT", "BOTTOMRIGHT")
@@ -1527,19 +1541,19 @@ local function EnsureCpTip()
     local AW, B = 2, TOUR_BORDER
     cpTip.accents = {}
     cpTip.accents.top = cpTip:CreateTexture(nil, "ARTWORK")
-    cpTip.accents.top:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.top:SetColorTexture(TOUR_ACCENT_CLR.r, TOUR_ACCENT_CLR.g, TOUR_ACCENT_CLR.b, 0.8)
     cpTip.accents.top:SetHeight(AW)
     cpTip.accents.top:SetPoint("TOPLEFT", B, -B); cpTip.accents.top:SetPoint("TOPRIGHT", -B, -B)
     cpTip.accents.bottom = cpTip:CreateTexture(nil, "ARTWORK")
-    cpTip.accents.bottom:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.bottom:SetColorTexture(TOUR_ACCENT_CLR.r, TOUR_ACCENT_CLR.g, TOUR_ACCENT_CLR.b, 0.8)
     cpTip.accents.bottom:SetHeight(AW)
     cpTip.accents.bottom:SetPoint("BOTTOMLEFT", B, B); cpTip.accents.bottom:SetPoint("BOTTOMRIGHT", -B, B)
     cpTip.accents.left = cpTip:CreateTexture(nil, "ARTWORK")
-    cpTip.accents.left:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.left:SetColorTexture(TOUR_ACCENT_CLR.r, TOUR_ACCENT_CLR.g, TOUR_ACCENT_CLR.b, 0.8)
     cpTip.accents.left:SetWidth(AW)
     cpTip.accents.left:SetPoint("TOPLEFT", B, -B); cpTip.accents.left:SetPoint("BOTTOMLEFT", B, B)
     cpTip.accents.right = cpTip:CreateTexture(nil, "ARTWORK")
-    cpTip.accents.right:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.8)
+    cpTip.accents.right:SetColorTexture(TOUR_ACCENT_CLR.r, TOUR_ACCENT_CLR.g, TOUR_ACCENT_CLR.b, 0.8)
     cpTip.accents.right:SetWidth(AW)
     cpTip.accents.right:SetPoint("TOPRIGHT", -B, -B); cpTip.accents.right:SetPoint("BOTTOMRIGHT", -B, B)
 
@@ -1584,7 +1598,7 @@ local function ApplyCPAccent(tooltipPoint)
     if pt:find("RIGHT") then cpTip.accents.right:Show() end
 end
 
--- [ PULSE POOL ]-----------------------------------------------------------------------------------
+-- [ PULSE POOL ] -----------------------------------------------------------------------------------
 local cpPulsePool = {}
 local cpActivePulses = {}
 
@@ -1594,7 +1608,7 @@ local function CreateCPPulse()
     f:SetFrameLevel(TOUR_PULSE_LEVEL)
     f.tex = f:CreateTexture(nil, "OVERLAY")
     f.tex:SetAllPoints()
-    f.tex:SetColorTexture(TOUR_ACCENT.r, TOUR_ACCENT.g, TOUR_ACCENT.b, 0.3)
+    f.tex:SetColorTexture(TOUR_ACCENT_CLR.r, TOUR_ACCENT_CLR.g, TOUR_ACCENT_CLR.b, 0.3)
     f.ag = f:CreateAnimationGroup()
     f.ag:SetLooping("BOUNCE")
     local a = f.ag:CreateAnimation("Alpha")
@@ -1643,7 +1657,7 @@ local function LayoutCPTooltip(anchor, stop, idx, total)
     ShowCPPulseOn(anchor)
 end
 
--- [ TOUR CONTROL ]----------------------------------------------------------------------------------
+-- [ TOUR CONTROL ] ---------------------------------------------------------------------------------
 function lib:ShowTourStop(idx)
     local stop = TOUR_STOPS_CP[idx]
     if not stop then self:EndTour(); return end
@@ -1735,6 +1749,9 @@ function lib:Open(options)
 
     self.snapshotPins = DeepCopyPins(self.pins)
     self.snapshotDesaturated = self.desaturated
+    self.snapshotRecent = {}
+    for i = 1, #self.recentColors do self.snapshotRecent[i] = self.recentColors[i] end
+    self.sessionId = (self.sessionId or 0) + 1
 
     if self.ui.gradientBar then
         for _, handle in ipairs(self.ui.gradientBar.pinHandles) do handle:Hide() end
@@ -1743,9 +1760,9 @@ function lib:Open(options)
     self:UpdateRecentColors()
 
     local initialColor = (self.pins[1] and self.pins[1].color) or DEFAULT_COLOR
-    self.ui.colorSelect:SetColorRGB(initialColor.r, initialColor.g, initialColor.b)
-
+    -- Alpha before RGB: SetColorRGB fires OnColorChanged synchronously, which reads GetColorAlpha().
     self.ui.colorSelect:SetColorAlpha(initialColor.a or 1)
+    self.ui.colorSelect:SetColorRGB(initialColor.r, initialColor.g, initialColor.b)
     self.suppressCallback = false
     self:LayoutControls()
 
@@ -1766,9 +1783,10 @@ function lib:Open(options)
     end
     self.ui.frame:Show()
 
+    local sessionId = self.sessionId
     C_Timer.After(REFRESH_DELAY, function()
-        -- A close within REFRESH_DELAY already hid the UIParent-parented bar; don't re-show it orphaned.
-        if not lib:IsOpen() then return end
+        -- A close or reopen within REFRESH_DELAY invalidates this deferred show.
+        if not lib:IsOpen() or lib.sessionId ~= sessionId then return end
         if lib.ui.gradientBar then
             lib.ui.gradientBar:Show()
             lib.ui.gradientBar:Refresh()

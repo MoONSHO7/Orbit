@@ -54,7 +54,6 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
             if frame.pinType then initData.type = frame.pinType end
             lib:Open({
                 initialData = initData,
-                hasOpacity = true,
                 forceSingleColor = true,
                 recentColorsDb = Orbit.db and Orbit.db.AccountSettings and Orbit.db.AccountSettings.RecentColors,
                 anchor = Layout.GetPickerAnchor(frame),
@@ -84,6 +83,10 @@ function Layout:CreateColorPicker(parent, label, initialColor, callback, opts)
     -- Store per-acquire so the create-time OnClick (installed once) reads this call's value, not the first caller's.
     frame.allowClear = opts.allowClear
 
+    if initialColor and initialColor.pins then
+        local p = initialColor.pins[1]
+        initialColor = (p and p.color) and { r = p.color.r, g = p.color.g, b = p.color.b, a = p.color.a, type = p.type } or nil
+    end
     local c = initialColor or { r = 1, g = 1, b = 1, a = 1 }
     frame.pinType = c.type
     if c.type == "class" and Engine.ClassColor then

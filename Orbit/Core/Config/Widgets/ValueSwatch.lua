@@ -97,7 +97,6 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
 
         lib:Open({
             initialData = initialData,
-            hasOpacity = true,
             forceSingleColor = not swatch.curveMode,
             recentColorsDb = as and as.RecentColors,
             anchor = Layout.GetPickerAnchor(swatch),
