@@ -34,12 +34,8 @@ local function ResetRegion(region)
     end
 end
 
-function ABS:Apply(button, settings)
-    if not button then return end
-    local w, h = button:GetSize()
-    local scale = button:GetEffectiveScale() or 1
-    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or Pixel:DefaultBorderSize(scale)) or 1) * 2
-
+-- [ REGION RESETS ]---------------------------------------------------------------------------------
+function ABS:ResetBlizzardRegions(button)
     ResetRegion(button.NormalTexture)
     ResetRegion(button.PushedTexture)
     ResetRegion(button.HighlightTexture)
@@ -55,7 +51,9 @@ function ABS:Apply(button, settings)
             button.orbitBorderHooked = true
         end
     end
+end
 
+function ABS:LayoutCheckedTexture(button, scale)
     local checkedTexture = button.CheckedTexture
     if not checkedTexture and button.GetCheckedTexture then checkedTexture = button:GetCheckedTexture() end
     if checkedTexture then
@@ -65,7 +63,10 @@ function ABS:Apply(button, settings)
         checkedTexture:SetAlpha(1)
         checkedTexture:SetDrawLayer("OVERLAY", Constants.Layers.Text)
     end
+end
 
+-- [ BACKDROP ]--------------------------------------------------------------------------------------
+function ABS:ApplyBackdrop(button, settings)
     ResetRegion(button.FloatingBG)
     ResetRegion(button.SlotBackground)
     ResetRegion(button.SlotArt)
@@ -83,7 +84,10 @@ function ABS:Apply(button, settings)
     Skin:RegisterMaskedSurface(button, button.orbitBackdrop)
     local container = button:GetParent()
     if container then Skin:RegisterMaskedSurface(container, button.orbitBackdrop) end
+end
 
+-- [ OVERLAYS ]--------------------------------------------------------------------------------------
+function ABS:LayoutOverlays(button, scale, w)
     local icon = button.icon or button.Icon
     if icon then icon:ClearAllPoints(); icon:SetAllPoints(button) end
 
@@ -143,7 +147,10 @@ function ABS:Apply(button, settings)
             overlay:SetScale(scaleRatio)
         end
     end
+end
 
+-- [ ASSISTED COMBAT ]-------------------------------------------------------------------------------
+function ABS:InstallAssistedRotation(button, w, borderInset)
     if button.UpdateAssistedCombatRotationFrame and not button.orbitAssistedHooked then
         hooksecurefunc(button, "UpdateAssistedCombatRotationFrame", function(self)
             local frame = self.AssistedCombatRotationFrame
@@ -155,7 +162,9 @@ function ABS:Apply(button, settings)
         end)
         button.orbitAssistedHooked = true
     end
+end
 
+function ABS:InstallAssistedHighlight(button, w, h, borderInset)
     button.orbitButtonWidth = w + borderInset + 2
     button.orbitButtonHeight = h + borderInset + 2
     if AssistedCombatManager and not ABS.orbitHighlightHooked then
@@ -172,9 +181,10 @@ function ABS:Apply(button, settings)
         end)
         ABS.orbitHighlightHooked = true
     end
+end
 
-    Icons:ApplyCustom(button, settings)
-
+-- [ KEYBIND TEXT ]----------------------------------------------------------------------------------
+function ABS:ApplyKeybindText(button, settings, w, scale)
     local fontName = Orbit.db.GlobalSettings.Font
     local fontPath = LSM:Fetch("font", fontName) or Constants.Settings.Font.FallbackPath
     if button.HotKey then
@@ -198,7 +208,10 @@ function ABS:Apply(button, settings)
             button.Name:SetPoint("BOTTOM", button, "BOTTOM", 0, Pixel:Multiple(NAME_OFFSET_Y, scale))
         end
     end
+end
 
+-- [ HOVER HIGHLIGHT ]-------------------------------------------------------------------------------
+function ABS:InstallHoverHighlight(button)
     if not button.orbitHighlight then
         button.orbitHighlight = button:CreateTexture(nil, "OVERLAY")
         button.orbitHighlight:SetAllPoints(button)
@@ -210,8 +223,10 @@ function ABS:Apply(button, settings)
         local hlParent = button:GetParent()
         if hlParent then Skin:RegisterMaskedSurface(hlParent, button.orbitHighlight) end
     end
+end
 
-    -- [ KEYPRESS FLASH ]--------------------------------------------------------------------------------
+-- [ KEYPRESS FLASH ]--------------------------------------------------------------------------------
+function ABS:InstallKeypressFlash(button, settings)
     local kpColor = settings.keypressColor or DEFAULT_KEYPRESS_COLOR
     button.orbitKpColor = kpColor
 
@@ -247,7 +262,10 @@ function ABS:Apply(button, settings)
             elseif state == "NORMAL" then fadeGroup:Play() end
         end)
     end
+end
 
+-- [ FLYOUT ARROW ]----------------------------------------------------------------------------------
+function ABS:InstallFlyoutArrow(button, scale)
     if button.Arrow then
         if not button.orbitFlyoutOverlay then
             local overlay = CreateFrame("Frame", nil, button)
@@ -307,6 +325,25 @@ function ABS:Apply(button, settings)
             button.orbitFlyoutHooked = true
         end
     end
+end
 
+-- [ APPLY ]-----------------------------------------------------------------------------------------
+function ABS:Apply(button, settings)
+    if not button then return end
+    local w, h = button:GetSize()
+    local scale = button:GetEffectiveScale() or 1
+    local borderInset = (Pixel and Pixel:BorderInset(button, settings.borderSize or Pixel:DefaultBorderSize(scale)) or 1) * 2
+
+    self:ResetBlizzardRegions(button)
+    self:LayoutCheckedTexture(button, scale)
+    self:ApplyBackdrop(button, settings)
+    self:LayoutOverlays(button, scale, w)
+    self:InstallAssistedRotation(button, w, borderInset)
+    self:InstallAssistedHighlight(button, w, h, borderInset)
+    Icons:ApplyCustom(button, settings)
+    self:ApplyKeybindText(button, settings, w, scale)
+    self:InstallHoverHighlight(button)
+    self:InstallKeypressFlash(button, settings)
+    self:InstallFlyoutArrow(button, scale)
 end
 

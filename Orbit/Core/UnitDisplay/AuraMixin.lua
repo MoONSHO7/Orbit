@@ -1,5 +1,5 @@
 -- [ ORBIT AURA MIXIN ]-------------------------------------------------------------------------------
--- module-level scratch (`_RecycledSnapshot`, `_RecycledAuraDisplayList`) avoids per-call allocation in hot aura paths; `_curveTicker` is a singleton driving all healer-aura curve animations.
+-- module-level scratch `_RecycledAuraDisplayList` avoids per-call allocation in the hot icon-display path. Snapshot caching lives in Orbit.AuraSnapshotCache; curve animation in Orbit.HealerAuraTicker.
 local _, addonTable = ...
 local Orbit = addonTable
 local L = Orbit.L
@@ -69,89 +69,8 @@ function Mixin:BuildAuraSnapshot(unit)
     return { harmful = harmful, helpful = helpful, helpfulBySpell = helpfulBySpell, helpfulPlayerBySpell = helpfulPlayerBySpell }
 end
 
--- [ INCREMENTAL AURA CACHE ]-------------------------------------------------------------------------
--- Per-frame caches keyed by auraInstanceID; patched incrementally on partial UNIT_AURA events.
-local GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraInstanceID
-local IsFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID
-
-function Mixin:PopulateCaches(frame, snapshot)
-    local hc = frame._harmfulAuraCache or {}
-    local bc = frame._helpfulAuraCache or {}
-    wipe(hc)
-    wipe(bc)
-    for _, a in ipairs(snapshot.harmful) do hc[a.auraInstanceID] = a end
-    for _, a in ipairs(snapshot.helpful) do bc[a.auraInstanceID] = a end
-    frame._harmfulAuraCache = hc
-    frame._helpfulAuraCache = bc
-end
-
-function Mixin:PatchCaches(frame, unit, updateInfo)
-    local hc = frame._harmfulAuraCache
-    local bc = frame._helpfulAuraCache
-    if not hc or not bc then return false end
-    local changed = false
-    if updateInfo.addedAuras then
-        for _, aura in ipairs(updateInfo.addedAuras) do
-            local id = aura.auraInstanceID
-            if id then
-                local fresh = GetAuraDataByAuraInstanceID(unit, id) or aura
-                if not IsFilteredOut(unit, id, "HARMFUL") then hc[id] = fresh; changed = true end
-                if not IsFilteredOut(unit, id, "HELPFUL") then bc[id] = fresh; changed = true end
-            end
-        end
-    end
-    if updateInfo.updatedAuraInstanceIDs then
-        for _, id in ipairs(updateInfo.updatedAuraInstanceIDs) do
-            local fresh = GetAuraDataByAuraInstanceID(unit, id)
-            if hc[id] then hc[id] = fresh or nil; changed = true
-            elseif bc[id] then bc[id] = fresh or nil; changed = true
-            elseif fresh then
-                if not IsFilteredOut(unit, id, "HARMFUL") then hc[id] = fresh; changed = true end
-                if not IsFilteredOut(unit, id, "HELPFUL") then bc[id] = fresh; changed = true end
-            end
-        end
-    end
-    if updateInfo.removedAuraInstanceIDs then
-        for _, id in ipairs(updateInfo.removedAuraInstanceIDs) do
-            if hc[id] then hc[id] = nil; changed = true end
-            if bc[id] then bc[id] = nil; changed = true end
-        end
-    end
-    return changed
-end
-
--- CONTRACT: these are single module-wide scratch tables reused across all frames, not per-frame storage. A consumer must fully drain the returned table before the next BuildSnapshotFromCaches/postFilter call and must never retain a reference past its dispatch — the next call overwrites it in place.
-local _RecycledSnapshot = { harmful = {}, helpful = {}, helpfulBySpell = {}, helpfulPlayerBySpell = {} }
+-- Module-wide scratch reused across all frames in the icon-display loop; drain fully before reuse, never retain past dispatch. (Per-frame aura snapshot caching lives in Orbit.AuraSnapshotCache.)
 local _RecycledAuraDisplayList = {}
-
-function Mixin:BuildSnapshotFromCaches(frame)
-    local hc = frame._harmfulAuraCache
-    local bc = frame._helpfulAuraCache
-    if not hc or not bc then return nil end
-    local snap = _RecycledSnapshot
-    local harmful = snap.harmful
-    local helpful = snap.helpful
-    local helpfulBySpell = snap.helpfulBySpell
-    local helpfulPlayerBySpell = snap.helpfulPlayerBySpell
-
-    -- Wipe reusable tables instead of churning memory
-    for i = 1, #harmful do harmful[i] = nil end
-    for i = 1, #helpful do helpful[i] = nil end
-    for k in pairs(helpfulBySpell) do helpfulBySpell[k] = nil end
-    for k in pairs(helpfulPlayerBySpell) do helpfulPlayerBySpell[k] = nil end
-
-    for _, a in next, hc do harmful[#harmful + 1] = a end
-    for _, a in next, bc do
-        helpful[#helpful + 1] = a
-        local sid = a.spellId
-        if not issecretvalue(sid) then
-            helpfulBySpell[sid] = a
-            local fromPlayer = a.isFromPlayerOrPlayerPet
-            if not issecretvalue(fromPlayer) and fromPlayer then helpfulPlayerBySpell[sid] = a end
-        end
-    end
-    return snap
-end
 
 function Mixin:WipeCaches(frame)
     frame._harmfulAuraCache = nil
@@ -492,79 +411,7 @@ end
 -- [ SPELL-ID AURA ICON DISPLAY ] --------------------------------------------------------------------
 local SPELL_AURA_SCAN_MAX = 40
 
--- OnUpdate: samples remaining-percent via IDENTITY_CURVE for healer aura curve-driven visuals.
-local function HealerCurveOnUpdate(icon)
-    if not icon:IsShown() then return end
-    local d = icon._orbitCurveData
-    if not d then return end
-    local remainingPercent = 1
-    if d.auraInstanceID and d.unit and IDENTITY_CURVE then
-        local durObj = C_UnitAuras.GetAuraDuration(d.unit, d.auraInstanceID)
-        if durObj then
-            local p = durObj:EvaluateRemainingPercent(IDENTITY_CURVE)
-            if issecretvalue(p) then return end
-            if p then remainingPercent = math_max(0, p) end
-        end
-    end
-    local CCE = OrbitEngine.ColorCurve
-    if d.swipeCurve and icon.Cooldown then
-        local r, g, b, a = CCE:SampleColorCurveUnpacked(d.swipeCurve, remainingPercent)
-        if r then
-            local cd = icon.Cooldown
-            local swipeTex = Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom
-            cd.orbitUpdating = true
-            cd:SetSwipeTexture(swipeTex)
-            cd:SetSwipeColor(r, g, b, a or 0.8)
-            cd.orbitUpdating = false
-            cd.orbitDesiredSwipe = cd.orbitDesiredSwipe or {}
-            cd.orbitDesiredSwipe.texture = swipeTex
-            cd.orbitDesiredSwipe.r = r
-            cd.orbitDesiredSwipe.g = g
-            cd.orbitDesiredSwipe.b = b
-            cd.orbitDesiredSwipe.a = a or 0.8
-        end
-    end
-    if d.timerCurve and icon.Cooldown then
-        local text = icon.Cooldown.Text
-        if text and text.SetTextColor then
-            local cr, cg, cb = CCE:SampleColorCurveUnpacked(d.timerCurve, remainingPercent)
-            if cr then text:SetTextColor(cr or 1, cg or 1, cb or 1) end
-        end
-    end
-end
-
--- [ CENTRALIZED CURVE TICKER ]-----------------------------------------------------------------------
-local CURVE_TICK_INTERVAL = 0.05
-local _activeCurveIcons = {}
-local _curveTicker
-
-local function CurveTickerLoop()
-    local n = #_activeCurveIcons
-    local i = 1
-    while i <= n do
-        local icon = _activeCurveIcons[i]
-        if not icon._orbitCurveData or not icon:IsShown() then
-            icon._orbitCurveRegistered = nil
-            _activeCurveIcons[i] = _activeCurveIcons[n]
-            _activeCurveIcons[n] = nil
-            n = n - 1
-        else
-            HealerCurveOnUpdate(icon)
-            i = i + 1
-        end
-    end
-    if n == 0 and _curveTicker then
-        _curveTicker:Cancel()
-        _curveTicker = nil
-    end
-end
-
-local function RegisterCurveIcon(icon)
-    if icon._orbitCurveRegistered then return end
-    icon._orbitCurveRegistered = true
-    _activeCurveIcons[#_activeCurveIcons + 1] = icon
-    if not _curveTicker then _curveTicker = C_Timer.NewTicker(CURVE_TICK_INTERVAL, CurveTickerLoop) end
-end
+-- Healer-aura curve animation (swipe/timer color over remaining-percent) lives in Orbit.HealerAuraTicker.
 
 function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, altSpellId)
     if frame.preview or Orbit.canvasActiveFrame then return end
@@ -609,8 +456,8 @@ function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, al
                 swipeCurve = swipeCurve,
                 timerCurve = timerCurve,
             }
-            RegisterCurveIcon(icon)
-            HealerCurveOnUpdate(icon)
+            Orbit.HealerAuraTicker:Register(icon)
+            Orbit.HealerAuraTicker:Update(icon)
         elseif swipeCurve or timerCurve then
             icon._orbitCurveData = nil
             local CCE = OrbitEngine.ColorCurve

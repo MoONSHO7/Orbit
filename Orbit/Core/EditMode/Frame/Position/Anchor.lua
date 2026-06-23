@@ -264,6 +264,25 @@ function Anchor:GetLogicalChildren(parent)
     return result
 end
 
+-- Cross-axis size sync for an anchored child, isolated from CreateAnchor's graph mutation. The plugin SetSetting write-back is a preserved legacy quirk: a live (non-suppressed) apply syncs the child even when it opted out and persists the synced dimension.
+local function ApplyCrossAxisSizeSync(child, parent, opts, crossAxis, suppressApplySettings)
+    if SyncEnabled(child, crossAxis) then
+        local indepFlag = crossAxis.independentFlag
+        if not (opts[indepFlag] and suppressApplySettings) then
+            local parentSize = (opts.useRowDimension and parent[crossAxis.rowDim]) or crossAxis.getSize(parent)
+            local synced = math.max(parentSize, crossAxis.minSize)
+            crossAxis.setSize(child, synced)
+            if opts[indepFlag] and child.orbitPlugin and child.orbitPlugin.SetSetting and child.systemIndex then
+                local key = (crossAxis.name == "vertical") and "Height" or "Width"
+                child.orbitPlugin:SetSetting(child.systemIndex, key, math.floor(synced + 0.5))
+            end
+        end
+    elseif opts.useRowDimension then
+        local rowSize = parent[crossAxis.rowDim]
+        if rowSize then crossAxis.setSize(child, math.max(rowSize, crossAxis.minSize)) end
+    end
+end
+
 function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, suppressApplySettings, skipLogical)
     if padding == nil then
         local style = Orbit.Skin and Orbit.Skin:GetActiveBorderStyle()
@@ -305,24 +324,8 @@ function Anchor:CreateAnchor(child, parent, edge, padding, syncOptions, align, s
     HookParentSizeChange(parent, self)
 
     local edgeAxis = edgeAxisEarly
-    local crossAxis = edgeAxis and edgeAxis.perpendicular
     if not InCombatLockdown() and edgeAxis then
-        if SyncEnabled(child, crossAxis) then
-            local indepFlag = crossAxis.independentFlag
-            if not (opts[indepFlag] and suppressApplySettings) then
-                local parentSize = (opts.useRowDimension and parent[crossAxis.rowDim]) or crossAxis.getSize(parent)
-                local synced = math.max(parentSize, crossAxis.minSize)
-                crossAxis.setSize(child, synced)
-                -- Quirk: live (non-suppressed) apply syncs even when child opts out, and writes back to the plugin's saved dimension.
-                if opts[indepFlag] and child.orbitPlugin and child.orbitPlugin.SetSetting and child.systemIndex then
-                    local key = (crossAxis.name == "vertical") and "Height" or "Width"
-                    child.orbitPlugin:SetSetting(child.systemIndex, key, math.floor(synced + 0.5))
-                end
-            end
-        elseif opts.useRowDimension then
-            local rowSize = parent[crossAxis.rowDim]
-            if rowSize then crossAxis.setSize(child, math.max(rowSize, crossAxis.minSize)) end
-        end
+        ApplyCrossAxisSizeSync(child, parent, opts, edgeAxis.perpendicular, suppressApplySettings)
     end
 
     if not ApplyAnchorPosition(child, parent, edge, padding, align, opts) then

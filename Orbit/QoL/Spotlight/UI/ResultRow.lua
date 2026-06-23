@@ -49,26 +49,102 @@ local function GetGlobalFontName() return Orbit.db.GlobalSettings.Font end
 local KIND_LABEL = {}
 for _, k in ipairs(Orbit.Spotlight.Kinds) do KIND_LABEL[k.kind] = L[k.labelKey] end
 
+-- [ KIND HANDLERS ]----------------------------------------------------------------------------------
+-- Each kind maps to optional pickup/tooltip/link closures; tooltip closures run between SetOwner and Show.
+local function ItemPickup(entry)
+    local itemRef = entry.secure and entry.secure.item or entry.id
+    if itemRef then PickupItem(itemRef) end
+end
+local function ItemTooltip(entry)
+    if entry.secure and entry.secure.item then GameTooltip:SetHyperlink(entry.secure.item) end
+end
+local function ItemLink(entry)
+    return entry.secure and entry.secure.item
+end
+
+local ITEM_HANDLER = { pickup = ItemPickup, tooltip = ItemTooltip, link = ItemLink }
+
+local KIND_HANDLERS = {
+    spellbook = {
+        pickup = function(entry) C_Spell.PickupSpell(entry.id) end,
+        tooltip = function(entry) GameTooltip:SetSpellByID(entry.id) end,
+        link = function(entry) return C_Spell.GetSpellLink(entry.id) end,
+    },
+    professions = {
+        pickup = function(entry) C_Spell.PickupSpell(entry.spellID) end,
+        tooltip = function(entry) GameTooltip:SetSpellByID(entry.spellID) end,
+        link = function(entry) return C_Spell.GetSpellLink(entry.spellID) end,
+    },
+    mounts = {
+        pickup = function(entry)
+            local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
+            if spellID then C_Spell.PickupSpell(spellID) end
+        end,
+        tooltip = function(entry)
+            local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
+            if spellID then GameTooltip:SetMountBySpellID(spellID) end
+        end,
+        link = function(entry)
+            local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
+            return spellID and C_MountJournal.GetMountLink(spellID)
+        end,
+    },
+    pets = {
+        pickup = function(entry)
+            if entry.petGUID then C_PetJournal.PickupPet(entry.petGUID) end
+        end,
+        tooltip = function(entry)
+            if entry.petGUID then
+                local link = C_PetJournal.GetBattlePetLink(entry.petGUID)
+                if link then GameTooltip:SetHyperlink(link) end
+            end
+        end,
+        link = function(entry) return entry.petGUID and C_PetJournal.GetBattlePetLink(entry.petGUID) end,
+    },
+    toys = {
+        pickup = function(entry) C_ToyBox.PickupToyBoxItem(entry.id) end,
+        tooltip = function(entry) GameTooltip:SetToyByItemID(entry.id) end,
+        link = function(entry) return C_ToyBox.GetToyLink(entry.id) end,
+    },
+    macros = {
+        pickup = function(entry) PickupMacro(entry.id) end,
+        tooltip = function(entry)
+            local name, _, body = GetMacroInfo(entry.id)
+            GameTooltip:SetText(name or entry.name, 1, 1, 1)
+            if body and body ~= "" then GameTooltip:AddLine(body, 0.8, 0.8, 0.8, true) end
+        end,
+    },
+    heirlooms = {
+        pickup = ItemPickup,
+        tooltip = function(entry) GameTooltip:SetItemByID(entry.id) end,
+        link = function(entry) return select(2, C_Item.GetItemInfo(entry.id)) end,
+    },
+    bags = ITEM_HANDLER,
+    equipped = ITEM_HANDLER,
+    questitems = ITEM_HANDLER,
+    currencies = {
+        tooltip = function(entry)
+            if entry.tooltipLink then GameTooltip:SetHyperlink(entry.tooltipLink) end
+        end,
+        link = function(entry) return entry.tooltipLink end,
+    },
+    help = {
+        tooltip = function(entry)
+            GameTooltip:SetText(entry.name, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+            if entry.trigger then GameTooltip:AddLine(entry.trigger, TOOLTIP_HINT_COLOR[1], TOOLTIP_HINT_COLOR[2], TOOLTIP_HINT_COLOR[3], true) end
+            if entry.desc then GameTooltip:AddLine(entry.desc, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true) end
+            if entry.note then
+                if entry.desc then GameTooltip:AddLine(" ") end
+                GameTooltip:AddLine(entry.note, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true)
+            end
+        end,
+    },
+}
+
 -- [ PICKUP DISPATCH ]--------------------------------------------------------------------------------
 local function PickupEntry(entry)
-    local k = entry.kind
-    if k == "spellbook" then
-        C_Spell.PickupSpell(entry.id)
-    elseif k == "professions" then
-        C_Spell.PickupSpell(entry.spellID)
-    elseif k == "mounts" then
-        local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
-        if spellID then C_Spell.PickupSpell(spellID) end
-    elseif k == "pets" then
-        if entry.petGUID then C_PetJournal.PickupPet(entry.petGUID) end
-    elseif k == "toys" then
-        C_ToyBox.PickupToyBoxItem(entry.id)
-    elseif k == "macros" then
-        PickupMacro(entry.id)
-    elseif k == "bags" or k == "heirlooms" or k == "equipped" or k == "questitems" then
-        local itemRef = entry.secure and entry.secure.item or entry.id
-        if itemRef then PickupItem(itemRef) end
-    end
+    local h = KIND_HANDLERS[entry.kind]
+    if h and h.pickup then h.pickup(entry) end
 end
 
 -- [ TOOLTIP DISPATCH ]-------------------------------------------------------------------------------
@@ -76,64 +152,15 @@ local function ShowTooltip(row)
     local entry = row._entry
     if not entry then return end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    local k = entry.kind
-    if k == "bags" or k == "equipped" or k == "questitems" then
-        if entry.secure and entry.secure.item then GameTooltip:SetHyperlink(entry.secure.item) end
-    elseif k == "heirlooms" then
-        GameTooltip:SetItemByID(entry.id)
-    elseif k == "spellbook" then
-        GameTooltip:SetSpellByID(entry.id)
-    elseif k == "professions" then
-        GameTooltip:SetSpellByID(entry.spellID)
-    elseif k == "toys" then
-        GameTooltip:SetToyByItemID(entry.id)
-    elseif k == "mounts" then
-        local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
-        if spellID then GameTooltip:SetMountBySpellID(spellID) end
-    elseif k == "pets" then
-        if entry.petGUID then
-            local link = C_PetJournal.GetBattlePetLink(entry.petGUID)
-            if link then GameTooltip:SetHyperlink(link) end
-        end
-    elseif k == "currencies" then
-        if entry.tooltipLink then GameTooltip:SetHyperlink(entry.tooltipLink) end
-    elseif k == "macros" then
-        local name, _, body = GetMacroInfo(entry.id)
-        GameTooltip:SetText(name or entry.name, 1, 1, 1)
-        if body and body ~= "" then GameTooltip:AddLine(body, 0.8, 0.8, 0.8, true) end
-    elseif k == "help" then
-        GameTooltip:SetText(entry.name, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
-        if entry.trigger then GameTooltip:AddLine(entry.trigger, TOOLTIP_HINT_COLOR[1], TOOLTIP_HINT_COLOR[2], TOOLTIP_HINT_COLOR[3], true) end
-        if entry.desc then GameTooltip:AddLine(entry.desc, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true) end
-        if entry.note then
-            if entry.desc then GameTooltip:AddLine(" ") end
-            GameTooltip:AddLine(entry.note, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true)
-        end
-    end
+    local h = KIND_HANDLERS[entry.kind]
+    if h and h.tooltip then h.tooltip(entry) end
     GameTooltip:Show()
 end
 
 -- [ CHAT LINK ]--------------------------------------------------------------------------------------
 local function GetEntryLink(entry)
-    local k = entry.kind
-    if k == "bags" or k == "equipped" or k == "questitems" then
-        return entry.secure and entry.secure.item
-    elseif k == "heirlooms" then
-        return select(2, C_Item.GetItemInfo(entry.id))
-    elseif k == "toys" then
-        return C_ToyBox.GetToyLink(entry.id)
-    elseif k == "spellbook" then
-        return C_Spell.GetSpellLink(entry.id)
-    elseif k == "professions" then
-        return C_Spell.GetSpellLink(entry.spellID)
-    elseif k == "mounts" then
-        local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
-        return spellID and C_MountJournal.GetMountLink(spellID)
-    elseif k == "pets" then
-        return entry.petGUID and C_PetJournal.GetBattlePetLink(entry.petGUID)
-    elseif k == "currencies" then
-        return entry.tooltipLink
-    end
+    local h = KIND_HANDLERS[entry.kind]
+    return h and h.link and h.link(entry) or nil
 end
 
 local function TryLinkEntry(entry)

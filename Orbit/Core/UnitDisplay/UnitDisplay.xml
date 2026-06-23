@@ -11,6 +11,8 @@
     <Script file="GroupCanvasRegistration.lua"/>
     <Script file="CastBarMixin.lua"/>
     <Script file="UnitPowerBarMixin.lua"/>
+    <Script file="HealerAuraTicker.lua"/>
+    <Script file="AuraSnapshotCache.lua"/>
     <Script file="AuraMixin.lua"/>
     <Script file="UnitAuraGridMixin.lua"/>
     <Script file="UnitAuraGridReparenting.lua"/>

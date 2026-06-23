@@ -1,11 +1,14 @@
 [start]
 
 ### New!
-- Status Widget
+- **Status Widget**
   - Removed XP/Rep Bars
   - Status Widget now shows XP/Rep/honor and more
   - Custom Animations for: Levelup, Renown LevelUp, GreatVault, Loot/Bonus Rolls, Social Toasts, Durability, Loot, New Mail
   - Still tweaking and designing it to be better, feedback welcome.
+  - Hover & Hold shift for 2nd Bar
+  - Right click to select what is shown
+  - Everything else in Edit Mode
 
 ### Bugfixes
 - Removed Reverse Glow had unintended interactions.

@@ -1,5 +1,9 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="Skin.lua"/>
+    <Script file="MediaValidation.lua"/>
+    <Script file="StatusBarSkin.lua"/>
+    <Script file="FontSkin.lua"/>
+    <Script file="GradientBackground.lua"/>
     <Script file="HighlightBorder.lua"/>
     <Script file="SelectionOutline.lua"/>
     <Script file="GroupBorder.lua"/>

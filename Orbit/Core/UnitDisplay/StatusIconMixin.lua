@@ -32,6 +32,25 @@ local THREAT_COLORS = {
     [2] = { r = 1.0, g = 0.6, b = 0.0, a = 0.8 },
     [3] = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 },
 }
+
+-- Canvas-preview cycling sets, derived from the live role/leader atlas data above so the Canvas creator doesn't duplicate it. Order: Tank, Healer, Damager(, Ranged).
+function Mixin:GetRoleCanvasAtlases(overrides)
+    local style = overrides and overrides.RoleIconStyle
+    local map = (style == "round" and ROUND_ROLE_ATLASES) or (style == "header" and HEADER_ROLE_ATLASES) or ROLE_ATLASES
+    local out = { { atlas = map.TANK }, { atlas = map.HEALER } }
+    if not (overrides and overrides.HideDPS) then
+        out[#out + 1] = { atlas = map.DAMAGER }
+        if map.DAMAGER_RANGED then out[#out + 1] = { atlas = map.DAMAGER_RANGED } end
+    end
+    return out
+end
+
+function Mixin:GetLeaderCanvasAtlases(overrides)
+    if overrides and overrides.LeaderIconStyle == "header" then
+        return { { atlas = LEADER_ATLASES.header.leader }, { atlas = LEADER_ATLASES.header.assist } }
+    end
+    return { { atlas = LEADER_ATLASES.default.leader } }
+end
 local RAID_TARGET_TEXTURE_COLUMNS, RAID_TARGET_TEXTURE_ROWS = 4, 4
 
 Mixin.ICON_PREVIEW_ATLASES = {

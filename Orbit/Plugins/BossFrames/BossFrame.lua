@@ -168,12 +168,12 @@ local function CreateBossFrame(bossIndex, plugin)
                 local isFullUpdate = not updateInfo or updateInfo.isFullUpdate
                 local snap
                 if not isFullUpdate and f._harmfulAuraCache then
-                    if plugin:PatchCaches(f, unit, updateInfo) then
-                        snap = plugin:BuildSnapshotFromCaches(f)
+                    if Orbit.AuraSnapshotCache:Patch(f, unit, updateInfo) then
+                        snap = Orbit.AuraSnapshotCache:Build(f)
                     end
                 else
                     snap = plugin:BuildAuraSnapshot(unit)
-                    plugin:PopulateCaches(f, snap)
+                    Orbit.AuraSnapshotCache:Populate(f, snap)
                 end
                 if snap then
                     f._auraSnapshot = snap
