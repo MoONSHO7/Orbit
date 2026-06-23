@@ -23,6 +23,8 @@ local VE_HEADER_BG = C.Colors.Background
 local VE_CHECK_ALL_BG = { r = 0.12, g = 0.10, b = 0.06 }
 local VE_SLIDER_WIDTH = 85
 local VE_VALUE_WIDTH = 36
+-- Opacity apply is debounced: dragging fires OnValueChanged ~per frame, and each apply re-skins frames (global slider re-applies ALL of them). Only the % text updates live; the write+apply runs once the drag settles.
+local VE_OPACITY_DEBOUNCE = 0.25
 local VE_LABEL_PAD = 4
 local VE_SECTION_GAP = 6
 local VE_SLIDER_INSET = 10
@@ -194,18 +196,22 @@ function Orbit._AC.CreateVEContent(parent)
         end
         -- Global opacity slider
         local gaWrapper, gaValueText = CreateOpacitySlider(caRow, caColPos, 100, function(val)
-            for _, entry in ipairs(frames) do
-                local plugin = VE:GetPlugin(entry)
-                if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, "opacity", val) end
-            end
-            for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, "opacity", val) end
-            VE:ApplyAll()
+            -- Live + cheap: mirror the value onto every row slider for feedback (_initGuard suppresses their onChange).
             for _, rs in ipairs(self.rowSliders or {}) do
                 rs._initGuard = true
                 rs:SetValue(val)
                 if rs._valueText then rs._valueText:SetText("|cFFCCCCCC" .. val .. "%|r") end
                 rs._initGuard = false
             end
+            -- Debounced + expensive: writing every frame's setting and a full ApplyAll only after the drag settles.
+            Orbit.Async:Debounce("VE_Opacity_Global", function()
+                for _, entry in ipairs(frames) do
+                    local plugin = VE:GetPlugin(entry)
+                    if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, "opacity", val) end
+                end
+                for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, "opacity", val) end
+                VE:ApplyAll()
+            end, VE_OPACITY_DEBOUNCE)
         end)
         self._gaValueText = gaValueText
         caColPos = caColPos + VE_OPACITY_COL_WIDTH
@@ -269,8 +275,10 @@ function Orbit._AC.CreateVEContent(parent)
             end
             -- Opacity slider
             local sliderWrapper = CreateOpacitySlider(row, colPos, VE:GetFrameSetting(entry.key, "opacity"), function(val)
-                VE:SetFrameSetting(entry.key, "opacity", val)
-                VE:ApplyFrame(entry.key)
+                Orbit.Async:Debounce("VE_Opacity_" .. entry.key, function()
+                    VE:SetFrameSetting(entry.key, "opacity", val)
+                    VE:ApplyFrame(entry.key)
+                end, VE_OPACITY_DEBOUNCE)
             end)
             table.insert(content.rowSliders, sliderWrapper)
             colPos = colPos + VE_OPACITY_COL_WIDTH

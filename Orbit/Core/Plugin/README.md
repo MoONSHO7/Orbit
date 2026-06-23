@@ -16,7 +16,7 @@ defines how plugins register with orbit, how their settings are stored and retri
 | DefaultProfile.lua | **layout-only** seed: anchor graph, positions, per-instance state without a schema seed (DamageMeter MeterDefs, Datatexts placements, StrataEngine Z-order), and GlobalSettings theme. NOT a per-setting defaults dump — see "default values" rule below. |
 | OOCFadeMixin.lua | out-of-combat fade behavior. frames register and auto-fade when not in combat. reads settings from VisibilityEngine. |
 | VisibilityState.lua | `Orbit.Visibility:ApplyState` — applies a `visibility` state driver to a plugin frame from a numeric mode (show / hide / show-in-combat / hide-in-combat). defers the whole body via `CombatManager` when combat-locked and caches the last driver to skip redundant `RegisterStateDriver` calls. |
-| VisibilityEngine.lua | centralized visibility settings for all orbit frames. stores oocFade, opacity, hideMounted, mouseOver, showWithTarget, alphaLock per-frame in `Orbit.db.VisibilityEngine`. fires `ORBIT_VISIBILITY_CHANGED`. |
+| VisibilityEngine.lua | centralized visibility settings for all orbit frames. stores oocFade, opacity, hideMounted, mouseOver, showWithTarget, alphaLock per-frame in `Orbit.db.VisibilityEngine`. fires `ORBIT_VISIBILITY_CHANGED`. The engine holds **no plugin names** — Orbit-plugin frames are registered at load by `Plugins/VisibilityManifest.lua` (Plugins layer) via `VE:RegisterFrame{ key, display, plugin, index, opacityOnly }`. `BLIZZARD_REGISTRY` (Core's catalog of Blizzard frames) keeps `ownedBy` as a documented, graceful-degrading integration exception. |
 | NativeBarMixin.lua | shared scale/layout/interaction for native blizzard bar wrappers. |
 
 ## adding a new mixin
