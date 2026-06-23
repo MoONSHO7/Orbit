@@ -23,8 +23,9 @@ orbit is a modular ui suite for world of warcraft built directly into blizzard's
 | **action bars** | skinned native bars with full edit mode integration |
 | **cast bars** | player and unit cast bars with target / boss focus |
 | **class resources** | advanced power displays per class and spec |
-| **status bars** | experience, reputation, and honor bars with canvas-managed text components |
+| **status widget** | radial xp / reputation / honor / currency orb with a right-click source menu and milestone / reward flourishes |
 | **damage meter** | multi-instance, minimal-chrome meter on top of blizzard's native damage / healing pipeline |
+| **raid panel** | dock-style raid-leader toolbar — difficulty, ready check, role poll, world markers, and ping restriction, shown only with lead / assist |
 | **datatexts** | corner-triggered drawer with stats, performance, currency, and utility readouts |
 | **minimap** | reskinned minimap with clean compartment flyout and canvas-mode component placement |
 | **menu items** | bag bar and micro-menu reskins |

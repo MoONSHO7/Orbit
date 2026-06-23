@@ -1,7 +1,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 -- The Great Vault flourish is two insecure EventToast display types (unlock / item upgrade).
@@ -14,8 +14,6 @@ local UPGRADE_TYPE = Enum.EventToastDisplayType.WeeklyRewardUpgrade
 local SPELL_LEARNED = (Enum.EventToastEventType and Enum.EventToastEventType.SpellLearned) or 21
 
 -- [ GREAT VAULT ]------------------------------------------------------------------------------------
--- Replace Blizzard's Great Vault toast with our own center flourish. We drain the vault toasts off the
--- EventToastManager queue before they animate; every other toast (level-up, scenario, M+) passes through.
 function Plugin:SetupGreatVault()
     local mgr = EventToastManagerFrame
     if not mgr or mgr._orbitVaultHooked then return end
@@ -26,8 +24,7 @@ function Plugin:SetupGreatVault()
 
     local plugin = self
     local orig = mgr.DisplayToast
-    -- Replace the insecure instance method: when enabled, replicate orig's advance-remove, drain any
-    -- vault toasts (firing our flourish), then display the front via orig(self, true) so it won't re-remove.
+    -- Display the front via orig(self, true) so it won't re-remove the toast we already advanced past.
     mgr.DisplayToast = function(frame, firstToast)
         local doVault = plugin:GetSetting(plugin.system, "ReplaceVaultToast")
         local doSpell = plugin:GetSetting(plugin.system, "ShowRewardToasts")
@@ -52,5 +49,6 @@ end
 -- Dev affordance: fire the flourish on demand with representative text.
 SLASH_ORBITVAULT1 = "/orbitvault"
 SlashCmdList["ORBITVAULT"] = function()
-    Plugin:PlayVaultFlourish(L.PLU_SB_V2_VAULT_TEST, "")
+    Plugin:PlayVaultFlourish(L.PLU_SB_V2_VAULT_TEST, "")          -- unlock beat
+    Plugin:PlayVaultFlourish(L.PLU_SB_V2_VAULT_TEST, "", true)    -- upgrade beat (keyhole flipbook)
 end

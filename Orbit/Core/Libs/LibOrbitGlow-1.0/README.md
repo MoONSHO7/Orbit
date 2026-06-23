@@ -67,7 +67,7 @@ These options act globally across almost all glow engines. They are passed as th
 | `key` | `string` | Unique identifier used for tracking and hiding. Default: `"Default"` |
 | `color` | `table` | `{r,g,b,a}` array or a 12.0 `Color` object. Default: white |
 | `frameLevel` | `number` | Relative frame level above the parent frame. Default: `8` |
-| `desaturated`| `boolean` | Explicitly desaturates underlying atlases. Default: `false` |
+| `desaturated`| `boolean` | Atlas-based engines (`Thin`/`Thick`/`Medium`/`Static`) desaturate their atlas by default so `color` tints it cleanly; pass `false` to keep the atlas's native colors. Ignored by `Pixel`/`Autocast` (solid-color textures). Default: `true` |
 
 ## Engine-specific options
 
@@ -92,3 +92,4 @@ Specific glow engines support additional fine-tuning properties.
 
 - Always provide a specific `key`. If your addon renders multiple glows to the same frame (e.g. tracking multiple auras), failure to provide a key will overwrite the `"Default"` bucket.
 - Always pair a single `lib.Show` explicitly with a single `lib.Hide` when out of combat. This returns frames to the pool explicitly.
+- `lib.PreLoad(glowType, count)` warms the shared pool by allocating then releasing `count` glows of a type against a hidden dummy frame. Call it during load/idle to absorb first-use frame/texture allocation, so the first real `lib.Show` in combat doesn't hitch.

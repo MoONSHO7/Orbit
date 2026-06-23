@@ -1,13 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ SOCIAL TOAST ]-----------------------------------------------------------------------------------
--- BN-friend / session-time / voice toasts all inherit SocialToastTemplate and display through the
--- global AlertFrame_ShowNewAlert(frame) after their FontStrings are set. We override it, recognise
--- those frames by their template structure, capture Blizzard's already-localised text, suppress the
--- toast, and replay it as a center flourish. Non-social alerts (achievements, loot, ...) pass through.
 local LINE_KEYS = { "TopLine", "MiddleLine", "DoubleLine", "BottomLine" }
 
 local function IsSocialToast(frame)
@@ -35,8 +31,7 @@ local function CaptureIcon(frame)
     end
 end
 
--- Dismiss a just-shown alert the way right-click does (stop its anims + hide) — no flash, since the
--- post-hook runs in the same execution before the next render.
+-- Dismiss a just-shown alert as right-click does (stop anims + hide); no flash since the post-hook runs before the next render.
 local function DismissAlert(frame)
     if frame.animIn then frame.animIn:Stop() end
     if frame.glow and frame.glow.animIn then frame.glow.animIn:Stop() end
@@ -50,9 +45,7 @@ function Plugin:SetupSocialToast()
     self._socialHooked = true
 
     local plugin = self
-    -- hooksecurefunc, NOT a global replacement: replacing the Blizzard global taints it and bleeds into
-    -- secure paths (e.g. EditMode party-frame refresh -> secret health-colour compare). The original runs
-    -- (showing the toast), then we capture + dismiss it before it renders, taint-free.
+    -- hooksecurefunc, NOT a global replacement: replacing the Blizzard global taints it and bleeds into secure paths (EditMode party-frame secret health-colour compare).
     hooksecurefunc("AlertFrame_ShowNewAlert", function(frame)
         if not plugin._disabled and IsSocialToast(frame) and plugin:GetSetting(plugin.system, "ReplaceSocialToast") then
             local title, subtitle = CaptureLines(frame)
@@ -63,11 +56,7 @@ function Plugin:SetupSocialToast()
     end)
 end
 
--- Replacing the toasts only works if Blizzard still GENERATES them for us to intercept. The master CVar
--- showToastWindow gates the whole BN toast system (read once into SetToastsEnabled at VARIABLES_LOADED,
--- with NO live CVar callback), so when our replacement is on we force it on AND re-register the events so
--- it takes hold this session rather than only after a /reload. Per-type prefs (showToastOnline, ...) are
--- left to the user. Called from ApplySettings, so it re-asserts on login and whenever the setting changes.
+-- showToastWindow is read only once at VARIABLES_LOADED with no live callback, so re-register events after forcing it to take hold without a /reload.
 function Plugin:EnforceToastCVar()
     if not self:GetSetting(self.system, "ReplaceSocialToast") then return end
     if GetCVarBool("showToastWindow") then return end
@@ -76,7 +65,6 @@ function Plugin:EnforceToastCVar()
 end
 
 -- [ TEST COMMAND ]-----------------------------------------------------------------------------------
--- Dev affordance: proc a sample social flourish with the Battle.net icon in the centre.
 SLASH_ORBITSOCIAL1 = "/orbitsocial"
 SlashCmdList["ORBITSOCIAL"] = function()
     Plugin:PlaySocialFlourish(L.PLU_SB_V2_SOCIAL_TEST, "", "Interface\\ChatFrame\\UI-ChatIcon-BattleNet")

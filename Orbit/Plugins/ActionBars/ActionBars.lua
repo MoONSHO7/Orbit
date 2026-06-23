@@ -191,7 +191,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         table.insert(schema.controls, { type = "slider", key = "IconSize", label = L.PLU_AB_ICON_SIZE, min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
             onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
-        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_AB_ICON_PADDING, min = 0, max = 10, step = 1, default = 2,
+        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_AB_ICON_PADDING, min = 0, max = 10, step = 1, default = 2, mergeAtZero = true,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = L.PLU_AB_HIDE_EMPTY, default = false }) end

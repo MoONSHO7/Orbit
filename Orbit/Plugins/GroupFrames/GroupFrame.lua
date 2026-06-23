@@ -619,7 +619,6 @@ function Plugin:OnLoad()
     self.skipEditModeApply = true
     self:RegisterStandardEvents()
 
-    -- Edit Mode callbacks
     -- Unique string owner so these tier-switching handlers don't overwrite RegisterStandardEvents' (event, self) ApplySettings pair.
     if EventRegistry and not self.editModeCallbacksRegistered then
         self.editModeCallbacksRegistered = true

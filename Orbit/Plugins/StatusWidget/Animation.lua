@@ -1,12 +1,8 @@
 ---@type Orbit
 local Orbit = Orbit
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ ANIMATION ]--------------------------------------------------------------------------------------
--- Hover/event reveal for the orb (Off / Slide / Rotate Slide / Fade), modelled on Orbit-Dock-Portal's
--- reveal. While an animation is on, the orb is CONCEALED at rest and reveals on mouseover or a toast,
--- then reverses (conceals) on mouse-leave / event end. It animates frame.Content, never the frame, so the
--- EditMode / RestorePosition-owned anchor is untouched. The slide direction is screen-edge aware.
 local ANIM_NONE, ANIM_SLIDE, ANIM_ROTATE, ANIM_FADE = 0, 1, 2, 3
 local ANIM_DURATION = 0.3
 local MAX_SPIN = math.rad(150)   -- rotate-slide spins this far while concealed, unwinding to 0 at rest
@@ -14,8 +10,7 @@ local EDGE_FRAC = 1 / 3          -- centre within this fraction of a screen edge
 local EPSILON = 0.01
 local math_min, math_max, math_abs = math.min, math.max, math.abs
 
--- Which way the orb slides off when concealed: toward its nearest screen edge/corner (y is up in WoW, so
--- "near the top" hides upward). Dead-centre hides downward.
+-- Slides off toward the nearest screen edge/corner; y is up in WoW so near-top hides upward, dead-centre hides downward.
 local function HiddenOffset(frame)
     local cx, cy = frame:GetCenter()
     if not cx then return 0, -frame:GetHeight() end
@@ -33,8 +28,6 @@ local function HiddenOffset(frame)
     return ox, oy
 end
 
--- progress 1 = revealed (at rest, fully shown), 0 = concealed (slid off / rotated / alpha 0). Re-anchors
--- the content each frame so a mode switch never strands a stale offset/rotation.
 function Plugin:_AnimApply(progress)
     local frame = self.frame
     local content = frame.Content
@@ -64,14 +57,11 @@ function Plugin:_AnimApply(progress)
     end
 end
 
--- True while the Rotate-Slide reveal owns the ring textures' rotation, so other effects (the impact shake)
--- must not also write SetRotation on them or the two drivers fight over the same five textures.
+-- True while Rotate-Slide owns the ring rotation, so the impact shake doesn't also SetRotation and fight over the same textures.
 function Plugin:_RotateRevealOwnsRing()
     return self._animMode == ANIM_ROTATE
 end
 
--- Where the orb should rest right now: revealed (1) while Off, in Edit Mode, hovered, or showing a toast;
--- concealed (0) otherwise.
 local function RestingTarget(plugin)
     local mode = plugin:GetSetting(plugin.system, "Animation") or ANIM_NONE
     if mode == ANIM_NONE or Orbit:IsEditMode() then return 1 end
@@ -124,8 +114,6 @@ function Plugin:ConcealOrb()
     Tween(self, RestingTarget(self))
 end
 
--- Snap (no tween) to the resting state — called from ApplySettings so the orb starts concealed when an
--- animation is active, and is shown again the instant it's set back to Off.
 function Plugin:ApplyAnimationState()
     if not self.frame then return end
     self._animMode = self:GetSetting(self.system, "Animation") or ANIM_NONE

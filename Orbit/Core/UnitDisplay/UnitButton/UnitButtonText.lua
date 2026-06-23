@@ -30,8 +30,7 @@ UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
 local DEFAULT_MODE = HEALTH_TEXT_MODES.PERCENT_SHORT
 
 -- [ LOCAL FORMATTERS ]-------------------------------------------------------------------------------
--- Each token formatter returns a display string or a secret value (UnitHealth/UnitHealthMax are secret in
--- 12.0). RenderHealthText combines them with SetFormattedText, which accepts secret args C-side — never Lua concat.
+-- Formatters may return secret values (UnitHealth/UnitHealthMax are secret in 12.0); RenderHealthText combines via SetFormattedText C-side, never Lua concat.
 
 local function SafeHealthPercent(unit)
     if type(UnitHealthPercent) ~= "function" then
@@ -55,8 +54,7 @@ local function FormatHealthPercent(unit)
     return string.format("%.0f%%", percent)
 end
 
--- AbbreviateNumbers accepts secret values (UnitHealth is secret in 12.0, where Lua arithmetic throws); the custom
--- breakpoints give a clean "466K" / "1.5M" with no decimal on thousands, abbreviating only above 10,000.
+-- AbbreviateNumbers accepts secret values (UnitHealth is secret in 12.0, where Lua arithmetic throws); custom breakpoints give a clean "466K"/"1.5M" only above 10,000.
 local HEALTH_ABBREV_BREAKPOINTS = {
     { breakpoint = 1000000, abbreviation = "M", abbreviationIsGlobal = false, significandDivisor = 100000, fractionDivisor = 10 },
     { breakpoint = 10000,   abbreviation = "K", abbreviationIsGlobal = false, significandDivisor = 1000,   fractionDivisor = 1 },
@@ -81,8 +79,6 @@ local function FormatMaxK(unit) return AbbreviateHealth(UnitHealthMax(unit)) end
 local function FormatMaxFull(unit) return UnitHealthMax(unit) end
 
 -- [ HEALTH TOKENS ]----------------------------------------------------------------------------------
--- Canonical value vocabulary. `key` is the literal token the user types; `sample` is the example shown in the
--- input-box tooltip (read by Canvas Mode); `format(unit)` is the live sink.
 local HEALTH_TOKENS = {
     { id = "percent",      key = "%",            sample = "100%",    format = function(u) return FormatHealthPercent(u) or "??%" end },
     { id = "currentk", key = "CurrentK", sample = "466K",    format = FormatCurrentK },
@@ -101,8 +97,7 @@ FORMAT_KEYS[#FORMAT_KEYS + 1] = { key = "&", mo = true }
 table.sort(FORMAT_KEYS, function(a, b) return #a.key > #b.key end)
 
 -- [ LEGACY MODE MAPPING ]----------------------------------------------------------------------------
--- Maps the retired HealthTextMode presets onto the segment model so existing saved values render
--- unchanged (rest value + optional `&` mouseover-reveal).
+-- Maps retired HealthTextMode presets onto the segment model so existing saved values render unchanged.
 local LEGACY_SEGMENTS = {
     [HEALTH_TEXT_MODES.PERCENT]           = { { t = "value", v = "percent" } },
     [HEALTH_TEXT_MODES.SHORT]             = { { t = "value", v = "currentk" } },
@@ -137,8 +132,7 @@ function UnitButton.LegacyHealthModeToFormatString(mode)
 end
 
 -- [ SEGMENT RENDERING ]------------------------------------------------------------------------------
--- Values become `%s` slots, separators stay literal, and SetFormattedText fills them C-side. It accepts secret
--- args (AllowedWhenTainted), so several secret health values combine (e.g. "466K - 500K") — Lua concat would throw.
+-- SetFormattedText accepts secret args (AllowedWhenTainted), so several secret health values combine (e.g. "466K - 500K") where Lua concat would throw.
 local function RenderHealthText(fs, unit, segs)
     local parts, values = {}, {}
     for _, seg in ipairs(segs) do
@@ -156,8 +150,6 @@ local function RenderHealthText(fs, unit, segs)
 end
 
 -- [ FORMAT STRING PARSING ]--------------------------------------------------------------------------
--- Parses a typed format string into segments. Recognized keys (longest-first) become value/mouseover
--- segments; all other characters are literal text. Whitespace adjacent to the `&` divider is trimmed.
 local function ParseFormat(str)
     str = strtrim(str or "")
     local segments = {}
@@ -195,11 +187,6 @@ local function ParseFormat(str)
     return segments
 end
 
--- Sample render for previews (token samples, no live unit). Returns the at-rest portion. A blank/whitespace string
--- returns "" — distinct from nil (legacy) — mirroring the live RecomputeHealthSegments so a preview never shows a
--- phantom value. By default, when the at-rest side is empty (e.g. "& Max") it falls back to the mouseover portion so
--- a per-component Canvas preview stays visible/selectable; pass noFallback=true (group-frame rows, which mirror the
--- live frame's at-rest render exactly per README parity) to get the raw rest sample even when empty.
 function UnitButton.HealthFormatRestSample(formatString, legacyMode, noFallback)
     local segs = (type(formatString) == "string") and ParseFormat(formatString) or LegacyModeToSegments(legacyMode)
     local moIndex
@@ -244,8 +231,6 @@ end
 -- [ TEXT MIXIN ]-------------------------------------------------------------------------------------
 local TextMixin = {}
 
--- Resolves the active format (custom segments, else legacy mode) and caches the mouseover split so
--- UpdateHealthText allocates nothing per health event.
 function TextMixin:RecomputeHealthSegments()
     -- A string (even "") is the user's chosen format — "" parses to no segments (blank); only nil falls back to the legacy preset.
     local fmt = self.healthTextFormat
@@ -281,8 +266,7 @@ function TextMixin:UpdateHealthText()
         return
     end
 
-    -- Status takes priority over the format, mirroring Blizzard's CompactUnitFrame_UpdateStatusText: offline, then
-    -- dead-or-ghost (Blizzard shows DEAD for both), using Blizzard's own localized global strings, before any value.
+    -- Status precedes value (mirrors Blizzard's CompactUnitFrame_UpdateStatusText): offline, then dead-or-ghost, via Blizzard's localized globals.
     if not UnitIsConnected(self.unit) then
         self.HealthText:SetText(PLAYER_OFFLINE)
         self.HealthText:Show()

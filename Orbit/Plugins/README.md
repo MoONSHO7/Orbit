@@ -21,8 +21,7 @@ Plugins/
   MenuItems/                  -- micro menu, bag bar, queue status
   Minimap/                    -- minimap replacement with canvas-mode component layout
   RaidPanel/                  -- party / raid frame extensions and raid-marker management
-  StatusBars/                 -- experience / reputation / honor progression bars with canvas text components
-  StatusBar_v2/               -- circular (radial) xp bar; swaps to honor on hover, hollow center for level-up
+  StatusWidget/               -- circular (radial) xp / reputation / honor / currency widget with a right-click source menu, milestone flourishes (level-up / renown / honor), and toast replays in the hollow centre
   Tracked/                    -- user-authored tracked ability icons and bars
   UnitFrames/                 -- player, target, focus frames and their sub-frames
 ```
@@ -35,7 +34,7 @@ sequenceDiagram
     participant Plugin as Plugin
     participant Settings as Config/Renderer
 
-    Core->>Plugin: RegisterPlugin(name, system, mixin)
+    Core->>Plugin: RegisterPlugin(name, systemId, definition)
     Core->>Plugin: OnLoad()
     Core->>Plugin: ApplySettings()
     Settings->>Plugin: AddSettings(dialog, systemFrame)
@@ -50,7 +49,7 @@ sequenceDiagram
 2. create the main plugin file (e.g., `MyPlugin.lua`)
 3. call `Orbit:RegisterPlugin("My Plugin", SYSTEM_ID, { defaults = { ... }, OnLoad = function(self) ... end })` with your plugin definition
 4. implement `OnLoad()` and `ApplySettings()` methods
-5. implement `function Plugin:AddSettings(dialog, systemFrame)` — receives the settings dialog and the system frame to populate; use `SchemaBuilder:AddSettingsTabs(dialog, systemFrame, schema)` to wire the standard tabs
+5. implement `function Plugin:AddSettings(dialog, systemFrame)` — receives the settings dialog and the system frame to populate; build a `schema` table, wire the standard tabs with `OrbitEngine.SchemaBuilder:AddSettingsTabs(schema, dialog, tabsList, defaultTab, self)` (returns the active tab), then render with `OrbitEngine.Config:Render(dialog, systemFrame, self, schema)`
 6. add the new file to `Plugins/MyPlugin/MyPlugin.xml` as a `<Script file="NewFile.lua"/>` entry; ensure it loads after its dependencies
 7. declare plugin schema defaults inline in the `defaults = { ... }` block of the options table passed to `RegisterPlugin`. Do not edit `DefaultProfile.lua` — that file is a saved-layout snapshot owned by ProfileManager, not the plugin-schema default site.
 

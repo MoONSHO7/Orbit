@@ -147,8 +147,7 @@ function UnitButton:Create(parent, unit, name, skipEventRegistration)
     f.TotalAbsorbPattern:SetSize(ABSORB_PATTERN_SIZE, ABSORB_PATTERN_SIZE)
     f.TotalAbsorbPattern:SetPoint("TOPLEFT", f.TotalAbsorbMask, "TOPLEFT", 0, 0)
     f.TotalAbsorbPattern:SetTexture(LSM:Fetch("statusbar", "Orbit Absorb"), "REPEAT", "REPEAT")
-    -- UV-repeat tiling (TexCoord > 1 over a REPEAT-wrapped texture), NOT SetHorizTile: identical constant
-    -- tile scale, but maskable — so the pattern rounds under a rounded border style instead of bleeding.
+    -- UV-repeat tiling (TexCoord > 1 over a REPEAT-wrapped texture), NOT SetHorizTile: same tile scale but maskable, so the pattern rounds under a rounded border instead of bleeding.
     f.TotalAbsorbPattern:SetTexCoord(0, ABSORB_PATTERN_SIZE / ABSORB_TILE_W, 0, ABSORB_PATTERN_SIZE / ABSORB_TILE_H)
     f.TotalAbsorbPattern:SetBlendMode("MOD")
     -- Stamp tileCoord so ApplyAbsorbTexture re-asserts them after texture swap (all tiling fills share 256x64).

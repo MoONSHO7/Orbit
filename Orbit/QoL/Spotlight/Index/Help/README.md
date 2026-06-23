@@ -18,7 +18,6 @@ Topics/              -- one file per topic, pure localized data
   CanvasMode.lua     -- explainers
   DataTexts.lua      -- explainers
   Minimap.lua        -- explainers
-  StatusBars.lua     -- explainers
   RaidMarkers.lua    -- explainers
   DamageMeter.lua    -- explainers
   CooldownManager.lua -- explainers (topic "CDM": inject/remove cooldowns, edit-mode vs. move/style)

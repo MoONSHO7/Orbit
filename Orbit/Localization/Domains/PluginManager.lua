@@ -49,9 +49,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minimap",
         PLG_NAME_MINIMAP_BUTTON    = "Minimap Button",
         PLG_NAME_DATATEXTS         = "Datatexts",
-        PLG_NAME_EXPERIENCE_BAR    = "Experience Bar",
-        PLG_NAME_HONOR_BAR         = "Honor Bar",
-        PLG_NAME_STATUS_BAR_V2    = "Status Bar v2",
+        PLG_NAME_STATUS_BAR_V2    = "Status Widget",
     },
     deDE = {
         PLG_UNIT_FRAMES       = "Einheitenfenster",
@@ -100,9 +98,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minikarte",
         PLG_NAME_MINIMAP_BUTTON    = "Minikarten-Schaltfläche",
         PLG_NAME_DATATEXTS         = "Datentexte",
-        PLG_NAME_EXPERIENCE_BAR    = "Erfahrungsleiste",
-        PLG_NAME_HONOR_BAR         = "Ehreleiste",
-        PLG_NAME_STATUS_BAR_V2    = "Statusleiste v2",
+        PLG_NAME_STATUS_BAR_V2    = "Status-Widget",
     },
     frFR = {
         PLG_UNIT_FRAMES       = "Cadres d'unité",
@@ -151,9 +147,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minicarte",
         PLG_NAME_MINIMAP_BUTTON    = "Bouton de minicarte",
         PLG_NAME_DATATEXTS         = "Barres d'infos",
-        PLG_NAME_EXPERIENCE_BAR    = "Barre d'expérience",
-        PLG_NAME_HONOR_BAR         = "Barre d'honneur",
-        PLG_NAME_STATUS_BAR_V2    = "Barre de statut v2",
+        PLG_NAME_STATUS_BAR_V2    = "Widget de statut",
     },
     esES = {
         PLG_UNIT_FRAMES       = "Marcos de unidad",
@@ -202,9 +196,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minimapa",
         PLG_NAME_MINIMAP_BUTTON    = "Botón del minimapa",
         PLG_NAME_DATATEXTS         = "Textos de datos",
-        PLG_NAME_EXPERIENCE_BAR    = "Barra de experiencia",
-        PLG_NAME_HONOR_BAR         = "Barra de honor",
-        PLG_NAME_STATUS_BAR_V2    = "Barra de estado v2",
+        PLG_NAME_STATUS_BAR_V2    = "Widget de estado",
     },
     ptBR = {
         PLG_UNIT_FRAMES       = "Quadros de Unidade",
@@ -253,9 +245,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minimapa",
         PLG_NAME_MINIMAP_BUTTON    = "Botão do Minimapa",
         PLG_NAME_DATATEXTS         = "Datatexts",
-        PLG_NAME_EXPERIENCE_BAR    = "Barra de Experiência",
-        PLG_NAME_HONOR_BAR         = "Barra de Honra",
-        PLG_NAME_STATUS_BAR_V2    = "Barra de Status v2",
+        PLG_NAME_STATUS_BAR_V2    = "Widget de status",
     },
     ruRU = {
         PLG_UNIT_FRAMES       = "Рамки юнитов",
@@ -304,9 +294,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Миникарта",
         PLG_NAME_MINIMAP_BUTTON    = "Кнопка миникарты",
         PLG_NAME_DATATEXTS         = "Информблоки",
-        PLG_NAME_EXPERIENCE_BAR    = "Шкала опыта",
-        PLG_NAME_HONOR_BAR         = "Шкала чести",
-        PLG_NAME_STATUS_BAR_V2    = "Панель статуса v2",
+        PLG_NAME_STATUS_BAR_V2    = "Виджет статуса",
     },
     koKR = {
         PLG_UNIT_FRAMES       = "유닛 프레임",
@@ -355,9 +343,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "미니맵",
         PLG_NAME_MINIMAP_BUTTON    = "미니맵 버튼",
         PLG_NAME_DATATEXTS         = "데이터텍스트",
-        PLG_NAME_EXPERIENCE_BAR    = "경험치 막대",
-        PLG_NAME_HONOR_BAR         = "명예 막대",
-        PLG_NAME_STATUS_BAR_V2    = "상태 막대 v2",
+        PLG_NAME_STATUS_BAR_V2    = "상태 위젯",
     },
     zhCN = {
         PLG_UNIT_FRAMES       = "单位框体",
@@ -406,9 +392,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "小地图",
         PLG_NAME_MINIMAP_BUTTON    = "小地图按钮",
         PLG_NAME_DATATEXTS         = "数据文本",
-        PLG_NAME_EXPERIENCE_BAR    = "经验条",
-        PLG_NAME_HONOR_BAR         = "荣誉条",
-        PLG_NAME_STATUS_BAR_V2    = "状态条 v2",
+        PLG_NAME_STATUS_BAR_V2    = "状态小部件",
     },
     zhTW = {
         PLG_UNIT_FRAMES       = "單位框架",
@@ -457,9 +441,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "小地圖",
         PLG_NAME_MINIMAP_BUTTON    = "小地圖按鈕",
         PLG_NAME_DATATEXTS         = "資料文字",
-        PLG_NAME_EXPERIENCE_BAR    = "經驗條",
-        PLG_NAME_HONOR_BAR         = "榮譽條",
-        PLG_NAME_STATUS_BAR_V2    = "狀態列 v2",
+        PLG_NAME_STATUS_BAR_V2    = "狀態小工具",
     }
 }
 Orbit.Localization.Install(LOCALE_STRINGS, "PluginManager")

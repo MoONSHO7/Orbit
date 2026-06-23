@@ -1,18 +1,14 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ LOOT REEL ]--------------------------------------------------------------------------------------
--- The PLAYER'S OWN loot is replayed as a sequential reel through the orb's centre: each item's icon pops
--- in with a quality-coloured glow + its name beside the orb, then the next slides in. Encounter loot is
--- filtered to you (not the whole party); personal loot shows your own drops outside the encounter window.
 local REEL_STEP = 1.2        -- seconds an item holds centre before the next slides in
 local ENCOUNTER_WINDOW = 6   -- after your encounter loot, your personal SHOW_LOOT_TOAST is a dupe for this long
 local FALLBACK_COLOR = { r = 0.62, g = 0.62, b = 0.62 }
 
--- An optional winner name (class-coloured) shown beneath an item. Your own loot has no winner line; this
--- is kept for the /orbitloot styling preview (and a possible future "show party loot" toggle).
+-- Unused live (your own loot has no winner line); kept for the /orbitloot preview and a possible "show party loot" toggle.
 local function ClassColoredName(playerName, className)
     if not playerName or playerName == "" then return nil end
     local cc = className and RAID_CLASS_COLORS and RAID_CLASS_COLORS[className]
@@ -39,9 +35,7 @@ local function EnqueueItem(itemLink, quantity, playerName, className)
     end)
 end
 
--- Append items and drive the reel through the flourish queue as one self-paced loot request that drains
--- the whole item queue. New items arriving mid-reel just append; loot is never interrupted by, nor
--- interrupts, another flourish — they serialize through the queue.
+-- One self-paced loot request drains the whole item queue, so loot serializes through the flourish queue rather than interrupting or being interrupted.
 function Plugin:PlayLootReel(items)
     if not self.frame then return end
     self._lootQueue = self._lootQueue or {}
@@ -89,16 +83,14 @@ local function IsEnabled()
     return not Plugin._disabled and Plugin:GetSetting(Plugin.system, "ReplaceLootToast")
 end
 
--- A personal loot AlertFrame toast we replace: item wins (LootWonAlertFrame) and item upgrades
--- (LootUpgradeFrame). Currency rides the LootWon template too — leave it to Blizzard (out of reel scope).
+-- Item wins / upgrades only; currency rides the LootWon template too, so it's excluded (left to Blizzard).
 local function IsLootAlert(frame)
     if not frame then return false end
     if frame.BaseQualityItemName then return true end
     return frame.lootItem and frame.ItemName and not frame.isCurrency
 end
 
--- Dismiss a just-shown alert the way right-click does (stop its anims + hide); the post-hook runs in
--- the same execution before the next render, so there's no flash.
+-- Stop anims + hide (like right-click); the post-hook runs in the same execution before the next render, so there's no flash.
 local function DismissAlert(frame)
     if frame.animIn then frame.animIn:Stop() end
     if frame.glow and frame.glow.animIn then frame.glow.animIn:Stop() end
@@ -112,8 +104,7 @@ function Plugin:SetupLoot()
     self._lootHooked = true
     self._lootQueue = {}
 
-    -- Dedicated frame (never the shared EventBus): keeps any instance-fired loot dispatch isolated. Loot
-    -- payloads are non-secret, so reading itemLink/playerName/className here is safe.
+    -- Dedicated frame (never the shared EventBus) keeps instance-fired loot dispatch isolated; payloads are non-secret, so reads are safe.
     local f = CreateFrame("Frame")
     f:RegisterEvent("BOSS_KILL")
     f:RegisterEvent("ENCOUNTER_LOOT_RECEIVED")
@@ -122,8 +113,7 @@ function Plugin:SetupLoot()
     f:SetScript("OnEvent", function(_, event, ...) self:OnLootEvent(event, ...) end)
     self._lootFrame = f
 
-    -- Suppress Blizzard's BossBanner; we replay encounter loot as the reel. Post-hook + Stop, never a
-    -- global replace — mirrors the SocialToast taint fix. Data is captured independently via our frame.
+    -- Post-hook + Stop, never a global replace — mirrors the SocialToast taint fix; capture is independent via our own frame.
     if BossBanner_Play and BossBanner_Stop then
         hooksecurefunc("BossBanner_Play", function(banner)
             if not IsEnabled() then return end
@@ -132,8 +122,7 @@ function Plugin:SetupLoot()
         end)
     end
 
-    -- Suppress the personal loot AlertFrame toast: either we reel it (outside the window) or the group
-    -- reel already covers it (inside). A second isolated hook, independent of SocialToast's.
+    -- Suppress the personal loot toast (we reel it outside the window; inside it, the group reel already covers it). Isolated hook, independent of SocialToast's.
     if AlertFrame_ShowNewAlert then
         hooksecurefunc("AlertFrame_ShowNewAlert", function(frame)
             if IsEnabled() and IsLootAlert(frame) then DismissAlert(frame) end
@@ -145,9 +134,7 @@ function Plugin:_InEncounterWindow()
     return self._encounterUntil ~= nil and GetTime() < self._encounterUntil
 end
 
--- True if an ENCOUNTER_LOOT_RECEIVED recipient is the LOCAL PLAYER — so the reel shows only your own loot,
--- not the whole party's. The event name is "Name" (same realm) or "Name-Realm" (cross-realm): match the
--- short name, and require the realm too when one is present.
+-- The ENCOUNTER_LOOT_RECEIVED name is "Name" (same realm) or "Name-Realm" (cross-realm): match the short name, and the realm too when present.
 local function IsLocalPlayerLoot(name)
     if not name or name == "" then return false end
     local short, realm = name:match("^([^%-]+)%-?(.*)$")
@@ -157,8 +144,7 @@ local function IsLocalPlayerLoot(name)
     return not pRealm or pRealm == "" or realm:gsub("%s+", "") == pRealm:gsub("%s+", "")
 end
 
--- ENCOUNTER_LOOT_RECEIVED args follow Blizzard's BossBanner (the generated docs mis-label 5-6 as
--- itemName/fileName): encounterID, itemID, itemLink, quantity, playerName, className.
+-- ENCOUNTER_LOOT_RECEIVED args follow BossBanner (the generated docs mis-label 5-6): encounterID, itemID, itemLink, quantity, playerName, className.
 function Plugin:OnLootEvent(event, ...)
     if not IsEnabled() then return end
     if event == "BOSS_KILL" then
@@ -188,10 +174,10 @@ function Plugin:OnLootEvent(event, ...)
 end
 
 -- [ TEST COMMAND ]-----------------------------------------------------------------------------------
--- Dev affordance: reel a quality spread of YOUR OWN loot (no winner lines — matching the live behaviour),
--- one with a stack count. Item names/icons resolve live from the IDs.
+-- Dev affordance: a sample defeat banner, then reel a quality spread of YOUR OWN loot (no winner lines, matching live) — names/icons resolve live from the IDs.
 SLASH_ORBITLOOT1 = "/orbitloot"
 SlashCmdList["ORBITLOOT"] = function()
+    Plugin:PlayBurst("BossBanner-SkullCircle", Plugin.FlourishColors.defeat, L.PLU_SB_V2_DEFEATED_F:format("Hogger"))
     local samples = {
         { id = 19019 },              -- Thunderfury (legendary)
         { id = 18832 },              -- Brutality Blade (epic)

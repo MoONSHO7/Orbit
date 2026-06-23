@@ -182,7 +182,7 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             table.insert(schema.controls, { type = "dropdown", key = "GrowthDirection", label = L.PLU_GRP_GROWTH, default = orientation == 0 and "down" or "right", options = growthOptions, onChange = TierMOC("GrowthDirection") })
             table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_GRP_WIDTH, min = 50, max = 400, step = 1, default = 160, onChange = TierMOC("Width") })
             table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_GRP_HEIGHT, min = 20, max = 100, step = 1, default = 40, onChange = TierMOC("Height") })
-            table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_GRP_SPACING, min = 0, max = 50, step = 1, default = 0, onChange = TierMOC("Spacing") })
+            table.insert(schema.controls, { type = "slider", key = "Spacing", label = L.PLU_GRP_SPACING, min = 0, max = 50, step = 1, default = 0, mergeAtZero = true, onChange = TierMOC("Spacing") })
             table.insert(schema.controls, { type = "slider", key = "OutOfRangeOpacity", label = L.PLU_GRP_OUT_OF_RANGE_OPACITY, min = 0, max = 80, step = 5, default = 30, suffix = "%", onChange = TierMOC("OutOfRangeOpacity") })
             table.insert(schema.controls, {
                 type = "checkbox", key = "IncludePlayer", label = L.PLU_GRP_INCLUDE_PLAYER, default = true,
@@ -224,12 +224,12 @@ function Orbit.GroupFrameSettings(plugin, dialog, systemFrame)
             })
             table.insert(schema.controls, { type = "slider", key = "Width", label = L.PLU_GRP_WIDTH, min = 50, max = 200, step = 1, default = 100, onChange = TierMOC("Width") })
             table.insert(schema.controls, { type = "slider", key = "Height", label = L.PLU_GRP_HEIGHT, min = 20, max = 80, step = 1, default = 40, onChange = TierMOC("Height") })
-            table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = L.PLU_GRP_MEMBER_SPACING, min = 0, max = 50, step = 1, default = 2, onChange = TierMOC("MemberSpacing") })
+            table.insert(schema.controls, { type = "slider", key = "MemberSpacing", label = L.PLU_GRP_MEMBER_SPACING, min = 0, max = 50, step = 1, default = 2, mergeAtZero = true, onChange = TierMOC("MemberSpacing") })
             table.insert(schema.controls, { type = "slider", key = "OutOfRangeOpacity", label = L.PLU_GRP_OUT_OF_RANGE_OPACITY, min = 0, max = 80, step = 5, default = 30, suffix = "%", onChange = TierMOC("OutOfRangeOpacity") })
             if sortMode == "group" then
                 local gprDefault = math.min(maxGroups, 6)
                 table.insert(schema.controls, { type = "slider", key = "GroupsPerRow", label = L.PLU_GRP_GROUPS_PER_ROW, min = 1, max = maxGroups, step = 1, default = gprDefault, onChange = TierMOC("GroupsPerRow") })
-                table.insert(schema.controls, { type = "slider", key = "GroupSpacing", label = L.PLU_GRP_GROUP_SPACING, min = 0, max = 50, step = 1, default = 4, onChange = TierMOC("GroupSpacing") })
+                table.insert(schema.controls, { type = "slider", key = "GroupSpacing", label = L.PLU_GRP_GROUP_SPACING, min = 0, max = 50, step = 1, default = 4, mergeAtZero = true, onChange = TierMOC("GroupSpacing") })
             else
                 local maxFlatRows = math.max(1, math.ceil(tierMax / 5))
                 table.insert(schema.controls, { type = "slider", key = "FlatRows", label = L.PLU_GRP_ROWS, min = 1, max = maxFlatRows, step = 1, default = 1, onChange = TierMOC("FlatRows") })

@@ -17,7 +17,7 @@ displays boss health bars, cast bars, and auras during encounters. uses the shar
 
 ## how it works
 
-5 boss frames (boss1-boss5) are created eagerly in `OnLoad` via `for i = 1, MAX_BOSS_FRAMES` (`MAX_BOSS_FRAMES = 5` at `BossFrame.lua:12`). they use `UnitButton` from core/unitdisplay for secure targeting.
+5 boss frames (boss1-boss5) are created eagerly in `OnLoad` via `for i = 1, MAX_BOSS_FRAMES` (`MAX_BOSS_FRAMES = 5`, defined at the top of `BossFrame.lua`). they use `UnitButton` from core/unitdisplay for secure targeting.
 
 ## adding a new boss frame feature
 

@@ -13,8 +13,7 @@ Skin._groupMembers = setmetatable({}, { __mode = "k" })
 -- Group-manages surfaces unless: per-icon container (Icon Padding > 0; child icons own their masks via Icons:ApplyCustom) or aura grid (UnitAuraGridMixin masks per-icon on UNIT_AURA).
 local function GroupManagesMask(frame)
     if frame._auraGridFrame then return false end
-    -- A live merge member always manages its own surfaces — covers icon containers whose ApplyIconGroupBorder
-    -- early-returned (born merged) and so never set _activeBorderMode. Padding>0 containers never merge.
+    -- A live merge member always manages its own surfaces — covers born-merged icon containers that never set _activeBorderMode.
     return (not frame._isIconContainer) or frame._activeBorderMode ~= nil or frame._groupBorderActive
 end
 
@@ -126,8 +125,7 @@ function Skin:UpdateGroupBorder(rootFrame)
                     local cx, cy = pos.x, pos.y
                     local pw, ph = frame:GetWidth(), frame:GetHeight()
                     local cw, ch = child:GetWidth(), child:GetHeight()
-                    -- Offset the CROSS axis by anchor.align so the box matches ApplyAnchorPosition; without
-                    -- it a narrower centred/right-aligned row computes a misplaced box and its corners mis-round.
+                    -- Offset the CROSS axis by anchor.align so the box matches ApplyAnchorPosition, else a narrower aligned row mis-rounds.
                     if a.edge == "BOTTOM" or a.edge == "TOP" then
                         cy = (a.edge == "BOTTOM") and (pos.y + ph) or (pos.y - ch)
                         if a.align == "RIGHT" then cx = pos.x + (pw - cw)
@@ -208,8 +206,7 @@ function Skin:UpdateGroupBorder(rootFrame)
         local c = self:ResolveBorderColor(isIconStyle)
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
     elseif styleEntry.rounded then
-        -- Rounded slice border on the merged bounding box; one slice mask over the box clips every member's
-        -- surfaces, so only the group's four outer corners round (interior members sit inside the rect).
+        -- One slice mask over the merged box clips every member's surfaces, so only the group's four outer corners round.
         overlay:ClearAllPoints()
         if canNativeAnchor then
             overlay:SetPoint("TOPLEFT", tlFrame, "TOPLEFT", 0, 0)
@@ -340,8 +337,7 @@ function Skin:_RestoreExMergeMember(frame)
     if frame._groupBorderOverlay then frame._groupBorderOverlay:Hide() end
     if frame.SetBorderHidden then frame:SetBorderHidden(false) end
     if GroupManagesMask(frame) then
-        -- Sweep any leftover GROUP mask first — owner-guarded ClearRoundedMaskFromSurfaces (keyed on
-        -- frame._roundedMask) can't remove the _groupRoundedMask this ex-member still carries.
+        -- Sweep any leftover GROUP mask first — owner-guarded ClearRoundedMaskFromSurfaces can't remove the _groupRoundedMask an ex-member still carries.
         for _, tex in ipairs(frame._maskedSurfaces or {}) do
             self:_SetSurfaceMask(tex, nil)
         end

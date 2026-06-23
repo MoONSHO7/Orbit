@@ -39,6 +39,7 @@ never compared, never arithmetic-ed. `combatSources` is already server-ranked so
 - `DamageMeterData:ResolveSessionSource` is the single chokepoint for the `C_DamageMeter.GetCombatSession*` calls — all `AllowedWhenUntainted`, so a secret GUID/creatureID arg throws. it returns `nil` when either identifier is secret, covering every caller (breakdown render, mouse-wheel, row-count, comparison, popup `FitAllSpells`).
 - capture sites (the `EnterBreakdown` drill-in call, `TargetFromSource`) reject or blank a secret GUID/name before it lands in a meter or synthetic def — otherwise it later throws in `UpdateMeterDef`'s `== Plugin.CLEAR` or `BuildTitleText`'s `~= ""`.
 - gather / compare / atlas sites (`GetSpecMatches`, `GatherSpellMatrix`, `PickHistoryAtlas`) guard before the `~=` / table-key / `:sub`; downstream layout math then runs only on laundered plain numbers.
+- combat-end re-fetch: each bar caches a `bar._source` whose `sourceGUID` was captured mid-fight (secret), and secrets never un-secret — so the drill-in's `issecretvalue` gate would stay tripped after combat even though `InCombatLockdown()` has cleared. `PLAYER_REGEN_ENABLED` sets `_renderDirty` so the next UITicker re-renders the bars from a fresh, now-non-secret `C_DamageMeter` fetch. without it the breakdown only un-blocks on a session reset or the next `DAMAGE_METER_*` update.
 
 ## lifecycle
 

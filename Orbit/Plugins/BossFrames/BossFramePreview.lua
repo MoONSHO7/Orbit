@@ -126,8 +126,7 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            -- Boss frames have no format control (no supportsHealthText); the live frame renders the default percent_short
-            -- preset, whose at-rest value is "100%". Honor the disable like the live frame and like CastBar below.
+            -- Boss frames have no format control; the live frame renders the default percent_short preset whose at-rest value is "100%".
             if frame.HealthText then
                 if self.IsComponentDisabled and self:IsComponentDisabled("HealthText") then frame.HealthText:Hide()
                 else

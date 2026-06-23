@@ -158,8 +158,7 @@ C.Settings = {
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
--- Built-in "orbit" style → nil styleEntry → flat-border path; `lsm:`-keyed styles render via edge-file path.
--- The two "orbit-*" rounded styles → slice-border + matching slice mask (see BorderStyle.Rounded below).
+-- "orbit" → nil styleEntry → flat path; `lsm:` → edge-file path; "orbit-*" rounded → slice-border + slice mask (BorderStyle.Rounded).
 local ROUNDED_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Border\\"
 C.BorderStyle = {
     Default = "orbit",
@@ -173,8 +172,7 @@ C.BorderStyle = {
         { label = "Orbit Pixel Rounded", value = "orbit-rounded", rounded = true },
         { label = "Orbit Pixel Rounder", value = "orbit-rounder", rounded = true },
     },
-    -- Slice border + mask share sliceMargin (= corner radius): corners render 1:1, edges stretch, so the
-    -- mask's rounded contour always matches the border at any frame/bar size — no fill clips the corner.
+    -- Slice border + mask share sliceMargin (= corner radius): corners render 1:1, edges stretch, so the mask contour matches the border at any size.
     Rounded = {
         ["orbit-soft"]    = { edgeFile = ROUNDED_PATH .. "orbit-soft.tga",    mask = ROUNDED_PATH .. "orbit-soft-mask.tga",    sliceMargin = 4,  rounded = true },
         ["orbit-rounded"] = { edgeFile = ROUNDED_PATH .. "orbit-rounded.tga", mask = ROUNDED_PATH .. "orbit-rounded-mask.tga", sliceMargin = 8,  rounded = true },

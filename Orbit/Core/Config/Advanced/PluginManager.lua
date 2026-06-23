@@ -28,9 +28,7 @@ local PLUGIN_GROUPS = {
         "Queue Status",
         { label = L.PLG_NAME_TALKING_HEAD, plugins = { "Talking Head" }, triState = true },
         "Minimap", "Minimap Button", "Datatexts",
-        { label = L.PLG_NAME_EXPERIENCE_BAR, plugins = { "Experience Bar" }, triState = true },
-        { label = L.PLG_NAME_HONOR_BAR,      plugins = { "Honor Bar" },      triState = true },
-        { label = L.PLG_NAME_STATUS_BAR_V2,  plugins = { "Status Bar v2" } },
+        { label = L.PLG_NAME_STATUS_BAR_V2,  plugins = { "Status Widget" } },
     }},
 }
 

@@ -217,8 +217,7 @@ function Orbit.GroupFramePreviewMixin:ApplyPreviewVisuals()
                 end
             end
 
-            -- Health text — mirror the live frame's at-rest render: the chosen tokens' samples, blank when the
-            -- at-rest side is empty (a blank format or an empty-rest "& Current"). noFallback keeps parity with live.
+            -- Mirror the live frame's at-rest render: the chosen tokens' samples, blank when the at-rest side is empty (blank format or empty-rest "& Current").
             if frame.HealthText then
                 local fmt = self:GetTierSetting("HealthTextFormat")
                 local mode = self:GetTierSetting("HealthTextMode")

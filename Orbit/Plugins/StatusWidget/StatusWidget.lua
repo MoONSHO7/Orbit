@@ -4,13 +4,15 @@ local L = Orbit.L
 local OrbitEngine = Orbit.Engine
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
-local SYSTEM_ID = "Orbit_StatusBar_v2"
-local FRAME_NAME = "OrbitStatusBarV2"
+local SYSTEM_ID = "Orbit_StatusWidget"
+local FRAME_NAME = "OrbitStatusWidget"
 
 -- Fixed base geometry; the user resizes via Scale (matches MinimapButton/TalkingHead/BagBar), not a pixel size.
 local BASE_SIZE = 120
 local DEFAULT_SCALE = 100
-local DEFAULT_Y = -200
+local SCALE_MIN, SCALE_MAX, SCALE_STEP = 30, 100, 5
+-- Default position: inset from the screen's top-left corner; RestorePosition overrides it from saved layout.
+local DEFAULT_INSET = 24
 -- Center hole as a fraction of diameter — matches the v5 asset's BAND_IN, leaves room for a level-up slot.
 local CENTER_RATIO = 0.66
 
@@ -32,10 +34,7 @@ local SOCIAL_COLOR = { r = 0.20, g = 0.60, b = 1.0 }   -- battle.net blue glow f
 local FLOURISH_SIZE = BASE_SIZE * 1.2
 local IMPACT_DUR = 0.5   -- ring scale-punch + shake duration on a burst flourish
 local SHATTER_FORM_DELAY = 0.30   -- the cracked inner circle forms this far into the shatter shrapnel burst
--- Level-number choreography (manual tween): winds up (floats up + fades in), then SLAMS back down to its
--- lowest point — and the flash/burst/ring-impact detonate on that exact frame (_LevelImpact, fired from
--- the tween at LVLNUM_LAND), so the number is at its most-downward point precisely as the flash goes off.
--- Then it grows on impact and dissolves while drifting larger. Phase end-times (s).
+-- "Slam" tween phase end-times (s): the flash detonates ON the slam (_LevelImpact at LVLNUM_LAND), frame-perfect.
 local LVLNUM_RISE = 0.30   -- windup: rise + fade-in toward the top
 local LVLNUM_LAND = 0.50   -- slam to the lowest point — the flash/impact detonates HERE (frame-perfect)
 local LVLNUM_GROW = 0.78   -- settle to centre + grow punch
@@ -43,21 +42,14 @@ local LVLNUM_FADE = 1.46   -- dissolve while drifting larger (grow + fade still 
 local LVLNUM_RISE_UP = BASE_SIZE * 0.26       -- how far up it floats during the rise
 local LVLNUM_OVERSHOOT = BASE_SIZE * 0.04     -- dip below centre on the solid landing
 local LVLNUM_GROW_PEAK, LVLNUM_GROW_DRIFT = 1.70, 2.10
--- Renown's "grow-in" number motion (no rise/slam): scales up from small in sync with the burst, holds,
--- then dissolves drifting larger. Phase end-times (s); reuses LVLNUM_GROW_PEAK/DRIFT so the size matches.
+-- Renown's "grow-in" phase end-times (s); reuses LVLNUM_GROW_PEAK/DRIFT so its size matches the slam motion.
 local LVLGROW_FROM = 0.40
 local LVLGROW_IN, LVLGROW_HOLD, LVLGROW_FADE = 0.35, 0.95, 1.6
--- The grow motion (renown) holds this long with the old number showing before the new number bursts in and
--- stomps it out — the slam motion's rise already gives the old number its moment; grow has no rise.
+-- Old-number lead before the new renown number stomps in — grow has no rise to give the old one its moment.
 local MILESTONE_GROW_LEAD = 0.35
--- Per-milestone celebration sprites: level-up uses the authentic level-up sheet + the rising up-arrow;
--- renown uses a sparkly starburst (the radiating "starfield" look) + the evergreen renown-toast shine, and
--- NO up-arrow (the arrow is a leveling cue). ArtifactsFX-StarBurst is the Artifact power-up starburst —
--- a distinct starfield sprite, NOT the level-up whitestarburst.
+-- Per-milestone sprites: each gets its own burst + rays (only level-up gets the up-arrow) so they read as distinct.
 local MILESTONE_FX_LEVELUP = { burst = "aftlevelup-whitestarburst", rays = "aftlevelup-lines1",                 arrow = true }
 local MILESTONE_FX_RENOWN  = { burst = "ArtifactsFX-StarBurst",     rays = "evergreen-toast-celebration-shine", arrow = false }
--- Honor (PvP) uses the honor-system prestige flash (a radiant honor-prestige burst) + the PvP rank glow,
--- and no up-arrow — authentic honor art, distinct from the level-up / renown bursts.
 local MILESTONE_FX_HONOR   = { burst = "honorsystem-bar-rewardborder-prestige-flash", rays = "pvpqueue-rankglow", arrow = false }
 -- Blizzard's authentic unlock FX: a 9x9 / 77-frame flipbook (greatVault-anim-unlocked-FX), 160x200 native.
 local VAULT_FX_ATLAS = "greatVault-anim-unlocked-FX"
@@ -81,16 +73,13 @@ local FLOURISH_TEXT_WIDTH = 220
 local FLOURISH_TEXT_GAP = 10
 local FLOURISH_TITLE_SIZE = 30
 local FLOURISH_SUB_SIZE = 26
--- One size for every centre number — the idle "Show Center Number" numeral, the durability %, the milestone
--- number, and the old-number stomp — so they always match (the milestone animation scales its number up FROM
--- this base).
+-- One size for every centre number so they always match (the milestone animation scales its number up from this base).
 local CENTER_NUMBER_SIZE = 40
 local FLOURISH_TITLE_COLOR = { r = 1.0, g = 0.82, b = 0.35 }
 local SOCIAL_ICON_RATIO = 0.45   -- social toast's own icon (BN logo / game icon) shown in the centre
 local LOOT_ICON_RATIO = CENTER_RATIO   -- loot icon fills the hollow centre, circular-masked to a disc
 local LOOT_MASK_TEX = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- soft circular alpha mask (Blizzard portrait mask)
--- Inner-border vignette: the metal border's inner-edge hue (~RGB 40,37,44), a dim cool tint kept dark
--- so it reads as a backdrop, semi-transparent, faded in for the life of any event. Tints INNER_VIGNETTE_TEX.
+-- Inner-border vignette tint: the metal border's inner-edge hue (~RGB 40,37,44), kept dim so it reads as a backdrop.
 local INNER_BACKDROP_COLOR = { r = 0.13, g = 0.12, b = 0.16 }
 local INNER_BACKDROP_ALPHA = 0.55
 local INNER_FADE_IN, INNER_FADE_OUT = 0.3, 0.5
@@ -127,7 +116,7 @@ local WOW_EVENTS = {
 }
 
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
-local Plugin = Orbit:RegisterPlugin("Status Bar v2", SYSTEM_ID, {
+local Plugin = Orbit:RegisterPlugin("Status Widget", SYSTEM_ID, {
     displayName = L.PLG_NAME_STATUS_BAR_V2,
     liveToggle = true,
     defaults = {
@@ -153,13 +142,35 @@ local Plugin = Orbit:RegisterPlugin("Status Bar v2", SYSTEM_ID, {
     },
 })
 
--- Glow palette the milestone / toast modules read (e.g. Plugin.FlourishColors.collect), so the colour
--- constants stay in one place.
+-- Glow palette the milestone / toast modules read (e.g. Plugin.FlourishColors.collect), so the colour constants stay in one place.
 Plugin.FlourishColors = {
     gold = FLOURISH_COLOR, social = SOCIAL_COLOR, mail = MAIL_COLOR,
     collect = COLLECT_COLOR, arcane = ARCANE_COLOR, defeat = DEFEAT_COLOR,
     honor = HONOR_COLOR, rep = REP_COLOR,
 }
+
+-- [ BLIZZARD STATUS BAR ]----------------------------------------------------------------------------
+-- SecureHide (state driver) is the documented contract for hiding status tracking bars (Core/EditMode/README.md).
+local function HideBlizzardStatusBar()
+    if not StatusTrackingBarManager then return end
+    if InCombatLockdown() then
+        if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(HideBlizzardStatusBar) end
+        return
+    end
+    OrbitEngine.NativeFrame:SecureHide(StatusTrackingBarManager)
+end
+
+-- A profile switch can live-disable the orb (liveToggle) with no /reload, so OnDisable hands Blizzard's bar back here.
+local function RestoreBlizzardStatusBar()
+    if not StatusTrackingBarManager then return end
+    if InCombatLockdown() then
+        if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(RestoreBlizzardStatusBar) end
+        return
+    end
+    UnregisterStateDriver(StatusTrackingBarManager, "visibility")
+    StatusTrackingBarManager:Show()
+    if StatusTrackingBarManager.UpdateBarsShown then StatusTrackingBarManager:UpdateBarsShown() end
+end
 
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:OnLoad()
@@ -171,10 +182,9 @@ function Plugin:OnLoad()
     frame.systemIndex = SYSTEM_ID
     frame.editModeName = L.PLU_STATUS_BAR_V2_NAME
     frame.anchorOptions = { horizontal = true, vertical = true }
-    frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y)
+    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", DEFAULT_INSET, -DEFAULT_INSET)
 
-    -- Content wrapper holds every visual so the Animation module can slide/rotate/fade the orb without
-    -- touching the frame's EditMode/RestorePosition-owned anchor (mirrors Portal's content-vs-dock split).
+    -- Content wrapper holds every visual so the Animation module can slide/rotate/fade the orb without touching the frame's EditMode-owned anchor.
     local content = CreateFrame("Frame", nil, frame)
     content:SetAllPoints(frame)
     frame.Content = content
@@ -185,16 +195,13 @@ function Plugin:OnLoad()
     track:SetAllPoints(content)
     frame.Track = track
 
-    -- Tintable groove backdrop: a STATIC white-luminance ring (the track art is baked near-black and can't
-    -- be recoloured by SetVertexColor's multiply; the fill art has a dark->light angular sweep we don't want
-    -- on a backdrop). Full ring under the sweep, tinted by BackdropColor; the sweep paints the mode colour over.
+    -- Tintable groove backdrop: a STATIC white-luminance ring tinted by BackdropColor (the track art is baked near-black so SetVertexColor's multiply can't recolour it).
     local backdropRing = content:CreateTexture(nil, "BACKGROUND", nil, 1)
     backdropRing:SetTexture(BACKDROP_TEX, nil, nil, "TRILINEAR")
     backdropRing:SetAllPoints(content)
     frame.BackdropRing = backdropRing
 
-    -- Rested-XP layer: a second swipe sitting behind the main fill, revealing current+rested. The main
-    -- fill draws over its current portion, so only the rested band (current..current+rested) shows.
+    -- Rested-XP layer: a second swipe behind the main fill revealing current+rested; the main fill draws over its current portion so only the rested band shows.
     local restedFill = CreateFrame("Cooldown", nil, content, "CooldownFrameTemplate")
     restedFill:SetAllPoints(content)
     restedFill:SetFrameLevel(content:GetFrameLevel() + 1)
@@ -233,9 +240,7 @@ function Plugin:OnLoad()
     border:SetAllPoints(borderHost)
     frame.Border = border
 
-    -- Crack overlay above the ring (fill + border), shown ONLY when durability is low (FillModes
-    -- `_SetRingCrack`): dark fracture lines, normal BLEND so it darkens along the cracks. Texture is
-    -- swapped light (20-40%) / heavy (<20%); textureless + hidden until then.
+    -- Crack overlay above the ring, shown only when durability is low (FillModes._SetRingCrack swaps the light/heavy texture); textureless + hidden until then.
     local rcrack = borderHost:CreateTexture(nil, "ARTWORK", nil, 1)
     rcrack:SetAllPoints(borderHost)
     rcrack:Hide()
@@ -271,16 +276,13 @@ function Plugin:OnLoad()
     self:SetupMilestones()
     self:SetupAlertToasts()
     self:SetupFillModes()
+    HideBlizzardStatusBar()
 end
 
--- liveToggle teardown: the framework only hides the orb frame (and unregisters ITS events), so quiesce the
--- centre machine ourselves — the queue timer, the loot reel + its timer, the UIParent-parented OnUpdate
--- drivers, and the held flourish state. `_disabled` then makes Enqueue and the still-installed suppression
--- hooks / aux event frames no-op, so a disabled orb spawns no flourishes and suppresses no Blizzard UI.
--- OnLoad re-runs on re-enable (rebuilding the frame) and clears `_disabled`; the drivers are nil'd here so
--- they rebind to the fresh frame on next use.
+-- liveToggle teardown: the framework only hides the orb frame, so quiesce the centre machine ourselves; _disabled then no-ops Enqueue + the still-installed suppression hooks, and the drivers are nil'd so they rebind to the frame OnLoad rebuilds on re-enable.
 function Plugin:OnDisable()
     self._disabled = true
+    if not Orbit:IsBlizzardHidden("Status Widget") then RestoreBlizzardStatusBar() end
     if not self.frame then return end
     self:_FqCancelTimer()
     self._fqQueue, self._fqActive, self._fqPhase = nil, nil, nil
@@ -295,8 +297,6 @@ end
 -- [ CENTER FX ]--------------------------------------------------------------------------------------
 -- Animation hub for the hollow center + side text. Add new flourish types here as they arrive.
 function Plugin:SetupCenterFX(frame)
-    -- Inner-border vignette: a soft colour matching the metal border's inner edge, gradiented into the
-    -- hollow centre. The sole centre backdrop; faded in for the life of any event, out at the end.
     local inner = frame.Center:CreateTexture(nil, "BACKGROUND")
     inner:SetTexture(INNER_VIGNETTE_TEX, nil, nil, "TRILINEAR")
     inner:SetSize(BASE_SIZE, BASE_SIZE)
@@ -318,10 +318,7 @@ function Plugin:SetupCenterFX(frame)
     innerOut:SetScript("OnFinished", function() inner:Hide() end)
     frame.InnerBackdropOut = innerOut
 
-    -- Unified end-fade for the WHOLE hollow centre (vignette + icon + any FX): at a flourish's fadeout
-    -- phase this fades frame.Center as one group, in lockstep with the side text's FlourishTextOut, so the
-    -- parts never fade at different times (the social toast bug). SetToFinalAlpha holds it at 0 until
-    -- _ExitEvent resets the alpha and hides the children.
+    -- Unified end-fade: fades the WHOLE centre as one group in lockstep with FlourishTextOut so the parts never fade at different times (the social-toast bug); SetToFinalAlpha holds it at 0 until _ExitEvent resets it.
     local cfo = frame.Center:CreateAnimationGroup()
     local cfoA = cfo:CreateAnimation("Alpha")
     cfoA:SetFromAlpha(1); cfoA:SetToAlpha(0); cfoA:SetDuration(0.5)   -- == FlourishTextOut + queue FADE
@@ -335,16 +332,14 @@ function Plugin:SetupCenterFX(frame)
     social:Hide()
     frame.SocialIcon = social
 
-    -- Loot reel: the dropped item's icon, circular-masked to fill the hollow centre (one item at a time).
-    -- On OVERLAY above the glow so the icon stays crisp through the per-item quality burst.
+    -- Loot reel: the dropped item's icon, circular-masked to fill the centre, on OVERLAY above the glow so it stays crisp through the per-item quality burst.
     local loot = frame.Center:CreateTexture(nil, "OVERLAY", nil, 3)
     loot:SetPoint("CENTER")
     loot:SetSize(BASE_SIZE * LOOT_ICON_RATIO, BASE_SIZE * LOOT_ICON_RATIO)
     loot:SetTexCoord(0.07, 0.93, 0.07, 0.93)   -- trim the default icon border before the circular crop
     loot:Hide()
     frame.LootIcon = loot
-    -- Circular alpha mask crops the square icon to a disc; CLAMPTOBLACKADDITIVE makes everything past the
-    -- mask's edge fully transparent. The mask binds to the texture object, so it survives SetTexture swaps.
+    -- Circular alpha mask crops the icon to a disc; it binds to the texture object so it survives the per-item SetTexture swaps.
     local lootMask = frame.Center:CreateMaskTexture()
     lootMask:SetAllPoints(loot)
     lootMask:SetTexture(LOOT_MASK_TEX, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -418,9 +413,7 @@ function Plugin:SetupCenterFX(frame)
     frame.FlourishFXAnim = fxAnim
     frame.FlourishFlip = flip   -- re-pointed to the unlock / upgrade sheet per flourish
 
-    -- A separate static texture holds the final frame during the linger. The FlipBook reverts the
-    -- flipbook texture's texcoords after OnFinished, so pinning it there gets overwritten — pin a
-    -- texture nothing animates instead. The flourish queue owns when it clears (no self-timer here).
+    -- A separate static texture holds the final frame during the linger: the FlipBook reverts the flipbook texture's texcoords after OnFinished, so pinning it there gets overwritten.
     local fxFinal = frame.Center:CreateTexture(nil, "OVERLAY", nil, 2)
     fxFinal:SetAtlas(VAULT_FX_ATLAS)
     fxFinal:SetSize(VAULT_FX_W, VAULT_FX_H)
@@ -460,8 +453,7 @@ function Plugin:SetupCenterFX(frame)
     local sub = text:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
     sub:SetJustifyH("LEFT"); sub:SetWordWrap(false)
-    -- Fade-in holds at full alpha; the flourish queue owns when the text leaves (FlourishTextOut is the
-    -- queue's "end animation", played only when the run idles out).
+    -- Fade-in holds at full alpha; the queue owns when the text leaves (FlourishTextOut, played only when the run idles out).
     local textIn = text:CreateAnimationGroup()
     local tIn = textIn:CreateAnimation("Alpha")
     tIn:SetFromAlpha(0); tIn:SetToAlpha(1); tIn:SetDuration(0.3)
@@ -478,8 +470,6 @@ function Plugin:SetupCenterFX(frame)
     frame.FlourishTextAnim = textIn
     frame.FlourishTextOut = textOut
 
-    -- Optional idle-centre numeral (level / renown / honor level / fill value), shown when no flourish owns
-    -- the centre and the cracked-metal durability warning isn't up.
     local num = frame.Center:CreateFontString(nil, "ARTWORK")
     num:SetPoint("CENTER")
     num:SetJustifyH("CENTER")
@@ -491,8 +481,6 @@ function Plugin:SetupCenterFX(frame)
     self:ApplyFlourishFont()
 end
 
--- Durability-break shatter: metal shrapnel bursting outward (additive), scaled-up + faded. Reuses the
--- shared impact set (ring flash + punch + orb shake) at render time — see _RenderShatter.
 function Plugin:_BuildShatterFX(frame)
     local shards = frame.Center:CreateTexture(nil, "OVERLAY", nil, 4)
     shards:SetTexture(SHARDBURST_TEX, nil, nil, "TRILINEAR"); shards:SetBlendMode("ADD")
@@ -505,8 +493,6 @@ function Plugin:_BuildShatterFX(frame)
     frame.Shards, frame.ShardsAnim = shards, sa
 end
 
--- The marquee level-up production: a layered light burst + radiating rays, a rising up-arrow, the new
--- level number popping in, a gold ring flash, and a whole-orb shake — choreographed in _RenderLevelUp.
 function Plugin:_BuildLevelUpFX(frame)
     local center, content = frame.Center, frame.Content
 
@@ -522,9 +508,7 @@ function Plugin:_BuildLevelUpFX(frame)
     ra:SetScript("OnPlay", function() rays:Show() end); ra:SetScript("OnFinished", function() rays:Hide() end)
     frame.LevelRays, frame.LevelRaysAnim = rays, ra
 
-    -- the OLD level / renown number — fades in quick during the fill sweep, then gets STOMPED OUT (crushes
-    -- down + drops + fades) when the new number lands (_LevelImpact). Created before LevelNumber so the new
-    -- number draws on top of it. Dim so the bright new number dominates.
+    -- the OLD level / renown number, stomped out when the new one lands; created before LevelNumber so the new number draws on top of it.
     local oldNum = center:CreateFontString(nil, "OVERLAY")
     oldNum:SetPoint("CENTER"); oldNum:SetJustifyH("CENTER"); oldNum:Hide()
     frame.OldNumber = oldNum
@@ -540,8 +524,7 @@ function Plugin:_BuildLevelUpFX(frame)
     oldOut:SetScript("OnFinished", function() oldNum:Hide(); oldNum:SetScale(1) end)
     frame.OldNumberOutAnim = oldOut
 
-    -- the big milestone number — choreographed by a manual tween in _PlayMilestoneNumber (slam for level-up,
-    -- grow-in for renown). Anchored dead-centre; the tween offsets it vertically and scales it from there.
+    -- the big milestone number, anchored dead-centre; _PlayMilestoneNumber's manual tween offsets and scales it from there.
     local lvl = center:CreateFontString(nil, "OVERLAY")
     lvl:SetPoint("CENTER"); lvl:SetJustifyH("CENTER"); lvl:Hide()
     frame.LevelNumber = lvl
@@ -567,8 +550,7 @@ function Plugin:_BuildLevelUpFX(frame)
     bf:SetScript("OnPlay", function() bflash:Show() end); bf:SetScript("OnFinished", function() bflash:Hide() end)
     frame.BorderFlash, frame.BorderFlashAnim = bflash, bf
 
-    -- whole-orb shake: a Translation oscillation on the content wrapper (auto-reverts; composes with the
-    -- reveal's SetPoint). Deltas sum to ~0 so it returns to rest.
+    -- whole-orb shake: a Translation oscillation on the content wrapper whose deltas sum to ~0 so it returns to rest.
     local shake = content:CreateAnimationGroup()
     local deltas = { {8, 5}, {-15, -9}, {12, 7}, {-9, -5}, {5, 3}, {-1, -1} }
     for i, dxy in ipairs(deltas) do
@@ -602,8 +584,7 @@ function Plugin:ApplyFlourishFont()
     end
 end
 
--- Optional centre numeral: shows the bare level — record.numeral (e.g. the renown number, not "Renown 11")
--- falling back to record.level — while the orb is idle and the cracked-metal durability warning isn't up.
+-- Optional idle centre numeral: record.numeral (the bare renown number, not "Renown 11") falling back to record.level.
 function Plugin:_UpdateNumeral(record)
     local num = self.frame.CenterNumber
     if not num or self._durabilityWarn then return end   -- the durability % owns the centre when low
@@ -627,10 +608,6 @@ function Plugin:_PlayGlow(color)
     self.frame.FlourishAnim:Play()
 end
 
--- Shared: set + reveal the side text (single line centered, two lines straddle the middle). holdTime
--- is how long it stays at full alpha before fading.
--- The text block anchors away from the screen edge: orb on the left half grows the text right, on
--- the right half grows it left; one line centres on the orb's middle, two lines straddle it.
 function Plugin:_ShowFlourishText(title, subtitle, titleColor)
     local text = self.frame.FlourishText
     text.Title:SetText(title or "")
@@ -663,10 +640,6 @@ function Plugin:_ShowFlourishText(title, subtitle, titleColor)
 end
 
 -- [ STATE: TRANSIENT EVENTS ]------------------------------------------------------------------------
--- A transient event (vault/social/mail) owns the hollow centre while active: entering one clears any
--- prior centre icon/backdrop; leaving it (when the text fade finishes) clears them again. `_event` is
--- the active event; the radial fill underneath is left to ResolveMode (xp/rep/honor), unchanged by an event.
--- Hide every centre FX layer so the next flourish (or the idle exit) starts from a clean slate.
 function Plugin:_ClearCenterFX()
     local frame = self.frame
     if self._mailTimer then self._mailTimer:Cancel(); self._mailTimer = nil end
@@ -692,8 +665,7 @@ function Plugin:_ClearCenterFX()
     -- Idle-centre layers yield to a flourish.
     if frame.CrackedMetal then frame.CrackedMetalPulse:Stop(); frame.CrackedMetal:Hide() end
     if frame.CenterNumber then frame.CenterNumber:Hide() end
-    -- Side text is parented to the orb (not Center), so the CenterFadeOut group never touches it — reset it
-    -- here so a following flourish with no side text (e.g. level-up) doesn't keep the prior one's text shown.
+    -- Side text is parented to the orb (not Center) so CenterFadeOut never touches it — reset it here so a following flourish without side text doesn't keep the prior one's.
     frame.FlourishTextAnim:Stop(); frame.FlourishTextOut:Stop()
     frame.FlourishText:Hide(); frame.FlourishText:SetAlpha(0)
 end
@@ -710,8 +682,7 @@ end
 function Plugin:_ExitEvent()
     self._event = nil
     local frame = self.frame
-    -- The CenterFadeOut group already faded the vignette out (with everything else); snap it clean so the
-    -- alpha reset below doesn't pop it back, and mark it hidden so _RefreshInner (via UpdateBar) is a no-op.
+    -- CenterFadeOut already faded the vignette out; snap it clean so the alpha reset below doesn't pop it back, and mark it hidden so _RefreshInner (via UpdateBar) no-ops.
     frame.CenterFadeOut:Stop()
     frame.InnerBackdropIn:Stop(); frame.InnerBackdropOut:Stop()
     frame.InnerBackdrop:Hide(); frame.InnerBackdrop:SetAlpha(0)
@@ -722,9 +693,7 @@ function Plugin:_ExitEvent()
     self:ConcealOrb()
 end
 
--- The inner-border vignette (the toasts' backdrop) is shown while a flourish owns the centre, faded out
--- otherwise. The durability warning fills the centre with the cracked-metal disc instead, so it doesn't use
--- the vignette. Only re-fades on a state change so frequent UpdateBar calls don't restart the animation.
+-- Show the vignette while a flourish owns the centre; only re-fade on a state change so frequent UpdateBar calls don't restart the animation.
 function Plugin:_RefreshInner()
     local want = (self._event ~= nil) and true or false
     if want == self._innerShown then return end
@@ -747,14 +716,12 @@ function Plugin:_FadeInner(show)
     end
 end
 
--- GreatVault.lua calls this on a vault event. Public entry points enqueue a request; the queue calls
--- the matching _Render* (after _EnterEvent has cleared the centre) and owns the hold/linger timing.
+-- Public Play* entry points enqueue a request; the queue calls the matching _Render* after _EnterEvent clears the centre, and owns the hold/linger timing.
 function Plugin:PlayVaultFlourish(title, subtitle, upgrade)
     self:Enqueue({ kind = "vault", render = function(p) p:_RenderVault(title, subtitle, upgrade) end })
 end
 function Plugin:_RenderVault(title, subtitle, upgrade)
     local frame = self.frame
-    if not frame.FlourishFXAnim then return end
     self:_PlayGlow(FLOURISH_COLOR)
     local atlas = upgrade and VAULT_UP_FX_ATLAS or VAULT_FX_ATLAS
     frame.FlourishFX:SetAtlas(atlas)
@@ -800,8 +767,6 @@ function Plugin:_RenderMail(title, subtitle)
 end
 
 -- [ GENERIC FLOURISHES ]-----------------------------------------------------------------------------
--- Shared by the milestone (level-up / renown) and reward-toast modules. Public Play* enqueue; the queue
--- calls the matching _Render* after the centre is cleared.
 
 -- A disc-masked icon (reuses the loot icon disc) + glow + text — collectibles, recipes, spell, etc.
 function Plugin:PlayIconFlourish(icon, color, title, subtitle, coords)
@@ -838,10 +803,6 @@ function Plugin:_RenderBurst(atlas, color, title, subtitle)
     self:_ShowFlourishText(title, subtitle, color)
 end
 
--- The milestone marquee — the level-up FX family: an in-orb light burst + rays, a rising up-arrow, the big
--- centre number, a ring flash, the ring punching, and the whole orb shaking, all tinted per milestone.
--- Level-up is gold with the level number and no side text; renown is the rep colour with the renown level
--- and the faction name beside the orb.
 function Plugin:PlayLevelUpFlourish(level)
     self:Enqueue({ kind = "levelup", render = function(p) p:_RenderLevelUp(level) end })
 end
@@ -852,9 +813,7 @@ function Plugin:PlayHonorFlourish(level, oldLevel)
     self:Enqueue({ kind = "honor", render = function(p) p:_RenderHonor(level, oldLevel) end })
 end
 
--- value = the big centre number; color tints the whole impact set + the number; motion is "slam" (level-up)
--- or "grow" (renown); sideTitle is optional text beside the orb (the faction name for renown); oldValue is
--- the previous level/renown shown dim through the sweep, stomped out when the new number lands.
+-- value is the big centre number; color tints the impact set + number; motion is "slam" (level-up) or "grow" (renown); oldValue is the previous number, stomped out when the new one lands.
 function Plugin:_RenderMilestone(value, color, motion, sideTitle, oldValue, fx)
     local frame = self.frame
     self._lvlImpactColor = color
@@ -886,15 +845,12 @@ function Plugin:_RenderRenown(level, faction, oldLevel)
     self:_RenderMilestone(level, self:GetColor("RepColor", self.FlourishColors.rep), "grow", faction, oldLevel, MILESTONE_FX_RENOWN)
 end
 
--- Honor (PvP) level-up: honor red, the slam motion (an impactful martial beat), the honor level as the big
--- number with an "Honor" label, the honor-system prestige flash + rank glow.
+-- Honor (PvP) level-up: honor red, the slam motion, the honor level as the big number (no side label), prestige flash + rank glow.
 function Plugin:_RenderHonor(level, oldLevel)
-    self:_RenderMilestone(level, self:GetColor("HonorColor", HONOR_COLOR), "slam", L.PLU_HONOR_NAME, oldLevel, MILESTONE_FX_HONOR)
+    self:_RenderMilestone(level, self:GetColor("HonorColor", HONOR_COLOR), "slam", nil, oldLevel, MILESTONE_FX_HONOR)
 end
 
--- The impact set: glow, burst, rays, the up-arrow (level-up only), ring flash, ring punch and orb shake,
--- fired together. Driven by the number tween — at the slam frame for level-up, or after the old-number lead
--- for a renown grow-in. This is when the new number "lands", so the old number is stomped out here.
+-- The impact set, fired by the number tween when the new number "lands" (the slam frame for level-up, after the old-number lead for renown), so the old number is stomped out here.
 function Plugin:_LevelImpact()
     local frame = self.frame
     if self._hasOldNumber then
@@ -911,9 +867,7 @@ function Plugin:_LevelImpact()
     frame.WidgetShake:Stop(); frame.WidgetShake:Play()
 end
 
--- Durability break: fired once on each downward crossing of 40% / 20% (FillModes._UpdateCrackedMetal).
--- Armour shears apart — shrapnel bursts out, the ring flashes the warn colour, the orb recoils hard, and
--- the inner cracked circle forms MID-blast. As weighty as the level-up: same impact set, a harder beat.
+-- Durability break, fired once on each downward crossing of 40% / 20% (FillModes._UpdateCrackedMetal): shrapnel + the shared impact set, with the inner cracked circle forming mid-blast.
 function Plugin:PlayShatterFlourish(broken)
     self:Enqueue({ kind = "shatter", render = function(p) p:_RenderShatter(broken) end })
 end
@@ -927,8 +881,7 @@ function Plugin:_RenderShatter(broken)
     frame.BorderFlashAnim:Stop(); frame.BorderFlashAnim:Play()
     self:_RingImpact()
     frame.WidgetShake:Stop(); frame.WidgetShake:Play()
-    -- The inner cracked circle forms MID-explosion (not before, not after): reveal the persistent
-    -- cracked-metal warning partway through the shrapnel burst, as if the blast leaves it behind.
+    -- The inner cracked circle forms mid-explosion: reveal the persistent warning partway through the burst, as if the blast leaves it behind.
     C_Timer.After(SHATTER_FORM_DELAY, function()
         if self._event ~= "shatter" then return end   -- a later flourish took over the centre
         self:_RandomizeCrackedMetal()
@@ -937,8 +890,7 @@ function Plugin:_RenderShatter(broken)
     end)
 end
 
--- Give a burst flourish weight: a quick scale punch-bounce on the whole ring (content) plus a decaying
--- rotational shake on the ring art, hand-tweened so it overshoots and settles rather than easing flatly.
+-- Burst weight: a scale punch-bounce on Content + a decaying rotational shake on the ring art, hand-tweened so it overshoots and settles rather than easing flatly.
 function Plugin:_RingImpact()
     local frame = self.frame
     self._impactT = 0
@@ -948,8 +900,7 @@ function Plugin:_RingImpact()
         d:SetScript("OnUpdate", function(driver, elapsed)
             self._impactT = self._impactT + elapsed
             local t = self._impactT / IMPACT_DUR
-            -- The Rotate-Slide reveal owns the ring textures' rotation (it tweens the same five); leave them
-            -- to it in that mode and only punch the Content scale, so the two drivers never fight.
+            -- The Rotate-Slide reveal owns the ring textures' rotation, so in that mode punch only the Content scale and the two drivers never fight.
             local skipRot = self:_RotateRevealOwnsRing()
             if t >= 1 then
                 frame.Content:SetScale(1)
@@ -973,14 +924,9 @@ function Plugin:_RingImpact()
     self._impactDriver:Show()
 end
 
--- The milestone number's choreography (manual tween, like _RingImpact). Two motions:
---  "slam" (level-up): floats up + fades in toward the top during the burst, then drops solidly back to
---         centre (a slight dip below, then settle) — the flash detonates on that landing (_LevelImpact,
---         fired here at LVLNUM_LAND) — grows on impact, and dissolves while drifting larger.
---  "grow" (renown): scales up from small in sync with the burst (the impact fires immediately, before the
---         tween), holds at peak, then dissolves while drifting larger — no rise, no slam, no bounce.
-local function easeOut(p) return 1 - (1 - p) * (1 - p) end
-local function easeIn(p) return p * p end
+-- The milestone number's choreography (manual tween): "slam" (level-up) detonates _LevelImpact at the landing (LVLNUM_LAND); "grow" (renown) scales up from small with the impact firing immediately.
+local function EaseOut(p) return 1 - (1 - p) * (1 - p) end
+local function EaseIn(p) return p * p end
 
 function Plugin:_PlayMilestoneNumber(value, motion)
     local frame = self.frame
@@ -990,8 +936,7 @@ function Plugin:_PlayMilestoneNumber(value, motion)
     self._lvlNumT = 0
     self._lvlNumMotion = motion
     self._lvlImpactFired = false   -- slam fires at the landing; grow fires after the old-number lead (below)
-    -- Snapshot the grow lead ONCE: _LevelImpact clears _hasOldNumber, so re-reading it per-frame would
-    -- collapse the lead to 0 the frame after the impact and skip the whole grow-in (slam ignores the lead).
+    -- Snapshot the grow lead ONCE: _LevelImpact clears _hasOldNumber, so re-reading it per-frame would collapse the lead to 0 and skip the grow-in.
     self._lvlLead = (motion == "grow" and self._hasOldNumber) and MILESTONE_GROW_LEAD or 0
     if not self._lvlNumDriver then
         local d = CreateFrame("Frame", nil, UIParent)
@@ -1010,7 +955,7 @@ function Plugin:_PlayMilestoneNumber(value, motion)
                 local scale, alpha = LVLNUM_GROW_PEAK, 1
                 if g < LVLGROW_IN then
                     local p = g / LVLGROW_IN
-                    scale = LVLGROW_FROM + (LVLNUM_GROW_PEAK - LVLGROW_FROM) * easeOut(p)
+                    scale = LVLGROW_FROM + (LVLNUM_GROW_PEAK - LVLGROW_FROM) * EaseOut(p)
                     alpha = math.min(1, g / 0.18)
                 elseif g < LVLGROW_HOLD then
                     scale = LVLNUM_GROW_PEAK
@@ -1032,15 +977,15 @@ function Plugin:_PlayMilestoneNumber(value, motion)
             local yOff, scale, alpha = 0, 1, 1
             if t < LVLNUM_RISE then                                   -- rise + fade in toward the top
                 local p = t / LVLNUM_RISE
-                yOff = LVLNUM_RISE_UP * easeOut(p)
+                yOff = LVLNUM_RISE_UP * EaseOut(p)
                 alpha = math.min(1, t / 0.16)
             elseif t < LVLNUM_LAND then                              -- solid drop, dipping just below centre
                 local p = (t - LVLNUM_RISE) / (LVLNUM_LAND - LVLNUM_RISE)
-                yOff = LVLNUM_RISE_UP + (-LVLNUM_OVERSHOOT - LVLNUM_RISE_UP) * easeIn(p)
+                yOff = LVLNUM_RISE_UP + (-LVLNUM_OVERSHOOT - LVLNUM_RISE_UP) * EaseIn(p)
             elseif t < LVLNUM_GROW then                              -- settle to centre + grow punch
                 local p = (t - LVLNUM_LAND) / (LVLNUM_GROW - LVLNUM_LAND)
-                yOff = -LVLNUM_OVERSHOOT * (1 - easeOut(p))
-                scale = 1 + (LVLNUM_GROW_PEAK - 1) * easeOut(p)
+                yOff = -LVLNUM_OVERSHOOT * (1 - EaseOut(p))
+                scale = 1 + (LVLNUM_GROW_PEAK - 1) * EaseOut(p)
             elseif t < LVLNUM_FADE then                              -- dissolve while drifting larger
                 local p = (t - LVLNUM_GROW) / (LVLNUM_FADE - LVLNUM_GROW)
                 scale = LVLNUM_GROW_PEAK + (LVLNUM_GROW_DRIFT - LVLNUM_GROW_PEAK) * p
@@ -1059,8 +1004,7 @@ function Plugin:_PlayMilestoneNumber(value, motion)
     self._lvlNumDriver:Show()
 end
 
--- Hand off from the burst to the held final frame. Copy the flipbook's exact texcoords (read here,
--- before the FlipBook reverts them) so the held frame matches it — no jump. The queue clears it later.
+-- Hand off to the held final frame: copy the flipbook's texcoords here, before the FlipBook reverts them, so the held frame matches it with no jump.
 function Plugin:HoldVaultFX()
     local frame = self.frame
     if not frame then return end
@@ -1086,8 +1030,7 @@ function Plugin:SetupInteraction()
         GameTooltip:Hide()
         self:ConcealOrb()
     end)
-    -- Left-click opens the panel the orb shows (or the Great Vault during a vault flourish); right-click
-    -- opens the source menu (choose what shows at rest / on Shift).
+    -- Left-click opens the panel the orb shows (or the Great Vault during a vault flourish); right-click opens the source menu.
     frame:HookScript("OnMouseUp", function(_, button)
         if Orbit:IsEditMode() then return end
         if button == "RightButton" then self:OpenSourceMenu(); return end
@@ -1101,8 +1044,6 @@ function Plugin:OpenGreatVault()
     if WeeklyRewards_ShowUI then WeeklyRewards_ShowUI() end
 end
 
--- Mode-aware click: honor opens the PvP UI, currency the character sheet's currency tab, everything else
--- the paperdoll (which carries xp, rep and durability).
 function Plugin:OpenForMode()
     local mode = self.record and self.record.mode
     if mode == MODE_HONOR then
@@ -1133,8 +1074,7 @@ function Plugin:OnEvent()
 end
 
 -- [ MODE RESOLUTION ]--------------------------------------------------------------------------------
--- A configured source key ("auto"/"xp"/"rep"/"honor"/"currency") maps to a concrete mode. "auto" is xp
--- while leveling, reputation once capped (xp disabled / max level).
+-- A source key maps to a concrete mode; "auto" is xp while leveling, reputation once capped (xp disabled / max level).
 function Plugin:_ResolveSource(source)
     if source == "xp" then return MODE_XP
     elseif source == "rep" then return MODE_REP
@@ -1146,10 +1086,7 @@ function Plugin:_ResolveSource(source)
     return MODE_REP
 end
 
--- The orb shows the primary source at rest; hovering with Shift held swaps to the secondary (both set
--- via the right-click menu, default primary=auto / secondary=honor). Re-resolved live on hover and on
--- MODIFIER_STATE_CHANGED so Shift flips it while the cursor is over the bar. The active slot's picked
--- currency id is stashed for CurrencyRecord (each slot tracks its own currency).
+-- Primary source at rest; hover+Shift swaps to the secondary (re-resolved on hover and MODIFIER_STATE_CHANGED so Shift flips it live), stashing the active slot's currency id for CurrencyRecord.
 function Plugin:ResolveMode()
     local source, currencyKey
     local secondary = self:GetSetting(SYSTEM_ID, "SecondarySource")
@@ -1191,8 +1128,7 @@ function Plugin:_AutoRecord()
     return self:BuildRepRecord()
 end
 
--- Reputation spans come from plain (non-secret) C_Reputation data, reduced to a 0-based current/max.
--- The whole rep bar uses one configurable RepColor (renown / paragon / standing share it).
+-- Reputation spans come from plain (non-secret) C_Reputation data, reduced to a 0-based current/max; renown / paragon / standing all share one configurable RepColor.
 function Plugin:BuildRepRecord()
     local repColor = self:GetColor("RepColor", REP_COLOR)
     local watched = C_Reputation and C_Reputation.GetWatchedFactionData and C_Reputation.GetWatchedFactionData()
@@ -1240,8 +1176,7 @@ function Plugin:UpdateBar()
     self:_UpdateNumeral(record)       -- optional idle centre numeral
 end
 
--- Pass the secret value through only as a non-secret ratio; guard the Lua division so a secret read
--- holds the last displayed sweep instead of throwing (mirrors StatusBarBase:SetFill).
+-- Guard the Lua division so a secret current/max holds the last displayed sweep instead of throwing (mirrors StatusBarBase:SetFill).
 function Plugin:RenderFill(record)
     local fill, restedFill = self.frame.Fill, self.frame.RestedFill
     local color = record.color
@@ -1283,8 +1218,7 @@ function Plugin:RefreshTooltip()
     self:ShowTooltip()
 end
 
--- A durability breakdown (per damaged slot + repair cost), shown only when gear is actually damaged —
--- mirrors the Durability datatext so a hover over the orb tells the same story.
+-- A durability breakdown (per damaged slot + repair cost), shown only when gear is actually damaged; mirrors the Durability datatext.
 function Plugin:_AppendDurabilityTooltip(tt)
     local rows
     for _, s in ipairs(DURA_TT_SLOTS) do
@@ -1329,8 +1263,7 @@ function Plugin:ApplySettings()
     frame:SetScale((self:GetSetting(SYSTEM_ID, "Scale") or DEFAULT_SCALE) / 100)
     self:ApplyFlourishFont()
 
-    -- Backdrop tint rides the white-luminance fill ring (not the un-tintable near-black track art);
-    -- fill colours apply per-mode in RenderFill.
+    -- Backdrop tint rides the white-luminance fill ring (not the un-tintable near-black track art); fill colours apply per-mode in RenderFill.
     local bg = self:GetColor("BackdropColor", BACKDROP_COLOR)
     frame.BackdropRing:SetVertexColor(bg.r, bg.g, bg.b, bg.a or 1)
 
@@ -1359,7 +1292,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         L.PLU_SB_TAB_LAYOUT)
 
     if currentTab == L.PLU_SB_TAB_LAYOUT then
-        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, { default = DEFAULT_SCALE })
+        SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, nil, { default = DEFAULT_SCALE, min = SCALE_MIN, max = SCALE_MAX, step = SCALE_STEP })
     elseif currentTab == L.PLU_SB_TAB_COLOR then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "XPColor",       label = L.PLU_SB_XP_COLOR,         singleColor = true })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "RestedColor",   label = L.PLU_SB_V2_RESTED_COLOR,  singleColor = true })
@@ -1405,3 +1338,7 @@ function Plugin:AddSettings(dialog, systemFrame)
 
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end
+
+-- [ BLIZZARD HIDER ]---------------------------------------------------------------------------------
+-- PluginManager "Both disabled" tri-state: plugin off, but the user still wants Blizzard's bar gone.
+Orbit:RegisterBlizzardHider("Status Widget", HideBlizzardStatusBar)

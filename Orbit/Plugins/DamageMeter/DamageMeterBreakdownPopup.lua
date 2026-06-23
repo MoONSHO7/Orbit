@@ -14,8 +14,6 @@ local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
 
 -- [ REGISTRY ] --------------------------------------------------------------------------------------
--- mouseoverPopup is a non-interactive singleton that follows the hovered bar; detachedPopups holds at
--- most one draggable window per meter. Both are transient — nothing here writes to SavedVariables.
 local mouseoverPopup
 local detachedPopups = {}
 
@@ -57,9 +55,7 @@ local function TargetFromSource(src, displayName)
     }
 end
 
--- Both popups show the full breakdown (no scroll) — override the inherited bar count with the source's
--- actual row count. `#combatSpells` is the array length, never a secret. Capped at the meter's own
--- MaxBarsStretch ceiling so a pathological source can't allocate a multi-thousand-pixel frame.
+-- `#combatSpells` is array length (never secret); cap at MaxBarsStretch so a pathological source can't allocate a multi-thousand-pixel frame.
 local function FitAllSpells(def)
     local sd = OrbitEngine.DamageMeterData:ResolveSessionSource(
         def.sessionID, def.sessionType, def.meterType,
@@ -70,8 +66,6 @@ local function FitAllSpells(def)
 end
 
 -- [ PLACEMENT ] -------------------------------------------------------------------------------------
--- Anchor the popup beside the meter, flipping on whichever edges lack room: horizontally to the meter's
--- left, and vertically (top corner → grow up from the bottom corner) when a tall popup would run off-screen.
 local function AnchorBeside(popup, meterFrame)
     popup:ClearAllPoints()
     local right, top = meterFrame:GetRight(), meterFrame:GetTop()
@@ -209,8 +203,7 @@ end
 -- [ RENDER & LIFECYCLE ] ----------------------------------------------------------------------------
 -- Called from RenderAllMeters so popups stay live with the data and re-inherit meter restyles each pass.
 function Plugin:RenderBreakdownPopups()
-    -- Breakdown source GUIDs go secret in combat; this ticker can fire in the window before
-    -- PLAYER_REGEN_DISABLED hides popups, so guard here too rather than feed a secret GUID to the API.
+    -- Source GUIDs go secret in combat and this ticker can fire before PLAYER_REGEN_DISABLED hides popups, so guard here too.
     if InCombatLockdown() then
         self:HideAllBreakdownPopups()
         return

@@ -33,8 +33,7 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     if frame._groupBorderActive and (not gbo or not gbo:IsShown()) then nineSliceStyle = nil end
     local anchorTarget = (gbo and gbo:IsShown()) and gbo or nil
 
-    -- Rounded styles → slice border tinted with the highlight colour; LSM edge-file → "legacy"; flat "Orbit"
-    -- (nil style) → "pixel" WHITE8x8 backdrop.
+    -- Rounded → tinted slice border; LSM edge-file → "legacy"; flat "Orbit" (nil style) → "pixel" WHITE8x8 backdrop.
     local pathType
     if nineSliceStyle and nineSliceStyle.rounded then pathType = "rounded"
     elseif nineSliceStyle and nineSliceStyle.edgeFile then pathType = "legacy"

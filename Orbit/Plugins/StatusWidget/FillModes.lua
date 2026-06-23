@@ -1,12 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ FILL MODES + DURABILITY WARNING ]----------------------------------------------------------------
--- Currency is a selectable source (right-click menu / PrimarySource). Durability is NOT a source — it's an always-on
--- centre warning: whenever equipped gear drops low the orb's forged ring cracks inward (cracked metal)
--- tinted yellow then red, with the % in the centre, regardless of what the ring is showing.
 local CRACKEDMETAL_BASE = "Interface\\AddOns\\Orbit\\Core\\assets\\Radial\\orbit-radial-crackedmetal-"
 local CRACKEDMETAL_VARIANTS = 6   -- numbered fracture set; one is picked at random (+ a random spin) per warning
 -- Ring crack overlay (durability-gated): light at 20-40%, heavy (more cracks) at <20%.
@@ -20,10 +17,6 @@ local DURA_CRIT_COLOR = { r = 1.0, g = 0.25, b = 0.18 }   -- red (faster pulse)
 
 function Plugin:SetupFillModes()
     local frame = self.frame
-    -- Cracked-metal disc fills the whole hollow centre. It lives on frame.Content at BACKGROUND sublevel -2 —
-    -- BENEATH the ring/border/background (track is BACKGROUND 0) — so the annular ring art frames it and covers
-    -- its outer edge, while it shows through the (transparent-centred) ring in the hollow. On Content so it
-    -- rides the reveal animation. Cleared by _ClearCenterFX while a flourish owns the centre.
     local metal = frame.Content:CreateTexture(nil, "BACKGROUND", nil, -2)
     metal:SetAllPoints(frame.Content)
     metal:Hide()
@@ -68,9 +61,6 @@ function Plugin:_DurabilityPct()
     return cur / max
 end
 
--- The currency to show: the one picked in the source menu (ResolveMode stashes _activeCurrencyID per slot),
--- else the first backpack-tracked currency. Only currencies with a KNOWN CAP drive a fill — one without a
--- max falls back to the auto (xp/rep) source rather than fabricating a ceiling.
 function Plugin:CurrencyRecord()
     local C = C_CurrencyInfo
     if not C or not C.GetCurrencyInfo then return self:_AutoRecord() end
@@ -89,9 +79,7 @@ function Plugin:CurrencyRecord()
              color = self.FlourishColors.gold }
 end
 
--- The currency the orb tracks as its PRIMARY at-rest source — the picked PrimaryCurrencyID, else the first
--- backpack-tracked currency. Gates the gain flourish without relying on _currencyID (a CurrencyRecord side
--- effect that's nil when the picked/backpack currency is uncapped).
+-- Gates the gain flourish without relying on _currencyID (a CurrencyRecord side effect, nil when the picked/backpack currency is uncapped).
 function Plugin:_TrackedCurrencyID()
     local id = self:GetSetting(self.system, "PrimaryCurrencyID")
     if id and id > 0 then return id end
@@ -107,9 +95,7 @@ function Plugin:_CurrencyMax(info)
     return 0
 end
 
--- Discovered currencies with a known cap, for the source menu's currency picker. Mirrors the character-pane
--- currency list (`GetCurrencyListInfo` carries `currencyID`); headers / unused entries are skipped. Currencies
--- under a collapsed header are absent from the list, exactly as in Blizzard's own currency tab.
+-- Mirrors the character-pane currency list, so currencies under a collapsed header are absent (Blizzard's GetCurrencyListInfo skips them).
 function Plugin:_EligibleCurrencies()
     local C = C_CurrencyInfo
     local out = {}
@@ -124,8 +110,7 @@ function Plugin:_EligibleCurrencies()
     return out
 end
 
--- Pick a random fracture variant and a random rotation, so the cracked metal looks different each time it
--- appears (per /reload and per fresh low-durability warning). Spin via Texture:SetRotation (untainted).
+-- Spin via Texture:SetRotation (untainted).
 function Plugin:_RandomizeCrackedMetal()
     local metal = self.frame.CrackedMetal
     if not metal then return end
@@ -133,15 +118,12 @@ function Plugin:_RandomizeCrackedMetal()
     metal:SetRotation(math.random() * 2 * math.pi)
 end
 
--- Always-on durability warning, driven from UpdateBar (and UPDATE_INVENTORY_DURABILITY). Idle only;
--- yields to any flourish. Sets self._durabilityWarn so the numeral defers to the % display.
 function Plugin:_UpdateCrackedMetal(record)
     local frame = self.frame
     local metal = frame.CrackedMetal
     if not metal then return end
     local realPct = self:_DurabilityPct()
-    -- One-shot shatter break on each downward crossing of 40% / 20% (queued; never fires on login — the
-    -- first read only seeds _lastDuraPct). The queue serializes it behind any active flourish.
+    -- One-shot shatter on each downward crossing of 40% / 20%; the first read only seeds _lastDuraPct, so no fire on login.
     if realPct then
         local last = self._lastDuraPct
         if last then
@@ -150,11 +132,9 @@ function Plugin:_UpdateCrackedMetal(record)
         end
         self._lastDuraPct = realPct
     end
-    -- Ring cracks track the ACTUAL durability (persist through flourishes, unlike the centre): off above
-    -- 40%, light at 20-40%, heavy below 20%.
+    -- Ring cracks track the ACTUAL durability, so they persist through flourishes unlike the centre.
     self:_SetRingCrack((not realPct or realPct > DURA_WARN) and 0 or (realPct <= DURA_CRIT and 2 or 1))
-    -- A shatter flourish OWNS the centre cracked-metal + _durabilityWarn (it reveals them mid-blast); don't
-    -- let the idle warning tear them down while the shatter holds the centre. Other flourishes still hide it.
+    -- A shatter flourish owns the centre cracked-metal mid-blast; don't let the idle warning tear it down while shatter holds the centre.
     if self._event == "shatter" then return end
     local pct = (self._event == nil) and realPct or nil
     if not pct or pct > DURA_WARN then
@@ -168,10 +148,7 @@ function Plugin:_UpdateCrackedMetal(record)
     self:_RefreshInner()
 end
 
--- Show the persistent cracked-metal warning visuals: tinted disc + pulse + %. `crit` picks red/amber +
--- the pulse speed; `pct` drives the number. Shared by _UpdateCrackedMetal (idle warning) and the shatter
--- mid-blast reveal. If `pct` isn't in the warn band (e.g. the /orbitshatter test on full-durability gear),
--- a representative band value is shown so the % still reads sensibly.
+-- A `pct` outside the warn band (e.g. /orbitshatter on full-durability gear) is substituted with a representative band value so the % still reads.
 function Plugin:_ShowCrackedWarning(crit, pct)
     if not pct or pct > DURA_WARN then pct = crit and (DURA_CRIT - 0.02) or (DURA_WARN - 0.05) end
     local frame = self.frame
@@ -183,8 +160,7 @@ function Plugin:_ShowCrackedWarning(crit, pct)
         frame.CrackedMetalPulse:Stop(); frame.CrackedMetalPulse:Play()
     end
     if frame.CenterNumber then
-        -- White + a hard dark shadow so the % reads over the bright cracked metal filling the centre
-        -- (the metal's yellow/red tint carries the severity; the numeral just needs to stay legible).
+        -- White + a hard dark shadow so the % stays legible over the bright cracked metal (the tint carries the severity).
         frame.CenterNumber:SetText(("%d%%"):format(pct * 100 + 0.5))
         frame.CenterNumber:SetTextColor(0.98, 0.98, 0.98)
         frame.CenterNumber:SetShadowColor(0, 0, 0, 0.95)
@@ -194,10 +170,7 @@ function Plugin:_ShowCrackedWarning(crit, pct)
     self._durabilityWarn = true
 end
 
--- Crack overlay on the ring, only when durability is low: 0 = off, 1 = light (20-40%), 2 = heavy (<20%).
--- Idempotent (only re-textures on a level change) since UpdateBar calls run often. A fresh RANDOM rotation
--- is applied each time the cracks first appear (0 → shown), so they never look the same per load / episode;
--- light↔heavy keeps the same spin so the heavy superset's shared cracks stay put (no jump).
+-- Re-spins only when cracks first appear (0 → shown); a light↔heavy change keeps the spin so the heavy superset's shared cracks stay put.
 function Plugin:_SetRingCrack(level)
     local rc = self.frame.RingCrack
     local was = self._ringCrackLevel
@@ -210,8 +183,6 @@ function Plugin:_SetRingCrack(level)
 end
 
 -- [ TEST COMMAND ]-----------------------------------------------------------------------------------
--- "/orbitshatter" previews both durability breaks (40% amber, then the 20% red queued behind it);
--- "/orbitshatter 40" or "20" fires just one. Works on any gear — the cracked circle shows a representative %.
 SLASH_ORBITSHATTER1 = "/orbitshatter"
 SlashCmdList["ORBITSHATTER"] = function(arg)
     arg = arg and arg:lower():match("%S+")

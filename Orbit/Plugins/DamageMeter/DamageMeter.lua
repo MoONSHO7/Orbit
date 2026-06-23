@@ -437,6 +437,11 @@ function Plugin:OnLoad()
         end
     end, self)
 
+    -- Leaving combat fires no DAMAGE_METER update; flag a re-fetch so bars drop the mid-fight secret GUIDs that keep the breakdown issecretvalue-blocked (the UITicker render lands past the transition race).
+    Orbit.EventBus:On("PLAYER_REGEN_ENABLED", function()
+        self._renderDirty = true
+    end, self)
+
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
         C_Timer.After(0.15, function()
             self:RebuildAllMeters()

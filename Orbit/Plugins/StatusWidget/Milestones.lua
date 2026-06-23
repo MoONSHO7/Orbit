@@ -1,14 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ MILESTONES ]-------------------------------------------------------------------------------------
--- Event-driven flourishes that aren't Blizzard toasts: a level-up, a major-faction renown level-up, and an
--- honor (PvP) level-up. All replay through the flourish queue as the same centre production
--- (`_RenderMilestone`) with per-milestone sprites — level-up gold with the level, renown rep-colour with the
--- renown level + faction name, honor red with the honor level + "Honor" + the honor-system prestige flash.
-
 function Plugin:SetupMilestones()
     if self._milestonesHooked then return end
     self._milestonesHooked = true
@@ -30,8 +25,7 @@ function Plugin:OnMilestone(event, ...)
         local data = C_MajorFactions.GetMajorFactionData and C_MajorFactions.GetMajorFactionData(factionID)
         self:PlayRenownFlourish(newLevel or 0, data and data.name or "", oldLevel)
     elseif event == "HONOR_LEVEL_UPDATE" then
-        -- HONOR_LEVEL_UPDATE also fires on honor-xp gains; only a real level increase flourishes. The first
-        -- update just seeds the baseline (no flourish on login).
+        -- HONOR_LEVEL_UPDATE also fires on honor-xp gains; flourish only on a real increase, first update seeds the baseline.
         local new = UnitHonorLevel("player") or 0
         local old = self._honorLevel
         self._honorLevel = new
@@ -40,8 +34,6 @@ function Plugin:OnMilestone(event, ...)
 end
 
 -- [ TEST COMMAND ]-----------------------------------------------------------------------------------
--- "/orbitlevel" previews the level-up; "/orbitlevel renown" the renown production (using a current major
--- faction's name); "/orbitlevel honor" the honor (PvP) production.
 SLASH_ORBITLEVEL1 = "/orbitlevel"
 SlashCmdList["ORBITLEVEL"] = function(arg)
     arg = arg and arg:lower()

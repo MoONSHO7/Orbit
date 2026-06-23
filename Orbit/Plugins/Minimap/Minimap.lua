@@ -346,8 +346,7 @@ function Plugin:OnLoad()
     Orbit.EventBus:On("ZONE_CHANGED_INDOORS", OnZoneChanged, self)
     Orbit.EventBus:On("ZONE_CHANGED_NEW_AREA", OnZoneChanged, self)
 
-    -- HUD view isn't a positionable edit-mode frame; entering edit mode while in HUD forces minimap view.
-    -- Unique owner so this coexists with RegisterStandardEvents' owner=self EditMode.Enter handler.
+    -- Entering edit mode while in HUD forces minimap view; unique owner so this coexists with RegisterStandardEvents' owner=self EditMode.Enter handler.
     EventRegistry:RegisterCallback("EditMode.Enter", function()
         if (self:GetSetting(SYSTEM_ID, "View") or "minimap") == "hud" then
             self:SetSetting(SYSTEM_ID, "View", "minimap")

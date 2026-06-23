@@ -298,7 +298,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         formatter = function(v) return DISPLAY_LABELS[v] or "" end,
     })
     table.insert(schema.controls, { type = "slider", key = "IconSize",    label = L.PLU_PORTAL_ICON_SIZE,    min = 15, max = 30,  step = 1, default = 24 })
-    table.insert(schema.controls, { type = "slider", key = "Spacing",     label = L.PLU_PORTAL_ICON_PADDING, min = 0,  max = 20,  step = 1, default = 5  })
+    table.insert(schema.controls, { type = "slider", key = "Spacing",     label = L.PLU_PORTAL_ICON_PADDING, min = 0,  max = 20,  step = 1, default = 5, mergeAtZero = true })
     table.insert(schema.controls, { type = "slider", key = "Compactness", label = L.PLU_PORTAL_COMPACTNESS,  min = 0,  max = 100, step = 1, default = 0  })
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end

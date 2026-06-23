@@ -21,6 +21,7 @@ settings are read from saved variables to build edit mode previews. when the use
 
 ```
 EditMode/
+  EditMode.xml          -- top-level script bundle (NativeFrame, EditMode, Frame\EditFrame.xml, PositionManager, MountedVisibility)
   EditMode.lua          -- edit mode entry/exit hooks, combat safety
   PositionManager.lua   -- ephemeral position buffer (cancel support)
   MountedVisibility.lua -- hide frames while mounted
@@ -49,6 +50,7 @@ EditMode/
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)
   Preview/
+    Preview.xml         -- xml script bundle (PreviewFrame.lua)
     PreviewFrame.lua    -- live preview-frame construction (`Create`, `CreateBasePreview`) consumed by Tracked, PlayerPower, PlayerCastBar, and DamageMeterUI
 ```
 

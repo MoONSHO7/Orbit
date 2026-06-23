@@ -1,7 +1,4 @@
 -- [ ITEM SEARCH KEYWORDS ]---------------------------------------------------------------------------
--- Metadata keyword bag (type, subtype, slot, binding, crafting-reagent) folded into a source's
--- lowerName so items search by attribute, not just name. Game strings auto-localize; a few colloquial
--- synonyms (ring, cloak, warbound) come from Orbit.L.
 local _, Orbit = ...
 local L = Orbit.L
 local ItemKeywords = {}

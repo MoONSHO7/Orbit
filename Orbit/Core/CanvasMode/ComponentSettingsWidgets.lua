@@ -50,8 +50,7 @@ function Widgets.CreateFontPicker(parent, control, currentValue, callback)
     return frame
 end
 
--- A label + a text input where the user types the format string (keys like % / CurrentK / & + literal text).
--- Hovering shows a tooltip of the keys; `validate(text)` drives a red border and blocks committing invalid input.
+-- `validate(text)` drives a red border and blocks committing invalid input.
 function Widgets.CreateFormatInput(parent, control, currentValue, callback, tooltipLines, validate)
     local frame = CreateFrame("Frame", nil, parent)
     SnapHeight(frame, 32)

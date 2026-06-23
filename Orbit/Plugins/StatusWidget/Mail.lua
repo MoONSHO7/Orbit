@@ -1,11 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ MAIL ]-------------------------------------------------------------------------------------------
--- New mail fires UPDATE_PENDING_MAIL; HasNewMail() reports the state and GetLatestThreeSenders() the
--- names (only on a false->true transition do we toast, so re-fires while mail sits unread stay quiet).
 local function CollectSenders()
     if not GetLatestThreeSenders then return "" end
     local names = {}

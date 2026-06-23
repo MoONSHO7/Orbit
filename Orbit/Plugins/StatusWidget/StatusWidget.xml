@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <Script file="StatusBar_v2.lua"/>
+    <Script file="StatusWidget.lua"/>
     <Script file="FlourishQueue.lua"/>
     <Script file="GreatVault.lua"/>
     <Script file="SocialToast.lua"/>

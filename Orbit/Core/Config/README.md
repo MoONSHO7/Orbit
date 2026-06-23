@@ -23,17 +23,17 @@ Config/
 
 | file | responsibility |
 |---|---|
-| Schema/SchemaBuilder.lua | schema declaration api: `AddTab`, `AddSlider`, `AddCheckbox`, `AddDropdown`, `AddColorCurve`, etc. |
+| Schema/SchemaBuilder.lua | `Engine.SchemaBuilder`: composes the common per-plugin setting groups onto a schema tree — `AddSizeSettings`, `AddColorSettings`, `AddColorCurveSettings`, `AddOrientationSettings`, `AddGlowSettings`, and `AddSettingsTabs` (wires the standard tabs into a dialog). Individual controls (slider/checkbox/dropdown/colorpicker) are plain schema-tree tables, **not** builder methods. `MakePluginOnChange` / `SetTabRefreshCallback` are the live-apply plumbing. |
 | Schema/ConfigRenderer.lua | renders a schema into ui frames. walks the schema tree and creates widgets. |
 | Schema/ConfigLayout.lua | layout engine for settings panels (3-column grid, spacing, tab bar). |
 | Panels/OrbitOptionsPanel.lua | dialog shell only: tab registry, open/hide/refresh lifecycle, `ToggleEditMode` (the shared Edit Mode + options toggle used by `/orbit` and Spotlight), and `Panel._helpers` (shared `CreateGlobalSettingsPlugin` / `RefreshAllPreviews` used by tab files). |
 | Panels/OrbitSettingsDialog.lua | settings dialog frame. hosts the tab bar and content area. |
 | Panels/OrbitAdvancedSettings.lua | orchestrator: tab bar, panel shell, settings registration for the addon settings panel. |
-| Panels/Tabs/GlobalTab.lua | Global tab schema: font, border style, `IconBorderStyle`. The built-in "Orbit" style (`value="orbit"`) shows Border Thickness + Corner Roundness sliders; the built-in "Orbit Pixel (Legacy)" style (`value="pixel"`) shows a single Border Size slider (0-5); LibSharedMedia styles show Border Edge Size + Border Offset instead. The Border Style / Icon Border Style dropdowns place the built-in entries above a divider, LibSharedMedia borders below it. The Font / Border Style / Icon Border Style rows carry a value-column color swatch (`valueColor`) for `FontColorCurve` / `BorderColor` / `IconBorderColor`; the border swatches hide for LibSharedMedia styles. |
+| Panels/Tabs/GlobalTab.lua | Global tab schema: font (+ outline dropdown with a Text Shadow value-checkbox; default font "PT Sans Narrow"), `BorderStyle`, `IconBorderStyle`. The four built-in styles come from `Constants.BorderStyle.Styles`: `"orbit"` ("Orbit Pixel", flat) shows a **Border Size** slider (0-5, `PixelBorderSize`); the three rounded slice styles `"orbit-soft"`/`"orbit-rounded"`/`"orbit-rounder"` show **no** slider (thickness baked into the texture); LibSharedMedia styles show **Border Edge Size** (4-16, step 4) + **Border Offset** (0-16) instead. Changing a style fires `ORBIT_BORDER_SIZE_CHANGED` and rebuilds the tab (conditional sliders). The Border Style / Icon Border Style dropdowns place the built-in entries above a divider, LibSharedMedia borders below it. The Font / Border Style / Icon Border Style rows carry a value-column color swatch (`valueColor`) for `FontColorCurve` / `BorderColor` / `IconBorderColor`; the border swatches hide for styles with no color (`StyleHasColor`). |
 | Panels/Tabs/ColorsTab.lua | "Textures" tab schema: textures and color curves (bar/backdrop). Font and border colors moved to the Global tab as value-column swatches. The tab key/label is `"Textures"`; the file keeps its `ColorsTab.lua` name (plugin id `OrbitColors`). |
 | Panels/Tabs/EditModeTab.lua | Edit Mode tab schema: show/hide blizzard frames, anchoring, edit mode color curve. |
 | Panels/Tabs/ProfilesTab.lua | Profiles tab schema + sub-views (export/import/clone/delete/reset). owns widget registrations only used here (`profileactive`, `profileselect`, `collapseheader`, `checkheader`, `statusmessage`). |
-| Entry/SlashCommands.lua | the `/orbit` (and `/orb`) slash command — the only chat command, toggles Edit Mode + options via `OptionsPanel:ToggleEditMode()`. Every former subcommand now lives in Spotlight; its logic moved to the owning modules: resets/version/inspect on `Orbit.API` (`ResetAccountSettings`, `ResetPluginSettings`, `ConfirmHardReset`, `PrintVersion`, `InspectPlugin`), `VisibilityEngine:ResetAll`, `Localization.SetLocaleOverride`. |
+| Entry/SlashCommands.lua | the `/orbit` (and `/orb`) slash — the only chat command; its entire body is `OptionsPanel:ToggleEditMode()`. Every former subcommand now lives in Spotlight, with its logic on the owning module (`Orbit.API` resets/version/inspect, `VisibilityEngine:ResetAll`, `Localization.SetLocaleOverride`). |
 | Entry/OrbitOptionsButton.lua | addon compartment button. |
 | Advanced/PluginManager.lua | plugin enable/disable checkbox grid content builder. |
 | Advanced/VisibilityEngine.lua | visibility engine scrollable table content builder. |
@@ -44,11 +44,11 @@ Config/
 ## adding a new tab
 
 1. create `Panels/Tabs/MyTab.lua`
-2. pull `local Panel = Orbit.OptionsPanel` and `local helpers = Panel._helpers`
-3. build a plugin via `helpers.CreateGlobalSettingsPlugin("OrbitMyTab")` (or a custom table if you need bespoke GetSetting/SetSetting)
+2. pull `local Panel = Orbit.OptionsPanel` and `local CreateGlobalSettingsPlugin = Panel._helpers.CreateGlobalSettingsPlugin`
+3. build a plugin via `CreateGlobalSettingsPlugin("OrbitMyTab")` (or a custom table if you need bespoke GetSetting/SetSetting)
 4. declare a `schema()` function returning the schema tree
-5. register with `Panel.Tabs["My Tab"] = { plugin = ..., schema = ... }`
-6. add `"My Tab"` to `TAB_ORDER` in `OrbitOptionsPanel.lua`
+5. register with `Panel.Tabs[L.CFG_TAB_MYTAB] = { plugin = ..., schema = ... }` — tabs are keyed by the **localized** label (`Orbit.L`), never a raw English string
+6. add `L.CFG_TAB_MYTAB` to `TAB_ORDER` in `OrbitOptionsPanel.lua` (exposed as `Panel.TabOrder`)
 7. add `<Script file="Panels\Tabs\MyTab.lua"/>` to `Config.xml` **after** `OrbitOptionsPanel.lua` (tab files reference `Panel._helpers` at load time)
 
 ## adding a new widget type

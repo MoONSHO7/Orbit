@@ -11,7 +11,7 @@ core provides the shared infrastructure, rendering engine, configuration system,
 ```
 Core/
   Init.lua          -- addon bootstrap, plugin registration, saved variables
-  API.lua           -- public api surface (slash commands, programmatic api)
+  API.lua           -- programmatic/debug api (Orbit.API: GetState, ResetProfile, HardReset, UnlockFrames, InspectPlugin) — slash commands live in Config/Entry/SlashCommands.lua
   Infrastructure/   -- low-level systems (events, pixel math, combat, animation)
   Plugin/           -- plugin lifecycle (registration, profiles, mixins)
   Shared/           -- constants, media registrations, glow controller

@@ -373,8 +373,7 @@ local function GetOrCreateProxyButton(originalBtn, parent)
 
         local script = originalBtn:GetScript("OnEnter")
         if not script then return end
-        -- Legacy third-party OnEnter scripts anchor to the GLOBAL GameTooltip; best-effort retarget its SetOwner
-        -- (not Orbit.Tooltip's) so the tooltip follows the visible proxy instead of the offscreen original.
+        -- Legacy third-party OnEnter scripts anchor to the GLOBAL GameTooltip; retarget its SetOwner so the tooltip follows the visible proxy, not the offscreen original.
         local tt = _G.GameTooltip
         local origSetOwner = tt.SetOwner
         tt.SetOwner = function(t, owner, ...)

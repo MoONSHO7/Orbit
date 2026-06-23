@@ -10,13 +10,13 @@ defines how plugins register with orbit, how their settings are stored and retri
 
 | file | responsibility |
 |---|---|
-| PluginMixin.lua | base mixin applied to all plugins. provides `GetSetting`, `SetSetting`, `IsComponentDisabled`, and spec-scoped storage (`GetCurrentSpecID`, `GetCharSpecStore`, `GetSpecData`, `SetSpecData`) layered under `Orbit.db.SpecData[charKey][specID][systemIndex][key]`. auto-subscribes to `PLAYER_ENTERING_WORLD`, `COLORS_CHANGED`, and `CANVAS_SETTINGS_CHANGED` via debounced `ApplySettings`. `Orbit:ReadPluginSetting(system, systemIndex, key)` is a separate method on the `Orbit` namespace, not a PluginMixin method. |
+| PluginMixin.lua | base mixin applied to all plugins. provides `GetSetting`, `SetSetting`, `IsComponentDisabled`, and spec-scoped storage (`GetCurrentSpecID`, `GetCharSpecStore`, `GetSpecData`, `SetSpecData`) layered under `Orbit.db.SpecData[charKey][specID][systemIndex][key]`. `RegisterStandardEvents()` subscribes the plugin's `ApplySettings` (debounced) to the EventBus events `ORBIT_PLAYER_ENTERING_WORLD`, `ORBIT_COLORS_CHANGED`, and `ORBIT_CANVAS_SETTINGS_CHANGED`. `Orbit:ReadPluginSetting(system, systemIndex, key)` is a separate method on the `Orbit` namespace, not a PluginMixin method. |
 | Registry.lua | system registration table. `Engine:RegisterSystem` / `Engine:GetSystem` / `Engine.SystemMixin`. |
 | ProfileManager.lua | profile crud (create, copy, delete, switch). fires `ORBIT_PROFILE_CHANGED`. |
 | DefaultProfile.lua | **layout-only** seed: anchor graph, positions, per-instance state without a schema seed (DamageMeter MeterDefs, Datatexts placements, StrataEngine Z-order), and GlobalSettings theme. NOT a per-setting defaults dump — see "default values" rule below. |
 | OOCFadeMixin.lua | out-of-combat fade behavior. frames register and auto-fade when not in combat. reads settings from VisibilityEngine. |
 | VisibilityState.lua | `Orbit.Visibility:ApplyState` — applies a `visibility` state driver to a plugin frame from a numeric mode (show / hide / show-in-combat / hide-in-combat). defers the whole body via `CombatManager` when combat-locked and caches the last driver to skip redundant `RegisterStateDriver` calls. |
-| VisibilityEngine.lua | centralized visibility settings for all orbit frames. stores oocFade, opacity, hideMounted, mouseOver, showWithTarget per-frame in `Orbit.db.VisibilityEngine`. fires `ORBIT_VISIBILITY_CHANGED`. |
+| VisibilityEngine.lua | centralized visibility settings for all orbit frames. stores oocFade, opacity, hideMounted, mouseOver, showWithTarget, alphaLock per-frame in `Orbit.db.VisibilityEngine`. fires `ORBIT_VISIBILITY_CHANGED`. |
 | NativeBarMixin.lua | shared scale/layout/interaction for native blizzard bar wrappers. |
 
 ## adding a new mixin

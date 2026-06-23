@@ -58,7 +58,7 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
         })
         table.insert(schema.controls, {
             type = "slider", key = "IconPadding", label = L.PLU_TRK_ICON_PADDING,
-            min = 0, max = 15, step = 1,
+            min = 0, max = 15, step = 1, mergeAtZero = true,
             default = Constants.Cooldown.DefaultPadding,
             onChange = function(val)
                 self:SetSetting(systemIndex, "IconPadding", val)

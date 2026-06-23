@@ -18,7 +18,7 @@ Onboarding/
 a first-login-only anchoring playground that fires on Edit Mode entry:
 
 - `TourPlugin.lua` registers `"Orbit_Tour"` via `Orbit:RegisterPlugin`, creates frames with `FrameFactory:Create`, defines `AddSettings` with `SchemaBuilder` (width/height)
-- `EditModeTour.lua` drives the tour flow: dark overlay, 8 sequential stops, task-gated Next buttons, snap isolation, drag/anchor/nudge tracking, welcome title, post-tour hints
+- `EditModeTour.lua` drives the tour flow: dark overlay, 9 sequential stops (`TOUR_STOPS`, `TOUR_EM_STEP1..9`), task-gated Next buttons, snap isolation, drag/anchor/nudge tracking, welcome title, post-tour hints
 - selecting a playground frame opens Orbit's real settings dialog
 - while the tour is active the overlay captures `ESCAPE` (consumes it so it never reaches Edit Mode's close) and shows `OrbitTourExitDialog`, a confirmation styled to match the Canvas Mode frame (`NineSlicePanelTemplate` with the `ButtonFrameTemplateNoPortrait` layout, tiled `UI-Background-Rock` background, `_UI-Frame-TopTileStreaks`). **Return to Tour** dismisses it; **Exit Tour** calls `EndTour` then `securecall("HideUIPanel", EditModeManagerFrame)` — the taint-safe exit Orbit uses elsewhere, never a bare `:Hide()`/`HideUIPanel`. Non-`ESCAPE` keys still propagate, so arrow-key nudging keeps working.
 - `StartTour` sets `Orbit.db.AccountSettings.TourComplete = true` on tour entry to prevent re-triggering across reloads

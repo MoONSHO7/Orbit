@@ -15,15 +15,8 @@ Orbit.Profile.defaults = {
             ["Orbit_TalkingHead"] = {
                 ["Orbit_TalkingHead"] = { Anchor = false, Position = { y = 233, x = 577, point = "LEFT" } },
             },
-            ["Orbit_ExperienceBar"] = {
-                ["Orbit_ExperienceBar"] = {
-                    Anchor = { align = "CENTER", target = "OrbitActionBar1", fallback = "OrbitActionBar1", edge = "BOTTOM", padding = 2 },
-                },
-            },
-            ["Orbit_HonorBar"] = {
-                ["Orbit_HonorBar"] = {
-                    Anchor = { align = "CENTER", target = "OrbitExperienceBar", fallback = "OrbitExperienceBar", edge = "BOTTOM", padding = 2 },
-                },
+            ["Orbit_StatusWidget"] = {
+                ["Orbit_StatusWidget"] = { Anchor = false, Position = { point = "TOPLEFT", x = 24, y = -24 } },
             },
             ["Orbit_MinimapButton"] = {
                 ["Orbit_MinimapButton"] = { Anchor = false, Position = { y = -27, x = -22, point = "TOPRIGHT" } },
@@ -106,8 +99,7 @@ Orbit.Profile.defaults = {
             ["Orbit_FocusDebuffs"] = {
                 [1] = {
                     Anchor = { target = "OrbitFocusCastBar", padding = 2, edge = "TOP", align = "LEFT" },
-                    -- Per-plugin curve override: FocusDebuffs uses a distinct red (g=0.165) from TargetDebuffs's
-                    -- shared sharedDebuffDefaults curve (g=0.227). Lives here because both share the same mixin.
+                    -- Per-plugin override: FocusDebuffs wants a distinct red from TargetDebuffs's shared sharedDebuffDefaults curve, but both share the same mixin.
                     PandemicGlowColorCurve = { pins = { { color = { a = 1, r = 1, g = 0.165, b = 0 }, position = 0.5 } } },
                 },
             },

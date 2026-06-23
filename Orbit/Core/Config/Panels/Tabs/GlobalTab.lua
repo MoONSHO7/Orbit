@@ -52,8 +52,7 @@ local function GetBorderStyleOptions()
     local byLabel = function(a, b) return a.label < b.label end
     table.sort(owned, byLabel)
     table.sort(others, byLabel)
-    -- Orbit-bundled borders sit with the built-in styles (Orbit Pixel at the very top); a divider then
-    -- separates third-party LibSharedMedia borders below.
+    -- Orbit-bundled borders sit with the built-in styles; a divider separates third-party LibSharedMedia borders below.
     for _, entry in ipairs(owned) do opts[#opts + 1] = entry end
     if #others > 0 then
         opts[#opts + 1] = { divider = true }

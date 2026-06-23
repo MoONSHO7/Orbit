@@ -24,7 +24,6 @@
     <Script file="Index\Help\Topics\CanvasMode.lua"/>
     <Script file="Index\Help\Topics\DataTexts.lua"/>
     <Script file="Index\Help\Topics\Minimap.lua"/>
-    <Script file="Index\Help\Topics\StatusBars.lua"/>
     <Script file="Index\Help\Topics\RaidMarkers.lua"/>
     <Script file="Index\Help\Topics\DamageMeter.lua"/>
     <Script file="Index\Help\Topics\CooldownManager.lua"/>

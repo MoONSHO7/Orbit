@@ -50,8 +50,7 @@ local FRAME_REGISTRY = {
     { key = "Minimap",              display = L.PLU_VE_MINIMAP,          plugin = "Minimap",            index = 1 },
     { key = "MinimapButton",        display = L.PLU_VE_MINIMAP_BUTTON,   plugin = "Minimap Button",     index = 1 },
     { key = "Datatexts",            display = L.PLU_VE_DATATEXTS,        plugin = "Datatexts",          index = 1 },
-    { key = "ExperienceBar",        display = L.PLU_VE_XP_REP_BAR,       plugin = "Experience Bar",     index = 1 },
-    { key = "HonorBar",             display = L.PLU_VE_HONOR_BAR,        plugin = "Honor Bar",          index = 1 },
+    { key = "StatusWidget",         display = L.PLU_STATUS_BAR_V2_NAME,  plugin = "Status Widget",      index = 1 },
     { key = "PortalDock",           display = L.PLU_VE_PORTAL_DOCK,      plugin = "Portal Dock",        index = 1 },
     { key = "RaidPanel",            display = L.PLU_VE_RAID_PANEL,       plugin = "Raid Panel",         index = 1 },
 }
@@ -71,7 +70,7 @@ local BLIZZARD_REGISTRY = {
     { key = "BuffFrame",             display = L.PLU_VE_BUFF_FRAME,          blizzardFrame = "BuffFrame",                 ownedBy = "Player Buffs" },
     { key = "DebuffFrame",           display = L.PLU_VE_DEBUFF_FRAME,        blizzardFrame = "DebuffFrame",               ownedBy = "Player Debuffs" },
     { key = "ChatFrame",             display = L.PLU_VE_CHAT_FRAME,          blizzardFrame = "ChatFrame1" },
-    { key = "StatusTrackingBar",     display = L.PLU_VE_XP_REP_HONOR_BAR,    blizzardFrame = "StatusTrackingBarManager",  ownedBy = { "Experience Bar", "Honor Bar" } },
+    { key = "StatusTrackingBar",     display = L.PLU_VE_XP_REP_HONOR_BAR,    blizzardFrame = "StatusTrackingBarManager",  ownedBy = "Status Widget" },
     { key = "DurabilityFrame",       display = L.PLU_VE_DURABILITY,          blizzardFrame = "DurabilityFrame" },
     { key = "VehicleSeatIndicator",  display = L.PLU_VE_VEHICLE_SEAT,        blizzardFrame = "VehicleSeatIndicator" },
     { key = "DamageMeter",           display = L.PLU_VE_DAMAGE_METER,        blizzardFrame = "DamageMeter",               ownedBy = "Damage Meter" },

@@ -221,7 +221,6 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     self:ApplyTextStyling(frame)
 
     -- Health text has no separate visibility toggle — a blank format hides the value (status still shows).
-    -- legacy mode first, then the custom format string (which wins when set).
     if frame.SetHealthTextEnabled then frame:SetHealthTextEnabled(true) end
     if frame.SetHealthTextMode then
         frame:SetHealthTextMode(healthTextMode)

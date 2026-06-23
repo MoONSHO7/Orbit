@@ -64,8 +64,9 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 | key                | type    | default | description                                    |
 | ------------------ | ------- | ------- | ---------------------------------------------- |
 | `Scale`            | slider  | 100     | overall minimap scale (%)                      |
-| `Size`             | slider  | 220     | minimap diameter in pixels                     |
-| `BorderRing`       | dropdown | `none`  | decorative ring around the round minimap (`none` / `blizzard` = `ui-hud-minimap-frame` / `round` = solid fill / `fadedcircle` = soft-edge mask / `void` = `wowlabs_minimapvoid-ring-single`). Tinted by `BorderColor`. Only shown when `Shape = round` |
+| `Size`             | slider  | 300     | minimap diameter in pixels (100–400)           |
+| `Shape`            | dropdown | `round` | `square` / `round` / `splatter` (HUD view always renders as splatter) |
+| `BorderRing`       | dropdown | `fadedcircle` | decorative ring around the round minimap (`none` / `blizzard` = `ui-hud-minimap-frame` / `round` = solid fill / `fadedcircle` = soft-edge mask / `void` = `wowlabs_minimapvoid-ring-single`). Tinted by `BorderColor`. Only shown when `Shape = round` |
 | `ZoneTextColoring` | boolean | true    | colour zone text by pvp type (canvas override) |
 | `DifficultyShowBackground`| boolean | false   | show blizzard banner behind difficulty icon on the live minimap |
 | `LeftClickAction` | dropdown | `none` | left-click action for the minimap |

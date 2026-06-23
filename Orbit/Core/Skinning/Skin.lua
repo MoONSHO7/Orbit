@@ -21,8 +21,6 @@ local OVERLAY_DEFAULT = { blend = "ADD", alpha = 0.5 }
 
 local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
 
--- No tiling fills. The Orbit absorb textures are now plain stretched statusbar fills like every other
--- Orbit fill — maskable, so they round under a rounded border (tiled / REPEAT-wrapped textures can't be).
 local TILING_FILLS = {}
 
 -- [ LSM BORDER RECONCILIATION ] ---------------------------------------------------------------------
@@ -99,8 +97,7 @@ function Skin:RegisterMaskedSurface(frame, texture)
     table.insert(frame._maskedSurfaces, texture)
 end
 
--- A rounded style rounds the cooldown swipe by using its white rounded-rect mask texture as the swipe
--- fill (stretched — corners approximate the icon's, close enough for the dark overlay). Nil for flat/LSM.
+-- Rounds the cooldown swipe by using the style's white rounded-rect mask as the swipe fill; nil for flat/LSM.
 function Skin:GetRoundedSwipeTexture(isIcon)
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local styleKey = (gs and gs[isIcon and "IconBorderStyle" or "BorderStyle"]) or Constants.BorderStyle.Default
@@ -198,11 +195,9 @@ end
 -- [ EDGE-FILE BORDER ]-------------------------------------------------------------------------------
 function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame or not styleEntry or not styleEntry.edgeFile then return end
-    -- Rounded styles share the edge-file field but draw a single-texture slice border, not an 8-segment
-    -- backdrop — delegate so every ApplyNineSliceBorder caller (icons, cooldowns) handles rounded for free.
+    -- Rounded styles share the edge-file field but draw a slice border — delegate so every caller handles rounded for free.
     if styleEntry.rounded then return self:ApplyRoundedBorder(frame, styleEntry) end
-    -- Edge-file borders carry no rounded mask — drop any left from a previous rounded style. Centralised here
-    -- so direct callers (Icons, CooldownLayout) that don't pre-clear are covered, not just SkinBorder.
+    -- Centralised mask clear so direct callers (Icons, CooldownLayout) that don't pre-clear are covered, not just SkinBorder.
     self:ClearRoundedMaskFromSurfaces(frame)
     if not frame._edgeBorderOverlay then
         frame._edgeBorderOverlay = CreateFrame("Frame", nil, frame, "BackdropTemplate")
@@ -226,8 +221,7 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
     overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
     overlay:SetBackdrop({ edgeFile = styleEntry.edgeFile, edgeSize = adjEdge })
-    -- Edge-file borders are grayscale; tint by Border Color (vertex multiply), or render natural art when
-    -- the colour is "none". A real colour, black included, tints.
+    -- Edge-file borders are grayscale; tint by Border Color (vertex multiply), or render natural art when "none".
     local c = styleEntry.color or self:ResolveBorderTint(styleEntry.isIcon)
     if c then
         overlay:SetBackdropBorderColor(c.r, c.g, c.b, c.a or 1)
@@ -244,9 +238,7 @@ function Skin:ClearNineSliceBorder(frame)
 end
 
 -- [ ROUNDED PIXEL BORDER ]---------------------------------------------------------------------------
--- Single-texture slice border on an inset overlay (the ring sits on the frame edge, like the flat pixel
--- border) + a matching slice mask on the frame's registered surfaces so the fill rounds to the same
--- corners. Merged frames defer the border + mask to the group overlay (GroupBorder owns them).
+-- Merged frames defer the border + mask to the group overlay (GroupBorder owns them).
 function Skin:ApplyRoundedBorder(frame, styleEntry)
     if not frame or not styleEntry then return end
     if not frame._edgeBorderOverlay then
@@ -271,8 +263,7 @@ end
 function Skin:ApplyIconGroupBorder(container, styleEntry, iconsList)
     if not container then return end
     container._isIconContainer = true
-    -- Register the icon surfaces BEFORE the merged early-return, so a born-merged container's icons are known
-    -- to the group mask (GroupBorder stamps the _maskedSurfaces of every merge member).
+    -- Register the icon surfaces BEFORE the merged early-return, so a born-merged container's icons are known to the group mask.
     if iconsList then
         for _, icon in ipairs(iconsList) do
             local tex = icon.Icon or icon.icon
@@ -340,10 +331,7 @@ end
 function Skin:GetActiveBorderStyle() return self:ResolveStyle("BorderStyle") end
 function Skin:GetActiveIconBorderStyle() return self:ResolveStyle("IconBorderStyle") end
 
--- Resolves the configured frame/icon border color, honoring class-color markers and curve shapes.
--- A `{ none = true }` value (the "no tint" state) resolves to black here so solid-fill borders that
--- always need a colour (the pixel WHITE8x8 border) keep their default look. Texture borders that can
--- render untinted call ResolveBorderTint instead.
+-- A `{ none = true }` value resolves to black so solid-fill borders (pixel WHITE8x8) that always need a colour keep their look.
 function Skin:ResolveBorderColor(isIcon)
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
@@ -356,9 +344,7 @@ function Skin:ResolveBorderColor(isIcon)
     return (Engine.ColorCurve and Engine.ColorCurve:GetFirstColorFromCurve(raw)) or raw or { r = 0, g = 0, b = 0, a = 1 }
 end
 
--- Like ResolveBorderColor but returns nil for the "no tint" state, so grayscale texture borders render
--- their natural art (white vertex) instead of being multiplied by a colour. Any real colour — black
--- included — tints.
+-- Like ResolveBorderColor but returns nil for the "no tint" state, so grayscale texture borders render natural art (white vertex).
 function Skin:ResolveBorderTint(isIcon)
     local gs = Orbit.db and Orbit.db.GlobalSettings
     local raw = isIcon and (gs and gs.IconBorderColor) or (gs and gs.BorderColor)
@@ -547,8 +533,7 @@ function Skin:ApplyAbsorbTexture(bar, textureName)
     if TILING_FILLS[textureName] and bar.TiledPattern then
         bar:SetStatusBarTexture(WHITE8x8)
         local pat = bar.TiledPattern
-        -- UV-repeat tiling (REPEAT wrap + TexCoord > 1), NOT SetHorizTile, so the pattern stays maskable and
-        -- rounds under a rounded border style while holding a constant tile scale.
+        -- UV-repeat tiling (REPEAT wrap + TexCoord > 1), NOT SetHorizTile, so the pattern stays maskable and rounds under a rounded border.
         pat:SetTexture(LSM:Fetch("statusbar", textureName), "REPEAT", "REPEAT")
         if pat.tileCoordX then
             pat:SetTexCoord(0, pat.tileCoordX, 0, pat.tileCoordY)

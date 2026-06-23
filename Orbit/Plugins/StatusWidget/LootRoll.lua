@@ -2,12 +2,9 @@
 local Orbit = Orbit
 local L = Orbit.L
 local OrbitEngine = Orbit.Engine
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ LOOT ROLL ]--------------------------------------------------------------------------------------
--- Rollable items (START_LOOT_ROLL) show as styled panels stacked off the orb: item disc, name, timer,
--- and Need / Greed-or-Transmog / Pass buttons. We capture the roll events and call RollOnLoot ourselves
--- (it's unprotected, combat-safe); Blizzard's own GroupLootFrames are suppressed. Roll data is non-secret.
 local PANEL_W, PANEL_H = 250, 46
 local ICON_SIZE = 34
 local BTN_SIZE = 22
@@ -33,8 +30,7 @@ local ATLAS = {
     pass     = { "lootroll-toast-icon-pass-up",     "lootroll-toast-icon-pass-highlight",     "lootroll-toast-icon-pass-down" },
 }
 
--- FlipBook/Alpha builders for the dice reveal — the group is created on its texture, so each animation
--- auto-targets it (same pattern as the vault FX), no SetTarget needed.
+-- The group is created on its texture, so each animation auto-targets it (vault-FX pattern), no SetTarget needed.
 local function Flip(group, rows, cols, frames, dur, delay)
     local f = group:CreateAnimation("FlipBook")
     f:SetDuration(dur)
@@ -122,8 +118,7 @@ local function CreateRollPanel()
     panel:Hide()
     OrbitEngine.Pixel:Enforce(panel)
 
-    -- Background that rounds under a rounded border (registered as a masked surface). Colour/border/fonts
-    -- are applied from the global theme by _StylePanel (end of this function + every fill).
+    -- Registered as a masked surface so the bg rounds under a rounded border; theme colour/border/fonts come from _StylePanel.
     local bg = panel:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(panel)
     panel.bg = bg
@@ -149,7 +144,7 @@ local function CreateRollPanel()
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if panel._rollID then GameTooltip:SetLootRollItem(panel._rollID)
         elseif panel._bonusItemID then GameTooltip:SetItemByID(panel._bonusItemID)
-        elseif panel._isBonus then GameTooltip:SetText(BONUS_LOOT_LABEL or "Bonus Roll")
+        elseif panel._isBonus then GameTooltip:SetText(BONUS_LOOT_LABEL)
         elseif panel._fakeItemID then GameTooltip:SetItemByID(panel._fakeItemID) end
         GameTooltip:Show()
     end)
@@ -170,8 +165,7 @@ local function CreateRollPanel()
     panel.NeedButton:SetPoint("RIGHT", panel.GreedButton, "LEFT", -BTN_GAP, 0)
     panel._buttons = { panel.NeedButton, panel.GreedButton, panel.TransmogButton, panel.PassButton }
 
-    -- Bonus-roll dice button (shown only in bonus mode; Need/Greed/Transmog hidden then). Accepts the spell
-    -- confirmation — the same insecure `AcceptSpellConfirmationPrompt` Blizzard's own roll button calls.
+    -- Bonus-roll dice button: accepts via the same insecure `AcceptSpellConfirmationPrompt` Blizzard's own roll button calls.
     local roll = CreateFrame("Button", nil, panel)
     roll:SetSize(BTN_SIZE, BTN_SIZE)
     roll:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Up")
@@ -217,8 +211,7 @@ local function CreateRollPanel()
     tbg:SetColorTexture(0, 0, 0, 0.5)
     panel.Timer = timer
 
-    -- Need-roll reveal (MAIN_SPEC_NEED_ROLL): Blizzard's own FlipBook dice + glow + the rolled number,
-    -- played over the button area (which is hidden during the reveal). One animation group per texture.
+    -- Need-roll reveal (MAIN_SPEC_NEED_ROLL): dice + glow + number, one animation group per texture.
     local anim = CreateFrame("Frame", nil, panel)
     anim:SetSize(70, 80)
     anim:SetScale(0.9)
@@ -263,8 +256,7 @@ local function CreateRollPanel()
     return panel
 end
 
--- Background colour, border (style + colour + size) and fonts all come from Orbit's global theme. Re-read
--- on every fill, so a live theme change shows on the next roll. Name/number keep their own per-roll colour.
+-- Re-read theme bg/border/fonts on every fill so a live theme change shows on the next roll; per-roll name/number colour is kept.
 function Plugin:_StylePanel(panel)
     local gs = Orbit.db.GlobalSettings
     local c = Orbit.Skin:GetBackgroundColor()
@@ -312,8 +304,6 @@ function Plugin:_ReleasePanel(panel)
     self:_LayoutRolls()
 end
 
--- Stack the active panels off the orb, growing away from the nearest screen edges (the orb's corner
--- toward screen-centre; first panel attaches there, the rest stack below or above it).
 function Plugin:_LayoutRolls()
     local panels = self._activePanels
     if not panels or #panels == 0 or not self.frame then return end
@@ -425,8 +415,6 @@ function Plugin:OnRollEnd(rollID)
     self:_ReleasePanel(panel)
 end
 
--- The rolled-number reveal: hide the buttons, drain the timer, spin the dice, show the number green
--- (winning) / red (losing) with Blizzard's roll sound. The animation's OnFinished clears the panel.
 function Plugin:OnNeedRoll(rollID, roll, isWinning)
     local panel = self._activeByRoll and self._activeByRoll[rollID]
     if panel then self:_PlayRollAnim(panel, roll, isWinning) end
@@ -450,8 +438,7 @@ end
 
 function Plugin:OnRollEndAll()
     if not self._activePanels then return end
-    -- CANCEL_ALL_LOOT_ROLLS only cancels group loot rolls; a bonus roll is its own system (closed by
-    -- SPELL_CONFIRMATION_TIMEOUT), so leave its panel alone.
+    -- CANCEL_ALL_LOOT_ROLLS only cancels group rolls; a bonus roll is its own system (SPELL_CONFIRMATION_TIMEOUT closes it), so leave it.
     for _, p in ipairs({ unpack(self._activePanels) }) do
         if not p._isBonus then self:_ReleasePanel(p) end
     end
@@ -459,10 +446,7 @@ function Plugin:OnRollEndAll()
 end
 
 -- [ BONUS ROLL ]-------------------------------------------------------------------------------------
--- Take over the Bonus Roll prompt ("spend a coin to roll for extra loot") as one of our roll panels —
--- Blizzard's BonusRollFrame is suppressed in SetupLootRoll. Roll/Pass drive the same INSECURE
--- Accept/DeclineSpellConfirmationPrompt Blizzard's own buttons call, so it's combat-safe. `spellID` nil
--- means preview (the buttons just dismiss). Only one bonus roll exists at a time (`_bonusPanel`).
+-- Roll/Pass drive the same INSECURE Accept/DeclineSpellConfirmationPrompt Blizzard's own buttons call, so it's combat-safe; nil spellID is preview.
 function Plugin:_ShowBonusRoll(spellID, duration, currencyID, currencyCost, displayItemID)
     if not IsEnabled() or not self.frame then return end
     local panel = self._bonusPanel or self:_AcquirePanel()
@@ -478,7 +462,7 @@ function Plugin:_ShowBonusRoll(spellID, duration, currencyID, currencyCost, disp
     else
         panel.Icon:SetAtlas("BonusLoot-Chest")
     end
-    panel.Name:SetText(BONUS_LOOT_LABEL or "Bonus Roll")
+    panel.Name:SetText(BONUS_LOOT_LABEL)
     panel.Name:SetTextColor(1.0, 0.82, 0.25)   -- gold; bonus rolls aren't quality-specific
     panel.Count:Hide()
 
@@ -556,11 +540,7 @@ function Plugin:SetupLootRoll()
     end)
     self._rollFrame = f
 
-    -- Suppress Blizzard's group-loot frames (alpha-0 + mouse-off, restored if the setting is off, so a
-    -- toggle takes effect on the next roll). We MUST HookScript the frames, not hooksecurefunc the global
-    -- GroupLootFrame_OnShow: the XML bound each frame's OnShow to the original function reference at load,
-    -- so replacing the global is bypassed and never fires (unlike AlertFrame_ShowNewAlert, which is called
-    -- by name). GroupLootContainer_Update IS called by name, so hooksecurefunc collapses its layout slot.
+    -- MUST HookScript each frame, not hooksecurefunc GroupLootFrame_OnShow: the XML bound each frame's OnShow to the original reference, so a global swap never fires.
     local function SuppressFrame(frame)
         local on = IsEnabled()
         frame:SetAlpha(on and 0 or 1)
@@ -583,9 +563,7 @@ function Plugin:SetupLootRoll()
         end)
     end
 
-    -- Suppress Blizzard's Bonus Roll prompt too — we replay it as a roll panel (`_ShowBonusRoll`). It's a
-    -- UIParent child merely ANCHORED to the container (not a child), so hiding the container doesn't hide
-    -- it; alpha-0 + mouse-off the frame and its prompt buttons, same as the group-loot frames.
+    -- BonusRollFrame is a UIParent child merely ANCHORED to the container, so hiding the container won't reach it — suppress it directly.
     if BonusRollFrame then
         local function SuppressBonus()
             local on = IsEnabled()
@@ -603,8 +581,6 @@ function Plugin:SetupLootRoll()
 end
 
 -- [ TEST COMMAND ]-----------------------------------------------------------------------------------
--- Dev preview: a non-live panel (no real rollID) with a faked countdown so the styling is visible
--- without a group. Buttons just dismiss it.
 SLASH_ORBITROLL1 = "/orbitroll"
 SlashCmdList["ORBITROLL"] = function(arg)
     if not Plugin.frame then return end

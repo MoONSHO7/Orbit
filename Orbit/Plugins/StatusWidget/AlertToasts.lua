@@ -1,14 +1,9 @@
 ---@type Orbit
 local Orbit = Orbit
 local L = Orbit.L
-local Plugin = Orbit:GetPlugin("Status Bar v2")
+local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ ALERT TOASTS ]-----------------------------------------------------------------------------------
--- One hooksecurefunc on AlertFrame_ShowNewAlert that recognises the reward alert templates by their
--- SetUp-populated fields, captures the rendered icon + name, dismisses Blizzard's frame (taint-free, like
--- the social/loot hooks), and replays the moment as a centre icon flourish through the queue. The
--- matchers are precise id-field checks so they never claim social (TopLine/BottomLine) or loot (lootItem)
--- frames — those keep their own hooks.
 local function Tex(t) return t and t.GetTexture and t:GetTexture() or nil end
 local function Txt(t) return t and t.GetText and t:GetText() or nil end
 
@@ -61,5 +56,6 @@ end
 -- [ TEST COMMAND ]-----------------------------------------------------------------------------------
 SLASH_ORBITTOAST1 = "/orbittoast"
 SlashCmdList["ORBITTOAST"] = function()
-    Plugin:PlayIconFlourish(134400, Plugin.FlourishColors.collect, L.PLU_SB_V2_REWARD_TEST)   -- a sample icon
+    Plugin:PlayIconFlourish(134400, Plugin.FlourishColors.collect, L.PLU_SB_V2_REWARD_TEST)   -- collectible / recipe styling
+    Plugin:PlayIconFlourish(236571, Plugin.FlourishColors.gold, L.PLU_SB_V2_REWARD_TEST)       -- achievement / reward (gold) styling
 end

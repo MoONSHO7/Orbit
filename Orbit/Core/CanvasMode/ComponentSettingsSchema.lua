@@ -240,8 +240,7 @@ function Schema.ResolveTitle(key)
 end
 
 -- [ FORMAT INPUT TOOLTIP ]---------------------------------------------------------------------------
--- Builds the tooltip rows for the format input box from the token vocabulary (UnitDisplay owns the canonical
--- health tokens; canvas reads them as data). Each row is `{ key, value }` (gold key, example value); plus a title and hint.
+-- UnitDisplay owns the canonical health tokens; canvas reads them as data to build the format-input tooltip rows.
 function Schema.GetFormatTooltipLines(setName)
     local lines = { { title = L.CFG_FORMAT_TOOLTIP_TITLE } }
     local source = setName == "health" and OrbitEngine.UnitButton and OrbitEngine.UnitButton.HEALTH_TOKENS

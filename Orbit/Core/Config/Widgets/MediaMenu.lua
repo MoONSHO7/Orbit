@@ -81,8 +81,7 @@ function MediaMenu:Create(owner, opts)
     popup.scrollOffset = 0
     popup.selected = nil
 
-    -- [ VIRTUALIZED RENDER ]-- only `visibleSlots` row frames ever exist; they are repositioned
-    -- and re-rendered as the offset changes, so a 200-entry list still costs ~10 frames.
+    -- [ VIRTUALIZED RENDER ]-- only `visibleSlots` row frames ever exist; repositioned/re-rendered on offset change, so a 200-entry list costs ~10 frames.
     local function RenderVisible()
         local items = popup.filtered
         local scale = content:GetEffectiveScale()

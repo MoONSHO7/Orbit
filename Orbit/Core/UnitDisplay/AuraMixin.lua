@@ -267,8 +267,7 @@ function Mixin:ApplyAuraCooldown(icon, aura, unit)
         local durObj = C_UnitAuras.GetAuraDuration(unit, aura.auraInstanceID)
         if durObj then
             icon.Cooldown:SetCooldownFromDurationObject(durObj)
-            -- Round the swipe AFTER SetCooldown (which resets the swipe texture) — like the swipe-colour-curve
-            -- paths do. Orbit-owned unnamed cooldown, so no taint; square (SwipeCustom) under a flat style.
+            -- Round the swipe AFTER SetCooldown, which resets the swipe texture (Orbit-owned unnamed cooldown, so no taint).
             icon.Cooldown:SetSwipeTexture(Orbit.Skin:GetRoundedSwipeTexture(true) or Orbit.Constants.Assets.SwipeCustom)
             return
         end

@@ -1278,8 +1278,6 @@ end
 
 local _breakdownSource = { name = nil, classFilename = nil, specIconID = nil, totalAmount = nil, amountPerSecond = nil }
 
--- Paints a source's spell breakdown into any bars-frame. Shared by the in-place meter view and the
--- mouseover/detached popups, which pass a synthetic def carrying the same breakdown target + styling.
 local function RenderBreakdownView(frame, def)
     local count = def.barCount
     local offset = def.scrollOffset or 0
@@ -1531,9 +1529,6 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
 end
 
 -- [ BREAKDOWN POPUP API ] ---------------------------------------------------------------------------
--- Bars-only frame the popup module drives for mouseover/detached windows. No edit-mode selection,
--- anchor/snap, stretch tab, or canvas preview — just _visibleRect + bars + title + backdrop, marked
--- _isPopup so the shared layout/render helpers skip meter-only steps.
 function Plugin:BuildBreakdownFrame()
     local frame = CreateFrame("Frame", nil, UIParent)
     Pixel:Enforce(frame)

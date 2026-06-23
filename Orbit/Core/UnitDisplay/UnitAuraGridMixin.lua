@@ -334,7 +334,7 @@ function Mixin:_addLayoutControls(schema)
     end
     table.insert(schema.controls, {
         type = "slider", key = "Spacing", label = L.PLU_AURA_SPACING,
-        min = 0, max = 50, step = 1, default = 2,
+        min = 0, max = 50, step = 1, default = 2, mergeAtZero = true,
         onChange = function(val) self:SetSetting(1, "Spacing", val); self:ApplySettings() end,
     })
 
