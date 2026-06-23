@@ -29,6 +29,7 @@
 - [CanvasMode] Health Text widget updated, can now customize your own style ("Current | Max", "% & Short", etc)
 - [CanvasMode] Smoother dragging of components
 - [Styling] Created LOTS of new borders for use
+- [Group Frames] Lower CPU per aura/health update in raids — cached tier resolution, snapshot-based color-by-aura, and fewer redundant refreshes for smoother 20–40 player content.
 
 *Remember, can use the Spotlight feature and type 'Help' to query things about Orbit.*
 

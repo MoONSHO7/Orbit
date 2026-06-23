@@ -166,7 +166,8 @@ Plugin.supportsHealthText = true
 -- [ TIER API ]---------------------------------------------------------------------------------------
 function Plugin:GetCurrentTier()
     if self._editTierOverride then return self._editTierOverride end
-    return self:GetRealTier()
+    -- Cached: CheckTierChange refreshes _currentTier on every tier-affecting event (roster, PLAYER_ENTERING_WORLD, ZONE_CHANGED_NEW_AREA), so hot callers (GetTierSetting on the per-UNIT_AURA path) skip GetRealTier's 3 C calls.
+    return self._currentTier or self:GetRealTier()
 end
 
 function Plugin:GetRealTier()
@@ -716,7 +717,8 @@ end
 
 -- [ TIER CHANGE DETECTION ]--------------------------------------------------------------------------
 function Plugin:CheckTierChange()
-    local newTier = self:GetCurrentTier()
+    -- Compute the fresh real tier (not the cached GetCurrentTier) so change detection still works.
+    local newTier = self._editTierOverride or self:GetRealTier()
     if newTier ~= self._currentTier then
         local oldTier = self._currentTier
         self._currentTier = newTier
@@ -988,6 +990,15 @@ function Plugin:ApplySettings()
     self._dispelSettingsCache = nil
     self._aggroSettingsCache = nil
 
+    -- Color-by-aura is off for virtually all users; cache whether ANY tier configures it so UpdateColorByAura can bail O(1) per UNIT_AURA instead of resolving tier settings.
+    self._anyColorByAura = false
+    local tiers = self:GetSetting(1, "Tiers")
+    if tiers then
+        for _, t in pairs(tiers) do
+            if t.ColorByAuraSpellId and t.ColorByAuraSpellId ~= 0 then self._anyColorByAura = true; break end
+        end
+    end
+
     local tierWidth = self:GetTierSetting("Width") or DEFAULT_WIDTH
     local tierHeight = self:GetTierSetting("Height") or DEFAULT_HEIGHT
     local borderSize = self:GetSetting(1, "BorderSize")
@@ -1035,7 +1046,11 @@ local function FindSpecSpellAltId(spellId)
     end
 end
 
-local function IsTrackedAuraPresent(unit, spellId, altSpellId)
+local function IsTrackedAuraPresent(snapshot, unit, spellId, altSpellId)
+    -- O(1) against the per-event snapshot's spellId map (built once, any caster); same secret-skip semantics as the scan below.
+    local m = snapshot and snapshot.helpfulBySpell
+    if m then return m[spellId] ~= nil or (altSpellId ~= nil and m[altSpellId] ~= nil) end
+    -- Fallback only when no snapshot is in scope (e.g. forced refresh / preview).
     local found = false
     AuraUtil.ForEachAura(unit, "HELPFUL", 40, function(aura)
         local sid = aura.spellId
@@ -1049,19 +1064,16 @@ end
 
 function Plugin:UpdateColorByAura(frame)
     if not frame or not frame.Health or not frame.unit then return end
-    local hadOverride = frame._colorByAuraOverride ~= nil
-    local function clear()
-        if hadOverride then frame._colorByAuraOverride = nil; frame:ApplyHealthColor() end
-    end
-    local spellId = self:GetTierSetting("ColorByAuraSpellId")
-    if not spellId or spellId == 0 then clear(); return end
-    local unit = frame.unit
-    if not UnitExists(unit) then clear(); return end
-    if IsTrackedAuraPresent(unit, spellId, FindSpecSpellAltId(spellId)) then
+    -- _anyColorByAura (cached on settings-change) lets the default/most users skip the whole tier+aura resolution on every UNIT_AURA.
+    local spellId = self._anyColorByAura and self:GetTierSetting("ColorByAuraSpellId")
+    local active = spellId and spellId ~= 0 and UnitExists(frame.unit)
+        and IsTrackedAuraPresent(frame._auraSnapshot, frame.unit, spellId, FindSpecSpellAltId(spellId))
+    if active then
         frame._colorByAuraOverride = self:GetTierSetting("ColorByAuraColor")
         frame:ApplyHealthColor()
-    else
-        clear()
+    elseif frame._colorByAuraOverride ~= nil then
+        frame._colorByAuraOverride = nil
+        frame:ApplyHealthColor()
     end
 end
 

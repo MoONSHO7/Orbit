@@ -62,5 +62,5 @@ function Mixin.UpdateInRange(frame)
         frame:SetAlpha(frameAlpha)
         Mixin.SetBackgroundAlpha(frame, bgAlpha)
     end
-    frame:ApplyHealthColor()
+    -- No ApplyHealthColor here: range/phase/connection change ALPHA only; bar color is range-independent and is applied by UpdateHealth (UNIT_HEALTH) / UpdateAll (assignment). Re-resolving it on every range tick was redundant work on the hottest churn path.
 end
