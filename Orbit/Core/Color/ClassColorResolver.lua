@@ -19,8 +19,11 @@ local function SetAccountSetting(key, val)
     Orbit.db.AccountSettings[key] = val
 end
 
+-- Memoized "ClassColor_<CLASS>" keys so the override lookups on the hot per-UNIT_HEALTH text path don't re-concat a string each call.
+local _classKey = setmetatable({}, { __index = function(t, cf) local k = "ClassColor_" .. cf; t[cf] = k; return k end })
+
 function CC:GetOverrides(classFile)
-    local custom = GetAccountSetting("ClassColor_" .. (classFile or ""))
+    local custom = GetAccountSetting(_classKey[classFile or ""])
     if custom then return { r = custom.r, g = custom.g, b = custom.b, a = 1 } end
 
     local default = classFile and CLASS_COLOR_DEFAULTS[classFile]
@@ -32,7 +35,7 @@ function CC:GetOverrides(classFile)
 end
 
 function CC:GetOverridesUnpacked(classFile)
-    local custom = GetAccountSetting("ClassColor_" .. (classFile or ""))
+    local custom = GetAccountSetting(_classKey[classFile or ""])
     if custom then return custom.r, custom.g, custom.b, 1 end
 
     local default = classFile and CLASS_COLOR_DEFAULTS[classFile]
@@ -45,7 +48,7 @@ end
 
 function CC:SetOverride(classFile, colorTable)
     if colorTable then colorTable.type = nil end
-    SetAccountSetting("ClassColor_" .. classFile, colorTable)
+    SetAccountSetting(_classKey[classFile], colorTable)
     Orbit.EventBus:Fire("ORBIT_COLORS_CHANGED")
 end
 

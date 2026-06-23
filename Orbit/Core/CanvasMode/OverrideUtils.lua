@@ -18,9 +18,10 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     if overrides then
         if overrides.UseClassColour then
             if not classFile then _, classFile = UnitClass(unit or "player") end
-            local classColor = classFile and Engine.ClassColor:GetOverrides(classFile)
-            if classColor then
-                element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+            if classFile then
+                -- Unpacked (zero-alloc) on the per-UNIT_HEALTH text path; the {r,g,b,a} table form churned GC in raids.
+                local r, g, b = Engine.ClassColor:GetOverridesUnpacked(classFile)
+                element:SetTextColor(r, g, b, 1)
                 return true
             end
         elseif overrides.CustomColorCurve then

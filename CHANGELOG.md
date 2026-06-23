@@ -30,4 +30,6 @@
 - [CanvasMode] Smoother dragging of components
 - [Styling] Created LOTS of new borders for use
 
+*Remember, can use the Spotlight feature and type 'Help' to query things about Orbit.*
+
 [end]
