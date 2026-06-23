@@ -114,7 +114,7 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     frame:SetPoint(point, relativeTo, relativePoint, xOfs, yOfs)
 
     if Selection.dragCallbacks[frame] then
-        Selection.dragCallbacks[frame](frame, point, xOfs, yOfs)
+        Selection.dragCallbacks[frame](frame, { kind = "free", point = point, x = xOfs, y = yOfs })
     end
 
     Selection:UpdateVisuals(frame)

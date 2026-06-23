@@ -637,6 +637,9 @@ function Dialog:CloseDialog()
     self:EndTourCleanup()
     self:CleanupPreview()
 
+    -- Apply keeps mid-session direct writes; Cancel already replayed reverts before closing. Either way, drop the list.
+    self._sessionReverts = nil
+
     self.targetFrame = nil
     self.targetPlugin = nil
     self.targetSystemIndex = nil

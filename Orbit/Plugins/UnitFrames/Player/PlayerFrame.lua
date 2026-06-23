@@ -63,6 +63,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
+Plugin:RegisterSyncSource(PLAYER_FRAME_INDEX)
 Plugin.supportsHealthText = true
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------

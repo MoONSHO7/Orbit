@@ -14,11 +14,11 @@ local Mixin = Orbit.UnitFrameMixin
 local INHERIT_PLUGIN = Orbit.Constants.UnitFrame.InheritPlugin
 local INHERIT_INDEX = Orbit.Constants.UnitFrame.InheritIndex
 
-local SYNC_PLUGINS = {
-    [Enum.EditModeUnitFrameSystemIndices.Player] = "Orbit_PlayerFrame",
-    [Enum.EditModeUnitFrameSystemIndices.Target] = "Orbit_TargetFrame",
-    [Enum.EditModeUnitFrameSystemIndices.Focus or 3] = "Orbit_FocusFrame",
-}
+-- Populated by each unit-frame plugin at load via RegisterSyncSource, so Core does not hardcode plugin names (inward-dependency rule).
+local SYNC_SOURCES = {}
+function Mixin:RegisterSyncSource(systemIndex)
+    if systemIndex then SYNC_SOURCES[systemIndex] = self end
+end
 
 function Mixin:GetPlayerSetting(key)
     return Orbit:ReadPluginSetting(self.inheritPlugin or INHERIT_PLUGIN, self.inheritIndex or INHERIT_INDEX, key)
@@ -42,7 +42,10 @@ function Mixin:GetSyncedSize(systemIndex, visited)
     if source == systemIndex then
         return self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
     end
-    local sourcePlugin = Orbit:GetPlugin(SYNC_PLUGINS[source])
+    local sourcePlugin = SYNC_SOURCES[source]
+    if not sourcePlugin then
+        return self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
+    end
     return sourcePlugin:GetSyncedSize(source, visited)
 end
 

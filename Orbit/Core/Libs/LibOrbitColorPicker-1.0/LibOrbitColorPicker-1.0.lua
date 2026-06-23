@@ -98,6 +98,9 @@ local function SortPinsByPosition(a, b) return a.position < b.position end
 local function ClampPosition(x) return math.max(0, math.min(1, x)) end
 
 local function GetCurrentClassColor()
+    -- Override-aware resolution when hosted inside Orbit; RAID_CLASS_COLORS only as a standalone fallback.
+    local CC = _G.Orbit and _G.Orbit.Engine and _G.Orbit.Engine.ClassColor
+    if CC then return CC:GetCurrentClassColor() end
     local _, class = UnitClass("player")
     local color = RAID_CLASS_COLORS[class]
     return color and { r = color.r, g = color.g, b = color.b, a = 1 } or DEFAULT_COLOR

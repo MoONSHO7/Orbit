@@ -338,20 +338,18 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
         end)
     end
 
-    Engine.FrameSelection:Attach(frame, function(f, point, x, y)
+    -- decision is a tagged record from Drag/Nudge: { kind = "anchor", target, edge } or { kind = "free", point, x, y }.
+    Engine.FrameSelection:Attach(frame, function(f, decision)
         if Engine.PositionManager then
-            if point == "ANCHORED" then
-                -- Retrieve padding/align from anchor to pass to PositionManager
-                local padding = 0
-                local align = nil
-                local fallback = nil
-                local ancestry = nil
+            if decision.kind == "anchor" then
+                local target, edge = decision.target, decision.edge
+                local padding, align, fallback, ancestry = 0, nil, nil, nil
                 if Engine.FrameAnchor then
                     if Engine.FrameAnchor.anchors[f] then
                         padding = Engine.FrameAnchor.anchors[f].padding or 0
                         align = Engine.FrameAnchor.anchors[f].align
                     end
-                    local targetFrame = type(x) == "table" and x or _G[x]
+                    local targetFrame = type(target) == "table" and target or _G[target]
                     if targetFrame then
                         ancestry = BuildAncestry(targetFrame)
                         local rootParent = targetFrame
@@ -363,20 +361,20 @@ function Persistence:AttachSettingsListener(frame, plugin, systemIndex)
                         end
                     end
                 end
-                Engine.PositionManager:SetAnchor(f, x, y, padding, align, fallback, ancestry)
+                Engine.PositionManager:SetAnchor(f, target, edge, padding, align, fallback, ancestry)
             else
-                Engine.PositionManager:SetPosition(f, point, x, y)
+                Engine.PositionManager:SetPosition(f, decision.point, decision.x, decision.y)
             end
             Engine.PositionManager:MarkDirty(f)
             -- Spec-scoped writes go immediate — a /reload between drag-stop and edit-mode-close would lose them; global writes still flush on close.
             local p = f.orbitPlugin
             local sysIdx = f.systemIndex
             if p and sysIdx and HasGetSpecData(p) and IsBuiltinSpecScoped(p, sysIdx) then
-                if point == "ANCHORED" then
+                if decision.kind == "anchor" then
                     local anch = Engine.PositionManager:GetAnchor(f)
                     if anch then Persistence:WriteAnchor(p, sysIdx, anch) end
                 else
-                    Persistence:WritePosition(p, sysIdx, { point = point, x = x, y = y })
+                    Persistence:WritePosition(p, sysIdx, { point = decision.point, x = decision.x, y = decision.y })
                 end
             end
         end

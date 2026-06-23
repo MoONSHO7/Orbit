@@ -16,13 +16,13 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
     elseif color[1] then
         r, g, b, a = color[1], color[2] or 1, color[3] or 1, color[4] or 1
     elseif color.pins then
-        local firstPin = color._sorted and color._sorted[1] or color.pins[1]
-        if firstPin and firstPin.color then
-            local pColor = firstPin.color
-            r = pColor.r or pColor[1] or 1
-            g = pColor.g or pColor[2] or 1
-            b = pColor.b or pColor[3] or 1
-            a = pColor.a or pColor[4] or 1
+        -- Let the curve engine own pin resolution (sorting, class-pin overrides) instead of peeking its private _sorted cache.
+        local resolved = Engine.ColorCurve:GetFirstColorFromCurve(color)
+        if resolved then
+            r = resolved.r or 1
+            g = resolved.g or 1
+            b = resolved.b or 1
+            a = resolved.a or 1
         end
     end
 
@@ -94,12 +94,11 @@ function Skin:ApplyHighlightBorder(frame, storageKey, color, levelOffset, blendM
         self:_RenderSliceTexture(overlay, nineSliceStyle, { r = r, g = g, b = b, a = a }, mode)
     elseif pathType == "legacy" then
         self:HideSliceTexture(overlay)
-        local adjEdge = edgeSize / ownScale
+        local outset, adjEdge = self:ComputeBorderOutset(frame, edgeSize, borderOffset, hlScale)
         overlay:ClearAllPoints()
         if anchorTarget then
             overlay:SetAllPoints(anchorTarget)
         else
-            local outset = Engine.Pixel:Snap((adjEdge / 2) + (borderOffset / ownScale), hlScale)
             overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
             overlay:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
         end

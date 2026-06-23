@@ -341,7 +341,7 @@ local function FallbackPoint(parent, point, x, y)
     return s.point, s.x, s.y
 end
 
--- Runs snap detection (which snaps the frame as a side effect) and returns a decision { kind = "anchor" | "free" | "precision", ... } for CommitDrop to apply.
+-- Detects snap, applies it to the frame (NormalizePosition below reads the snapped position), and returns a decision { kind = "anchor" | "free" | "precision", ... } for CommitDrop to apply.
 local function ResolveDrop(parent)
     local Selection = Engine.FrameSelection
 
@@ -353,7 +353,8 @@ local function ResolveDrop(parent)
     end
 
     local targets = parent._drag and parent._drag.snapTargets or Selection:GetSnapTargets(parent)
-    local _, _, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, false, targets, nil)
+    local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Engine.FrameSnap:DetectSnap(parent, false, targets, nil)
+    Engine.FrameSnap:ApplySnap(parent, closestX, closestY)
 
     local anchoringEnabled = not Orbit.db or not Orbit.db.GlobalSettings or Orbit.db.GlobalSettings.AnchoringEnabled ~= false
     if anchorTarget and anchorEdge and anchoringEnabled and Selection.selections[anchorTarget] then
@@ -384,19 +385,19 @@ local function CommitDrop(parent, decision)
         Engine.FrameAnchor:CreateAnchor(parent, decision.target, decision.edge, decision.padding, nil, decision.align)
         -- Ordering: anchor must exist before the event and the callback, both of which read FrameAnchor.anchors[parent].
         Orbit.EventBus:Fire("ORBIT_BORDER_LAYOUT_CHANGED")
-        if cb then cb(parent, "ANCHORED", decision.target, decision.edge) end
+        if cb then cb(parent, { kind = "anchor", target = decision.target, edge = decision.edge }) end
         return
     end
 
     if decision.kind == "precision" then
         parent:ClearAllPoints()
         parent:SetPoint(decision.point or "CENTER", decision.x or 0, decision.y or 0)
-        if cb then cb(parent, decision.point or "CENTER", decision.x or 0, decision.y or 0) end
+        if cb then cb(parent, { kind = "free", point = decision.point or "CENTER", x = decision.x or 0, y = decision.y or 0 }) end
         return
     end
 
     -- "free": SetPoint before ApplySettings — ApplySettings re-reads geometry and must see the drop.
-    if cb then cb(parent, decision.point, decision.x, decision.y) end
+    if cb then cb(parent, { kind = "free", point = decision.point, x = decision.x, y = decision.y }) end
     parent:ClearAllPoints()
     parent:SetPoint(decision.point or "CENTER", decision.x or 0, decision.y or 0)
     if parent.orbitPlugin and parent.orbitPlugin.ApplySettings then
@@ -574,7 +575,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
     if newPadding ~= currentPadding then
         Engine.FrameAnchor:CreateAnchor(parent, anchor.parent, anchor.edge, newPadding, anchor.syncOptions, anchor.align)
         if Selection.dragCallbacks[parent] then
-            Selection.dragCallbacks[parent](parent, "ANCHORED", anchor.parent, anchor.edge)
+            Selection.dragCallbacks[parent](parent, { kind = "anchor", target = anchor.parent, edge = anchor.edge })
         end
 
         -- Show position tooltip (matches nudge and drag behavior)
@@ -590,7 +591,7 @@ function Drag:OnMouseWheel(selectionOverlay, delta)
                 Engine.FrameAnchor:CreateAnchor(partner, pAnchor.parent, pAnchor.edge, newPadding, pAnchor.syncOptions, pAnchor.align)
                 Selection:UpdateVisuals(partner)
                 if Selection.dragCallbacks[partner] then
-                    Selection.dragCallbacks[partner](partner, "ANCHORED", pAnchor.parent, pAnchor.edge)
+                    Selection.dragCallbacks[partner](partner, { kind = "anchor", target = pAnchor.parent, edge = pAnchor.edge })
                 end
             end
         end

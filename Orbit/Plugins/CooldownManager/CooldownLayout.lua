@@ -112,10 +112,7 @@ end
 -- [ ANCHOR LOOKUP ] ---------------------------------------------------------------------------------
 local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame] end
 
--- [ LIVE CANVAS PREVIEW ] ---------------------------------------------------------------------------
-Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", function(changedPlugin)
-    if changedPlugin == CDM and CDM.buffBarAnchor and not CDM.buffBarAnchor.orbitMountedSuppressed then CDM:ProcessChildren(CDM.buffBarAnchor) end
-end)
+-- Live Canvas preview is driven by the shared PluginMixin:WatchCanvasChanges watcher, whose default OnCanvasLivePreview re-applies settings (ApplySettings already reprocesses buffBarAnchor). A second subscription here double-processed the buff bar on every edit.
 
 -- [ PROCESS CHILDREN ] ------------------------------------------------------------------------------
 -- Re-entrancy guard + per-call snapshot — Skin:Apply / ORBIT_ICON_REPROCESSED can re-enter and corrupt the iteration.

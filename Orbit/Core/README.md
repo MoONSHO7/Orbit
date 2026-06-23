@@ -58,7 +58,7 @@ orbit uses strict boundaries for how data is saved and persisted across `/reload
 
 - `Orbit.db.AccountSettings` — **true account-wide application data**. data that belongs to the human player at the keyboard regardless of character or spec (color picker history, tutorial flags, minimap icon visibility). entirely immune to `ProfileManager`.
 - `Orbit.db.GlobalSettings` — **the aesthetic theme for the current profile**. ui styling that applies globally across *all* plugins for a specific layout configuration (universal border sizes, main fonts, status bar textures).
-- `Orbit.db.Profiles[name]` — per-profile layout data (plugin settings, frame positions, anchors).
+- `Orbit.db.profiles[name]` — per-profile layout data (plugin settings, frame positions, anchors).
 - `Orbit.db.SpecData[charKey][specID][systemIndex][key]` — per-character per-spec storage layered through `PluginMixin:GetSpecData` / `SetSpecData`.
 
 > do not put non-theme application data into `GlobalSettings`. `ProfileManager` clones `profile.GlobalSettings` into the live `Orbit.db.GlobalSettings` memory block on every profile activation (which fires on login and `/reload`). un-flushed application data stored there is permanently erased.

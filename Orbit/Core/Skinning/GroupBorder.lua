@@ -239,11 +239,7 @@ function Skin:UpdateGroupBorder(rootFrame)
             edgeSize = (gs and gs.BorderEdgeSize) or Constants.BorderStyle.EdgeSize
             borderOffset = (gs and gs.BorderOffset) or 0
         end
-        local ownScale = rootFrame:GetScale() or 1
-        if ownScale < 0.01 then ownScale = 1 end
-        local adjEdge = edgeSize / ownScale
-        local adjOffset = borderOffset / ownScale
-        local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, rootScale)
+        local outset, adjEdge = self:ComputeBorderOutset(rootFrame, edgeSize, borderOffset, rootScale)
 
         overlay:ClearAllPoints()
 

@@ -163,7 +163,6 @@ function API:ResetPluginSettings(plugin)
             if not plugin.system then return end
             local db = Orbit.runtime and Orbit.runtime.Layouts
             if db and db["Orbit"] then db["Orbit"][plugin.system] = nil end
-            if db and db["Default"] then db["Default"][plugin.system] = nil end
             if plugin.frame and Orbit.Engine.PositionManager then
                 Orbit.Engine.PositionManager:ClearFrame(plugin.frame)
             end

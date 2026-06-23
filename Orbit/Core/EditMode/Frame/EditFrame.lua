@@ -69,7 +69,9 @@ end
 function Frame:Snap(frame, showGuides)
     EnsureModules()
     local targets = Selection:GetSnapTargets(frame)
-    return Snap:DetectSnap(frame, showGuides, targets, nil)
+    local closestX, closestY, anchorTarget, anchorEdge, anchorAlign = Snap:DetectSnap(frame, showGuides, targets, nil)
+    if not showGuides then Snap:ApplySnap(frame, closestX, closestY) end
+    return closestX, closestY, anchorTarget, anchorEdge, anchorAlign
 end
 
 -- [ SELECTION API ]----------------------------------------------------------------------------------

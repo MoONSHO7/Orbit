@@ -165,8 +165,7 @@ function Settings:Open(componentKey, container, plugin, systemIndex)
         end
 
         if currentValue == nil and control.key == "CustomColorCurve" then
-            local g = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
-            currentValue = g or { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+            currentValue = Orbit:GetTheme("FontColorCurve") or Orbit.Constants.NewWhiteColorCurve()
         end
 
         local callback = function(key, value) self:OnValueChanged(key, value) end
@@ -378,7 +377,10 @@ function Settings:OnValueChanged(key, value)
             local plugin = self.plugin
             local systemIndex = self.systemIndex
             local canvasDialog = OrbitEngine.CanvasModeDialog
-            -- Persist display choice before canvasDialog:Open() restarts the Transaction.
+            -- Persist display choice before canvasDialog:Open() restarts the Transaction; record the pre-edit value (snapshotted by Transaction:Set above) so Cancel can revert this bypass write.
+            if canvasDialog.RecordSessionRevert then
+                canvasDialog:RecordSessionRevert(plugin, systemIndex, "DifficultyDisplay", OrbitEngine.CanvasMode.Transaction:GetOriginal("DifficultyDisplay"))
+            end
             plugin:SetSetting(systemIndex, "DifficultyDisplay", value)
             C_Timer.After(0, function()
                 if not (canvasDialog and plugin and canvasDialog.targetFrame and canvasDialog:IsShown()) then return end

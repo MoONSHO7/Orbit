@@ -271,22 +271,23 @@ function Snap:DetectSnap(frame, showGuides, targets, isLockedFn)
         end
     end
 
-    -- Snap final L/B (not the delta) so the frame edge lands on the guideline pixel even if drag ended at a sub-pixel offset.
-    if not showGuides and (closestX or closestY) then
-        local effectiveScale = frame:GetEffectiveScale()
-        local l, b = frame:GetLeft(), frame:GetBottom()
-        if closestX then l = l + (closestX / fScale) end
-        if closestY then b = b + (closestY / fScale) end
-        if Engine.Pixel then
-            l = Engine.Pixel:Snap(l, effectiveScale)
-            b = Engine.Pixel:Snap(b, effectiveScale)
-        end
-
-        frame:ClearAllPoints()
-        frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b)
-    end
-
     return closestX, closestY, anchorTarget, anchorEdge, anchorAlign
+end
+
+-- Command half of the former DetectSnap side effect: move the frame so its edge lands on the snapped guideline pixel. Call after DetectSnap; pure detection no longer mutates.
+function Snap:ApplySnap(frame, closestX, closestY)
+    if not (closestX or closestY) then return end
+    local fScale = frame:GetEffectiveScale()
+    if not fScale then return end
+    local l, b = frame:GetLeft(), frame:GetBottom()
+    if closestX then l = l + (closestX / fScale) end
+    if closestY then b = b + (closestY / fScale) end
+    if Engine.Pixel then
+        l = Engine.Pixel:Snap(l, fScale)
+        b = Engine.Pixel:Snap(b, fScale)
+    end
+    frame:ClearAllPoints()
+    frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l, b)
 end
 
 -- Normalize position to nearest anchor point

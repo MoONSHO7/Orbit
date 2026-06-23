@@ -41,33 +41,31 @@ local function CopyTable(src, dest)
     return dest
 end
 
--- Idempotent migration: legacy "flat"/"rounded" keys and interim None=-1 roundness rewrite to the unified "orbit" style.
-local function NormalizeBorderStyle(gs)
-    if not gs then return end
-    local entries = {
-        { style = "BorderStyle",     corner = "RoundedCorner",     thickness = "RoundedThickness",     size = "BorderSize" },
-        { style = "IconBorderStyle", corner = "IconRoundedCorner", thickness = "IconRoundedThickness", size = "IconBorderSize" },
-    }
-    for _, p in ipairs(entries) do
-        local v = gs[p.style]
-        if v == "flat" then
-            gs[p.style] = "orbit"
-            if gs[p.corner] == nil then gs[p.corner] = 0 end          -- Square ≈ the old flat look
-            -- Old flat BorderSize (0-5) maps onto Border Thickness (None=0 .. Thick=3).
-            if gs[p.thickness] == nil then gs[p.thickness] = math.min(gs[p.size] or 2, 3) end
-        elseif v == "rounded" then
-            gs[p.style] = "orbit"
-            -- Preserve the pre-consolidation Rounded default (Round) for untouched profiles.
-            if gs[p.corner] == nil then gs[p.corner] = 2 end
-        end
-        -- Interim None=-1 roundness meant "no border" — now Border Thickness None, Square corner.
-        if gs[p.corner] == -1 then
-            gs[p.corner] = 0
-            gs[p.thickness] = 0
+-- Idempotent: fold the legacy "Default" layout into the live "Orbit" layout (Orbit wins per-key), then drop it. Lets GetSetting read a single layout without a back-compat fallback walk.
+local function MigrateDefaultLayout(layouts)
+    if not layouts or not layouts.Default then return end
+    layouts.Orbit = layouts.Orbit or {}
+    for system, sysData in pairs(layouts.Default) do
+        local target = layouts.Orbit[system]
+        if target == nil then
+            layouts.Orbit[system] = sysData
+        else
+            for sysIdx, idxData in pairs(sysData) do
+                if target[sysIdx] == nil then
+                    target[sysIdx] = idxData
+                else
+                    for k, v in pairs(idxData) do
+                        if target[sysIdx][k] == nil then target[sysIdx][k] = v end
+                    end
+                end
+            end
         end
     end
-    Orbit.Constants.BorderStyle.SyncEffectiveSize(gs)
+    layouts.Default = nil
 end
+Orbit.Profile.MigrateDefaultLayout = MigrateDefaultLayout
+
+local function NormalizeBorderStyle(gs) Orbit.Constants.BorderStyle.Migrate(gs) end
 
 local function SafeApplyPlugin(plugin)
     local success, err = pcall(function() plugin:ApplySettings(nil) end)
@@ -129,6 +127,7 @@ function Orbit.Profile:Initialize()
             profileData.GlobalSettings = CopyTable(Orbit.db.GlobalSettings, {})
         end
         NormalizeBorderStyle(profileData.GlobalSettings)
+        MigrateDefaultLayout(profileData.Layouts)
     end
 
 
@@ -216,6 +215,54 @@ function Orbit.Profile:RenameProfile(oldName, newName)
     return true
 end
 
+StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] = {
+    text = L.MSG_PROFILE_RELOAD_REQUIRED,
+    button1 = L.CMN_RELOAD,
+    button2 = L.CMN_LATER,
+    OnAccept = function() ReloadUI() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
+-- Live-toggle plugins whose enabled/hidden state switched cleanly; returns true if any change requires a /reload.
+local function DiffPluginStates(self, oldDisabled, oldHidden)
+    local needsReload = false
+    local defaults = self.defaults and self.defaults.DisabledPlugins
+    for _, plugin in ipairs(Orbit.Engine.systems) do
+        local wasDisabled = oldDisabled[plugin.name]
+        if wasDisabled == nil then wasDisabled = defaults and defaults[plugin.name] or false end
+        local nowDisabled = Orbit.db.DisabledPlugins[plugin.name]
+        if nowDisabled == nil then nowDisabled = defaults and defaults[plugin.name] or false end
+        local wasHidden = oldHidden[plugin.name] or false
+        local nowHidden = Orbit.db.HideBlizzardFrames[plugin.name] or false
+        if (wasDisabled ~= nowDisabled) or (wasHidden ~= nowHidden) then
+            if plugin.liveToggle and not nowHidden and not wasHidden then
+                Orbit:LiveTogglePlugin(plugin.name, not nowDisabled)
+            else
+                needsReload = true
+            end
+        end
+    end
+    return needsReload
+end
+
+-- Priority-first apply, then the rest, then a deferred full sweep + coalesced anchor reconcile next frame.
+local function RefreshAllPlugins()
+    for _, plugin in ipairs(Orbit.Engine.systems) do
+        if plugin.ApplySettings and plugin.refreshPriority then SafeApplyPlugin(plugin) end
+    end
+    for _, plugin in ipairs(Orbit.Engine.systems) do
+        if plugin.ApplySettings and not plugin.refreshPriority then SafeApplyPlugin(plugin) end
+    end
+    C_Timer.After(DELAYED_REFRESH, function()
+        for _, plugin in ipairs(Orbit.Engine.systems) do
+            if plugin.ApplySettings then SafeApplyPlugin(plugin) end
+        end
+        if Orbit.Engine.FrameAnchor then Orbit.Engine.FrameAnchor:ScheduleReconcileAll() end
+    end)
+end
+
 function Orbit.Profile:SetActiveProfile(name)
     if not Orbit.db.profiles[name] then return false end
     if isActivatingProfile then return false end
@@ -225,6 +272,7 @@ function Orbit.Profile:SetActiveProfile(name)
     end
     local profile = Orbit.db.profiles[name]
     if not profile.Layouts then profile.Layouts = {} end
+    MigrateDefaultLayout(profile.Layouts)
 
     if Orbit.db.activeProfile == name then
         Orbit.runtime = Orbit.runtime or {}
@@ -259,66 +307,16 @@ function Orbit.Profile:SetActiveProfile(name)
     Orbit.db.HideBlizzardFrames = CopyTable(profile.HideBlizzardFrames or {}, {})
     Orbit:Print(L.MSG_PROFILE_LOADED_F:format(name))
 
-    -- Diff plugin states: live-toggle clean plugins, flag dirty ones for reload
     local needsReload = false
     if Orbit.Engine and Orbit.Engine.systems then
-        for _, plugin in ipairs(Orbit.Engine.systems) do
-            local wasDisabled = oldDisabled[plugin.name]
-            if wasDisabled == nil then
-                local defaults = self.defaults and self.defaults.DisabledPlugins
-                wasDisabled = defaults and defaults[plugin.name] or false
-            end
-
-            local nowDisabled = Orbit.db.DisabledPlugins[plugin.name]
-            if nowDisabled == nil then
-                local defaults = self.defaults and self.defaults.DisabledPlugins
-                nowDisabled = defaults and defaults[plugin.name] or false
-            end
-            
-            local wasHidden = oldHidden[plugin.name] or false
-            local nowHidden = Orbit.db.HideBlizzardFrames[plugin.name] or false
-            local stateChanged = (wasDisabled ~= nowDisabled) or (wasHidden ~= nowHidden)
-            if stateChanged then
-                if plugin.liveToggle and not nowHidden and not wasHidden then
-                    Orbit:LiveTogglePlugin(plugin.name, not nowDisabled)
-                else
-                    needsReload = true
-                end
-            end
-        end
-
-        for _, plugin in ipairs(Orbit.Engine.systems) do
-            if plugin.ApplySettings and plugin.refreshPriority then SafeApplyPlugin(plugin) end
-        end
-        for _, plugin in ipairs(Orbit.Engine.systems) do
-            if plugin.ApplySettings and not plugin.refreshPriority then SafeApplyPlugin(plugin) end
-        end
-        C_Timer.After(DELAYED_REFRESH, function()
-            for _, plugin in ipairs(Orbit.Engine.systems) do
-                if plugin.ApplySettings then SafeApplyPlugin(plugin) end
-            end
-            -- Coalesce duplicate reconcile requests from sibling systems reacting to the same switch.
-            if Orbit.Engine.FrameAnchor then
-                Orbit.Engine.FrameAnchor:ScheduleReconcileAll()
-            end
-        end)
+        needsReload = DiffPluginStates(self, oldDisabled, oldHidden)
+        RefreshAllPlugins()
     end
 
     if Orbit.OptionsPanel and Orbit.OptionsPanel.Refresh then Orbit.OptionsPanel:Refresh() end
     isActivatingProfile = false
 
-    if needsReload then
-        StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] = StaticPopupDialogs["ORBIT_PROFILE_RELOAD"] or {
-            text = L.MSG_PROFILE_RELOAD_REQUIRED,
-            button1 = L.CMN_RELOAD,
-            button2 = L.CMN_LATER,
-            OnAccept = function() ReloadUI() end,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-        }
-        StaticPopup_Show("ORBIT_PROFILE_RELOAD")
-    end
+    if needsReload then StaticPopup_Show("ORBIT_PROFILE_RELOAD") end
 
     Orbit.EventBus:Fire("ORBIT_PROFILE_CHANGED", name)
     return true

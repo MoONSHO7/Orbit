@@ -103,12 +103,7 @@ function Layout:CreateColorCurvePicker(parent, label, initialCurveData, callback
                 return
             end
             local function ResolvePin(pin)
-                if pin.type == "class" then
-                    local _, classFile = UnitClass("player")
-                    local classColor = RAID_CLASS_COLORS[classFile]
-                    if classColor then return { r = classColor.r, g = classColor.g, b = classColor.b, a = 1 } end
-                end
-                return pin.color
+                return Engine.ClassColor:ResolveClassColorPin(pin)
             end
             local sortedPins = {}
             for i, p in ipairs(pins) do sortedPins[i] = p end

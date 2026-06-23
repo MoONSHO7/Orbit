@@ -14,6 +14,10 @@
 - Checkbox failures in some circumstances.
 - Datatext tooltip was showing and not removable if users had Datatexts disabled.
 - Fixed some Damage Meter lua errors
+- Custom class colors now apply everywhere (gradient backgrounds and the color-curve preview previously ignored your override).
+- [CanvasMode] Text-on-icon offsets now stay correct after Apply (previously matched the preview but shifted once saved).
+- [CanvasMode] Cancelling an edit now also reverts a changed Difficulty display choice.
+- [Global] Reset now restores the correct default font.
 
 ### Updates
 - [Datatexts] Added "Show only in Instance" to Combat Timer

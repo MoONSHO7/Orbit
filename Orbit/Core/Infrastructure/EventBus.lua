@@ -66,19 +66,16 @@ function EventBus:Fire(event, ...)
     local n = #listeners
     local snapshot = {}
     for i = 1, n do snapshot[i] = listeners[i] end
-    local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
     for i = 1, n do
         local listener = snapshot[i]
-        local start = profilerActive and debugprofilestop() or nil
+        local start = Orbit.Profiler and Orbit.Profiler:Begin()
         local ok, err
         if listener.context then
             ok, err = pcall(listener.callback, listener.context, ...)
         else
             ok, err = pcall(listener.callback, ...)
         end
-        if start then
-            Orbit.Profiler:RecordContext(listener.context, event, debugprofilestop() - start)
-        end
+        if start then Orbit.Profiler:End(listener.context, event, start) end
         if not ok then
             Orbit:Print(L.MSG_EVENTBUS_ERROR_F:format(event, tostring(err)))
             if Orbit.ErrorHandler then

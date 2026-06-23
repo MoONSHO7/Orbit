@@ -120,6 +120,7 @@ function Mixin:PatchCaches(frame, unit, updateInfo)
     return changed
 end
 
+-- CONTRACT: these are single module-wide scratch tables reused across all frames, not per-frame storage. A consumer must fully drain the returned table before the next BuildSnapshotFromCaches/postFilter call and must never retain a reference past its dispatch — the next call overwrites it in place.
 local _RecycledSnapshot = { harmful = {}, helpful = {}, helpfulBySpell = {}, helpfulPlayerBySpell = {} }
 local _RecycledAuraDisplayList = {}
 

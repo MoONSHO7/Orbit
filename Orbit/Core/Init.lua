@@ -235,47 +235,57 @@ function Orbit:IsLiveToggle(name)
     return plugin and plugin.liveToggle or false
 end
 
+-- [ PLUGIN LIFECYCLE ]-------------------------------------------------------------------------------
+-- Single teardown/setup pair shared by live-toggle and spec-lock so OnDisable invocation, combat deferral, and canvas re-watch stay consistent by construction.
+local function SetupPlugin(plugin)
+    if plugin.OnLoad and not plugin._initialized then
+        Orbit.ErrorHandler:Wrap(function() plugin:OnLoad() end, plugin.name .. ".OnLoad")()
+        plugin._initialized = true
+    end
+    if plugin.frame then OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, false) end
+    if plugin.canvasMode and not plugin.SchedulePreviewUpdate and plugin.WatchCanvasChanges then plugin:WatchCanvasChanges() end
+    if plugin.ApplySettings then plugin:ApplySettings() end
+end
+
+local function TeardownPlugin(plugin)
+    if plugin.OnDisable then
+        Orbit.ErrorHandler:Wrap(function() plugin:OnDisable() end, plugin.name .. ".OnDisable")()
+    end
+    if plugin.frame then
+        OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
+        plugin.frame:UnregisterAllEvents()
+        if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
+        -- SetScript+Hide are combat-locked for secure frames — defer the whole tear-down so the frame ends fully torn down.
+        local f = plugin.frame
+        local function TearDownFrame()
+            f:SetScript("OnEvent", nil)
+            f:SetScript("OnUpdate", nil)
+            f:Hide()
+        end
+        if InCombatLockdown() then
+            if Orbit.CombatManager then Orbit.CombatManager:QueueUpdate(TearDownFrame) end
+        else
+            TearDownFrame()
+        end
+    end
+    if plugin.timer then
+        plugin.timer:Cancel()
+        plugin.timer = nil
+    end
+    if plugin.UnwatchCanvasChanges then plugin:UnwatchCanvasChanges() end
+    Orbit.EventBus:OffContext(plugin)
+    if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
+    plugin._initialized = false
+end
+
 function Orbit:LiveTogglePlugin(name, enabled)
     self:SetPluginEnabled(name, enabled)
     local plugin = self._pluginsByName and self._pluginsByName[name]
     if not plugin then return end
     if enabled then
-        if plugin.OnLoad and not plugin._initialized then
-            self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
-            plugin._initialized = true
-        end
-        if plugin.frame then OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, false) end
-        if plugin.ApplySettings then plugin:ApplySettings() end
+        SetupPlugin(plugin)
     else
-        if plugin.OnDisable then
-            self.ErrorHandler:Wrap(function() plugin:OnDisable() end, name .. ".OnDisable")()
-        end
-        if plugin.frame then
-            OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
-            plugin.frame:UnregisterAllEvents()
-            if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
-            -- SetScript+Hide are combat-locked for secure frames — defer the whole tear-down so the frame ends fully torn down.
-            local f = plugin.frame
-            local function TearDownFrame()
-                f:SetScript("OnEvent", nil)
-                f:SetScript("OnUpdate", nil)
-                f:Hide()
-            end
-            if InCombatLockdown() then
-                if Orbit.CombatManager then
-                    Orbit.CombatManager:QueueUpdate(TearDownFrame)
-                end
-            else
-                TearDownFrame()
-            end
-        end
-        if plugin.timer then
-            plugin.timer:Cancel()
-            plugin.timer = nil
-        end
-        Orbit.EventBus:OffContext(plugin)
-        if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
-        plugin._initialized = false
+        TeardownPlugin(plugin)
     end
 end
 
@@ -319,32 +329,9 @@ function Orbit:RefreshSpecLockedPlugins()
         if plugin.disabledSpecs then
             local locked = self:IsPluginSpecLocked(name)
             if locked and plugin._initialized then
-                if plugin.frame then
-                    OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, true)
-                    plugin.frame:SetScript("OnEvent", nil)
-                    plugin.frame:SetScript("OnUpdate", nil)
-                    plugin.frame:UnregisterAllEvents()
-                    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RemoveOOCFade(plugin.frame) end
-                    plugin.frame:Hide()
-                end
-                if plugin.timer then
-                    plugin.timer:Cancel()
-                    plugin.timer = nil
-                end
-                self.EventBus:OffContext(plugin)
-                if OrbitEngine.EditMode then OrbitEngine.EditMode:UnregisterCallbacks(plugin) end
-                plugin._initialized = false
+                TeardownPlugin(plugin)
             elseif not locked and not plugin._initialized and self:IsPluginEnabled(name) then
-                if plugin.frame then
-                    OrbitEngine.FrameAnchor:SetFrameDisabled(plugin.frame, false)
-                end
-                if plugin.OnLoad then
-                    self.ErrorHandler:Wrap(function() plugin:OnLoad() end, name .. ".OnLoad")()
-                    plugin._initialized = true
-                end
-                if plugin.ApplySettings then
-                    plugin:ApplySettings()
-                end
+                SetupPlugin(plugin)
             end
         end
     end

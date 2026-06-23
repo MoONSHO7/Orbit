@@ -71,7 +71,7 @@ local function GetGlobalSchema()
     local borderOpts = GetBorderStyleOptions()
 
     -- Color swatch applies to built-in styles AND to LSM edge-file textures (grayscale -> vertex-tinted).
-    local DEFAULT_FONT_CURVE = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+    local DEFAULT_FONT_CURVE = Orbit.Constants.NewWhiteColorCurve()
     local function GS() return Orbit.db and Orbit.db.GlobalSettings end
     local function StyleHasColor(key)
         local gs = GS()
@@ -195,10 +195,11 @@ local function GetGlobalSchema()
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
+            local def = (Orbit.Profile and Orbit.Profile.defaults and Orbit.Profile.defaults.GlobalSettings) or {}
             if d then
-                d.Font = "PT Sans Narrow"
-                d.FontOutline = "OUTLINE"
-                d.FontShadow = false
+                d.Font = def.Font or "Barlow Condensed Bold"
+                d.FontOutline = def.FontOutline or "OUTLINE"
+                d.FontShadow = def.FontShadow or false
                 d.BorderStyle = Constants.BorderStyle.Default
                 d.BorderEdgeSize = 16
                 d.BorderOffset = 0
@@ -208,7 +209,7 @@ local function GetGlobalSchema()
                 d.PixelBorderSize = Constants.BorderStyle.DefaultPixelSize
                 d.IconPixelBorderSize = Constants.BorderStyle.DefaultPixelSize
                 Constants.BorderStyle.SyncEffectiveSize(d)
-                d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+                d.FontColorCurve = Orbit.Constants.NewWhiteColorCurve()
                 d.BorderColor = { none = true }
                 d.IconBorderColor = { none = true }
             end

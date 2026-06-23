@@ -188,8 +188,7 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
         if default ~= nil then return default end
         -- Preview-only: surface the inherited global FontColorCurve so the swatch matches what renders; mirrors OverrideUtils.ApplyTextColor's white fallback. Saving still writes locally.
         if key == "CustomColorCurve" then
-            local g = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
-            return g or { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+            return Orbit:GetTheme("FontColorCurve") or Orbit.Constants.NewWhiteColorCurve()
         end
         return nil
     end

@@ -193,6 +193,14 @@ function Skin:ApplyPixelBackdrop(overlay, pixelSize, isIcon, color)
 end
 
 -- [ EDGE-FILE BORDER ]-------------------------------------------------------------------------------
+-- Shared edge-file geometry: authored sizes divide by the frame's own scale; outset is pixel-snapped at the caller's snapScale. Used by SkinBorder, GroupBorder, and HighlightBorder so the formula lives in one place.
+function Skin:ComputeBorderOutset(frame, edgeSize, borderOffset, snapScale)
+    local ownScale = frame:GetScale() or 1
+    if ownScale < 0.01 then ownScale = 1 end
+    local adjEdge = edgeSize / ownScale
+    return Engine.Pixel:Snap((adjEdge / 2) + (borderOffset / ownScale), snapScale), adjEdge
+end
+
 function Skin:ApplyNineSliceBorder(frame, styleEntry)
     if not frame or not styleEntry or not styleEntry.edgeFile then return end
     -- Rounded styles share the edge-file field but draw a slice border — delegate so every caller handles rounded for free.
@@ -211,11 +219,7 @@ function Skin:ApplyNineSliceBorder(frame, styleEntry)
     local borderOffset = styleEntry.borderOffset or (gs and gs.BorderOffset) or 0
     local scale = frame:GetEffectiveScale()
     if not scale or scale < 0.01 then scale = 1 end
-    local ownScale = frame:GetScale() or 1
-    if ownScale < 0.01 then ownScale = 1 end
-    local adjEdge = edgeSize / ownScale
-    local adjOffset = borderOffset / ownScale
-    local outset = Engine.Pixel:Snap((adjEdge / 2) + adjOffset, scale)
+    local outset, adjEdge = self:ComputeBorderOutset(frame, edgeSize, borderOffset, scale)
     frame.borderPixelSize = outset
     overlay:ClearAllPoints()
     overlay:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
@@ -626,12 +630,11 @@ function Skin:GetBackgroundColor()
 end
 
 local function ResolvePinColor(pin)
-    if pin.type == "class" then
-        local _, classFile = UnitClass("player")
-        local cc = classFile and RAID_CLASS_COLORS[classFile]
-        if cc then return { r = cc.r, g = cc.g, b = cc.b, a = pin.color and pin.color.a or 1 } end
+    local c = Engine.ClassColor:ResolveClassColorPin(pin)
+    if pin.type == "class" and pin.color and pin.color.a then
+        return { r = c.r, g = c.g, b = c.b, a = pin.color.a }
     end
-    return pin.color
+    return c
 end
 
 function Skin:ApplyGradientBackground(frame, curveData, fallbackColor)

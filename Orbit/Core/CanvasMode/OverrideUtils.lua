@@ -18,7 +18,7 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     if overrides then
         if overrides.UseClassColour then
             if not classFile then _, classFile = UnitClass(unit or "player") end
-            local classColor = classFile and RAID_CLASS_COLORS[classFile]
+            local classColor = classFile and Engine.ClassColor:GetOverrides(classFile)
             if classColor then
                 element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
                 return true
@@ -28,8 +28,7 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
             local hasClassPin = Engine.ColorCurve:CurveHasClassPin(curve)
             local color
             if hasClassPin and classFile then
-                local cc = RAID_CLASS_COLORS[classFile]
-                if cc then color = { r = cc.r, g = cc.g, b = cc.b, a = 1 } end
+                color = Engine.ClassColor:GetOverrides(classFile)
             elseif hasClassPin and unit then
                 color = remainingPercent and Engine.ColorCurve:SampleColorCurve(curve, remainingPercent) or Engine.ColorCurve:GetFirstColorFromCurveForUnit(curve, unit)
             else
@@ -50,8 +49,7 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     local hasClassPin = fontCurve and Engine.ColorCurve:CurveHasClassPin(fontCurve)
     local color
     if hasClassPin and classFile then
-        local cc = RAID_CLASS_COLORS[classFile]
-        color = cc and { r = cc.r, g = cc.g, b = cc.b, a = 1 }
+        color = Engine.ClassColor:GetOverrides(classFile)
     elseif hasClassPin and unit then
         color = Engine.ColorCurve:GetFirstColorFromCurveForUnit(fontCurve, unit)
     elseif hasClassPin then

@@ -194,6 +194,39 @@ function C.BorderStyle.SyncEffectiveSize(gs)
     gs.IconBorderSize = gs.IconPixelBorderSize or d
 end
 
+-- Idempotent: legacy "flat"/"rounded" styles and the interim None=-1 roundness rewrite to the unified "orbit" style. Lives here (theme schema) rather than in the persistence layer.
+local MIGRATE_PAIRS = {
+    { style = "BorderStyle",     corner = "RoundedCorner",     thickness = "RoundedThickness",     size = "BorderSize" },
+    { style = "IconBorderStyle", corner = "IconRoundedCorner", thickness = "IconRoundedThickness", size = "IconBorderSize" },
+}
+function C.BorderStyle.Migrate(gs)
+    if not gs then return end
+    for _, p in ipairs(MIGRATE_PAIRS) do
+        local v = gs[p.style]
+        if v == "flat" then
+            gs[p.style] = "orbit"
+            if gs[p.corner] == nil then gs[p.corner] = 0 end          -- Square ≈ the old flat look
+            -- Old flat BorderSize (0-5) maps onto Border Thickness (None=0 .. Thick=3).
+            if gs[p.thickness] == nil then gs[p.thickness] = math.min(gs[p.size] or 2, 3) end
+        elseif v == "rounded" then
+            gs[p.style] = "orbit"
+            -- Preserve the pre-consolidation Rounded default (Round) for untouched profiles.
+            if gs[p.corner] == nil then gs[p.corner] = 2 end
+        end
+        -- Interim None=-1 roundness meant "no border" — now Border Thickness None, Square corner.
+        if gs[p.corner] == -1 then
+            gs[p.corner] = 0
+            gs[p.thickness] = 0
+        end
+    end
+    C.BorderStyle.SyncEffectiveSize(gs)
+end
+
+-- Fresh table each call (curves are mutated in place) — the white single-pin curve used as the FontColorCurve fallback in multiple config/preview paths.
+function C.NewWhiteColorCurve()
+    return { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+end
+
 -- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------
 C.Timing = {
     DefaultDebounce = 0.1,

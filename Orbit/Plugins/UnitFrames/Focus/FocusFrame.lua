@@ -100,6 +100,7 @@ end
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
+Plugin:RegisterSyncSource(FOCUS_FRAME_INDEX)
 Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()

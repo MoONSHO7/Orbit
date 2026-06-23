@@ -70,6 +70,14 @@ function Transaction:Set(key, value)
     self:FireChanged()
 end
 
+-- Pre-edit value snapshotted on the first Set(key) this session; nil if the key was never staged.
+function Transaction:GetOriginal(key)
+    if not active then return nil end
+    local v = originalSettings[key]
+    if v == nil or v == NIL_SENTINEL then return nil end
+    return v
+end
+
 -- Read pending state only — no fallback to GetSetting (avoids recursion from PluginMixin:GetSetting)
 function Transaction:GetPending(key)
     if not active then return nil end
