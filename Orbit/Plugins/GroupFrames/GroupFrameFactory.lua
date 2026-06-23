@@ -167,3 +167,5 @@ function Orbit.GroupFrameFactoryMixin:ConfigureFrame(frame)
     if frame.SetAbsorbsEnabled then frame:SetAbsorbsEnabled(true) end
     if frame.SetHealAbsorbsEnabled then frame:SetHealAbsorbsEnabled(true) end
 end
+
+table.freeze(Orbit.GroupFrameFactoryMixin)

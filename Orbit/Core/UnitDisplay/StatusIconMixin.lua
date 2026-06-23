@@ -3,6 +3,7 @@
 
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 local type, ipairs = type, ipairs
 local math_floor = math.floor
 local LSM = LibStub("LibSharedMedia-3.0")
@@ -31,6 +32,25 @@ local THREAT_COLORS = {
     [2] = { r = 1.0, g = 0.6, b = 0.0, a = 0.8 },
     [3] = { r = 1.0, g = 0.0, b = 0.0, a = 1.0 },
 }
+
+-- Canvas-preview cycling sets, derived from the live role/leader atlas data above so the Canvas creator doesn't duplicate it. Order: Tank, Healer, Damager(, Ranged).
+function Mixin:GetRoleCanvasAtlases(overrides)
+    local style = overrides and overrides.RoleIconStyle
+    local map = (style == "round" and ROUND_ROLE_ATLASES) or (style == "header" and HEADER_ROLE_ATLASES) or ROLE_ATLASES
+    local out = { { atlas = map.TANK }, { atlas = map.HEALER } }
+    if not (overrides and overrides.HideDPS) then
+        out[#out + 1] = { atlas = map.DAMAGER }
+        if map.DAMAGER_RANGED then out[#out + 1] = { atlas = map.DAMAGER_RANGED } end
+    end
+    return out
+end
+
+function Mixin:GetLeaderCanvasAtlases(overrides)
+    if overrides and overrides.LeaderIconStyle == "header" then
+        return { { atlas = LEADER_ATLASES.header.leader }, { atlas = LEADER_ATLASES.header.assist } }
+    end
+    return { { atlas = LEADER_ATLASES.default.leader } }
+end
 local RAID_TARGET_TEXTURE_COLUMNS, RAID_TARGET_TEXTURE_ROWS = 4, 4
 
 Mixin.ICON_PREVIEW_ATLASES = {
@@ -329,7 +349,7 @@ function Mixin:UpdateMarkerIcon(frame, plugin)
     end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     if index then
         SetMarkerIndex(index)
@@ -487,7 +507,7 @@ function Mixin:UpdateGroupPosition(frame, plugin)
     if isInRaid and unit then
         local raidIndex = UnitInRaid(unit)
         if raidIndex then
-            local _, _, subgroup = GetRaidRosterInfo(raidIndex + 1)
+            local _, _, subgroup = GetRaidRosterInfo(raidIndex)
             if subgroup then
                 frame.GroupPositionText:SetText("G" .. subgroup)
                 frame.GroupPositionText:Show()
@@ -547,13 +567,13 @@ function Mixin:UpdatePhaseIcon(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     local phaseReason = UnitPhaseReason(unit)
     if phaseReason then
         frame.PhaseIcon:SetAtlas("RaidFrame-Icon-Phasing")
         frame.PhaseIcon:Show()
-        frame.PhaseIcon.tooltip = PartyUtil and PartyUtil.GetPhasedReasonString and PartyUtil.GetPhasedReasonString(phaseReason, unit) or "Out of Phase"
+        frame.PhaseIcon.tooltip = PartyUtil and PartyUtil.GetPhasedReasonString and PartyUtil.GetPhasedReasonString(phaseReason, unit) or L.CMN_OUT_OF_PHASE
     elseif inEditMode or inCanvasMode then
         frame.PhaseIcon:SetAtlas("RaidFrame-Icon-Phasing")
         frame.PhaseIcon:Show()
@@ -568,7 +588,7 @@ function Mixin:UpdateReadyCheck(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     local readyStatus = GetReadyCheckStatus(unit)
     if readyStatus == "ready" then
@@ -594,7 +614,7 @@ function Mixin:UpdateIncomingRes(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     if UnitHasIncomingResurrection(unit) then
         frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez")
@@ -613,7 +633,7 @@ function Mixin:UpdateIncomingSummon(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     if C_IncomingSummon and C_IncomingSummon.HasIncomingSummon(unit) then
         local status = C_IncomingSummon.IncomingSummonStatus(unit)
@@ -644,8 +664,8 @@ function Mixin:UpdateStatusText(frame, plugin)
     if frame.healthTextEnabled then return end
     local unit = frame.unit
     if not unit or not UnitExists(unit) then frame.HealthText:Hide(); return end
-    if not UnitIsConnected(unit) then frame.HealthText:SetText(Orbit.L.CMN_OFFLINE); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
-    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText(Orbit.L.CMN_DEAD); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if not UnitIsConnected(unit) then frame.HealthText:SetText(PLAYER_OFFLINE); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
+    if UnitIsDeadOrGhost(unit) then frame.HealthText:SetText(DEAD); frame.HealthText:SetTextColor(0.7, 0.7, 0.7, 1); frame.HealthText:Show(); return end
     frame.HealthText:Hide()
 end
 

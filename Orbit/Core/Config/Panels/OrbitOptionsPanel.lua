@@ -23,7 +23,7 @@ local function RefreshAllPreviews()
 end
 
 -- [ FONT EVENT BROADCAST ]---------------------------------------------------------------------------
--- Broadcast resolved (LSM path) font state via EventRegistry so external addons (e.g. Orbit-Talents) can mirror without reading Orbit tables.
+-- Broadcast resolved (LSM path) font state so external addons (e.g. Orbit-Talents) can mirror without reading Orbit tables.
 local FONT_KEYS = { Font = true, FontOutline = true, FontShadow = true }
 
 local function FireFontChanged()
@@ -33,7 +33,9 @@ local function FireFontChanged()
     local fontPath = (g.Font and LSM and LSM:Fetch("font", g.Font)) or "Fonts\\FRIZQT__.TTF"
     local outline = g.FontOutline or "OUTLINE"
     local shadow = g.FontShadow and true or false
-    EventRegistry:TriggerEvent("OrbitFontChanged", fontPath, outline, shadow)
+    Orbit.EventBus:Fire("ORBIT_FONT_CHANGED", fontPath, outline, shadow)
+    -- Legacy cross-addon broadcast (e.g. Orbit-Talents) still listens on the EventRegistry name.
+    if EventRegistry then EventRegistry:TriggerEvent("OrbitFontChanged", fontPath, outline, shadow) end
 end
 
 Orbit.EventBus:On("ORBIT_PLAYER_ENTERING_WORLD", FireFontChanged)
@@ -126,44 +128,9 @@ function Panel:ToggleEditMode()
     end
 end
 
--- [ TOGGLE LOGIC ]-----------------------------------------------------------------------------------
-function Panel:Toggle(tab)
-    local dialog = Orbit.SettingsDialog
-    if not dialog then Orbit:Print(L.MSG_SETTINGS_UNAVAILABLE); return end
-
-    if dialog:IsShown() and self.currentTab == tab then
-        dialog:Hide()
-        self.currentTab = nil
-        return
-    end
-
-    if EditModeSystemSettingsDialog and EditModeSystemSettingsDialog:IsShown() then
-        EditModeSystemSettingsDialog:Hide()
-    end
-
-    self.currentTab = tab
-
-    local systemFrame = CreateFrame("Frame")
-    systemFrame.systemIndex = 1
-    systemFrame.system = "Orbit_" .. tab
-
-    if tab == L.CFG_TAB_PROFILES and dialog.Title then
-        dialog.Title:SetText(L.CFG_PROFILES_TITLE_F:format(Orbit.Profile:GetActiveProfileName()))
-    end
-
-    local tabDef = self.Tabs[tab]
-    if tab == L.CFG_TAB_PROFILES and tabDef then
-        Config:Render(dialog, systemFrame, tabDef.plugin, tabDef.schema(), L.CFG_TAB_PROFILES)
-    end
-
-    dialog:Show()
-    dialog:PositionNearButton()
-end
-
 function Panel:Refresh()
-    local tabToRefresh = self.currentTab or self.lastTab
+    local tabToRefresh = self.lastTab
     if tabToRefresh then
-        self.currentTab = nil
         self.lastTab = nil
         self:Open(tabToRefresh)
     end

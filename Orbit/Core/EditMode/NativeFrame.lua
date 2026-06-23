@@ -7,7 +7,6 @@ local NativeFrame = Engine.NativeFrame
 
 -- [ STATE ]------------------------------------------------------------------------------------------
 NativeFrame.hiddenParent = nil
-NativeFrame.hidden = {}
 NativeFrame.parked = {}
 NativeFrame.modified = {}
 
@@ -108,22 +107,14 @@ function NativeFrame:Hide(nativeFrame, options)
 
     EnsureHiddenParent(self)
 
-    local backup = { parent = nativeFrame:GetParent(), shown = nativeFrame:IsShown() }
-
     nativeFrame:SetParent(self.hiddenParent)
     SafeHide(nativeFrame)
 
     if options.unregisterEvents ~= false then nativeFrame:UnregisterAllEvents() end
 
     if options.clearScripts ~= false then
-        if nativeFrame:GetScript("OnEvent") then
-            backup.onEvent = nativeFrame:GetScript("OnEvent")
-            nativeFrame:SetScript("OnEvent", nil)
-        end
-        if nativeFrame:GetScript("OnUpdate") then
-            backup.onUpdate = nativeFrame:GetScript("OnUpdate")
-            nativeFrame:SetScript("OnUpdate", nil)
-        end
+        nativeFrame:SetScript("OnEvent", nil)
+        nativeFrame:SetScript("OnUpdate", nil)
     end
 
     return true

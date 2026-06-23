@@ -20,9 +20,22 @@ local ANCHOR_ALIGN_HEX = {
     BOTTOM = "A659F2",
 }
 
+local DIR_LABEL = {
+    LEFT = function() return L.CFG_EM_DIR_LEFT end,
+    RIGHT = function() return L.CFG_EM_DIR_RIGHT end,
+    TOP = function() return L.CFG_EM_DIR_TOP end,
+    BOTTOM = function() return L.CFG_EM_DIR_BOTTOM end,
+    CENTER = function() return L.CFG_EM_DIR_CENTER end,
+}
+
+local function LocalizeDir(token)
+    local fn = token and DIR_LABEL[token]
+    return fn and fn() or token
+end
+
 function Tooltip:BuildAnchorLabel(align)
     local hex = ANCHOR_ALIGN_HEX[align] or "FFFFFF"
-    return "|cFF" .. hex .. L.CFG_EM_ANCHOR .. " " .. align .. "|r"
+    return "|cFF" .. hex .. L.CFG_EM_ANCHOR .. " " .. LocalizeDir(align) .. "|r"
 end
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
@@ -167,13 +180,13 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     -- Build anchor string
     local anchorStr
     if anchorX == "CENTER" and anchorY == "CENTER" then
-        anchorStr = "CENTER"
+        anchorStr = LocalizeDir("CENTER")
     elseif anchorY == "CENTER" then
-        anchorStr = anchorX
+        anchorStr = LocalizeDir(anchorX)
     elseif anchorX == "CENTER" then
-        anchorStr = anchorY
+        anchorStr = LocalizeDir(anchorY)
     else
-        anchorStr = anchorX .. " " .. anchorY
+        anchorStr = LocalizeDir(anchorX) .. " " .. LocalizeDir(anchorY)
     end
 
     -- Format display values
@@ -181,7 +194,7 @@ function Tooltip:ShowComponentPosition(component, key, anchorX, anchorY, posX, p
     local displayOffY = math.floor((offsetY or 0) + 0.5)
     local displayPosX = math.floor((posX or 0) + 0.5)
     local displayPosY = math.floor((posY or 0) + 0.5)
-    local justifyStr = (justifyH or "CENTER") .. (justifyV and (", " .. justifyV) or "")
+    local justifyStr = LocalizeDir(justifyH or "CENTER") .. (justifyV and (", " .. LocalizeDir(justifyV)) or "")
 
     -- Build tooltip text based on anchor type
     local tooltipText

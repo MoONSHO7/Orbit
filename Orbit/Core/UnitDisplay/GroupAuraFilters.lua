@@ -123,6 +123,7 @@ local function IsSpellExcluded(plugin, sid)
     return false
 end
 
+-- CONTRACT: one module-wide scratch list shared by both the buff and debuff post-filters. The caller must consume the returned list (iterate into icons) before invoking another post-filter — a second postFilter call clobbers it in place.
 local _RecycledFilterList = {}
 
 -- Creates a debuff post-filter; cfg.raidFilterFn returns the filter string.

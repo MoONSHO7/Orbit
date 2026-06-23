@@ -40,9 +40,9 @@ local function Create(container, preview, key, source, data)
         visual:SetTexture(texturePath)
         if source.orbitSpriteIndex then
             ApplySpriteSheetCell(visual, source.orbitSpriteIndex, source.orbitSpriteRows or SPRITE_ROWS_DEFAULT, source.orbitSpriteCols or SPRITE_COLS_DEFAULT)
-        else
-            local ok, l, r, t, b = pcall(function() return source:GetTexCoord() end)
-            if ok and l then visual:SetTexCoord(l, r, t, b) end
+        elseif source.GetTexCoord then
+            local l, r, t, b = source:GetTexCoord()
+            if l then visual:SetTexCoord(l, r, t, b) end
         end
     else
         local previewAtlases = Orbit.IconPreviewAtlases or {}

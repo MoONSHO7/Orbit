@@ -9,14 +9,16 @@ local Orientation = Engine.FrameOrientation
 Orientation.callbacks = {} -- frame -> callback function
 Orientation.lastOrientation = {} -- frame -> last detected orientation
 Orientation.trackedFrames = {} -- frames currently being tracked during drag
+Orientation.lastValid = {} -- frame -> last orientation from a resolved rect
 
 -- [ ORIENTATION DETECTION ] -------------------------------------------------------------------------
 function Orientation:DetectOrientation(frame)
-    if not frame or not frame.GetLeft then return "LEFT" end
+    -- A transiently-nil rect (post loading screen) must not fabricate "LEFT" and flip edge-anchored docks; reuse the last resolved result.
+    if not frame or not frame.GetLeft then return self.lastValid[frame] or "LEFT" end
 
     local left, bottom = frame:GetLeft(), frame:GetBottom()
     local width, height = frame:GetWidth(), frame:GetHeight()
-    if not left or not bottom or not width or not height then return "LEFT" end
+    if not left or not bottom or not width or not height then return self.lastValid[frame] or "LEFT" end
 
     local screenWidth, screenHeight = GetScreenWidth(), GetScreenHeight()
     local frameCenterX = left + (width / 2)
@@ -29,10 +31,14 @@ function Orientation:DetectOrientation(frame)
 
     local minDist = math.min(distToLeft, distToRight, distToTop, distToBottom)
 
-    if minDist == distToLeft then return "LEFT"
-    elseif minDist == distToRight then return "RIGHT"
-    elseif minDist == distToTop then return "TOP"
-    else return "BOTTOM" end
+    local result
+    if minDist == distToLeft then result = "LEFT"
+    elseif minDist == distToRight then result = "RIGHT"
+    elseif minDist == distToTop then result = "TOP"
+    else result = "BOTTOM" end
+
+    self.lastValid[frame] = result
+    return result
 end
 
 -- [ CALLBACK REGISTRATION ] -------------------------------------------------------------------------
@@ -45,6 +51,7 @@ end
 function Orientation:UnregisterCallback(frame)
     self.callbacks[frame] = nil
     self.lastOrientation[frame] = nil
+    self.lastValid[frame] = nil
 end
 
 -- [ DRAG TRACKING ] ---------------------------------------------------------------------------------

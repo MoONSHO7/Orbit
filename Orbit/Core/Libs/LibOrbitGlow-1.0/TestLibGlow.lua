@@ -95,14 +95,10 @@ _G.TestLibGlow = function(colorTest)
     for i, glowData in ipairs(types) do
         local sqButton = SetupButton("Square", i, glowData.label, true, spacingY)
         local standardButton = SetupButton("Standard", i, glowData.label, false, 0)
-        local revButton = SetupButton("Reverse", i, glowData.label .. " Rev", true, -spacingY)
-        
-        local function ApplyGlow(button, isSquare, forceReverse)
+
+        local function ApplyGlow(button, isSquare)
             local t = glowData.t
-            local passMask = isSquare == true
-            local maskInset = isSquare and 2 or nil
-            
-            local opts = { key="Test", color=c, desaturated=true, maskIcon=passMask, maskInset=maskInset, reverse=forceReverse }
+            local opts = { key="Test", color=c, desaturated=true }
             
             if t == "PixelFast" then
                 opts.lines = 8; opts.frequency = 0.5; opts.thickness = 2
@@ -121,8 +117,7 @@ _G.TestLibGlow = function(colorTest)
             end
         end
         
-        ApplyGlow(sqButton, true, false)
-        ApplyGlow(standardButton, false, false)
-        ApplyGlow(revButton, true, true)
+        ApplyGlow(sqButton, true)
+        ApplyGlow(standardButton, false)
     end
 end

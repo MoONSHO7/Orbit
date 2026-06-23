@@ -10,8 +10,6 @@ local DEFAULT_TEXT_SIZE = 12
 local TEXT_PADDING = 0
 local ICON_SIZE = 14
 local ICON_PADDING = 4
-local DRAG_TICKER_INTERVAL = 0.05
-local ACTIVE_HIGHLIGHT_R, ACTIVE_HIGHLIGHT_G, ACTIVE_HIGHLIGHT_B, ACTIVE_HIGHLIGHT_A = 0.3, 0.8, 0.3, 0.4
 
 -- [ BASE DATATEXT ] ---------------------------------------------------------------------------------
 local BaseDatatext = {}
@@ -51,10 +49,6 @@ function BaseDatatext:CreateFrame(width, height)
     Orbit.Engine.Pixel:Enforce(f)
     f:SetClampedToScreen(true)
     f:Hide()
-    f.activeBg = f:CreateTexture(nil, "BACKGROUND")
-    f.activeBg:SetAllPoints()
-    f.activeBg:SetColorTexture(ACTIVE_HIGHLIGHT_R, ACTIVE_HIGHLIGHT_G, ACTIVE_HIGHLIGHT_B, ACTIVE_HIGHLIGHT_A)
-    f.activeBg:Hide()
     f.Text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.Text:SetPoint("CENTER", f, "CENTER")
     self.text = f.Text
@@ -96,7 +90,8 @@ function BaseDatatext:CreateFrame(width, height)
         end
     end)
     f.overlay:SetScript("OnHide", function()
-        if self.dragTicker then self.dragTicker:Cancel(); self.dragTicker = nil end
+        f.overlay:SetScript("OnUpdate", nil)
+        if not self.isSecure then self.frame:StopMovingOrSizing() end
         self.isDragging = false
         if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = false end
     end)
@@ -162,6 +157,7 @@ function BaseDatatext:CreateFrame(width, height)
         if Orbit.Engine.SelectionTooltip then
             Orbit.Engine.SelectionTooltip:ShowResizeInfo(self.frame, math.floor(self.frame:GetWidth() * self.scale + 0.5), math.floor(self.frame:GetHeight() * self.scale + 0.5), false)
         end
+        DT.DatatextManager:ApplyGrowthAnchor(f)
         DT.DatatextManager:SavePositions()
     end)
 
@@ -215,6 +211,7 @@ function BaseDatatext:Register()
         onEnable = function() self:Enable() end,
         onDisable = function() self:Disable() end,
         SetScale = function(_, scale) self:SetScale(scale) end,
+        refit = function() if self._lastText ~= nil then self:SetText(self._lastText) end end,
     })
 end
 
@@ -298,8 +295,11 @@ end
 
 -- [ TEXT ] ------------------------------------------------------------------------------------------
 function BaseDatatext:SetText(text)
-    if text == self._lastText then return end
+    local fontFile, fontHeight = self.text:GetFont()
+    if text == self._lastText and fontFile == self._lastFontFile and fontHeight == self._lastFontHeight then return end
     self._lastText = text
+    self._lastFontFile = fontFile
+    self._lastFontHeight = fontHeight
     self.text:SetText(text)
     local width = self.text:GetStringWidth()
     local height = self.text:GetStringHeight()
@@ -383,6 +383,15 @@ end
 
 function BaseDatatext:BuildContextMenuItems()
     local items = {}
+    items[#items + 1] = {
+        text = L.PLU_DT_ONLY_IN_INSTANCE,
+        checked = DT.DatatextManager:GetDatatextOption(self.name, "onlyInInstance") or false,
+        func = function()
+            local current = DT.DatatextManager:GetDatatextOption(self.name, "onlyInInstance")
+            DT.DatatextManager:SetDatatextOption(self.name, "onlyInInstance", not current)
+            DT.DatatextManager:ApplyInstanceVisibility()
+        end,
+    }
     if self.GetMenuItems then
         for _, item in ipairs(self:GetMenuItems()) do items[#items + 1] = item end
     end
@@ -396,50 +405,42 @@ function BaseDatatext:OnDragStart()
     self.isDragging = true
     if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = true end
     self.frame:SetFrameStrata(Orbit.Constants.Strata.Topmost)
-    
-    local cX, cY = GetCursorPosition()
-    local fCX, fCY = self.frame:GetCenter()
-    local eScale = self.frame:GetEffectiveScale()
-    local uipScale = UIParent:GetEffectiveScale()
-    
-    if fCX and fCY then
-        self.dragGripX = (fCX * eScale) - cX
-        self.dragGripY = (fCY * eScale) - cY
+    -- Non-secure frames glide C-side; secure frames move on the frame-synced OnUpdate below (combat-guarded), since StartMoving is protected in combat.
+    if self.isSecure then
+        local cX, cY = GetCursorPosition()
+        local fCX, fCY = self.frame:GetCenter()
+        local eScale = self.frame:GetEffectiveScale()
+        if fCX and fCY then
+            self.dragGripX = (fCX * eScale) - cX
+            self.dragGripY = (fCY * eScale) - cY
+        else
+            self.dragGripX, self.dragGripY = 0, 0
+        end
     else
-        self.dragGripX, self.dragGripY = 0, 0
+        self.frame:StartMoving()
     end
-    
-    if not self.dragTicker then
-        self.dragTicker = C_Timer.NewTicker(0.02, function() 
-            if InCombatLockdown() then return end
+    self.frame.overlay:SetScript("OnUpdate", function()
+        if self.isSecure and not InCombatLockdown() then
             local curX, curY = GetCursorPosition()
-            local targetScreenX = curX + self.dragGripX
-            local targetScreenY = curY + self.dragGripY
-            
-            local targetCX = targetScreenX / uipScale
-            local targetCY = targetScreenY / uipScale
-            
-            local uipX = UIParent:GetWidth() / 2
-            local uipY = UIParent:GetHeight() / 2
-            local offsetX = (targetCX - uipX) / self.frame:GetScale()
-            local offsetY = (targetCY - uipY) / self.frame:GetScale()
+            local uipScale = UIParent:GetEffectiveScale()
+            local offsetX = (((curX + self.dragGripX) / uipScale) - UIParent:GetWidth() / 2) / self.frame:GetScale()
+            local offsetY = (((curY + self.dragGripY) / uipScale) - UIParent:GetHeight() / 2) / self.frame:GetScale()
             offsetX, offsetY = Orbit.Engine.Pixel:SnapPosition(offsetX, offsetY, "CENTER", self.frame:GetWidth(), self.frame:GetHeight(), self.frame:GetEffectiveScale())
-
             self.frame:ClearAllPoints()
             self.frame:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
-            
-            DT.DrawerUI:OnDatatextDragUpdate(self.name)
-            if Orbit.Engine.SelectionTooltip then
-                Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, true)
-            end
-        end)
-    end
+        end
+        DT.DrawerUI:OnDatatextDragUpdate(self.name)
+        if Orbit.Engine.SelectionTooltip then
+            Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, true)
+        end
+    end)
 end
 
 function BaseDatatext:OnDragStop()
+    if not self.isSecure then self.frame:StopMovingOrSizing() end
     self.frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.frame:SetFrameLevel(500)
-    
+
     local cx, cy = self.frame:GetCenter()
     if cx and cy then
         local uipW = UIParent:GetWidth()
@@ -501,7 +502,7 @@ function BaseDatatext:OnDragStop()
     
     self.isDragging = false
     if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = false end
-    if self.dragTicker then self.dragTicker:Cancel(); self.dragTicker = nil end
+    self.frame.overlay:SetScript("OnUpdate", nil)
     if Orbit.Engine.SelectionTooltip then Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, false) end
     DT.DatatextManager:OnDatatextDragStop(self.name)
 end

@@ -1,6 +1,6 @@
 # LibOrbitGlow-1.0
 
-A high-performance utility library for creating and managing visual frame glows, animations, and particle effects. Designed for World of Warcraft 12.0.0 and above. Features unified resource pooling and native reverse playback computed mathematically.
+A high-performance utility library for creating and managing visual frame glows, animations, and particle effects. Designed for World of Warcraft 12.0.0 and above. Features unified resource pooling.
 
 > **Standalone library.** No external addon dependencies. Consumed exclusively via `LibStub("LibOrbitGlow-1.0")`.
 
@@ -19,9 +19,7 @@ lib.Show(frame, "Pixel", {
     color = { 0.2, 0.8, 1, 1 },
     lines = 8,
     frequency = 0.5,
-    thickness = 2,
-    maskIcon = true,
-    reverse = false
+    thickness = 2
 })
 ```
 
@@ -37,13 +35,14 @@ lib.Hide(frame, "Pixel", "myComponentGlow")
 
 When tracking auras, cooldowns, or power states that return WoW 12.0 'secret values', you **cannot** execute logic branches based on those values. This means you cannot conditionally call `lib.Hide()` in response to an aura dropping during combat.
 
-To safely hide glows in these scenarios, rely on native alpha propagation or update the `options.color` alpha channel to `0` instead of calling `lib.Hide()`.
+To safely hide glows in these scenarios, rely on native alpha propagation or update the `options.color` alpha channel instead of calling `lib.Hide()`. Pass only a plain (non-secret) number as the alpha — `x and 1 or 0` on a secret boolean is itself a Lua-side branch and will throw.
 
 ```lua
--- Safe: pass dynamic alpha directly to the library without branching
-local alpha = isAuraActive and 1 or 0
+-- Safe: alpha is a plain number sourced from a non-secret read (e.g. a numeric curve)
 lib.Show(frame, "Pixel", { color = { 1, 0, 0, alpha } })
 ```
+
+If show/hide must follow a secret boolean, derive visibility through a C++ sink on the glow's parent (`parent:SetAlphaFromBoolean(secretBool, 1.0, 0.0)`) rather than branching the secret in Lua to compute an alpha.
 
 ## Glow types
 
@@ -68,10 +67,7 @@ These options act globally across almost all glow engines. They are passed as th
 | `key` | `string` | Unique identifier used for tracking and hiding. Default: `"Default"` |
 | `color` | `table` | `{r,g,b,a}` array or a 12.0 `Color` object. Default: white |
 | `frameLevel` | `number` | Relative frame level above the parent frame. Default: `8` |
-| `maskIcon` | `boolean` | Applies native corner rounding specifically for `frame.icon`. Prevents rendering out of bounds. |
-| `maskInset` | `number` | Pixel distance to inset the mask from the edge. Default: `1` |
-| `desaturated`| `boolean` | Explicitly desaturates underlying atlases. Default: `false` |
-| `reverse` | `boolean` | Dynamically reverses the rotation or movement of the glow mathematically, avoiding mirrored atlases. |
+| `desaturated`| `boolean` | Atlas-based engines (`Thin`/`Thick`/`Medium`/`Static`) desaturate their atlas by default so `color` tints it cleanly; pass `false` to keep the atlas's native colors. Ignored by `Pixel`/`Autocast` (solid-color textures). Default: `true` |
 
 ## Engine-specific options
 
@@ -96,4 +92,4 @@ Specific glow engines support additional fine-tuning properties.
 
 - Always provide a specific `key`. If your addon renders multiple glows to the same frame (e.g. tracking multiple auras), failure to provide a key will overwrite the `"Default"` bucket.
 - Always pair a single `lib.Show` explicitly with a single `lib.Hide` when out of combat. This returns frames to the pool explicitly.
-- If passing `maskIcon = true`, ensure that `frame.icon` actually exists. The library utilizes `UI-Frame-IconMask` under the hood.
+- `lib.PreLoad(glowType, count)` warms the shared pool by allocating then releasing `count` glows of a type against a hidden dummy frame. Call it during load/idle to absorb first-use frame/texture allocation, so the first real `lib.Show` in combat doesn't hitch.

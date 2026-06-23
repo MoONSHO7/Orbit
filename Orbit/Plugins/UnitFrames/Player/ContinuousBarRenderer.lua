@@ -97,8 +97,8 @@ function Renderer:UpdateBar(plugin, frame, systemIndex, curveKey, current, max, 
     if continuousResource == "MANA" then
         local nativeCurve = OrbitEngine.ColorCurve:ToNativeColorCurve(curveData)
         if nativeCurve and CanUseUnitPowerPercent then
-            local color = UnitPowerPercent("player", Enum.PowerType.Mana, false, nativeCurve)
-            if color then frame.StatusBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA()); return end
+            local ok, color = pcall(UnitPowerPercent, "player", Enum.PowerType.Mana, false, nativeCurve)
+            if ok and color then frame.StatusBar:GetStatusBarTexture():SetVertexColor(color:GetRGBA()); return end
         end
     end
     if issecretvalue and (issecretvalue(current) or issecretvalue(max)) then return end

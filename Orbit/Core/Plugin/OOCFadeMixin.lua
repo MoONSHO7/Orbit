@@ -362,4 +362,4 @@ function Mixin:RefreshAll()
     UpdateAllFrames()
 end
 
-
+if table.freeze then table.freeze(Orbit.OOCFadeMixin) end

@@ -6,6 +6,8 @@ shared plugin that adds extra side tabs to blizzard's `CooldownViewerSettings` f
 
 the tabs are not specific to the tracked plugin. anything that needs to spawn editable elements from the cooldown viewer settings panel should be able to add its own tab without coupling to tracked or knowing about blizzard's `LargeSideTabButtonTemplate`. keeping this as its own plugin also means tracked can be enabled/disabled (or rewritten again) without breaking the registration api.
 
+**Accepted exception to the "plugins never call other plugins" rule.** CVE is infrastructure that happens to live under `Plugins/` (it needs `liveToggle = false` and the plugin lifecycle). Consumers reaching it via `Orbit:GetPlugin("Orbit_CooldownViewerExtensions"):RegisterTab{...}` is sanctioned because `RegisterTab` returns/operates on a live frame handle that an EventBus signal cannot supply. Treat CVE as a registrar, not as a peer plugin.
+
 ## files
 
 | file | responsibility |

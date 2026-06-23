@@ -121,11 +121,24 @@ local function Create(container, preview, key, source, data)
         textHeight = measuredH
     end
 
-    local pad = CC.TEXT_PADDING
     local cScale = container:GetEffectiveScale()
-    container:SetSize(OrbitEngine.Pixel:Snap(textWidth + 2 * pad, cScale), OrbitEngine.Pixel:Snap(textHeight + 2 * pad, cScale))
+    container:SetSize(OrbitEngine.Pixel:Snap(textWidth, cScale), OrbitEngine.Pixel:Snap(textHeight, cScale))
     visual:SetPoint("CENTER", container, "CENTER", 0, 0)
     container.isFontString = true
+    container.orbitKeepTextCentered = true
+    -- Container is the exact glyph (the snap box reads it); expand only the mouse hit-rect so tiny text stays grabbable.
+    container:SetHitRectInsets(-CC.HIT_OVERSHOOT, -CC.HIT_OVERSHOOT, -CC.HIT_OVERSHOOT, -CC.HIT_OVERSHOOT)
+
+    -- GetStringWidth is 0 until the FontString lays out; re-measure next frame and re-anchor so the snap box is the true glyph.
+    C_Timer.After(0, function()
+        if not container.visual then return end
+        local mW = SafeStringMeasurement(visual:GetStringWidth())
+        local mH = SafeStringMeasurement(visual:GetStringHeight())
+        if not mW or not mH then return end
+        local s = container:GetEffectiveScale()
+        container:SetSize(OrbitEngine.Pixel:Snap(mW, s), OrbitEngine.Pixel:Snap(mH, s))
+        if OrbitEngine.CanvasMode.ReanchorContainer then OrbitEngine.CanvasMode.ReanchorContainer(container) end
+    end)
 
     return visual
 end

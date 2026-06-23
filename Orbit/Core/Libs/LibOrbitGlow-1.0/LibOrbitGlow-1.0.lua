@@ -174,18 +174,6 @@ end
 -- [ FLIPBOOK / PROC GLOW ] ----------------------------------------------------
 lib.Flipbook = {}
 
-local function FlipbookReverseOnUpdate(self, elapsed)
-    self.throttle = (self.throttle or 0) + elapsed
-    if self.throttle < TARGET_FRAME_TIME then return end
-    self.elapsed = self.elapsed + self.throttle
-    local progress = (self.elapsed / self.flipData.dur) % 1
-    local frameIndex = math.floor((1 - progress) * self.flipData.f) % self.flipData.f
-    for i = 1, #self.textures do
-        UpdateFlipbookTexture(self.textures[i], frameIndex, self.flipData.r, self.flipData.c)
-    end
-    self.throttle = 0
-end
-
 function lib.Flipbook:Show(frame, options)
     options = options or {}
     local r, g, b, a = GetColorRGBA(options.color)
@@ -230,32 +218,21 @@ function lib.Flipbook:Show(frame, options)
         tex:SetVertexColor(r, g, b, a)
         tex:SetBlendMode(blendMode)
     end
-    if options.reverse then
-        for i = 1, N do
-            if f.textures[i].animGroup and f.textures[i].animGroup:IsPlaying() then
-                f.textures[i].animGroup:Stop()
-            end
+    f:SetScript("OnUpdate", nil)
+    for i = 1, N do
+        local texLoop = f.textures[i]
+        if not texLoop.animGroup then
+            texLoop.animGroup = texLoop:CreateAnimationGroup()
+            texLoop.animGroup:SetLooping("REPEAT")
+            local fbAnim = texLoop.animGroup:CreateAnimation("FlipBook")
+            fbAnim:SetOrder(1)
+            texLoop.flipbookAnim = fbAnim
         end
-        f.flipData = { dur = speed, r = rows, c = cols, f = frames }
-        f.elapsed = 0
-        f:SetScript("OnUpdate", FlipbookReverseOnUpdate)
-    else
-        f:SetScript("OnUpdate", nil)
-        for i = 1, N do
-            local texLoop = f.textures[i]
-            if not texLoop.animGroup then
-                texLoop.animGroup = texLoop:CreateAnimationGroup()
-                texLoop.animGroup:SetLooping("REPEAT")
-                local fbAnim = texLoop.animGroup:CreateAnimation("FlipBook")
-                fbAnim:SetOrder(1)
-                texLoop.flipbookAnim = fbAnim
-            end
-            texLoop.flipbookAnim:SetDuration(speed)
-            texLoop.flipbookAnim:SetFlipBookRows(rows)
-            texLoop.flipbookAnim:SetFlipBookColumns(cols)
-            texLoop.flipbookAnim:SetFlipBookFrames(frames)
-            if not texLoop.animGroup:IsPlaying() then texLoop.animGroup:Play() end
-        end
+        texLoop.flipbookAnim:SetDuration(speed)
+        texLoop.flipbookAnim:SetFlipBookRows(rows)
+        texLoop.flipbookAnim:SetFlipBookColumns(cols)
+        texLoop.flipbookAnim:SetFlipBookFrames(frames)
+        if not texLoop.animGroup:IsPlaying() then texLoop.animGroup:Play() end
     end
 end
 
@@ -381,8 +358,10 @@ function lib.Autocast:Show(frame, options)
     f.info = f.info or {}
     f.info.N = N
     f.info.period = period
-    f.info.direction = options.reverse and -1 or 1
+    f.info.direction = 1
     f:SetScript("OnUpdate", AutocastOnUpdate)
+    -- Pre-fill throttle so this immediate call clears the gate and positions particles on frame one.
+    f.throttle = TARGET_FRAME_TIME
     AutocastOnUpdate(f, 0)
 end
 
@@ -524,20 +503,6 @@ local function ConfigureButtonGlow(f, alpha)
     CreateAlphaAnim(f.animOut, "outerGlow",     2, 0.2, alpha, 0, nil, false)
 end
 
-local function ButtonReverseOnUpdate(self, elapsed)
-    self.reverseElapsed = self.reverseElapsed + elapsed
-    if self.reverseElapsed < self.throttle then return end
-    local advance = math.floor(self.reverseElapsed / self.throttle)
-    self.reverseElapsed = self.reverseElapsed - advance * self.throttle
-    self.frameIndex = (self.frameIndex - 1 - advance) % BUTTON_ANT_TOTAL_FRAMES + 1
-    local currentFrame = self.frameIndex - 1
-    local col = currentFrame % BUTTON_ANT_COLS
-    local row = math.floor(currentFrame / BUTTON_ANT_COLS)
-    local frameW = BUTTON_ANT_FRAME_SIZE / BUTTON_ANT_SHEET_SIZE
-    local frameH = BUTTON_ANT_FRAME_SIZE / BUTTON_ANT_SHEET_SIZE
-    self.ants:SetTexCoord(col * frameW, (col + 1) * frameW, row * frameH, (row + 1) * frameH)
-end
-
 local function ButtonForwardOnUpdate(self, elapsed)
     AnimateTexCoords(self.ants, BUTTON_ANT_SHEET_SIZE, BUTTON_ANT_SHEET_SIZE, BUTTON_ANT_FRAME_SIZE, BUTTON_ANT_FRAME_SIZE, BUTTON_ANT_TOTAL_FRAMES, elapsed, self.throttle)
 end
@@ -547,6 +512,8 @@ local ButtonGlowPool = CreateFramePool("Frame", GLOW_PARENT, nil, function(pool,
     local parent = frame:GetParent()
     if frame.name and parent and parent[frame.name] then parent[frame.name] = nil end
     frame.name = nil
+    -- AnimateTexCoords only re-inits when texture.frame is nil; clear it so a reused frame restarts at frame one.
+    if frame.ants then frame.ants.frame = nil; frame.ants.throttle = nil end
     frame:Hide()
     frame:ClearAllPoints()
 end)
@@ -594,8 +561,7 @@ function lib.Button:Show(frame, options)
             f[texName]:SetVertexColor(r, g, b)
         end
         f.throttle = throttle
-        if options.reverse then f.reverseElapsed = 0; f.frameIndex = BUTTON_ANT_TOTAL_FRAMES end
-        f:SetScript("OnUpdate", options.reverse and ButtonReverseOnUpdate or ButtonForwardOnUpdate)
+        f:SetScript("OnUpdate", ButtonForwardOnUpdate)
         if f.animIn then f.animIn:Play() end
     end
 end
@@ -678,7 +644,7 @@ function lib.Pixel:Show(frame, options)
     f:ClearAllPoints()
     f:SetPoint("TOPLEFT", frame, "TOPLEFT", -xOffset, yOffset)
     f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", xOffset, -yOffset)
-    f.info = { step = 1 / N, period = period, direction = options.reverse and -1 or 1, th = th, length = length }
+    f.info = { step = 1 / N, period = period, direction = 1, th = th, length = length }
     f.masks = f.masks or {}
     if not f.masks[1] then
         f.masks[1] = GlowMaskPool:Acquire()

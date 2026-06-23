@@ -14,10 +14,8 @@ local Plugin = Orbit:RegisterPlugin("Focus Frame", SYSTEM_ID, {
     displayName = L.PLG_NAME_FOCUS_FRAME,
     canvasMode = true, -- Enable Canvas Mode for component editing
     defaults = {
-        ReactionColour = false,
         ShowLevel = true,
         ShowElite = true,
-        ShowHealthValue = true,
         HealthTextMode = "percent_short",
         Width = 99,
         Height = 26,
@@ -102,6 +100,7 @@ end
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
+Plugin:RegisterSyncSource(FOCUS_FRAME_INDEX)
 Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()
@@ -111,8 +110,11 @@ function Plugin:OnLoad()
 
     -- Note: FocusFrameToT is now managed by TargetOfFocusFrame.lua plugin
 
-    self.container = self:CreateVisibilityContainer(UIParent)
+    self.container = self:CreateVisibilityContainer(UIParent, true)
+    self.mountedConfig = { frame = nil }
+    self:UpdateVisibilityDriver()
     self.frame = OrbitEngine.UnitButton:Create(self.container, "focus", "OrbitFocusFrame")
+    self.mountedConfig.frame = self.frame
     if self.frame.HealthDamageBar then
         self.frame.HealthDamageBar:Hide()
         if self.frame.HealthDamageTexture then self.frame.HealthDamageTexture:Hide() end
@@ -203,7 +205,7 @@ function Plugin:OnLoad()
                 self:UpdateVisualsExtended(self.frame, FOCUS_FRAME_INDEX)
             end
         end,
-    }, self)
+    }, "OrbitFocusFramePreview")
 
     -- PLAYER_FOCUS_CHANGED is handled by the frame's own OnEvent (light update); no EventBus listener — matches TargetFrame.
     Orbit.EventBus:On("ORBIT_PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)

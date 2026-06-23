@@ -13,6 +13,7 @@ local SafeGetNumber = Helpers.SafeGetNumber
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HEADER_HEIGHT = 14
 local HEADER_MIN_WIDTH = 60
+local HANDLE_GREEN = { 0.3, 0.8, 0.3 }
 
 -- [ CREATE HANDLE ] ---------------------------------------------------------------------------------
 function Handle:Create(component, parent, callbacks)
@@ -44,7 +45,7 @@ function Handle:Create(component, parent, callbacks)
         handle.header:SetHeight(Engine.Pixel:Snap(HEADER_HEIGHT, handle.header:GetEffectiveScale()))
         handle.header.bg = handle.header:CreateTexture(nil, "BACKGROUND")
         handle.header.bg:SetAllPoints()
-        handle.header.bg:SetColorTexture(0.3, 0.8, 0.3, 0.8)
+        handle.header.bg:SetColorTexture(HANDLE_GREEN[1], HANDLE_GREEN[2], HANDLE_GREEN[3], 0.8)
         handle.header.text = handle.header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         handle.header.text:SetPoint("CENTER")
         handle.header.text:SetTextColor(1, 1, 1, 1)

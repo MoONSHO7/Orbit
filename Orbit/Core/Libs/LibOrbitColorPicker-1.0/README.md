@@ -14,7 +14,7 @@ lib:Open({
     initialData = self.curveData,
     forceSingleColor = self.singleColorMode,
     recentColorsDb = mySavedVar.RecentColors,
-    callback = function(result, isPreview)
+    callback = function(result, wasCancelled)
         if result and result.pins and #result.pins > 0 then
             self.curveData = result
         else
@@ -79,7 +79,7 @@ lib:GetColorCurve()    -- last built native ColorCurve (or nil if never built)
 | `forceSingleColor` | `boolean` | restrict to one pin when `true` (default: `false`) |
 | `hasDesaturation` | `boolean` | show desaturation checkbox when `true` (default: `false`) |
 | `recentColorsDb` | `table` or `nil` | array reference to enable the persistent 8-slot color history row |
-| `callback` | `function(result, isPreview)` | called both on every pin/curve change (`isPreview = false` for live updates, but the rolled-back snapshot fires with `isPreview = true` on cancel) and on picker close. The two-arg form lets consumers throttle expensive previews vs. final commits; ignoring `isPreview` is safe. |
+| `callback` | `function(result, wasCancelled)` | called on every pin/curve change (`wasCancelled = false`) and on picker close. On cancel (escape / close) it fires once with the rolled-back snapshot and `wasCancelled = true`. Consumers branch on `wasCancelled` to discard the cancel payload. |
 | `onOpen` | `function(picker)` | called after picker is fully shown and initialized |
 | `anchor` | `table` or `nil` | `{ frame, point, relativePoint, x, y }` to anchor the picker to a caller-owned frame. defaults to `TOPLEFT` of the picker → `TOPRIGHT` of `frame`. omit to use the library default (top-left of screen, fixed offset). |
 
@@ -93,12 +93,15 @@ lib:GetColorCurve()    -- last built native ColorCurve (or nil if never built)
 
 `desaturated` is only present when `hasDesaturation = true` was set in open options.
 
+**persist `pins` (and `desaturated`), not `curve`.** `curve` is a transient native `ColorCurve` the picker rebuilds from `pins` on every open — a convenience for immediate use, never a saved field. Reopen by passing the saved `{ pins = ... }` back as `initialData`. On cancel, branch on `wasCancelled` and discard the payload; the picker has already rolled its own state back, including the recent-colors history.
+
 ### handling nil (default color fallback)
 
 when the user removes all pins, the callback receives `nil`. consumers must provide a fallback:
 
 ```lua
-local color = GetFirstColorFromCurve(savedData.colorCurve) or DEFAULT_COLOR
+local pins = savedData and savedData.pins
+local color = (pins and pins[1] and pins[1].color) or DEFAULT_COLOR
 element:SetTextColor(color.r, color.g, color.b, color.a or 1)
 ```
 
@@ -114,10 +117,11 @@ element:SetTextColor(color.r, color.g, color.b, color.a or 1)
 }
 ```
 
+- `curve`: transient native `ColorCurve` — for immediate use, not for persistence (see callback result)
 - `position`: 0.0 (left) to 1.0 (right) on the gradient bar
 - `color`: resolved rgba values
-- `type`: optional, `"class"` pins resolve to the player's current class color
-- `desaturated`: optional `boolean`, present when `hasDesaturation` was used
+- `type`: optional, `"class"` pins resolve to the player's current class color. in single-color mode, a manual edit (wheel, value slider, or hex) drops the `class` type so the picked color is honored verbatim instead of re-resolving to the class color on apply. an alpha-only change does not demote a class pin (class pins always render at full alpha)
+- `desaturated`: optional `boolean`, present only when `hasDesaturation = true` was set in open options
 
 ## modes
 
@@ -138,7 +142,8 @@ unlimited pins. drag colors onto the gradient bar to add stops. drag handles to 
 - arrow keys to nudge a focused pin, shift for fine precision
 - right-click a pin handle to remove it
 - "apply color" commits the result, "clear color" appears when no pins remain
-- close / escape cancels and restores the previous state
+- close / escape cancels and restores the previous state, including the recent-colors history
+- recent colors are committed only on apply; colors added during a session that is then cancelled are rolled back
 
 ## localization
 

@@ -1,12 +1,12 @@
 # quality of life modules
 
-the `QoL/` directory contains standalone, lightweight quality-of-life adjustments to the blizzard ui (e.g. making frames draggable, modifying default mouse behaviors, tweaking tooltips, hotkey-driven search).
+the `QoL/` directory contains standalone, lightweight quality-of-life adjustments to the blizzard ui. current modules: `MoveMore` (makes blizzard panels draggable), `Mouse` (cursor highlight overlay), `UserInterface` (UI scale below blizzard's floor + class color tweaks), and `Spotlight` (hotkey-driven universal search, decomposed into `QoL/Spotlight/`).
 
 these modules differ from standard orbit plugins because they are **account-wide** and do not participate in the orbit profile system. they also have no edit-mode or canvas-mode footprint — they're not user-arranged ui.
 
 ## naming structure
 
-- **module name** — descriptive, concisely reflects the functionality (`MoveMore`, `FastLoot`, `EasyDelete`, `Spotlight`).
+- **module name** — descriptive, concisely reflects the functionality (`MoveMore`, `Mouse`, `UserInterface`, `Spotlight`).
 - **file name** — PascalCase matching the module name (`MoveMore.lua`).
 - **namespace** — register the module under `Orbit.ModuleName` (e.g. `Orbit.MoveMore = {}`).
 - **decomposed modules** — larger qol features may live in a folder (`QoL/ModuleName/`) with one file per bounded responsibility and a module-local `README.md`. files are loaded in dependency order via the `.toc` and share the `Orbit.ModuleName` namespace through sub-tables.
@@ -20,13 +20,15 @@ to add a new section, update `Orbit/Core/Config/Advanced/QoL.lua`:
 1. create a builder function: `local function BuildMySection(body) ... end`
 2. the builder receives the accordion body frame. use `Layout:AddControl()` and `Layout:Stack()` to lay out widgets.
 3. return the computed content height from the builder.
-4. add the section to `sectionDefs`:
+4. add the section to `sectionDefs` (the label is a localized key, never a hardcoded string):
    ```lua
    local sectionDefs = {
-       { "My Section", BuildMySection },
+       { L.PLU_QOL_SEC_MYSECTION, BuildMySection },
    }
    ```
 5. the accordion and scroll infrastructure handle the rest.
+
+current sections (in order): UserInterface, Colors, MoveMore, Mouse, Spotlight.
 
 ## saving & reading settings
 

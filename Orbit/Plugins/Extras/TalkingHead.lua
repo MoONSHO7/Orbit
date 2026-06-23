@@ -6,6 +6,8 @@ local OrbitEngine = Orbit.Engine
 -- [ PLUGIN REGISTRATION ]----------------------------------------------------------------------------
 local SYSTEM_ID = "Orbit_TalkingHead"
 local DEFAULT_OFFSET_Y = -100
+local APPROX_WIDTH = 500
+local APPROX_HEIGHT = 100
 
 local Plugin = Orbit:RegisterPlugin("Talking Head", SYSTEM_ID, {
     displayName = L.PLG_NAME_TALKING_HEAD,
@@ -41,7 +43,7 @@ end
 function Plugin:OnLoad()
     -- Create Container
     self.frame = CreateFrame("Frame", "OrbitTalkingHeadContainer", UIParent)
-    self.frame:SetSize(500, 100) -- Approximate TalkingHead size
+    self.frame:SetSize(APPROX_WIDTH, APPROX_HEIGHT)
     self.frame:SetClampedToScreen(true) -- Prevent dragging off-screen
     self.frame.systemIndex = SYSTEM_ID
     self.frame.editModeName = self.displayName

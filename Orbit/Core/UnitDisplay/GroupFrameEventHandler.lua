@@ -60,15 +60,15 @@ local function ProcessAuraUpdate(f, plugin, callbacks, updateInfo)
     local isFullUpdate = not updateInfo or updateInfo.isFullUpdate
     -- Incremental path: patch existing caches if available
     if not isFullUpdate and f._harmfulAuraCache then
-        local changed = M:PatchCaches(f, unit, updateInfo)
+        local changed = Orbit.AuraSnapshotCache:Patch(f, unit, updateInfo)
         if not changed then return end
-        local snapshot = M:BuildSnapshotFromCaches(f)
+        local snapshot = Orbit.AuraSnapshotCache:Build(f)
         if snapshot then DispatchAuraConsumers(f, plugin, callbacks, snapshot) end
         return
     end
     -- Full path: build from API, seed caches for future incremental updates
     local snapshot = M:BuildAuraSnapshot(unit)
-    M:PopulateCaches(f, snapshot)
+    Orbit.AuraSnapshotCache:Populate(f, snapshot)
     DispatchAuraConsumers(f, plugin, callbacks, snapshot)
 end
 
@@ -100,8 +100,9 @@ function GroupFrameMixin.CreateEventHandler(plugin, callbacks, originalOnEvent)
             return
         end
         if event == "UNIT_THREAT_SITUATION_UPDATE" then
-            if eventUnit == f.unit and plugin.UpdateAggroIndicator then
-                plugin:UpdateAggroIndicator(f, plugin)
+            if eventUnit == f.unit then
+                if plugin.UpdateAggroIndicator then plugin:UpdateAggroIndicator(f, plugin) end
+                StatusDispatch(f, plugin, "UpdateAggroHighlight")
             end
             return
         end
@@ -204,11 +205,11 @@ function GroupFrameMixin.CreateGlobalEventHandler(plugin, callbacks)
             local snapshots = {}
             for _, f in ipairs(frames) do
                 if not f.preview and f.unit and f:IsShown() then
-                    local snap = M:BuildSnapshotFromCaches(f)
+                    local snap = Orbit.AuraSnapshotCache:Build(f)
                     if not snap then
                         if not snapshots[f.unit] then snapshots[f.unit] = M:BuildAuraSnapshot(f.unit) end
                         snap = snapshots[f.unit]
-                        M:PopulateCaches(f, snap)
+                        Orbit.AuraSnapshotCache:Populate(f, snap)
                     end
                     f._auraSnapshot = snap
                     callbacks.UpdateDebuffs(f, plugin)

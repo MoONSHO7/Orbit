@@ -245,11 +245,6 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
         local def = Constants.Glow.Defaults[defKey]
         tinsert(schema.controls, { type = "slider", key = prefix .. defKey .. "Speed", label = L.CFG_GLOW_SLIDER_SPEED, min = 0, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. defKey .. "Speed") })
     end
-
-    -- Reverse checkbox: available for all animated glow types
-    if currentType ~= GlowType.None and currentType ~= nil then
-        tinsert(schema.controls, { type = "checkbox", key = prefix .. "Reverse", label = L.CFG_REVERSE_DIRECTION, default = false, onChange = MakeOnChange(prefix .. "Reverse") })
-    end
 end
 
 -- [ SETTINGS TABS ]----------------------------------------------------------------------------------

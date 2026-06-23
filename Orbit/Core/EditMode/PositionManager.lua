@@ -1,5 +1,5 @@
 -- [ ORBIT POSITION MANAGER ]-------------------------------------------------------------------------
--- Manages frame positions during Edit Mode (ephemeral state, Cancel support)
+-- Ephemeral staging buffer for Edit Mode positions; batches global writes and flushes to storage on close.
 
 local _, Orbit = ...
 Orbit.Engine.PositionManager = Orbit.Engine.PositionManager or {}
@@ -57,7 +57,10 @@ function PositionManager:FlushToStorage()
             end
         end
     end
+    -- Clear the whole staging buffer, not just PendingFrames: leftover Active entries would otherwise out-prioritize saved settings in RestorePosition on every later spec/profile/PEW restore.
     table.wipe(PendingFrames)
+    table.wipe(ActivePositions)
+    table.wipe(ActiveAnchors)
 end
 
 function PositionManager:DiscardChanges()

@@ -66,8 +66,16 @@ function Transaction:Set(key, value)
         local current = plugin:GetSetting(systemIndex, key)
         originalSettings[key] = current ~= nil and DeepCopy(current) or NIL_SENTINEL
     end
-    pendingSettings[key] = value ~= nil and value or NIL_SENTINEL
+    pendingSettings[key] = (value == nil) and NIL_SENTINEL or value
     self:FireChanged()
+end
+
+-- Pre-edit value snapshotted on the first Set(key) this session; nil if the key was never staged.
+function Transaction:GetOriginal(key)
+    if not active then return nil end
+    local v = originalSettings[key]
+    if v == nil or v == NIL_SENTINEL then return nil end
+    return v
 end
 
 -- Read pending state only — no fallback to GetSetting (avoids recursion from PluginMixin:GetSetting)
@@ -109,6 +117,7 @@ end
 
 function Transaction:StagePositionFromContainer(container)
     if not active or not container or not container.key then return end
+    local preview = container.GetParent and container:GetParent()
     self:SetPosition(container.key, {
         anchorX = container.anchorX,
         anchorY = container.anchorY,
@@ -118,6 +127,8 @@ function Transaction:StagePositionFromContainer(container)
         selfAnchorY = container.selfAnchorY,
         posX = container.posX,
         posY = container.posY,
+        -- Authored icon width (square icon previews that opt in) so the runtime can scale the offset with icon size.
+        baseSize = (preview and preview.scalesTextWithSize and preview.sourceWidth) or nil,
     })
 end
 

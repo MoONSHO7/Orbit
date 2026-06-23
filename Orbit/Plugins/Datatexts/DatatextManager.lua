@@ -36,6 +36,7 @@ function DatatextManager:Register(id, datatextData)
         onEnable = datatextData.onEnable,
         onDisable = datatextData.onDisable,
         SetScale = datatextData.SetScale,
+        refit = datatextData.refit,
         isEnabled = false,
         isPlaced = false,
     }
@@ -59,10 +60,40 @@ function DatatextManager:SetLocked(locked)
             if datatext.frame.overlay then
                 if locked then datatext.frame.overlay:Hide() else datatext.frame.overlay:Show() end
             end
-            if datatext.frame.activeBg then
-                if locked then datatext.frame.activeBg:Hide() else datatext.frame.activeBg:Show() end
-            end
+            self:SetActiveHighlight(datatext.frame, not locked)
         end
+    end
+end
+
+-- Bright flat outline on placed datatexts while the drawer is open — shared Skin selection-outline primitive, identical to Canvas Mode selection.
+function DatatextManager:SetActiveHighlight(frame, shown)
+    if not frame then return end
+    if shown then
+        Orbit.Skin:ApplySelectionOutline(frame, "_dtActiveHighlight")
+    else
+        Orbit.Skin:ClearSelectionOutline(frame, "_dtActiveHighlight")
+    end
+end
+
+-- [ GROWTH ANCHOR ] ---------------------------------------------------------------------------------
+-- Edge-anchor a placed datatext by screen side so growing text expands toward centre, not symmetrically.
+function DatatextManager:ApplyGrowthAnchor(frame)
+    if not frame then return end
+    local cx, cy = frame:GetCenter()
+    if not cx then return end
+    local s = frame:GetScale()
+    local uipW = UIParent:GetWidth()
+    local uipY = UIParent:GetHeight() / 2
+    local w, h = frame:GetWidth(), frame:GetHeight()
+    local es = frame:GetEffectiveScale()
+    local offsetY = (cy * s - uipY) / s
+    frame:ClearAllPoints()
+    if cx * s < uipW / 2 then
+        local px, py = Orbit.Engine.Pixel:SnapPosition(cx - w / 2, offsetY, "LEFT", w, h, es)
+        frame:SetPoint("LEFT", UIParent, "LEFT", px, py)
+    else
+        local px, py = Orbit.Engine.Pixel:SnapPosition((cx + w / 2) - uipW / s, offsetY, "RIGHT", w, h, es)
+        frame:SetPoint("RIGHT", UIParent, "RIGHT", px, py)
     end
 end
 
@@ -89,11 +120,11 @@ function DatatextManager:PlaceDatatext(id, point, x, y, skipSave)
     if f.overlay then
         if isLocked then f.overlay:Hide() else f.overlay:Show() end
     end
-    if f.activeBg then
-        if isLocked then f.activeBg:Hide() else f.activeBg:Show() end
-    end
+    self:SetActiveHighlight(f, not isLocked)
     f:Show()
+    if not self:ShouldShowPlaced(datatext) then f:Hide() end
     self:EnableDatatext(id)
+    self:ApplyGrowthAnchor(f)
     if not skipSave then self:SavePositions() end
     
     if Orbit.OOCFadeMixin then
@@ -182,7 +213,8 @@ function DatatextManager:OnDatatextDragStop(datatextId)
     self:EnableDatatext(datatextId)
     if datatext.frame and datatext.frame.resizeHandle then datatext.frame.resizeHandle:Show() end
     if datatext.frame and datatext.frame.overlay then datatext.frame.overlay:Show() end
-    if datatext.frame and datatext.frame.activeBg then datatext.frame.activeBg:Show() end
+    if datatext.frame then self:SetActiveHighlight(datatext.frame, true) end
+    self:ApplyGrowthAnchor(datatext.frame)
     self:SavePositions()
     return false
 end
@@ -238,6 +270,49 @@ function DatatextManager:RestorePositions()
         end
     end
 end
+
+-- [ INSTANCE VISIBILITY ] ---------------------------------------------------------------------------
+function DatatextManager:GetDatatextOption(id, key)
+    local plugin = Orbit:GetPlugin("Datatexts")
+    if not plugin then return nil end
+    local opts = plugin:GetSetting(1, "datatextOptions")
+    return opts and opts[id] and opts[id][key]
+end
+
+function DatatextManager:SetDatatextOption(id, key, value)
+    local plugin = Orbit:GetPlugin("Datatexts")
+    if not plugin then return end
+    local existing = plugin:GetSetting(1, "datatextOptions")
+    local opts = {}
+    if existing then for k, v in pairs(existing) do opts[k] = v end end
+    opts[id] = {}
+    if existing and existing[id] then for k, v in pairs(existing[id]) do opts[id][k] = v end end
+    opts[id][key] = value
+    plugin:SetSetting(1, "datatextOptions", opts)
+end
+
+-- Placed datatexts stay visible while the drawer is open (to configure); an "only in instance" datatext is otherwise hidden outside instances.
+function DatatextManager:ShouldShowPlaced(datatext)
+    if not datatext or not datatext.isPlaced then return false end
+    if DT.DrawerUI and DT.DrawerUI:IsOpen() then return true end
+    if not self:GetDatatextOption(datatext.id, "onlyInInstance") then return true end
+    return IsInInstance()
+end
+
+function DatatextManager:ApplyInstanceVisibility()
+    local plugin = Orbit:GetPlugin("Datatexts")
+    if plugin and plugin.suspended then return end
+    for _, datatext in pairs(datatexts) do
+        if datatext.isPlaced and datatext.frame then
+            if self:ShouldShowPlaced(datatext) then datatext.frame:Show() else datatext.frame:Hide() end
+        end
+    end
+end
+
+-- Re-evaluate "only in instance" visibility on every world/instance transition; the plugin does not run ApplySettings on PLAYER_ENTERING_WORLD.
+local instanceWatcher = CreateFrame("Frame")
+instanceWatcher:RegisterEvent("PLAYER_ENTERING_WORLD")
+instanceWatcher:SetScript("OnEvent", function() DatatextManager:ApplyInstanceVisibility() end)
 
 -- [ ENABLE/DISABLE ALL DRAWER DATATEXTS ] -----------------------------------------------------------
 function DatatextManager:EnableDrawerDatatexts()
@@ -296,6 +371,7 @@ function DatatextManager:UpdateAllDatatexts()
     for _, datatext in pairs(datatexts) do
         if datatext.frame and datatext.frame.Text and font then
             Orbit.Skin:SkinText(datatext.frame.Text, { font = font, textSize = DEFAULT_TEXT_SIZE })
+            if datatext.refit then datatext.refit() end
         end
     end
 end

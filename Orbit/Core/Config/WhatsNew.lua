@@ -19,6 +19,9 @@ local ENTRY_TITLE_BODY_GAP = 4
 local CLOSE_BUTTON_OFFSET = -2
 local FRAME_STRATA = "FULLSCREEN_DIALOG"
 local FRAME_LEVEL = 500
+local TITLE_INSET_LEFT = 30
+local TITLE_INSET_RIGHT = -24
+local TITLE_INSET_TOP = -1
 local ESC_RESTORE_DELAY = 0.05
 local SHOW_DELAY = 1.0
 local SCROLLBAR_WIDTH = 26
@@ -66,8 +69,8 @@ end)
 -- [ TITLE ] -----------------------------------------------------------------------------------------
 Window.TitleContainer = CreateFrame("Frame", nil, Window)
 Window.TitleContainer:SetFrameLevel(FRAME_LEVEL + 10)
-Window.TitleContainer:SetPoint("TOPLEFT", 30, -1)
-Window.TitleContainer:SetPoint("TOPRIGHT", -24, -1)
+Window.TitleContainer:SetPoint("TOPLEFT", TITLE_INSET_LEFT, TITLE_INSET_TOP)
+Window.TitleContainer:SetPoint("TOPRIGHT", TITLE_INSET_RIGHT, TITLE_INSET_TOP)
 Window.TitleContainer:SetHeight(20)
 
 Window.TitleContainer.TitleText = Window.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -195,7 +198,25 @@ local Content = CreateFrame("Frame", nil, ScrollFrame)
 ScrollFrame:SetScrollChild(Content)
 
 -- [ RENDER ENTRIES ] --------------------------------------------------------------------------------
-local renderedFontStrings = {}
+-- FontStrings cannot be destroyed; pool them by render index so re-opens reuse the same set.
+local fontStringPool = {}
+local renderCursor = 0
+
+local function AcquireFontString(fontObject)
+    renderCursor = renderCursor + 1
+    local fs = fontStringPool[renderCursor]
+    if not fs then
+        fs = Content:CreateFontString(nil, "ARTWORK", fontObject)
+        fontStringPool[renderCursor] = fs
+    else
+        fs:SetFontObject(fontObject)
+    end
+    fs:ClearAllPoints()
+    fs:SetWidth(0)
+    fs:SetJustifyH("LEFT")
+    fs:Show()
+    return fs
+end
 
 local function FormatMarkdown(text)
     if not text then
@@ -216,11 +237,7 @@ local function FormatMarkdown(text)
 end
 
 local function RenderEntries()
-    for _, fs in ipairs(renderedFontStrings) do
-        fs:Hide()
-        fs:SetText("")
-    end
-    wipe(renderedFontStrings)
+    renderCursor = 0
 
     local contentWidth = ScrollFrame:GetWidth() - (TEXT_PADDING_X * 2)
     Content:SetWidth(ScrollFrame:GetWidth())
@@ -231,12 +248,10 @@ local function RenderEntries()
     end
     local scale = Content:GetEffectiveScale()
     for _, entry in ipairs(Orbit.WHATS_NEW_ENTRIES) do
-        local titleText = Content:CreateFontString(nil, "ARTWORK", ENTRY_TITLE_FONT)
+        local titleText = AcquireFontString(ENTRY_TITLE_FONT)
         titleText:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X, -Pixel:Snap(yOffset, scale))
         titleText:SetWidth(contentWidth)
-        titleText:SetJustifyH("LEFT")
         titleText:SetText("|cFFFFD100" .. FormatMarkdown(entry.title) .. "|r")
-        tinsert(renderedFontStrings, titleText)
         yOffset = yOffset + titleText:GetStringHeight() + ENTRY_TITLE_BODY_GAP
 
         local lines = {strsplit("\n", entry.body)}
@@ -255,28 +270,28 @@ local function RenderEntries()
                 local indentX = baseIndent
 
                 if isBullet then
-                    local bulletFS = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
+                    local bulletFS = AcquireFontString(ENTRY_BODY_FONT)
                     bulletFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + baseIndent, -Pixel:Snap(yOffset, scale))
                     local marker = baseIndent > 0 and "-" or "•"
                     bulletFS:SetText("|cFFFFD100" .. marker .. "|r")
-                    bulletFS:SetJustifyH("LEFT")
-                    tinsert(renderedFontStrings, bulletFS)
 
                     indentX = baseIndent + 14
                     lineText = lineText:sub(3)
                 end
 
-                local lineFS = Content:CreateFontString(nil, "ARTWORK", ENTRY_BODY_FONT)
+                local lineFS = AcquireFontString(ENTRY_BODY_FONT)
                 lineFS:SetPoint("TOPLEFT", Content, "TOPLEFT", TEXT_PADDING_X + indentX, -Pixel:Snap(yOffset, scale))
                 lineFS:SetWidth(contentWidth - indentX)
-                lineFS:SetJustifyH("LEFT")
                 lineFS:SetText(FormatMarkdown(lineText))
-                tinsert(renderedFontStrings, lineFS)
 
                 yOffset = yOffset + lineFS:GetStringHeight() + 6
             end
         end
         yOffset = yOffset + (ENTRY_SPACING - 6)
+    end
+    for i = renderCursor + 1, #fontStringPool do
+        fontStringPool[i]:Hide()
+        fontStringPool[i]:SetText("")
     end
     Content:SetHeight(Pixel:Snap(yOffset, scale))
 

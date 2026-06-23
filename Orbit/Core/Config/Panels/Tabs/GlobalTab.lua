@@ -36,24 +36,27 @@ local function GetBorderStyleOptions()
     local existing = {}
     for _, entry in ipairs(opts) do existing[entry.label] = true end
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-    local lsm = {}
+    local owned, others = {}, {}
     if LSM then
         local borders = LSM:HashTable("border")
         if borders then
+            local ownedMedia = Orbit.OwnedMedia or {}
             for name, path in pairs(borders) do
                 if not existing[name] and path and path ~= "" and name ~= "None" and not name:match("^Blizzard") then
-                    lsm[#lsm + 1] = { label = name, value = "lsm:" .. name }
+                    local bucket = ownedMedia[name] and owned or others
+                    bucket[#bucket + 1] = { label = name, value = "lsm:" .. name }
                 end
             end
         end
     end
-    table.sort(lsm, function(a, b) return a.label < b.label end)
-    -- The built-in styles sit above a divider; LibSharedMedia borders fill the rest.
-    if #lsm > 0 then
+    local byLabel = function(a, b) return a.label < b.label end
+    table.sort(owned, byLabel)
+    table.sort(others, byLabel)
+    -- Orbit-bundled borders sit with the built-in styles; a divider separates third-party LibSharedMedia borders below.
+    for _, entry in ipairs(owned) do opts[#opts + 1] = entry end
+    if #others > 0 then
         opts[#opts + 1] = { divider = true }
-    end
-    for _, entry in ipairs(lsm) do
-        opts[#opts + 1] = entry
+        for _, entry in ipairs(others) do opts[#opts + 1] = entry end
     end
     return opts
 end
@@ -65,13 +68,15 @@ local function GetGlobalSchema()
     local currentEntry = Constants.BorderStyle.Lookup[currentStyle]
     local currentIconStyle = (g and g.IconBorderStyle) or Constants.BorderStyle.Default
     local currentIconEntry = Constants.BorderStyle.Lookup[currentIconStyle]
+    local borderOpts = GetBorderStyleOptions()
 
-    -- Swatch hides for LSM border textures — color only applies to built-in styles.
-    local DEFAULT_FONT_CURVE = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+    -- Color swatch applies to built-in styles AND to LSM edge-file textures (grayscale -> vertex-tinted).
+    local DEFAULT_FONT_CURVE = Orbit.Constants.NewWhiteColorCurve()
     local function GS() return Orbit.db and Orbit.db.GlobalSettings end
     local function StyleHasColor(key)
         local gs = GS()
-        return Constants.BorderStyle.Lookup[(gs and gs[key]) or Constants.BorderStyle.Default] ~= nil
+        local v = (gs and gs[key]) or Constants.BorderStyle.Default
+        return Constants.BorderStyle.Lookup[v] ~= nil or (type(v) == "string" and v:find("^lsm:") ~= nil)
     end
 
     local fontColorValue = {
@@ -85,9 +90,10 @@ local function GetGlobalSchema()
     }
     local borderColorValue = {
         curve = false,
+        allowNone = true,
         tooltip = L.CFG_FRAME_BORDERS_TT,
         enabled = function() return StyleHasColor("BorderStyle") end,
-        initialValue = function() local gs = GS(); return (gs and gs.BorderColor) or { r = 0, g = 0, b = 0, a = 1 } end,
+        initialValue = function() local gs = GS(); return (gs and gs.BorderColor) or { none = true } end,
         callback = function(val)
             GlobalPlugin:SetSetting(nil, "BorderColor", val)
             Orbit.Async:Debounce("GlobalTab_BorderColor", function()
@@ -98,9 +104,10 @@ local function GetGlobalSchema()
     }
     local iconBorderColorValue = {
         curve = false,
+        allowNone = true,
         tooltip = L.CFG_ICON_BORDERS_TT,
         enabled = function() return StyleHasColor("IconBorderStyle") end,
-        initialValue = function() local gs = GS(); return (gs and gs.IconBorderColor) or { r = 0, g = 0, b = 0, a = 1 } end,
+        initialValue = function() local gs = GS(); return (gs and gs.IconBorderColor) or { none = true } end,
         callback = function(val)
             GlobalPlugin:SetSetting(nil, "IconBorderColor", val)
             Orbit.Async:Debounce("GlobalTab_IconBorderColor", function()
@@ -129,7 +136,7 @@ local function GetGlobalSchema()
             },
         },
         {
-            type = "dropdown", key = "BorderStyle", label = L.CFG_BORDER_STYLE, options = GetBorderStyleOptions(),
+            type = "dropdown", key = "BorderStyle", label = L.CFG_BORDER_STYLE, options = borderOpts,
             default = Constants.BorderStyle.Default, valueColor = borderColorValue,
             onChange = function(val)
                 GlobalPlugin:SetSetting(nil, "BorderStyle", val)
@@ -149,16 +156,18 @@ local function GetGlobalSchema()
         Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
     end
     local pixelSize = Constants.BorderStyle.PixelSize
-    -- Built-in "Orbit" → Border Size 0-5 slider; LSM → edge-size + offset sliders.
+    -- "Orbit Pixel" → Border Size 0-5 slider; rounded → no slider (thickness baked in); LSM → edge-size + offset sliders.
     if currentEntry and currentEntry.pixel then
         tinsert(controls, { type = "slider", key = "PixelBorderSize", label = L.CFG_BORDER_SIZE, default = Constants.BorderStyle.DefaultPixelSize, min = pixelSize.Min, max = pixelSize.Max, step = pixelSize.Step, updateOnRelease = true, onChange = function(v) borderSizeChanged("PixelBorderSize", v) end })
+    elseif currentEntry and currentEntry.rounded then
+        -- rounded slice border: fixed pixel thickness, no size slider
     else
         tinsert(controls, { type = "slider", key = "BorderEdgeSize", label = L.CFG_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderEdgeSize", v) end })
         tinsert(controls, { type = "slider", key = "BorderOffset", label = L.CFG_BORDER_OFFSET, default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("BorderOffset", v) end })
     end
 
     tinsert(controls, {
-        type = "dropdown", key = "IconBorderStyle", label = L.CFG_ICON_BORDER_STYLE, options = GetBorderStyleOptions(),
+        type = "dropdown", key = "IconBorderStyle", label = L.CFG_ICON_BORDER_STYLE, options = borderOpts,
         default = Constants.BorderStyle.Default, valueColor = iconBorderColorValue,
         onChange = function(val)
             GlobalPlugin:SetSetting(nil, "IconBorderStyle", val)
@@ -171,6 +180,8 @@ local function GetGlobalSchema()
 
     if currentIconEntry and currentIconEntry.pixel then
         tinsert(controls, { type = "slider", key = "IconPixelBorderSize", label = L.CFG_ICON_BORDER_SIZE, default = Constants.BorderStyle.DefaultPixelSize, min = pixelSize.Min, max = pixelSize.Max, step = pixelSize.Step, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconPixelBorderSize", v) end })
+    elseif currentIconEntry and currentIconEntry.rounded then
+        -- rounded slice border: fixed pixel thickness, no size slider
     else
         tinsert(controls, { type = "slider", key = "IconBorderEdgeSize", label = L.CFG_ICON_BORDER_EDGE_SIZE, default = 16, min = 4, max = 16, step = 4, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderEdgeSize", v) end })
         tinsert(controls, { type = "slider", key = "IconBorderOffset", label = L.CFG_ICON_BORDER_OFFSET, default = 0, min = 0, max = 16, step = 1, updateOnRelease = true, onChange = function(v) borderSizeChanged("IconBorderOffset", v) end })
@@ -184,10 +195,11 @@ local function GetGlobalSchema()
         controls = controls,
         onReset = function()
             local d = Orbit.db.GlobalSettings
+            local def = (Orbit.Profile and Orbit.Profile.defaults and Orbit.Profile.defaults.GlobalSettings) or {}
             if d then
-                d.Font = "PT Sans Narrow"
-                d.FontOutline = "OUTLINE"
-                d.FontShadow = false
+                d.Font = def.Font or "Barlow Condensed Bold"
+                d.FontOutline = def.FontOutline or "OUTLINE"
+                d.FontShadow = def.FontShadow or false
                 d.BorderStyle = Constants.BorderStyle.Default
                 d.BorderEdgeSize = 16
                 d.BorderOffset = 0
@@ -197,10 +209,12 @@ local function GetGlobalSchema()
                 d.PixelBorderSize = Constants.BorderStyle.DefaultPixelSize
                 d.IconPixelBorderSize = Constants.BorderStyle.DefaultPixelSize
                 Constants.BorderStyle.SyncEffectiveSize(d)
-                d.FontColorCurve = { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
-                d.BorderColor = { r = 0, g = 0, b = 0, a = 1 }
-                d.IconBorderColor = { r = 0, g = 0, b = 0, a = 1 }
+                d.FontColorCurve = Orbit.Constants.NewWhiteColorCurve()
+                d.BorderColor = { none = true }
+                d.IconBorderColor = { none = true }
             end
+            -- Rebuild merged group borders: per-frame ApplySettings re-skins members but never the group overlay/mask.
+            Orbit.EventBus:Fire("ORBIT_BORDER_SIZE_CHANGED")
             Orbit:Print(L.MSG_GLOBAL_RESET)
         end,
     }

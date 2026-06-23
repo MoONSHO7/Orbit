@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ChangelogData.lua"/>
     <Script file="Schema\ConfigLayout.lua"/>
     <Script file="Schema\SchemaBuilder.lua"/>
     <Include file="Widgets\Widgets.xml"/>

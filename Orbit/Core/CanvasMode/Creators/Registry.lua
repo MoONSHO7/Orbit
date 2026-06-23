@@ -22,6 +22,11 @@ local FALLBACK_CONTAINER_WIDTH = 60
 local FALLBACK_CONTAINER_HEIGHT = 20
 local FALLBACK_GRAY = { 0.5, 0.5, 0.5, 0.5 }
 local TEXT_PADDING = 2
+local HIT_OVERSHOOT = 4
+-- Opaque selection-state colors, distinguished by brightness (drag brightest).
+local MARKER_HOVER = { 0.35, 0.70, 0.40, 1.0 }
+local MARKER_SELECTED = { 0.40, 1.0, 0.50, 1.0 }
+local MARKER_DRAG = { 0.70, 1.0, 0.80, 1.0 }
 
 CanvasMode.CreatorConstants = {
     BORDER_COLOR_IDLE = BORDER_COLOR_IDLE,
@@ -34,22 +39,25 @@ CanvasMode.CreatorConstants = {
     FALLBACK_CONTAINER_HEIGHT = FALLBACK_CONTAINER_HEIGHT,
     FALLBACK_GRAY = FALLBACK_GRAY,
     TEXT_PADDING = TEXT_PADDING,
+    HIT_OVERSHOOT = HIT_OVERSHOOT,
 }
 
 -- [ SHARED HELPERS ]---------------------------------------------------------------------------------
+local IsSecret = issecretvalue or function() return false end
+
 local function GetSourceSize(source, defaultW, defaultH)
     local w, h = defaultW, defaultH
     if source.orbitOriginalWidth and source.orbitOriginalWidth > 0 then
         w = source.orbitOriginalWidth
     else
-        local ok, val = pcall(function() return source:GetWidth() end)
-        if ok and val and type(val) == "number" and val > 0 then w = val end
+        local val = source:GetWidth()
+        if val and not IsSecret(val) and type(val) == "number" and val > 0 then w = val end
     end
     if source.orbitOriginalHeight and source.orbitOriginalHeight > 0 then
         h = source.orbitOriginalHeight
     else
-        local ok, val = pcall(function() return source:GetHeight() end)
-        if ok and val and type(val) == "number" and val > 0 then h = val end
+        local val = source:GetHeight()
+        if val and not IsSecret(val) and type(val) == "number" and val > 0 then h = val end
     end
     return w, h
 end
@@ -61,6 +69,36 @@ local function SetBorderColor(border, colorTable)
 end
 
 CanvasMode.SetBorderColor = SetBorderColor
+
+-- [ SELECTION MARKER ]-------------------------------------------------------------------------------
+-- Priority: drag > selected > hover > idle. The flat outline is the shared Skin primitive (runtime ref; Skinning loads after CanvasMode).
+local function RefreshComponentMarker(container)
+    if not container then return end
+    local color
+    if container._markerDragging then color = MARKER_DRAG
+    elseif container._markerSelected then color = MARKER_SELECTED
+    elseif container._markerHovered then color = MARKER_HOVER end
+    if color then
+        Orbit.Skin:ApplySelectionOutline(container, "marker", color)
+    else
+        Orbit.Skin:ClearSelectionOutline(container, "marker")
+    end
+end
+
+CanvasMode.RefreshComponentMarker = RefreshComponentMarker
+
+function CanvasMode:SetSelectedComponent(container)
+    local prev = self._selectedComponent
+    if prev and prev ~= container then
+        prev._markerSelected = false
+        RefreshComponentMarker(prev)
+    end
+    self._selectedComponent = container
+    if container then
+        container._markerSelected = true
+        RefreshComponentMarker(container)
+    end
+end
 
 -- [ TEXT ALIGNMENT ]---------------------------------------------------------------------------------
 local function ApplyTextAlignment(container, visual, justifyH)

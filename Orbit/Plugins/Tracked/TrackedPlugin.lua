@@ -182,7 +182,7 @@ function Plugin:RegisterTabs()
         id = TAB_ID_ICONS,
         atlas = TAB_ATLAS,
         vertexColor = TAB_TINT_ICONS,
-        tooltipText = "Add a new Tracked Icon container",
+        tooltipText = L.PLU_TRK_TAB_TT_ICONS,
         onClick = function() self:CreateIconContainer() end,
     })
 
@@ -190,7 +190,7 @@ function Plugin:RegisterTabs()
         id = TAB_ID_BARS,
         atlas = TAB_ATLAS,
         vertexColor = TAB_TINT_BARS,
-        tooltipText = "Add a new Tracked Bar",
+        tooltipText = L.PLU_TRK_TAB_TT_BARS,
         onClick = function() self:CreateBar() end,
     })
 end

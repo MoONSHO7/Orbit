@@ -20,7 +20,6 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         Width = 160,
         Height = 38,
         ClassColour = true,
-        ShowHealthValue = true,
         ShowLevel = true,
         ShowCombatIcon = true,
         ShowPvpIcon = false,
@@ -47,7 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         DisabledComponents = { "Status", "Portrait", "RoleIcon" },
         ComponentPositions = {
             Name              = { anchorX = "LEFT",   offsetX = 5,  anchorY = "CENTER", offsetY = 0,  justifyH = "LEFT",   selfAnchorY = "CENTER", posX = -75, posY = 0,   overrides = { FontSize = 14 } },
-            HealthText        = { anchorX = "RIGHT",  offsetX = 5,  anchorY = "CENTER", offsetY = 0,  justifyH = "RIGHT",  selfAnchorY = "CENTER", posX = 75,  posY = 0,   overrides = { FontSize = 14, HealthTextMode = "percent", ShowHealthValue = true } },
+            HealthText        = { anchorX = "RIGHT",  offsetX = 5,  anchorY = "CENTER", offsetY = 0,  justifyH = "RIGHT",  selfAnchorY = "CENTER", posX = 75,  posY = 0,   overrides = { FontSize = 14 } },
             LevelText         = { anchorX = "RIGHT",  offsetX = -6, anchorY = "TOP",    offsetY = 8,  justifyH = "RIGHT",  selfAnchorY = "TOP",    posX = 78,  posY = 11 },
             CombatIcon        = { anchorX = "CENTER", offsetX = 0,  anchorY = "CENTER", offsetY = 0,  justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0,   posY = 0 },
             RoleIcon          = { anchorX = "RIGHT",  offsetX = 10, anchorY = "TOP",    offsetY = 3 },
@@ -64,6 +63,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
+Plugin:RegisterSyncSource(PLAYER_FRAME_INDEX)
 Plugin.supportsHealthText = true
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
@@ -288,11 +288,10 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("READY_CHECK")
     self.frame:RegisterEvent("READY_CHECK_CONFIRM")
     self.frame:RegisterEvent("READY_CHECK_FINISHED")
-    self.frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
     -- Register threat events for aggro indicator
     self.frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", "player")
-    self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    self.frame:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE", "player")
     self.frame:RegisterEvent("PORTRAITS_UPDATED")
 
     -- Hook into existing OnEvent
@@ -339,8 +338,6 @@ function Plugin:OnLoad()
             return
         elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
             f:UpdatePortrait()
-            return
-        elseif event == "PLAYER_TARGET_CHANGED" then
             return
         end
         if originalOnEvent then

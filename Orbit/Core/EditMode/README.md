@@ -21,6 +21,7 @@ settings are read from saved variables to build edit mode previews. when the use
 
 ```
 EditMode/
+  EditMode.xml          -- top-level script bundle (NativeFrame, EditMode, Frame\EditFrame.xml, PositionManager, MountedVisibility)
   EditMode.lua          -- edit mode entry/exit hooks, combat safety
   PositionManager.lua   -- ephemeral position buffer (cancel support)
   MountedVisibility.lua -- hide frames while mounted
@@ -49,6 +50,7 @@ EditMode/
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)
   Preview/
+    Preview.xml         -- xml script bundle (PreviewFrame.lua)
     PreviewFrame.lua    -- live preview-frame construction (`Create`, `CreateBasePreview`) consumed by Tracked, PlayerPower, PlayerCastBar, and DamageMeterUI
 ```
 
@@ -165,7 +167,7 @@ the two-frame defer matches the spec path — `RefreshForCurrentSpec` (Tracked) 
 - anchor chains resolve recursively. guard against cycles with depth limits.
 - all pixel offsets must be snapped via `Pixel:Snap()`
 - mounted visibility checks belong in `MountedVisibility.lua`, not in plugins
-- `PositionManager` is ephemeral — it buffers changes until edit mode closes, enabling cancel support
+- `PositionManager` is ephemeral — it stages position changes and batches global writes, flushing to storage (and clearing the whole staging buffer) when edit mode closes, on `/reload`, and on logout. Spec-scoped writes go immediate. There is no Orbit edit-mode "cancel/revert" affordance; `DiscardChanges` is used only by profile switching
 - prefer `SetFrameVirtual` for content-empty frames, `SetFrameDisabled` for profile-level disable
 - cycle detection must use `AnchorGraph:WouldCreateCycle()` (pure-data, no `GetNumPoints`)
 - listen for edit mode lifecycle via `EventRegistry:RegisterCallback("EditMode.Enter"/"EditMode.Exit", ...)`. Never `EditModeManagerFrame:HookScript("OnShow"/"OnHide", ...)` — the hookscript callback rides the dangerous secure execution chain that runs `ResetPartyFrames` on exit; `EventRegistry` fires after the chain has settled and is the official Blizzard signal.

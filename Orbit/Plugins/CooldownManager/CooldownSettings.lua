@@ -55,7 +55,7 @@ function CDM:AddSettings(dialog, systemFrame)
                 })
             end
             table.insert(schema.controls, {
-                type = "slider", key = "Spacing", label = L.PLU_CDM_SPACING, min = 0, max = 30, step = 1, default = 2,
+                type = "slider", key = "Spacing", label = L.PLU_CDM_SPACING, min = 0, max = 30, step = 1, default = 2, mergeAtZero = true,
                 onChange = function(val) self:SetSetting(systemIndex, "Spacing", val); self:ProcessChildren(buffBarAnchor) end,
             })
         elseif currentTab == L.PLU_CDM_TAB_COLORS then
@@ -114,7 +114,7 @@ function CDM:AddSettings(dialog, systemFrame)
                     self:ApplySettings(systemFrame)
                 end,
             })
-            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_CDM_ICON_PADDING, min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding })
+            table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_CDM_ICON_PADDING, min = 0, max = 15, step = 1, default = Constants.Cooldown.DefaultPadding, mergeAtZero = true })
             table.insert(schema.controls, { type = "slider", key = "IconLimit", label = L.PLU_CDM_NUM_COLUMNS, min = 1, max = 20, step = 1, default = Constants.Cooldown.DefaultLimit })
         end
     elseif currentTab == L.PLU_CDM_TAB_GLOW then

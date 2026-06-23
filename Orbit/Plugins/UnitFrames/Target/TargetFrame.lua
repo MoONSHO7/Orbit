@@ -23,7 +23,6 @@ local Plugin = Orbit:RegisterPlugin("Target Frame", SYSTEM_ID, {
         MaxBuffs = 16,
         ShowLevel = true,
         ShowElite = true,
-        ShowHealthValue = true,
         HealthTextMode = "percent_short",
         EnableTargetTarget = true,
         EnableTargetPower = true,
@@ -105,6 +104,7 @@ end
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 -- Apply Mixins
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.StatusIconMixin)
+Plugin:RegisterSyncSource(TARGET_FRAME_INDEX)
 Plugin.supportsHealthText = true
 
 function Plugin:OnLoad()
@@ -209,7 +209,7 @@ function Plugin:OnLoad()
                 self:UpdateVisualsExtended(self.frame, TARGET_FRAME_INDEX)
             end
         end,
-    }, self)
+    }, "OrbitTargetFramePreview")
 
     Orbit.EventBus:On("ORBIT_PLAYER_SETTINGS_CHANGED", function() self:ApplySettings(self.frame) end, self)
     Orbit.EventBus:On("ORBIT_FOCUS_SETTINGS_CHANGED", function()

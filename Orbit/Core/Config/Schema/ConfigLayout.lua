@@ -8,7 +8,7 @@ Engine.Layout = {}
 local Layout = Engine.Layout
 
 -- [ CONTROL POOLING ]--------------------------------------------------------------------------------
-Layout.pool = Layout.pool or {}
+Layout.checkboxPool = Layout.checkboxPool or {}
 Layout.sliderPool = Layout.sliderPool or {}
 Layout.dropdownPool = Layout.dropdownPool or {}
 Layout.buttonPool = Layout.buttonPool or {}
@@ -86,12 +86,17 @@ function Layout:RecycleControls(controls)
         control:ClearAllPoints()
 
         if control.OrbitType == "Checkbox" then
-            table.insert(self.pool, control)
+            -- Only standard checkboxes carry the template Button and match the acquire pool; compact ones have no pool and are dropped.
+            if control.Button then
+                self.checkboxPool = self.checkboxPool or {}
+                table.insert(self.checkboxPool, control)
+            end
         elseif control.OrbitType == "Slider" then
             if control.Slider and control.Slider.UnregisterCallback then
                 control.Slider:UnregisterCallback("OnValueChanged", control)
             end
             control.OnOrbitChange = nil
+            control._updateOnRelease = false
 
             -- MEMORY LEAK FIX: Clean up slider scripts to prevent stale callbacks
             if control.Slider then
@@ -101,7 +106,7 @@ function Layout:RecycleControls(controls)
                     innerSlider:SetScript("OnMouseUp", nil)
                 end
 
-                -- Stepper buttons are permanently HookScript'd; the hook checks frame.OnOrbitChange (nil'd above) so stale callbacks no-op.
+                -- Stepper buttons are permanently HookScript'd; the hook early-returns unless _updateOnRelease (false here, reset each acquire).
             end
 
             -- Cancel any pending stepper timer
@@ -122,10 +127,10 @@ function Layout:RecycleControls(controls)
         elseif control.Label and control.Swatch then
             table.insert(self.colorPool, control)
         elseif control.OrbitType == "Font" then
-            if control.DropdownFrame then control.DropdownFrame:Hide(); control.DropdownFrame = nil end
+            if control.Dropdown then control.Dropdown:Hide() end
             table.insert(self.fontPool, control)
         elseif control.OrbitType == "Texture" then
-            if control.DropdownFrame then control.DropdownFrame:Hide(); control.DropdownFrame = nil end
+            if control.Dropdown then control.Dropdown:Hide() end
             table.insert(self.texturePool, control)
         end
     end
@@ -438,9 +443,7 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
-        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
-        if widget then widget.singleColorMode = true; widget.hasDesaturation = def.hasDesaturation end
-        return widget
+        return self:CreateColorPicker(container, def.label, getValue(), callback)
     end)
 
     self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
@@ -511,7 +514,7 @@ function Layout:InitializeWidgetTypes()
         return frame
     end)
 
-    -- [ TABS WIDGET ]-----------------------------------------------------------------------------------
+    -- [ TABS WIDGET ]--------------------------------------------------------------------------------
     local TAB_HEIGHT = 24
     local TAB_SPACING = 4
     local TAB_TEXT_PADDING = 30
@@ -585,7 +588,7 @@ function Layout:InitializeWidgetTypes()
         end
     end
 
-    -- [ EYE TOGGLE CONSTANTS ]--------------------------------------------------------------------------
+    -- [ EYE TOGGLE CONSTANTS ]-----------------------------------------------------------------------
     local EYE_SIZE = TAB_HEIGHT
     local FLIPBOOK_ATLAS = "groupfinder-eye-flipbook-found-initial"
     -- From Blizzard QueueStatusFrame.xml: flipBookRows=7, flipBookColumns=11, flipBookFrames=70, duration=2

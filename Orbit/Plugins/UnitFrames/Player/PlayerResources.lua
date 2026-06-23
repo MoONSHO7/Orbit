@@ -59,7 +59,6 @@ local Plugin = Orbit:RegisterPlugin("Player Resources", SYSTEM_ID, {
         Hidden = false,
         Width = 100,
         Height = DEFAULTS.Height,
-        Spacing = 2,
         ShowText = true,
         TextSize = 15,
         DividerSize = DIVIDER_SIZE_DEFAULT,
@@ -129,7 +128,7 @@ function Plugin:OnLoad()
     -- [ CANVAS PREVIEW ] -------------------------------------------------------------------------------
     function Frame:CreateCanvasPreview(options)
         local parent = options.parent or UIParent
-        local borderSize = Plugin:GetSetting(SYSTEM_INDEX, "BorderSize") or Orbit.db.GlobalSettings.BorderSize
+        local borderSize = Plugin:GetSetting(SYSTEM_INDEX, "BorderSize")
         local texture = Plugin:GetSetting(SYSTEM_INDEX, "Texture")
         local spacing = Plugin:GetSetting(SYSTEM_INDEX, "DividerSize") or DIVIDER_SIZE_DEFAULT
         local scale = self:GetEffectiveScale() or 1
@@ -445,7 +444,7 @@ function Plugin:ApplySettings()
     -- Get settings (defaults handled by PluginMixin)
     local width = self:GetSetting(SYSTEM_INDEX, "Width")
     local height = self:GetSetting(SYSTEM_INDEX, "Height")
-    local borderSize = self:GetSetting(SYSTEM_INDEX, "BorderSize") or Orbit.db.GlobalSettings.BorderSize
+    local borderSize = self:GetSetting(SYSTEM_INDEX, "BorderSize")
     local spacing = self:GetSetting(SYSTEM_INDEX, "DividerSize") or DIVIDER_SIZE_DEFAULT
     local texture = self:GetSetting(SYSTEM_INDEX, "Texture")
     local fontName = self:GetSetting(SYSTEM_INDEX, "Font")

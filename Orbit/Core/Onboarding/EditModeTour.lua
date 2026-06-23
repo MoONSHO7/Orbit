@@ -161,6 +161,7 @@ overlay.welcomeSub:SetAlpha(0)
 local taskState = {}
 local savedDialogStrata = nil
 local savedDialogLevel = nil
+local originalDragCallbacks = {}
 
 local function ResetTaskState()
     taskState.dragged = false
@@ -661,7 +662,6 @@ function Tour:ShowTourStop(idx)
     self.index = idx
     checkElapsed = 0
     stopElapsed = 0
-    taskCompleteAt = nil
 
     local anchor = ResolveAnchor(stop)
     if not anchor then self:EndTour(); return end
@@ -745,7 +745,8 @@ function Tour:StartTour(force)
         if Selection then
             for _, tf in ipairs({ frameA, frameB }) do
                 local origCb = Selection.dragCallbacks[tf]
-                if origCb then
+                if origCb and not originalDragCallbacks[tf] then
+                    originalDragCallbacks[tf] = origCb
                     Selection.dragCallbacks[tf] = function(...)
                         origCb(...)
                         C_Timer.After(0, function()
@@ -873,6 +874,13 @@ function Tour:EndTour()
     if AnchorMod and originalBreakAnchor then
         AnchorMod.BreakAnchor = originalBreakAnchor
         originalBreakAnchor = nil
+    end
+    -- Restore drag callbacks (factory owns them) so a replayed tour doesn't nest another wrapper
+    if Selection then
+        for tf, cb in pairs(originalDragCallbacks) do
+            Selection.dragCallbacks[tf] = cb
+            originalDragCallbacks[tf] = nil
+        end
     end
     -- Break any anchors on playground frames
     if frameA and frameB and Engine.FrameAnchor then
@@ -1181,6 +1189,7 @@ local originalDrawerToggle = nil
 function Tour:ShowDrawerHint()
     local as = Orbit.db and Orbit.db.AccountSettings
     if as and as.DrawerHintComplete then return end
+    if not Orbit:IsPluginEnabled("Datatexts") then return end
     if as and as.DrawerHintComplete == nil then as.DrawerHintComplete = false end
     drawerTip.title:SetText(L.TOUR_EM_DRAWER_TITLE)
     drawerTip.text:SetText(L.TOUR_EM_DRAWER_TEXT)

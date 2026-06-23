@@ -22,6 +22,9 @@ local function BuildPositionRecord(comp, halfWidth, halfHeight)
             comp:GetWidth(), comp:GetHeight(), comp.isAuraContainer)
     end
     local record = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, selfAnchorY = comp.selfAnchorY, posX = comp.posX or 0, posY = comp.posY or 0 }
+    -- Authored icon width (square previews that opt in) so the runtime scales the text offset with icon size — mirrors Transaction:StagePositionFromContainer.
+    local preview = comp.GetParent and comp:GetParent()
+    if preview and preview.scalesTextWithSize and preview.sourceWidth then record.baseSize = preview.sourceWidth end
     if comp.pendingOverrides then record.overrides = comp.pendingOverrides
     elseif comp.existingOverrides then record.overrides = comp.existingOverrides end
     return record
@@ -76,15 +79,34 @@ function Dialog:Apply()
     end
     local targetFrame = self.targetFrame
     if OrbitEngine.CanvasComponentSettings and OrbitEngine.CanvasComponentSettings.FlushPendingPluginSettings then OrbitEngine.CanvasComponentSettings:FlushPendingPluginSettings() end
-    -- Bypass Transaction:Commit — Apply needs fine-grained control over sync/global writes and reads preview state, not pendingPositions.
+    -- No Transaction commit step exists: Apply writes settings directly (it needs sync/global control and reads preview state, not pendingPositions), then clears the transaction.
     CanvasMode.Transaction:Clear()
     self:CloseDialog()
     if plugin.OnCanvasApply then plugin:OnCanvasApply() end
     if isSynced and plugin.ApplyAll then plugin:ApplyAll() end
 end
 
+-- [ SESSION REVERTS ] -------------------------------------------------------------------------------
+-- Some edits must be written to SavedVariables mid-session (a component-type swap restarts the Transaction, so the Transaction can't carry them). Recording the pre-edit value here lets Cancel honour the cancel-discards contract across re-Opens.
+function Dialog:RecordSessionRevert(plugin, systemIndex, key, originalValue)
+    self._sessionReverts = self._sessionReverts or {}
+    for _, r in ipairs(self._sessionReverts) do
+        if r.plugin == plugin and r.systemIndex == systemIndex and r.key == key then return end
+    end
+    table.insert(self._sessionReverts, { plugin = plugin, systemIndex = systemIndex, key = key, value = originalValue })
+end
+
+function Dialog:RestoreSessionReverts()
+    if not self._sessionReverts then return end
+    for _, r in ipairs(self._sessionReverts) do
+        r.plugin:SetSetting(r.systemIndex, r.key, r.value)
+    end
+    self._sessionReverts = nil
+end
+
 -- [ CANCEL ] ----------------------------------------------------------------------------------------
 function Dialog:Cancel()
+    self:RestoreSessionReverts()
     CanvasMode.Transaction:Rollback()
     self:CloseDialog()
 end

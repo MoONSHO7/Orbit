@@ -63,12 +63,6 @@ function Plugin:OnLoad()
     self.frame.anchorOptions = { horizontal = false, vertical = true }
     self.frame.orbitResizeBounds = { minW = 50, maxW = 400, minH = 20, maxH = 100 }
 
-    -- Register Edit Mode callbacks for visibility updates
-    if EventRegistry then
-        EventRegistry:RegisterCallback("EditMode.Enter", function() self:UpdateVisibility() end, self)
-        EventRegistry:RegisterCallback("EditMode.Exit", function() self:UpdateVisibility() end, self)
-    end
-
     -- Attach to Orbit Frame system
     OrbitEngine.Frame:AttachSettingsListener(self.frame, self, PET_FRAME_INDEX)
 

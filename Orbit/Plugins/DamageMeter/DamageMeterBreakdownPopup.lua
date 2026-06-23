@@ -14,8 +14,6 @@ local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
 
 -- [ REGISTRY ] --------------------------------------------------------------------------------------
--- mouseoverPopup is a non-interactive singleton that follows the hovered bar; detachedPopups holds at
--- most one draggable window per meter. Both are transient — nothing here writes to SavedVariables.
 local mouseoverPopup
 local detachedPopups = {}
 
@@ -30,6 +28,9 @@ local INHERITED_FIELDS = {
 
 local function ReinheritStyle(def, meterDef)
     for _, k in ipairs(INHERITED_FIELDS) do def[k] = meterDef[k] end
+    -- The popup is one panel, not a stack: render border/background frame-wide, never per-bar.
+    if def.border == DM.Border.PerBar then def.border = DM.Border.Frame end
+    if def.background == DM.Background.PerBar then def.background = DM.Background.Frame end
 end
 
 local function BuildSyntheticDef(meterDef, target)
@@ -42,19 +43,19 @@ local function BuildSyntheticDef(meterDef, target)
     return def
 end
 
--- Out-of-combat only (the caller gates on it), so sourceGUID/name are non-secret and safe to read here.
+-- src.name is ConditionalSecret independently of the GUID; blank a secret name so BuildTitleText's `~= ""` can't throw.
 local function TargetFromSource(src, displayName)
+    local name = displayName or src.name
+    if issecretvalue(name) then name = "" end
     return {
         breakdownGUID       = src.sourceGUID,
         breakdownCreatureID = src.sourceCreatureID,
         breakdownClass      = src.classFilename,
-        breakdownName       = displayName or src.name,
+        breakdownName       = name,
     }
 end
 
--- Both popups show the full breakdown (no scroll) — override the inherited bar count with the source's
--- actual row count. `#combatSpells` is the array length, never a secret. Capped at the meter's own
--- MaxBarsStretch ceiling so a pathological source can't allocate a multi-thousand-pixel frame.
+-- `#combatSpells` is array length (never secret); cap at MaxBarsStretch so a pathological source can't allocate a multi-thousand-pixel frame.
 local function FitAllSpells(def)
     local sd = OrbitEngine.DamageMeterData:ResolveSessionSource(
         def.sessionID, def.sessionType, def.meterType,
@@ -65,8 +66,6 @@ local function FitAllSpells(def)
 end
 
 -- [ PLACEMENT ] -------------------------------------------------------------------------------------
--- Anchor the popup beside the meter, flipping on whichever edges lack room: horizontally to the meter's
--- left, and vertically (top corner → grow up from the bottom corner) when a tall popup would run off-screen.
 local function AnchorBeside(popup, meterFrame)
     popup:ClearAllPoints()
     local right, top = meterFrame:GetRight(), meterFrame:GetTop()
@@ -91,9 +90,10 @@ end
 
 local function ResolveDisplayName(src)
     local name = src.name
-    if src.sourceGUID then
+    if src.sourceGUID and not issecretvalue(src.sourceGUID) then
         local _, _, _, _, _, apiName = GetPlayerInfoByGUID(src.sourceGUID)
-        if apiName and apiName ~= "" then name = apiName end
+        -- apiName can come back secret in the combat-transition race even when the GUID isn't; guard the compare.
+        if apiName and not issecretvalue(apiName) and apiName ~= "" then name = apiName end
     end
     return name
 end
@@ -134,6 +134,11 @@ function Plugin:TrackMouseoverBreakdown(meterId)
     local bar = BarUnderCursor(meterFrame)
     local src = bar and bar._source
     if not src or not (src.sourceGUID or src.sourceCreatureID) then
+        self:HideMouseoverBreakdown()
+        return
+    end
+    -- Combat-transition race: InCombatLockdown() above can read false while sourceGUID is already secret — bail.
+    if issecretvalue(src.sourceGUID) or issecretvalue(src.sourceCreatureID) then
         self:HideMouseoverBreakdown()
         return
     end
@@ -179,6 +184,8 @@ function Plugin:OpenDetachedBreakdown(meterId, src, displayName)
     local meterDef = self:GetMeterDef(meterId)
     if not meterFrame or not meterDef then return end
     if not src or not (src.sourceGUID or src.sourceCreatureID) then return end
+    -- Same combat-transition race as the mouseover path: never let a secret identifier reach the session C API.
+    if issecretvalue(src.sourceGUID) or issecretvalue(src.sourceCreatureID) then return end
 
     local popup = EnsureDetachedPopup(meterId)
     popup._def = BuildSyntheticDef(meterDef, TargetFromSource(src, displayName or ResolveDisplayName(src)))
@@ -196,8 +203,7 @@ end
 -- [ RENDER & LIFECYCLE ] ----------------------------------------------------------------------------
 -- Called from RenderAllMeters so popups stay live with the data and re-inherit meter restyles each pass.
 function Plugin:RenderBreakdownPopups()
-    -- Breakdown source GUIDs go secret in combat; this ticker can fire in the window before
-    -- PLAYER_REGEN_DISABLED hides popups, so guard here too rather than feed a secret GUID to the API.
+    -- Source GUIDs go secret in combat and this ticker can fire before PLAYER_REGEN_DISABLED hides popups, so guard here too.
     if InCombatLockdown() then
         self:HideAllBreakdownPopups()
         return
@@ -233,7 +239,11 @@ end
 
 function Plugin:CloseBreakdownPopups(meterId)
     local p = detachedPopups[meterId]
-    if p then p:Hide() end
+    if p then
+        p:Hide()
+        -- Clear _placed so a recycled meter id re-anchors beside the meter instead of the old drag spot.
+        p._placed = nil
+    end
     if mouseoverPopup and mouseoverPopup._sourceMeter == meterId then
         self:HideMouseoverBreakdown()
     end
@@ -248,7 +258,8 @@ end
 function Plugin:PruneBreakdownPopups()
     local frames = self:GetMeterFrames()
     for meterId, p in pairs(detachedPopups) do
-        if not frames[meterId] then p:Hide() end
+        -- Reset _placed too: the id may be recycled onto a new meter and must re-anchor, not reuse the stale drag spot.
+        if not frames[meterId] then p:Hide(); p._placed = nil end
     end
     if mouseoverPopup and mouseoverPopup:IsShown() and not frames[mouseoverPopup._sourceMeter] then
         self:HideMouseoverBreakdown()
@@ -258,8 +269,8 @@ end
 -- [ INIT ] ------------------------------------------------------------------------------------------
 function Plugin:InitBreakdownPopups()
     -- Breakdown drill-in is invalid in combat (secret GUIDs) and meaningless over dummy preview data.
-    Orbit.EventBus:On("PLAYER_REGEN_DISABLED", function() self:HideAllBreakdownPopups() end, CALLBACK_OWNER)
-    Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function() self:HideAllBreakdownPopups() end, CALLBACK_OWNER)
+    Orbit.EventBus:On("PLAYER_REGEN_DISABLED", function() self:HideAllBreakdownPopups() end)
+    Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function() self:HideAllBreakdownPopups() end)
     Orbit.Engine.EditMode:RegisterCallbacks({
         Enter = function() self:HideAllBreakdownPopups() end,
     }, CALLBACK_OWNER)

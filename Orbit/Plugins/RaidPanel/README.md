@@ -10,7 +10,7 @@ one-click access to the raid-management actions a leader uses constantly. circul
 
 ```
 Plugins/RaidPanel/
-  RaidPanelData.lua          slot definitions, marker sprite mapping, difficulty/ping option lists, GetCurrentDifficultyAtlas()
+  RaidPanelData.lua          slot definitions, marker sprite mapping, difficulty/ping option lists, GetCurrentDifficultyAtlases() (returns { normal, pressed } for the live difficulty)
   RaidPanelLayout.lua        pure arc-wrap math (mirrors PortalLayout)
   RaidPanelVisibility.lua    ShouldShow() — in-group AND (leader or assist)
   RaidPanelMenus.lua         MenuUtil dropdowns: Difficulty (dungeon/raid) + Ping Restriction
@@ -28,7 +28,7 @@ Plugins/RaidPanel/
 | 3 | Role Poll    | `InitiateRolePoll()` (via `PostClick`) | — |
 | 4-11 | Markers 1..8 | toggle target-marker N on your target (`raidtarget` secure action) | toggle world marker N (`worldmarker` secure action, index remapped via `WORLD_MARKER_ORDER`) |
 | 12 | Clear Markers | secure `macro` that `/click`s two hidden delegate buttons → `ClearRaidMarker()` (all world markers) + `RemoveRaidTargets()` (all target icons) | — |
-| 13 | Restrict Pings | open menu (None / Leader / Tanks+Healers) | — |
+| 13 | Restrict Pings | open menu (None / Leader / Assist / Tanks+Healers) | — |
 
 ## click handling
 
@@ -136,11 +136,11 @@ reuses portal's `PLU_PORTAL_*` labels for IconSize / Spacing / Compactness becau
 
 per-slot **inner-image** multiplier — the Button shell (background fill, silver border, hitbox, dock spacing) is always `IconSize × IconSize`; only the inner glyph texture is scaled:
 
-| slot | sizeMult | inner glyph size at default IconSize=32 |
+| slot | sizeMult | inner glyph size at default IconSize=24 |
 |---|---|---|
-| Difficulty / Ready Check / Role Poll | 1.3 | 41.6 (overflows the ring — emphasised) |
-| Markers 1..8 | 0.8 | 25.6 (inset within the ring) |
-| Clear Markers / Restrict Pings | 1.0 (default) | 32 |
+| Difficulty / Ready Check / Role Poll | 1.3 | 31.2 (overflows the ring — emphasised) |
+| Markers 1..8 | 0.8 | 19.2 (inset within the ring) |
+| Clear Markers / Restrict Pings | 1.0 (default) | 24 |
 
 implemented by overriding the default `SetAllPoints` on Normal / Highlight / Pushed textures with `SetSize` + `SetPoint("CENTER")` after `SetNormalAtlas` / `SetHighlightAtlas` / `SetPushedAtlas`.
 

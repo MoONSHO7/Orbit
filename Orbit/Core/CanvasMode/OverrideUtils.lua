@@ -18,9 +18,10 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     if overrides then
         if overrides.UseClassColour then
             if not classFile then _, classFile = UnitClass(unit or "player") end
-            local classColor = classFile and RAID_CLASS_COLORS[classFile]
-            if classColor then
-                element:SetTextColor(classColor.r, classColor.g, classColor.b, 1)
+            if classFile then
+                -- Unpacked (zero-alloc) on the per-UNIT_HEALTH text path; the {r,g,b,a} table form churned GC in raids.
+                local r, g, b = Engine.ClassColor:GetOverridesUnpacked(classFile)
+                element:SetTextColor(r, g, b, 1)
                 return true
             end
         elseif overrides.CustomColorCurve then
@@ -28,8 +29,7 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
             local hasClassPin = Engine.ColorCurve:CurveHasClassPin(curve)
             local color
             if hasClassPin and classFile then
-                local cc = RAID_CLASS_COLORS[classFile]
-                if cc then color = { r = cc.r, g = cc.g, b = cc.b, a = 1 } end
+                color = Engine.ClassColor:GetOverrides(classFile)
             elseif hasClassPin and unit then
                 color = remainingPercent and Engine.ColorCurve:SampleColorCurve(curve, remainingPercent) or Engine.ColorCurve:GetFirstColorFromCurveForUnit(curve, unit)
             else
@@ -50,8 +50,7 @@ function OverrideUtils.ApplyTextColor(element, overrides, remainingPercent, unit
     local hasClassPin = fontCurve and Engine.ColorCurve:CurveHasClassPin(fontCurve)
     local color
     if hasClassPin and classFile then
-        local cc = RAID_CLASS_COLORS[classFile]
-        color = cc and { r = cc.r, g = cc.g, b = cc.b, a = 1 }
+        color = Engine.ClassColor:GetOverrides(classFile)
     elseif hasClassPin and unit then
         color = Engine.ColorCurve:GetFirstColorFromCurveForUnit(fontCurve, unit)
     elseif hasClassPin then

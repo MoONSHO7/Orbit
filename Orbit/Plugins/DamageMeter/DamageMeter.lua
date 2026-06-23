@@ -330,9 +330,11 @@ function Plugin:SnapAllMetersToCurrent()
     local defs = self:GetMeterDefs()
     local changed = false
     for _, def in pairs(defs) do
+        -- breakdownGUID can be secret (race); treat secret as "needs reset" so the `~= nil` compare never throws.
+        local hasBreakdown = issecretvalue(def.breakdownGUID) or def.breakdownGUID ~= nil
         if def.sessionType ~= DM.SessionType.Current or def.sessionID ~= nil
            or (def.viewMode ~= nil and def.viewMode ~= "chart")
-           or def.breakdownGUID ~= nil or def.scrollOffset ~= 0 then
+           or hasBreakdown or def.scrollOffset ~= 0 then
             def.sessionType         = DM.SessionType.Current
             def.sessionID           = nil
             def.sessionName         = nil
@@ -433,6 +435,11 @@ function Plugin:OnLoad()
         if self:GetSetting(SYSTEM_INDEX, "AutoSwitchToCurrent") then
             self:SnapAllMetersToCurrent()
         end
+    end, self)
+
+    -- Leaving combat fires no DAMAGE_METER update; flag a re-fetch so bars drop the mid-fight secret GUIDs that keep the breakdown issecretvalue-blocked (the UITicker render lands past the transition race).
+    Orbit.EventBus:On("PLAYER_REGEN_ENABLED", function()
+        self._renderDirty = true
     end, self)
 
     Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()

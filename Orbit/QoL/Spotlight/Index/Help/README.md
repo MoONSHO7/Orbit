@@ -18,7 +18,6 @@ Topics/              -- one file per topic, pure localized data
   CanvasMode.lua     -- explainers
   DataTexts.lua      -- explainers
   Minimap.lua        -- explainers
-  StatusBars.lua     -- explainers
   RaidMarkers.lua    -- explainers
   DamageMeter.lua    -- explainers
   CooldownManager.lua -- explainers (topic "CDM": inject/remove cooldowns, edit-mode vs. move/style)
@@ -39,8 +38,8 @@ the source itself lives at `../Sources/Help.lua` — it reads the registry and s
     id      = "<unique>",              -- Recents key; stable string
     topic   = L.PLU_SPT_HELP_TOP_*,    -- shown right-aligned on the row; also folded into the search bag
     name    = L.PLU_SPT_HELP_*,        -- row label and tooltip title
-    desc    = L.PLU_SPT_HELP_*_TT,     -- wrapped grey tooltip body
-    note    = L.PLU_SPT_HELP_*_NOTE,   -- optional dim second tooltip line for extra detail
+    desc    = L.PLU_SPT_HELP_*_TT,     -- wrapped white tooltip body (Blizzard HIGHLIGHT_FONT_COLOR)
+    note    = L.PLU_SPT_HELP_*_NOTE,   -- optional second white body section, separated by a blank line
     keywords = L.PLU_SPT_HELP_*,       -- optional extra search terms folded into lowerName (not displayed)
     trigger = L.PLU_SPT_HELP_T_*,      -- explainer only: green accent line ("Shift + Right-click")
     onClick = function(entry, row) end,-- action/menu only: call an Orbit module or open a context menu anchored to row

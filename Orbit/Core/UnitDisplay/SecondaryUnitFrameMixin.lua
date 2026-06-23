@@ -3,6 +3,7 @@
 ---@type Orbit
 local Orbit = Orbit
 local OrbitEngine = Orbit.Engine
+local L = Orbit.L
 local LSM = LibStub("LibSharedMedia-3.0")
 
 
@@ -23,8 +24,8 @@ function Mixin:AddSecondarySettings(dialog, systemFrame)
     OrbitEngine.Config:Render(dialog, systemFrame, self, {
         hideNativeSettings = true,
         controls = {
-            { type = "slider", key = "Width", label = "Width", min = 50, max = 200, step = 1, default = 100 },
-            { type = "slider", key = "Height", label = "Height", min = 10, max = 40, step = 1, default = 20 },
+            { type = "slider", key = "Width", label = L.CMN_WIDTH, min = 50, max = 200, step = 1, default = 100 },
+            { type = "slider", key = "Height", label = L.CMN_HEIGHT, min = 10, max = 40, step = 1, default = 20 },
         },
     })
 end

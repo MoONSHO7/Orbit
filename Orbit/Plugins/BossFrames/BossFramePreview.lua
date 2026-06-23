@@ -117,15 +117,22 @@ function Orbit.BossFramePreviewMixin:ApplyPreviewVisuals()
             end
 
             if frame.Name then
-                local bossLabel = L.PLU_BOSS_PREVIEW_INDEX_F:format(i)
-                frame._fullName = bossLabel
-                frame.Name:SetText(bossLabel)
-                frame.Name:Show()
+                if self.IsComponentDisabled and self:IsComponentDisabled("Name") then frame.Name:Hide()
+                else
+                    local bossLabel = L.PLU_BOSS_PREVIEW_INDEX_F:format(i)
+                    frame._fullName = bossLabel
+                    frame.Name:SetText(bossLabel)
+                    frame.Name:Show()
+                end
             end
 
+            -- Boss frames have no format control; the live frame renders the default percent_short preset whose at-rest value is "100%".
             if frame.HealthText then
-                frame.HealthText:SetText("100%")
-                frame.HealthText:Show()
+                if self.IsComponentDisabled and self:IsComponentDisabled("HealthText") then frame.HealthText:Hide()
+                else
+                    frame.HealthText:SetText("100%")
+                    frame.HealthText:Show()
+                end
             end
 
             self:ApplyTextStyling(frame)
@@ -266,3 +273,5 @@ function Orbit.BossFramePreviewMixin:StartPreviewAnimation()
         healerSlots = {},
     })
 end
+
+table.freeze(Orbit.BossFramePreviewMixin)

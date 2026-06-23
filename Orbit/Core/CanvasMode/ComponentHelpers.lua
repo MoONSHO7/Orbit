@@ -9,60 +9,48 @@ local Helpers = Engine.ComponentHelpers
 Helpers.PADDING = 25 -- Drag boundary padding
 local DEFAULT_MIN_WIDTH = 40
 local DEFAULT_MIN_HEIGHT = 16
+local IsSecret = issecretvalue or function() return false end
 
 -- [ SAFE SIZE ACCESSOR ] ----------------------------------------------------------------------------
--- pcall guards the call site (region may be tainted/throwing); issecretvalue inside filters secret returns.
+-- IsSecret filters secret returns before any comparison; plain region getters do not throw.
+local function IsUsable(val)
+    return val and not IsSecret(val) and type(val) == "number" and val > 0
+end
+
+local function SafeDimension(val, region, fallbackGetter)
+    if not IsUsable(val) and fallbackGetter then
+        val = fallbackGetter(region)
+    end
+    if IsUsable(val) then return val end
+    return nil
+end
+
+local function GetRegionWidth(region) return region:GetWidth() end
+local function GetRegionHeight(region) return region:GetHeight() end
+
 function Helpers.SafeGetSize(region)
     if not region then
         return DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT
     end
 
-    local width, height = DEFAULT_MIN_WIDTH, DEFAULT_MIN_HEIGHT
-
     -- For FontStrings, prefer GetStringWidth/GetStringHeight for actual text bounds
     local isFontString = region.GetStringWidth ~= nil
 
-    -- Try to get width
-    local ok, w = pcall(function()
-        local val
-        if isFontString then
-            val = region:GetStringWidth()
-            if (not val or val <= 0) and region.GetWidth then
-                val = region:GetWidth()
-            end
-        else
-            val = region:GetWidth()
-        end
-        if issecretvalue and issecretvalue(val) then
-            return nil
-        end
-        return val
-    end)
-    if ok and w and type(w) == "number" and w > 0 then
-        width = w
+    local w
+    if isFontString then
+        w = SafeDimension(region:GetStringWidth(), region, region.GetWidth and GetRegionWidth)
+    else
+        w = SafeDimension(region:GetWidth(), region, nil)
     end
 
-    -- Try to get height
-    local ok2, h = pcall(function()
-        local val
-        if isFontString then
-            val = region:GetStringHeight()
-            if (not val or val <= 0) and region.GetHeight then
-                val = region:GetHeight()
-            end
-        else
-            val = region:GetHeight()
-        end
-        if issecretvalue and issecretvalue(val) then
-            return nil
-        end
-        return val
-    end)
-    if ok2 and h and type(h) == "number" and h > 0 then
-        height = h
+    local h
+    if isFontString then
+        h = SafeDimension(region:GetStringHeight(), region, region.GetHeight and GetRegionHeight)
+    else
+        h = SafeDimension(region:GetHeight(), region, nil)
     end
 
-    return width, height
+    return w or DEFAULT_MIN_WIDTH, h or DEFAULT_MIN_HEIGHT
 end
 
 -- [ SAFE NUMBER ACCESSOR ] --------------------------------------------------------------------------

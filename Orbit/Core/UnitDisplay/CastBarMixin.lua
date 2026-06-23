@@ -75,13 +75,6 @@ function Mixin:CreateCastBarFrame(name, config)
     bar.casting = false
     bar.channeling = false
     bar.empowering = false
-    bar.numStages = 0
-    bar.currentStage = 0
-    bar.stageDurations = {}
-    bar.startTime = 0
-    bar.endTime = 0
-    bar.maxValue = 1
-    bar.value = 0
     bar.preview = false
 
     -- Frame options
@@ -174,15 +167,15 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_CAST_TAB_LAYOUT, L.PLU_CAST_TAB_COLOUR }, L.PLU_CAST_TAB_LAYOUT)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_CAST_TAB_LAYOUT then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(bar) ~= nil
         local anchorAxis = isAnchored and self:GetAnchorAxis(bar) or nil
         if not (isAnchored and anchorAxis == "x") then
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
                 key = "CastBarHeight",
-                label = "Height",
+                label = L.CMN_HEIGHT,
                 min = 5,
                 max = 40,
                 default = 18,
@@ -192,7 +185,7 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
             table.insert(schema.controls, {
                 type = "slider",
                 key = "CastBarWidth",
-                label = "Width",
+                label = L.CMN_WIDTH,
                 min = 100,
                 max = 600,
                 step = 10,

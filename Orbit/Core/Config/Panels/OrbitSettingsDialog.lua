@@ -144,10 +144,14 @@ function Dialog:UpdateGroupDialog(plugin, selectedFrames)
     Config.Render = function(_, dlg, sf, plg, schema)
         table.insert(capturedSchemas, schema)
     end
-    for _, frame in ipairs(frames) do
-        plugin:AddSettings(self, { systemIndex = frame.systemIndex, systemFrame = frame })
-    end
+    -- Restore the shared renderer even if an AddSettings body throws, or the global stub leaks permanently.
+    local ok, err = pcall(function()
+        for _, frame in ipairs(frames) do
+            plugin:AddSettings(self, { systemIndex = frame.systemIndex, systemFrame = frame })
+        end
+    end)
     Config.Render = origRender
+    if not ok then geterrorhandler()(err) end
     if #capturedSchemas == 0 then return end
     -- Index controls by key for each schema
     local keySets = {}

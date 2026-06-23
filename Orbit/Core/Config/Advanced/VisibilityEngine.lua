@@ -2,6 +2,7 @@
 -- Scrollable table for frame visibility, opacity, and fade behavior.
 local _, Orbit = ...
 local L = Orbit.L
+local C = Orbit.Constants
 local Layout = Orbit.Engine.Layout
 local A = Layout.Advanced
 
@@ -17,8 +18,13 @@ local VE_CHECK_WIDTH = 26
 local VE_CHECK_COL_WIDTH = 72
 local VE_OPACITY_COL_WIDTH = 130
 local VE_EDGE_EXTEND = 5  -- Stretch table 5px beyond A.PADDING on both sides
+local VE_SCROLL_GUTTER = 14  -- Right-edge inset reserving the scrollbar gutter (matches CreateScrollArea)
+local VE_HEADER_BG = C.Colors.Background
+local VE_CHECK_ALL_BG = { r = 0.12, g = 0.10, b = 0.06 }
 local VE_SLIDER_WIDTH = 85
 local VE_VALUE_WIDTH = 36
+-- Opacity apply is debounced: dragging fires OnValueChanged ~per frame, and each apply re-skins frames (global slider re-applies ALL of them). Only the % text updates live; the write+apply runs once the drag settles.
+local VE_OPACITY_DEBOUNCE = 0.25
 local VE_LABEL_PAD = 4
 local VE_SECTION_GAP = 6
 local VE_SLIDER_INSET = 10
@@ -67,10 +73,10 @@ function Orbit._AC.CreateVEContent(parent)
     headerRow:SetHeight(VE_ROW_HEIGHT)
     headerRow:SetFrameLevel(content:GetFrameLevel() + 10)
     headerRow:SetPoint("TOPLEFT", A.PADDING - VE_EDGE_EXTEND, stickyTop)
-    headerRow:SetPoint("TOPRIGHT", -A.PADDING - 14 + VE_EDGE_EXTEND, stickyTop)
+    headerRow:SetPoint("TOPRIGHT", -A.PADDING - VE_SCROLL_GUTTER + VE_EDGE_EXTEND, stickyTop)
     local headerBG = headerRow:CreateTexture(nil, "BACKGROUND")
     headerBG:SetAllPoints()
-    headerBG:SetColorTexture(0.08, 0.08, 0.08, 1)
+    headerBG:SetColorTexture(VE_HEADER_BG.r, VE_HEADER_BG.g, VE_HEADER_BG.b, 1)
     local colX = VE_LABEL_WIDTH
     for i, text in ipairs(VE_COLUMNS) do
         local colWidth = (i == 2) and VE_OPACITY_COL_WIDTH or VE_CHECK_COL_WIDTH
@@ -101,7 +107,7 @@ function Orbit._AC.CreateVEContent(parent)
     checkAllRow:SetPoint("TOPRIGHT", headerRow, "BOTTOMRIGHT", 0, 0)
     local checkAllBG = checkAllRow:CreateTexture(nil, "BACKGROUND")
     checkAllBG:SetAllPoints()
-    checkAllBG:SetColorTexture(0.12, 0.10, 0.06, 1)
+    checkAllBG:SetColorTexture(VE_CHECK_ALL_BG.r, VE_CHECK_ALL_BG.g, VE_CHECK_ALL_BG.b, 1)
     local checkAllLabel = checkAllRow:CreateFontString(nil, "OVERLAY", FONT_GROUP)
     checkAllLabel:SetPoint("LEFT", VE_LABEL_PAD, 0)
     checkAllLabel:SetText("|cFFFFD100" .. L.CFG_CHECK_ALL .. "|r")
@@ -109,7 +115,7 @@ function Orbit._AC.CreateVEContent(parent)
     -- Modern scrollable data area (below sticky rows)
     local scrollFrame = CreateFrame("ScrollFrame", nil, content, "ScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", checkAllRow, "BOTTOMLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -A.PADDING - 14 + VE_EDGE_EXTEND, A.PADDING + 10)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -A.PADDING - VE_SCROLL_GUTTER + VE_EDGE_EXTEND, A.PADDING + 10)
     if scrollFrame.ScrollBar then scrollFrame.ScrollBar:SetAlpha(0) end
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetWidth(1)
@@ -190,18 +196,22 @@ function Orbit._AC.CreateVEContent(parent)
         end
         -- Global opacity slider
         local gaWrapper, gaValueText = CreateOpacitySlider(caRow, caColPos, 100, function(val)
-            for _, entry in ipairs(frames) do
-                local plugin = VE:GetPlugin(entry)
-                if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, "opacity", val) end
-            end
-            for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, "opacity", val) end
-            VE:ApplyAll()
+            -- Live + cheap: mirror the value onto every row slider for feedback (_initGuard suppresses their onChange).
             for _, rs in ipairs(self.rowSliders or {}) do
                 rs._initGuard = true
                 rs:SetValue(val)
                 if rs._valueText then rs._valueText:SetText("|cFFCCCCCC" .. val .. "%|r") end
                 rs._initGuard = false
             end
+            -- Debounced + expensive: writing every frame's setting and a full ApplyAll only after the drag settles.
+            Orbit.Async:Debounce("VE_Opacity_Global", function()
+                for _, entry in ipairs(frames) do
+                    local plugin = VE:GetPlugin(entry)
+                    if plugin and Orbit:IsPluginEnabled(entry.plugin) then VE:SetFrameSetting(entry.key, "opacity", val) end
+                end
+                for _, entry in ipairs(blizzFrames) do VE:SetFrameSetting(entry.key, "opacity", val) end
+                VE:ApplyAll()
+            end, VE_OPACITY_DEBOUNCE)
         end)
         self._gaValueText = gaValueText
         caColPos = caColPos + VE_OPACITY_COL_WIDTH
@@ -265,8 +275,10 @@ function Orbit._AC.CreateVEContent(parent)
             end
             -- Opacity slider
             local sliderWrapper = CreateOpacitySlider(row, colPos, VE:GetFrameSetting(entry.key, "opacity"), function(val)
-                VE:SetFrameSetting(entry.key, "opacity", val)
-                VE:ApplyFrame(entry.key)
+                Orbit.Async:Debounce("VE_Opacity_" .. entry.key, function()
+                    VE:SetFrameSetting(entry.key, "opacity", val)
+                    VE:ApplyFrame(entry.key)
+                end, VE_OPACITY_DEBOUNCE)
             end)
             table.insert(content.rowSliders, sliderWrapper)
             colPos = colPos + VE_OPACITY_COL_WIDTH

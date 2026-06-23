@@ -2,10 +2,12 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
+local L = Orbit.L
 
 -- [ VALUE-COLUMN CONTROLS ]--------------------------------------------------------------------------
 -- Both right-align off Constants.Widget.ValueInset so all value-column controls line up regardless of host widget.
 local WHITE8x8 = "Interface\\Buttons\\WHITE8x8"
+local CHECKER = "Interface\\AddOns\\Orbit\\Core\\assets\\Other\\Orbit_Checkerboard"  -- "no tint" (none) swatch fill
 
 local function ResolvePreviewColor(curveMode, value)
     if not value then return 1, 1, 1, 1 end
@@ -24,6 +26,17 @@ local function ResolvePreviewColor(curveMode, value)
         return c.r or 1, c.g or 1, c.b or 1, c.a or 1
     end
     return Engine.ClassColor:ResolveValueUnpacked(value)
+end
+
+-- Paints the swatch fill: a colour preview, or a checker tile when the value is the "no tint" (none) state.
+local function RenderSwatchColor(swatch, allowNone)
+    if allowNone and swatch.value and swatch.value.none then
+        swatch.Color:SetTexture(CHECKER)
+        swatch.Color:SetVertexColor(1, 1, 1, 1)
+    else
+        swatch.Color:SetColorTexture(1, 1, 1, 1)
+        swatch.Color:SetVertexColor(ResolvePreviewColor(swatch.curveMode, swatch.value))
+    end
 end
 
 -- initialValue + enabled accept a getter; resolved on every render so the swatch tracks current SavedVariables.
@@ -58,9 +71,16 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
     -- value-column controls are right-aligned; a lone swatch flushes to the column's right edge
     local ax = anchorX or (C.Widget.ValueSwatchSize / 2 + C.Widget.ValueInset)
     swatch:SetPoint("CENTER", frame, "RIGHT", -Engine.Pixel:Snap(ax, frame:GetEffectiveScale()), 0)
-    swatch.Color:SetVertexColor(ResolvePreviewColor(swatch.curveMode, swatch.value))
+    if cfg.allowNone then swatch:RegisterForClicks("LeftButtonUp", "RightButtonUp") else swatch:RegisterForClicks("LeftButtonUp") end
+    RenderSwatchColor(swatch, cfg.allowNone)
 
-    swatch:SetScript("OnClick", function()
+    swatch:SetScript("OnClick", function(_, button)
+        if cfg.allowNone and button == "RightButton" then
+            swatch.value = { none = true }
+            RenderSwatchColor(swatch, true)
+            if cfg.callback then cfg.callback(swatch.value) end
+            return
+        end
         local lib = LibStub and LibStub("LibOrbitColorPicker-1.0", true)
         if not lib then return end
         local as = Orbit.db and Orbit.db.AccountSettings
@@ -77,7 +97,6 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
 
         lib:Open({
             initialData = initialData,
-            hasOpacity = true,
             forceSingleColor = not swatch.curveMode,
             recentColorsDb = as and as.RecentColors,
             anchor = Layout.GetPickerAnchor(swatch),
@@ -104,7 +123,7 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
                 end
                 if not newValue then return end
                 swatch.value = newValue
-                swatch.Color:SetVertexColor(ResolvePreviewColor(swatch.curveMode, newValue))
+                RenderSwatchColor(swatch, cfg.allowNone)
                 if cfg.callback then cfg.callback(newValue) end
             end,
         })
@@ -114,6 +133,9 @@ function Layout:ApplyValueColorSwatch(frame, cfg, anchorX)
         swatch:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(cfg.tooltip, 1, 1, 1, 1, true)
+            if cfg.allowNone then
+                GameTooltip:AddLine(L.CFG_REMOVE_COLOR_TT, 0.6, 0.6, 0.6, true)
+            end
             GameTooltip:Show()
         end)
         swatch:SetScript("OnLeave", GameTooltip_Hide)
