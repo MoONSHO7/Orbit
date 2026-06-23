@@ -330,7 +330,7 @@ function Mixin:UpdateMarkerIcon(frame, plugin)
     end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     if index then
         SetMarkerIndex(index)
@@ -548,7 +548,7 @@ function Mixin:UpdatePhaseIcon(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     local phaseReason = UnitPhaseReason(unit)
     if phaseReason then
@@ -569,7 +569,7 @@ function Mixin:UpdateReadyCheck(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     local readyStatus = GetReadyCheckStatus(unit)
     if readyStatus == "ready" then
@@ -595,7 +595,7 @@ function Mixin:UpdateIncomingRes(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     if UnitHasIncomingResurrection(unit) then
         frame.ResIcon:SetAtlas("RaidFrame-Icon-Rez")
@@ -614,7 +614,7 @@ function Mixin:UpdateIncomingSummon(frame, plugin)
     if not unit then return end
 
     local inEditMode = Orbit:IsEditMode()
-    local inCanvasMode = Orbit.Engine.CanvasMode:IsActive(frame)
+    local inCanvasMode = Orbit.canvasActiveFrame == frame
 
     if C_IncomingSummon and C_IncomingSummon.HasIncomingSummon(unit) then
         local status = C_IncomingSummon.IncomingSummonStatus(unit)

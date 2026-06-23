@@ -647,6 +647,7 @@ function Dialog:CloseDialog()
     self:Hide()
 
     OrbitEngine.CanvasMode.currentFrame = nil
+    Orbit.canvasActiveFrame = nil
 
     OrbitEngine.FrameSelection:RefreshVisuals()
 end

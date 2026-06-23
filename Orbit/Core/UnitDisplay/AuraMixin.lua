@@ -567,7 +567,7 @@ local function RegisterCurveIcon(icon)
 end
 
 function Mixin:UpdateSpellAuraIcon(frame, plugin, iconKey, spellId, iconSize, altSpellId)
-    if frame.preview or (OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame) then return end
+    if frame.preview or Orbit.canvasActiveFrame then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(iconKey) then
         if frame[iconKey] then frame[iconKey]:Hide() end
         return
@@ -667,7 +667,7 @@ end
 -- [ MISSING RAID BUFF CONTAINER ] -------------------------------------------------------------------
 local RAID_BUFF_ICON_SPACING = 1
 function Mixin:UpdateMissingRaidBuffs(frame, plugin, containerKey, raidBuffs, iconSize)
-    if frame.preview or (OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.currentFrame) then return end
+    if frame.preview or Orbit.canvasActiveFrame then return end
     if plugin.IsComponentDisabled and plugin:IsComponentDisabled(containerKey) then
         if frame[containerKey] then frame[containerKey]:Hide() end
         return

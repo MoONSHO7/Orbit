@@ -54,4 +54,5 @@ eliminates duplication across unit frame plugins. any behavior shared by two or 
 - freeze the mixin table with `table.freeze` once it is fully populated (12.0.5+) so a stray runtime write fails loud instead of silently corrupting the shared table
 - mixins must never reference a specific plugin by name
 - a mixin is justified only when **two or more** plugins share the behavior. one-off logic stays in the plugin
-- unit display modules may depend on skinning and infrastructure, never on config or canvas
+- unit display mixins are **feature modules**: each owns its behavior *plus* the config schema and canvas preview for that feature. they may therefore render their own settings via `Engine.Config:Render` (from their `Add*Settings` methods) and build canvas preview components via `CanvasMode.CreateDraggableComponent` / read the active transaction — this is feature cohesion, not a layering inversion (the module already ships `UnitButtonCanvas`, `AuraPreview`, `GroupCanvasRegistration`).
+- what they must NOT do: reach into a specific **plugin** by name, or read CanvasMode's runtime edit state through the module. for "is this frame being canvas-edited" read the shared `Orbit.canvasActiveFrame` namespace flag (published by CanvasMode), never `Orbit.Engine.CanvasMode:IsActive`/`.currentFrame`.
