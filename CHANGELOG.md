@@ -1,36 +1,28 @@
 [start]
 
 ### New!
-- **Status Widget**
-  - Removed XP/Rep Bars
-  - Status Widget now shows XP/Rep/honor and more
-  - Custom Animations for: Levelup, Renown LevelUp, GreatVault, Loot/Bonus Rolls, Social Toasts, Durability, Loot, New Mail
-  - Still tweaking and designing it to be better, feedback welcome.
-  - Hover & Hold shift for 2nd Bar
-  - Right click to select what is shown
-  - Everything else in Edit Mode
+- **Visibility Engine Overhaul**
+  - Your current visibility options will be reset.
+  - New Engine is much more powerful with more functionality.
+  - As it's new, please report bugs asap.
 
-### Bugfixes
-- Removed Reverse Glow had unintended interactions.
-- Target/Focus Frame would lose their selections when exiting Edit Mode.
-- Combat Timer 'Kill' log was not working.
-- Checkbox failures in some circumstances.
-- Datatext tooltip was showing and not removable if users had Datatexts disabled.
-- Fixed some Damage Meter lua errors
-- Custom class colors now apply everywhere (gradient backgrounds and the color-curve preview previously ignored your override).
-- [CanvasMode] Text-on-icon offsets now stay correct after Apply (previously matched the preview but shifted once saved).
-- [CanvasMode] Cancelling an edit now also reverts a changed Difficulty display choice.
-- [Global] Reset now restores the correct default font.
+- **Mythic+ Integration with StatusWidget**
+  - Please send feedback my way about this.
+  - Click the widget to dismiss the panel.
 
-### Updates
-- [Datatexts] Added "Show only in Instance" to Combat Timer
-- [Datatexts] Combat Timer now shows Wipe/Kill in the widget, not in chat
-- [Datatexts] Smoother dragging of components
-- [CanvasMode] Health Text widget updated, can now customize your own style ("Current | Max", "% & Short", etc)
-- [CanvasMode] Smoother dragging of components
-- [Styling] Created LOTS of new borders for use
-- [Group Frames] Lower CPU per aura/health update in raids — cached tier resolution, snapshot-based color-by-aura, and fewer redundant refreshes for smoother 20–40 player content.
+  devnote: I do plan on making some different shapes in the future & onboarding to canvas mode.
+
+- **New Addon: Orbit Pack: Glows**
+  - Download on Curseforge for 46 new glow types to add to your CDM & Action Bars.
+  - It's a large addon that won't be updated often, so better to keep it out of Orbit.
+  - Check out all glows with `/Orbitglow`
+
+## Updates
+- Slight Performance Hack to Group Frames
+- Minor Adjustments to StatusWidget
 
 *Remember, can use the Spotlight feature and type 'Help' to query things about Orbit.*
+
+*Things will only get better with YOUR feedback! Jump on the Discord and let me know your pain points*
 
 [end]

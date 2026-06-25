@@ -1,4 +1,4 @@
--- [ FADE PROFILES ENGINE ]--------------------------------------------------------------------------
+-- [ FADE PROFILES ENGINE ]---------------------------------------------------------------------------
 -- Resolved alpha is the lowest firing profile's target (lowest-alpha-wins), consumed as a multiplicative cap by OOCFadeMixin and ApplySecureBlizzardFrame.
 local _, Orbit = ...
 

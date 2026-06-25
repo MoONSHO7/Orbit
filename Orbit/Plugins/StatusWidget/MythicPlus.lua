@@ -7,11 +7,13 @@ local Plugin = Orbit:GetPlugin("Status Widget")
 local MODE_MPLUS = "mplus"
 local TIMER_THROTTLE = 0.2
 local TIMER_FONT_SIZE = 26
-local FORCES_FONT_SIZE = 17
+local FORCES_FONT_SIZE = 26   -- same size as the timer; the two lines are a centred pair
+local CENTER_LINE = 13        -- half the line spacing: timer sits +CENTER_LINE, forces -CENTER_LINE, so the pair is centred on the orb
 -- +2/+3 deadlines as fractions of par. With Challenger's Peril (affix 152) it's (par-90)*f+90 — the 90s the affix adds isn't scaled (matches WarpDeplete). The death penalty is already baked into GetWorldElapsedTime, so it is NOT added again here.
 local PLUS2_FACTOR, PLUS3_FACTOR = 0.8, 0.6
 local CHALLENGERS_PERIL_AFFIX = 152
 local CHALLENGE_TIMER_TYPE = (Enum.WorldElapsedTimerTypes and Enum.WorldElapsedTimerTypes.ChallengeMode) or 1
+local MYTHIC_KEYSTONE_DIFFICULTY = 8   -- GetInstanceInfo difficultyID for a keystone dungeon; the tracker lives until you leave it
 
 local TIER_PLUS3   = { r = 1.00, g = 0.82, b = 0.35 }
 local TIER_PLUS2   = { r = 0.78, g = 0.80, b = 0.86 }
@@ -28,10 +30,9 @@ local GOLD         = { r = 1.00, g = 0.82, b = 0.25 }
 -- Two reading ticks marking the +3 / +2 deadlines, positioned per-run (CP-aware) by _PositionMPlusTicks. Fill sweeps bottom-origin clockwise; flip TICK_DIR if a /reload shows them mirrored.
 local TICK_START, TICK_DIR = -math.pi / 2, -1
 
--- Info panel (right of the orb).
+-- Info panel (right of the orb). Width matches the loot-roll panels so the shared side stack (_LayoutRolls) aligns.
 local PANEL_W = 200
 local PANEL_PAD = 9
-local PANEL_GAP = 12
 local AFFIX_SIZE, AFFIX_GAP, MAX_AFFIX = 16, 4, 5
 local MAX_BOSS = 6
 local HEADER_SIZE, STAT_SIZE, BOSS_SIZE = 14, 12, 12
@@ -41,18 +42,18 @@ local ROW_H, SECTION_GAP = 16, 7
 function Plugin:SetupMythicPlus()
     -- Centre timer (top) + forces-remaining % (bottom) + ticks are rebuilt every OnLoad: a live re-enable recreates self.frame (like SetupFillModes' cracked metal).
     local size = self.frame:GetWidth()
+    -- Timer (top) + forces % (bottom): same size, both centred, the pair straddling the orb's middle (timer +CENTER_LINE, forces -CENTER_LINE).
     local timer = self.frame.Center:CreateFontString(nil, "OVERLAY")
-    timer:SetPoint("CENTER", self.frame.Center, "CENTER", 0, size * 0.07 - 3)
+    timer:SetPoint("CENTER", self.frame.Center, "CENTER", 0, CENTER_LINE)
     timer:SetJustifyH("CENTER")
     timer:SetShadowColor(0, 0, 0, 0.95)
     timer:SetShadowOffset(1.5, -1.5)
     timer:Hide()
     self.frame.MPlusTimer = timer
 
-    -- The % tucks under the timer's bottom-right corner and grows left.
     local forces = self.frame.Center:CreateFontString(nil, "OVERLAY")
-    forces:SetPoint("TOPRIGHT", timer, "BOTTOMRIGHT", 0, 0)
-    forces:SetJustifyH("RIGHT")
+    forces:SetPoint("CENTER", self.frame.Center, "CENTER", 0, -CENTER_LINE)
+    forces:SetJustifyH("CENTER")
     forces:SetShadowColor(0, 0, 0, 0.95)
     forces:SetShadowOffset(1.5, -1.5)
     forces:Hide()
@@ -94,34 +95,46 @@ end
 
 -- [ EVENTS ]-----------------------------------------------------------------------------------------
 function Plugin:OnMPlusEvent(event, ...)
-    if event == "CHALLENGE_MODE_START" or event == "PLAYER_ENTERING_WORLD" then
+    if event == "CHALLENGE_MODE_START" then
+        if self._mplusResults then self:_EndMPlus() end   -- a new key supersedes a lingering results screen
+        self:_SyncMPlusState()
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- The tracker lives until you leave the dungeon: a loading screen out of the keystone instance ends it (results included).
+        if (self._mplusActive or self._mplusResults) and select(3, GetInstanceInfo()) ~= MYTHIC_KEYSTONE_DIFFICULTY then
+            self:_EndMPlus()
+        end
         self:_SyncMPlusState()
     elseif event == "CHALLENGE_MODE_COMPLETED" then
         self:_OnMPlusComplete()
     elseif event == "CHALLENGE_MODE_RESET" then
         self:_EndMPlus()
     elseif event == "WORLD_STATE_TIMER_START" then
-        if self._mplusActive then self:_BindTimer(...) end
+        if self._mplusActive and not self._mplusResults then self:_BindTimer(...) end
     elseif event == "CHALLENGE_MODE_DEATH_COUNT_UPDATED" then
-        if self._mplusActive then self:_RefreshDeaths(); self:OnEvent() end
+        if self._mplusActive and not self._mplusResults then self:_RefreshDeaths(); self:OnEvent() end   -- never during the hold: it would mutate the frozen final stats
     elseif event == "SCENARIO_CRITERIA_UPDATE" or event == "SCENARIO_UPDATE" then
-        if self._mplusActive then self:_RefreshForces(); self:OnEvent() end
+        if self._mplusActive and not self._mplusResults then self:_RefreshForces(); self:OnEvent() end   -- a trailing criteria update after completion must not overwrite the final forces
     end
 end
 
 -- [ LIFECYCLE ]--------------------------------------------------------------------------------------
 function Plugin:_SyncMPlusState()
     if not self:GetSetting(self.system, "MPlusEnabled") then
-        if self._mplusActive then self:_EndMPlus() end
+        if self._mplusActive or self._mplusResults then self:_EndMPlus() end
         return
     end
+    if self._mplusResults then return end   -- holding the results tracker; leaving / a new key / reset clears it
     local mapID = C_ChallengeMode and C_ChallengeMode.GetActiveChallengeMapID and C_ChallengeMode.GetActiveChallengeMapID()
     if mapID then
         if not self._mplusActive then
-            self:_BeginMPlus(mapID)
+            -- Only START for a LIVE key: the map id stays set after completion while you're still in the instance, so a /reload there must NOT resurrect the run (IsChallengeModeActive goes false at completion — matches WarpDeplete).
+            local liveKey = not C_ChallengeMode.IsChallengeModeActive or C_ChallengeMode.IsChallengeModeActive()
+            if liveKey then self:_BeginMPlus(mapID) end
         else
             self:_SetBlizMPlusHidden(self:GetSetting(self.system, "ReplaceBlizzardTimer"))   -- re-apply live if the toggle changed
             self:_BindTimerFromActive()   -- re-sync the live clock after a /reload mid-key
+            self:_ComputeMPlusThresholds()
+            self:_PositionMPlusTicks(); self:_SetMPlusTicksShown(true)   -- re-show the ticks after a re-sync (they don't persist a /reload)
             self:_RefreshForces(); self:_RefreshDeaths()
             self:UpdateBar()
         end
@@ -132,10 +145,11 @@ end
 
 function Plugin:_BeginMPlus(mapID)
     self._mplusActive = true
+    self._mplusResults = false
     self._mplusMapID = mapID
     self._mplusBossKills, self._mplusBossSeen = {}, {}
     self._mplusAffixFid, self._mplusPanelSig = {}, nil
-    self._mplusTierKey, self._mplusCompleting = nil, false
+    self._mplusTierKey = nil
     self:_RefreshMapInfo()
     local level, affixes = C_ChallengeMode.GetActiveKeystoneInfo()
     self._mplusLevel = level or 0
@@ -157,7 +171,7 @@ function Plugin:_BeginMPlus(mapID)
 end
 
 function Plugin:_EndMPlus()
-    self._mplusActive, self._mplusCompleting = false, false
+    self._mplusActive, self._mplusResults = false, false
     if self._mplusDriver then self._mplusDriver:Hide() end
     if self.frame and self.frame.MPlusTimer then self.frame.MPlusTimer:Hide() end
     if self.frame and self.frame.MPlusForces then self.frame.MPlusForces:Hide() end
@@ -168,28 +182,21 @@ function Plugin:_EndMPlus()
 end
 
 function Plugin:_OnMPlusComplete()
-    if not self:GetSetting(self.system, "MPlusEnabled") then self:_EndMPlus(); return end
+    if not self._mplusActive then return end   -- already wrapped up (e.g. a duplicate CHALLENGE_MODE_COMPLETED)
     local info = C_ChallengeMode.GetChallengeCompletionInfo and C_ChallengeMode.GetChallengeCompletionInfo()
-    self:_PlayMPlusComplete(self._mplusLevel or 0, info and info.onTime, self._mplusName ~= "" and self._mplusName or nil)
+    self:_FinishMPlus(info and info.onTime)
 end
 
--- Fade the live centre (timer + forces %) out, then slam the KEY LEVEL into a Dungeon Complete flourish (not the +N chest count — players want the level they ran).
-function Plugin:_PlayMPlusComplete(level, timed, name)
-    self._mplusCompleting = true   -- freeze the centre so the fade isn't overwritten by the driver / UpdateBar
-    if self._mplusDriver then self._mplusDriver:Hide() end
-    if self.frame and self.frame.MPlusPanel then self.frame.MPlusPanel:Hide() end
-    self:_SetMPlusTicksShown(false)
-    local timer, forces = self.frame and self.frame.MPlusTimer, self.frame and self.frame.MPlusForces
-    if timer and timer:IsShown() then UIFrameFadeOut(timer, 0.4, timer:GetAlpha(), 0) end
-    if forces and forces:IsShown() then UIFrameFadeOut(forces, 0.4, forces:GetAlpha(), 0) end
-
-    C_Timer.After(0.45, function()
-        if not self._mplusCompleting then return end   -- a new key (or /orbitmplus off) started inside the fade window; don't stomp it
-        self:_EndMPlus()   -- clears _mplusActive (so the flourish isn't silenced) + restores the Blizzard block
-        if timer then timer:SetAlpha(1) end
-        if forces then forces:SetAlpha(1) end
-        self:PlayMPlusCompleteFlourish(level, timed, name)
-    end)
+-- Run's over. Drop out of the LIVE state (silencing ends → Blizzard's completion/vault/loot toasts come back; we never override Blizzard's ChallengeMode toast), freeze the clock, and play the transient "+N" celebration. It takes over the centre, plays out, then the centre RETURNS to the frozen timer/forces — the tracker stays in MODE_MPLUS until you leave the instance.
+function Plugin:_FinishMPlus(timed)
+    if not self._mplusActive then return end
+    if not self:GetSetting(self.system, "MPlusEnabled") then self:_EndMPlus(); return end
+    local level = self._mplusLevel or 0
+    self._mplusActive, self._mplusResults = false, true
+    if self._mplusDriver then self._mplusDriver:Hide() end   -- freeze the clock at the final time
+    self:_SetBlizMPlusHidden(false)                          -- hand Blizzard's tracker + completion toast back
+    self:PlayMPlusCompleteFlourish(level, timed)
+    self:UpdateBar()
 end
 
 -- [ DATA READS ]-------------------------------------------------------------------------------------
@@ -268,6 +275,13 @@ function Plugin:_MPlusForcesRemaining()
     return math.max(0, 100 - math.min(f.current / f.total * 100, 100))
 end
 
+-- Forces CLEARED as a 0-1 fraction (the radial fills toward a full clear); the hover view of the bar.
+function Plugin:_MPlusForcesProgress()
+    local f = self._mplusForces
+    if not f or not f.total or f.total <= 0 then return 0 end
+    return math.min(f.current / f.total, 1)
+end
+
 -- [ LIVE CLOCK ]-------------------------------------------------------------------------------------
 -- Blizzard's pattern: snapshot the C-side elapsed once, then advance it locally by OnUpdate's delta (no per-frame C poll, no GetTime).
 function Plugin:_BindTimer(timerID)
@@ -316,7 +330,7 @@ function Plugin:_StartMPlusDriver()
             self._mplusTick = (self._mplusTick or 0) + elapsed
             if self._mplusTick < TIMER_THROTTLE then return end
             self._mplusTick = 0
-            if not self._mplusActive or self._mplusCompleting then driver:Hide(); return end
+            if not self._mplusActive then driver:Hide(); return end   -- completion stops the driver, freezing the clock
             self:_UpdateMPlusFill()     -- the radial fills with the live timer
             self:_UpdateMPlusCenter()   -- centre: time remaining + forces remaining
             -- A tier crossing changes the panel projection, so refresh the bar then (not every tick).
@@ -339,6 +353,11 @@ end
 function Plugin:_UpdateMPlusFill()
     local fill = self.frame and self.frame.Fill
     if not fill then return end
+    if self._hovered then   -- hover swaps the bar to forces-cleared progress (ticks hidden by the hover handler)
+        fill:SetSwipeColor(FORCES_COLOR.r, FORCES_COLOR.g, FORCES_COLOR.b, 1)
+        CooldownFrame_SetDisplayAsPercentage(fill, self:_MPlusForcesProgress())
+        return
+    end
     local col = self:_MPlusTierColor()
     fill:SetSwipeColor(col.r, col.g, col.b, col.a or 1)
     local limit = self._mplusTimeLimit or 0
@@ -347,11 +366,13 @@ end
 
 function Plugin:_BuildMPlusTicks()
     local size = self.frame:GetWidth()
+    -- On borderHost (above the fill, where the ring-crack overlay also lives) so the ticks draw OVER the bar — Content-level textures render UNDER the fill/border child frames and were invisible.
+    local host = self.frame.Border:GetParent()
     self.frame.MPlusTicks = {}
     for _ = 1, 2 do
-        local tick = self.frame.Content:CreateTexture(nil, "OVERLAY")
+        local tick = host:CreateTexture(nil, "OVERLAY")
         tick:SetColorTexture(1, 1, 1, 1)   -- clean solid white pixel tick
-        tick:SetSize(size * 0.024, size * 0.08)
+        tick:SetSize(size * 0.028, size * 0.09)
         if tick.SetSnapToPixelGrid then tick:SetSnapToPixelGrid(false) end   -- keep the edges crisp, not texel-snapped/blurred
         if tick.SetTexelSnappingBias then tick:SetTexelSnappingBias(0) end
         tick:Hide()
@@ -369,7 +390,7 @@ function Plugin:_PositionMPlusTicks()
         limit > 0 and (self._mplusPlus2 or 0) / limit or PLUS2_FACTOR,
     }
     local size = self.frame:GetWidth()
-    local r = size * 0.40
+    local r = size * 0.42   -- band centre, so the tick sits on the fill track
     for i, tick in ipairs(ticks) do
         local angle = TICK_START + TICK_DIR * fracs[i] * 2 * math.pi
         tick:ClearAllPoints()
@@ -388,8 +409,8 @@ end
 function Plugin:_UpdateMPlusCenter()
     local timer, forces = self.frame and self.frame.MPlusTimer, self.frame and self.frame.MPlusForces
     if not timer then return end
-    if self._mplusCompleting then return end   -- a completion fade is in progress; leave the centre alone
-    if not (self._mplusActive and self._event == nil and not self:_DuraWarnActive()) then
+    local duraYield = self._mplusActive and self:_DuraWarnActive()   -- the durability warning only competes during the live run, not the frozen results tracker
+    if not ((self._mplusActive or self._mplusResults) and self._event == nil and not duraYield) then
         timer:Hide(); if forces then forces:Hide() end
         return
     end
@@ -414,9 +435,15 @@ end
 -- The radial = the dungeon timer (elapsed / par). The driver keeps it live; this is the on-event seed.
 function Plugin:MythicPlusRecord()
     local label = (self._mplusLevel and self._mplusLevel > 0) and L.PLU_SB_V2_MPLUS_KEY_F:format(self._mplusLevel) or ""
+    local name = self._mplusName ~= "" and self._mplusName or label
+    if self._hovered then   -- hover seeds the radial (+ tooltip) with the forces bar instead of the timer
+        local f = self._mplusForces
+        return { mode = MODE_MPLUS, name = name, level = label,
+            current = f and f.current or 0, max = (f and f.total and f.total > 0) and f.total or 1, color = FORCES_COLOR }
+    end
     return {
         mode = MODE_MPLUS,
-        name = self._mplusName ~= "" and self._mplusName or label,
+        name = name,
         level = label,
         current = math.floor(self:_MPlusElapsed()), max = (self._mplusTimeLimit or 0) > 0 and self._mplusTimeLimit or 1,
         color = self:_MPlusTierColor(),
@@ -511,25 +538,6 @@ function Plugin:_StyleMPlusPanel()
     end
 end
 
--- Orb on the left half of the screen -> panel (and tab) sit to its right; right half -> to its left.
-function Plugin:_MPlusGrowRight()
-    local cx = self.frame:GetCenter()
-    return not cx or (cx * self.frame:GetEffectiveScale()) <= (UIParent:GetWidth() * UIParent:GetEffectiveScale() / 2)
-end
-
--- Screen-edge aware (mirrors _LayoutRolls): top-aligned in the top half, bottom-aligned in the bottom half, so it never runs off-screen.
-function Plugin:_AnchorMPlusPanel()
-    local panel, orb = self.frame.MPlusPanel, self.frame
-    local cy = select(2, orb:GetCenter())
-    local growRight = self:_MPlusGrowRight()
-    local growDown = not cy or (cy * orb:GetEffectiveScale()) >= (UIParent:GetHeight() * UIParent:GetEffectiveScale() / 2)
-    local vP = growDown and "TOP" or "BOTTOM"
-    local hP = growRight and "LEFT" or "RIGHT"
-    local hR = growRight and "RIGHT" or "LEFT"
-    panel:ClearAllPoints()
-    panel:SetPoint(vP .. hP, orb, vP .. hR, growRight and PANEL_GAP or -PANEL_GAP, 0)
-end
-
 -- [ PANEL COLLAPSE ]---------------------------------------------------------------------------------
 -- Toggled by left-clicking the orb during a key (StatusWidget OnMouseUp); persisted per profile, default collapsed.
 function Plugin:_ToggleMPlusCollapsed()
@@ -596,8 +604,9 @@ end
 function Plugin:_RefreshMPlusPanel()
     local panel = self.frame and self.frame.MPlusPanel
     if not panel then return end
-    local show = self._mplusActive and not self._mplusCompleting
-    if not show or self:GetSetting(self.system, "MPlusCollapsed") then panel:Hide(); self._mplusPanelSig = nil; return end
+    local show = self._mplusActive or self._mplusResults
+    -- The results tracker forces the panel open (ignores MPlusCollapsed) so people can read the run.
+    if not show or (self:GetSetting(self.system, "MPlusCollapsed") and not self._mplusResults) then panel:Hide(); self._mplusPanelSig = nil; self:_LayoutRolls(); return end
 
     local sig = self:_MPlusPanelSig()
     if panel:IsShown() and sig == self._mplusPanelSig then self:_UpdateMPlusPanelValues(); return end
@@ -696,8 +705,8 @@ function Plugin:_RefreshMPlusPanel()
     end
 
     panel:SetHeight(y + pad)
-    self:_AnchorMPlusPanel()
     panel:Show()
+    self:_LayoutRolls()   -- the M+ panel + the loot/bonus roll panels share one screen-edge-aware side stack (no overlap)
 end
 
 -- [ TOAST SILENCE GATE ]-----------------------------------------------------------------------------
@@ -726,7 +735,7 @@ local FAKE_LIMIT = 1800
 
 -- Stand up a fake key at a given elapsed so the orb + panel can be previewed outside a real run; while it's up, _mplusActive is true so other toasts (/orbitloot, /orbitvault, ...) are silenced.
 local function FakeKey(elapsed, deaths, timeLost, peril)
-    Plugin._mplusActive, Plugin._mplusCompleting = true, false
+    Plugin._mplusActive, Plugin._mplusResults = true, false
     Plugin._mplusMapID = 0
     Plugin._mplusName = "Test Dungeon"
     Plugin._mplusLevel = 12
@@ -758,8 +767,9 @@ SLASH_ORBITMPLUS1 = "/orbitmplus"
 SlashCmdList["ORBITMPLUS"] = function(arg)
     arg = arg and arg:lower():match("%S+")
     if arg == "off" then Plugin:_EndMPlus()
-    elseif arg == "done" then Plugin:_PlayMPlusComplete(12, true, "Test Dungeon")
-    elseif arg == "depleted" then Plugin:_PlayMPlusComplete(12, false, "Test Dungeon")
+    elseif arg == "done" or arg == "depleted" then
+        if not Plugin._mplusActive then FakeKey(FAKE_LIMIT * 0.70, 1, 0) end   -- stand up a quick run to complete if none is up
+        Plugin:_FinishMPlus(arg == "done")
     elseif arg == "+3" or arg == "3" then FakeKey(FAKE_LIMIT * 0.45)
     elseif arg == "+2" or arg == "2" then FakeKey(FAKE_LIMIT * 0.70)
     elseif arg == "+1" or arg == "1" then FakeKey(FAKE_LIMIT * 0.90)

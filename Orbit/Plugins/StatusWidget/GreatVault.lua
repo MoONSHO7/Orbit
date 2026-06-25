@@ -9,7 +9,6 @@ local VAULT_TOAST_TYPES = {
     [Enum.EventToastDisplayType.WeeklyRewardUnlock] = true,
     [Enum.EventToastDisplayType.WeeklyRewardUpgrade] = true,
 }
-local UPGRADE_TYPE = Enum.EventToastDisplayType.WeeklyRewardUpgrade
 -- Spell/ability learned rides the same EventToast queue (SingleLineWithIcon), keyed by eventType.
 local SPELL_LEARNED = (Enum.EventToastEventType and Enum.EventToastEventType.SpellLearned) or 21
 
@@ -37,7 +36,7 @@ function Plugin:SetupGreatVault()
         while info and ((doVault and VAULT_TOAST_TYPES[info.displayType]) or (doSpell and info.eventType == SPELL_LEARNED)) do
             if VAULT_TOAST_TYPES[info.displayType] then
                 -- info.subtitle is an item link for the Upgrade type; a FontString renders it as the item name.
-                plugin:PlayVaultFlourish(info.title, info.subtitle, info.displayType == UPGRADE_TYPE)
+                plugin:PlayVaultFlourish(info.title, info.subtitle)
             else
                 plugin:PlayIconFlourish(info.iconFileID, plugin.FlourishColors.arcane, L.PLU_SB_V2_SPELL_F:format(info.title or ""))
             end
@@ -52,6 +51,5 @@ end
 -- Dev affordance: fire the flourish on demand with representative text.
 SLASH_ORBITVAULT1 = "/orbitvault"
 SlashCmdList["ORBITVAULT"] = function()
-    Plugin:PlayVaultFlourish(L.PLU_SB_V2_VAULT_TEST, "")          -- unlock beat
-    Plugin:PlayVaultFlourish(L.PLU_SB_V2_VAULT_TEST, "", true)    -- upgrade beat (keyhole flipbook)
+    Plugin:PlayVaultFlourish(L.PLU_SB_V2_VAULT_TEST, "")
 end

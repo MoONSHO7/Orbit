@@ -162,8 +162,8 @@ function Plugin:_UpdateCrackedMetal(record)
     end
     -- A shatter flourish owns the centre cracked-metal mid-blast; don't let the timed warning tear it down while it holds the centre.
     if self._event == "shatter" then return end
-    if not realPct or self._event ~= nil or not self:_DuraWarnActive() then
-        frame.CrackedMetalPulse:Stop(); metal:Hide()
+    if not realPct or self._event ~= nil or self._mplusResults or not self:_DuraWarnActive() then
+        frame.CrackedMetalPulse:Stop(); metal:Hide()   -- the frozen M+ results tracker owns the centre; the border ring-cracks (above) still track real durability
         self._durabilityWarn, self._metalCrit = false, nil
         self:_RefreshInner()
         return

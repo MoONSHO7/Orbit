@@ -58,10 +58,6 @@ local VAULT_FX_DURATION = 2.57
 local VAULT_FX_W, VAULT_FX_H = BASE_SIZE * 0.704, BASE_SIZE * 0.88
 -- The FX art sits slightly off-centre in its cell (Blizzard nudges it too) — recentre left 1 / down 2.
 local VAULT_FX_OFFSET_X, VAULT_FX_OFFSET_Y = -1, -2
--- The vault UPGRADE beat uses a different flipbook (keyhole burst, 8x9 / 64 frames) on the same texture.
-local VAULT_UP_FX_ATLAS = "greatVault-anim-upgrade-FX"
-local VAULT_UP_ROWS, VAULT_UP_COLS, VAULT_UP_FRAMES = 8, 9, 64
-local VAULT_UP_DURATION = 2.13
 -- New-mail flipbook (Blizzard's minimap mail reminder): 3x4 / 12 frames, looped while the toast shows.
 local MAIL_FX_ATLAS = "UI-HUD-Minimap-Mail-Reminder-Flipbook-2x"
 local MAIL_FX_ROWS, MAIL_FX_COLS, MAIL_FX_FRAMES = 3, 4, 12
@@ -105,6 +101,7 @@ local ARCANE_COLOR = { r = 0.55, g = 0.45, b = 1.0 }    -- spell / ability learn
 local DEFEAT_COLOR = { r = 0.90, g = 0.25, b = 0.20 }   -- boss-kill banner
 local DURA_DAMAGED_COLOR = { r = 1.0, g = 0.78, b = 0.20 }   -- 40% durability break (amber; mirrors FillModes DURA_WARN_COLOR)
 local DURA_BROKEN_COLOR = { r = 1.0, g = 0.25, b = 0.18 }    -- 20% durability break (red; mirrors FillModes DURA_CRIT_COLOR)
+local DURA_WARN, DURA_CRIT = 0.40, 0.20   -- durability severity bands (mirror FillModes DURA_WARN/DURA_CRIT)
 
 local REACTION_LABEL = {
     [1] = L.PLU_REP_REACTION_1, [2] = L.PLU_REP_REACTION_2, [3] = L.PLU_REP_REACTION_3, [4] = L.PLU_REP_REACTION_4,
@@ -294,7 +291,7 @@ function Plugin:OnDisable()
     self:_CancelLootReel("")                       -- cancels the reel timer + wipes the loot queue
     self:_ClearCenterFX()                          -- cancels the mail timer, stops every centre anim
     self._event, self._innerShown = nil, false
-    if self._mplusActive then self._mplusActive = false; self:_SetBlizMPlusHidden(false) end
+    if self._mplusActive or self._mplusResults then self._mplusActive, self._mplusResults = false, false; self:_SetBlizMPlusHidden(false) end
     if self.frame.MPlusPanel then self.frame.MPlusPanel:Hide() end   -- panel is a UIParent child; the orb's Hide doesn't cascade to it
     if self._mplusDriver then self._mplusDriver:Hide(); self._mplusDriver = nil end
     if self._impactDriver then self._impactDriver:Hide(); self._impactDriver = nil end
@@ -597,7 +594,7 @@ end
 function Plugin:_UpdateNumeral(record)
     local num = self.frame.CenterNumber
     if not num or self._durabilityWarn then return end   -- the durability % owns the centre when low
-    local on = self:GetSetting(SYSTEM_ID, "ShowCenterNumber") and self._event == nil and not self._mplusActive
+    local on = self:GetSetting(SYSTEM_ID, "ShowCenterNumber") and self._event == nil and not self._mplusActive and not self._mplusResults
     local val = record.numeral or record.level
     if on and val and val ~= "" and val ~= 0 then
         num:SetText(tostring(val))
@@ -726,19 +723,18 @@ function Plugin:_FadeInner(show)
 end
 
 -- Public Play* entry points enqueue a request; the queue calls the matching _Render* after _EnterEvent clears the centre, and owns the hold/linger timing.
-function Plugin:PlayVaultFlourish(title, subtitle, upgrade)
-    self:Enqueue({ kind = "vault", render = function(p) p:_RenderVault(title, subtitle, upgrade) end })
+function Plugin:PlayVaultFlourish(title, subtitle)
+    self:Enqueue({ kind = "vault", render = function(p) p:_RenderVault(title, subtitle) end })
 end
-function Plugin:_RenderVault(title, subtitle, upgrade)
+function Plugin:_RenderVault(title, subtitle)
     local frame = self.frame
     self:_PlayGlow(FLOURISH_COLOR)
-    local atlas = upgrade and VAULT_UP_FX_ATLAS or VAULT_FX_ATLAS
-    frame.FlourishFX:SetAtlas(atlas)
-    frame.FlourishFXFinal:SetAtlas(atlas)
-    frame.FlourishFlip:SetFlipBookRows(upgrade and VAULT_UP_ROWS or VAULT_FX_ROWS)
-    frame.FlourishFlip:SetFlipBookColumns(upgrade and VAULT_UP_COLS or VAULT_FX_COLS)
-    frame.FlourishFlip:SetFlipBookFrames(upgrade and VAULT_UP_FRAMES or VAULT_FX_FRAMES)
-    frame.FlourishFlip:SetDuration(upgrade and VAULT_UP_DURATION or VAULT_FX_DURATION)
+    frame.FlourishFX:SetAtlas(VAULT_FX_ATLAS)
+    frame.FlourishFXFinal:SetAtlas(VAULT_FX_ATLAS)
+    frame.FlourishFlip:SetFlipBookRows(VAULT_FX_ROWS)
+    frame.FlourishFlip:SetFlipBookColumns(VAULT_FX_COLS)
+    frame.FlourishFlip:SetFlipBookFrames(VAULT_FX_FRAMES)
+    frame.FlourishFlip:SetDuration(VAULT_FX_DURATION)
     frame.FlourishFX:SetAlpha(1)
     frame.FlourishFXAnim:Play()
     frame.BorderFlash:SetVertexColor(FLOURISH_COLOR.r, FLOURISH_COLOR.g, FLOURISH_COLOR.b)
@@ -821,10 +817,10 @@ end
 function Plugin:PlayHonorFlourish(level, oldLevel)
     self:Enqueue({ kind = "honor", render = function(p) p:_RenderHonor(level, oldLevel) end })
 end
--- M+ completion: slam the KEY LEVEL into the centre (gold timed / red depleted) with the dungeon name beside it.
-function Plugin:PlayMPlusCompleteFlourish(level, timed, sub)
+-- M+ completion: the key level "+N" slams in (gold timed / red depleted), plays out, then the centre returns to the frozen M+ tracker. Not silenced — the run has ended by this point (_mplusActive is false).
+function Plugin:PlayMPlusCompleteFlourish(level, timed)
     self:Enqueue({ kind = "mplusdone", render = function(p)
-        p:_RenderMilestone(level, timed and FLOURISH_COLOR or DURA_BROKEN_COLOR, "slam", sub, nil, MILESTONE_FX_LEVELUP)
+        p:_RenderMilestone("+" .. (level or 0), timed and FLOURISH_COLOR or DURA_BROKEN_COLOR, "slam", nil, nil, MILESTONE_FX_LEVELUP)
     end })
 end
 
@@ -1035,12 +1031,14 @@ function Plugin:SetupInteraction()
     frame:EnableMouse(true)
     frame:HookScript("OnEnter", function()
         self._hovered = true
+        if self._mplusActive or self._mplusResults then self:_SetMPlusTicksShown(false) end   -- hover shows the forces bar, sans the timer-deadline ticks
         self:UpdateBar()
         self:RefreshTooltip()
         self:RevealOrb()
     end)
     frame:HookScript("OnLeave", function()
         self._hovered = false
+        if self._mplusActive or self._mplusResults then self:_SetMPlusTicksShown(true) end
         self:UpdateBar()
         GameTooltip:Hide()
         self:ConcealOrb()
@@ -1051,7 +1049,7 @@ function Plugin:SetupInteraction()
         if button == "RightButton" then self:OpenSourceMenu(); return end
         if button ~= "LeftButton" then return end
         if self._event == "vault" then self:OpenGreatVault()
-        elseif self._mplusActive then self:_ToggleMPlusCollapsed()   -- in a key the orb opens/closes the M+ panel
+        elseif self._mplusActive or self._mplusResults then self:_ToggleMPlusCollapsed()   -- in a key (or its results) the orb opens/closes the M+ panel
         elseif not self._event then self:OpenForMode() end   -- no flourish: open the panel the orb shows
     end)
 end
@@ -1105,7 +1103,7 @@ end
 
 -- Primary source at rest; hover+Shift swaps to the secondary (re-resolved on hover and MODIFIER_STATE_CHANGED so Shift flips it live), stashing the active slot's currency id for CurrencyRecord.
 function Plugin:ResolveMode()
-    if self._mplusActive then self._activeCurrencyID = nil; return MODE_MPLUS end
+    if self._mplusActive or self._mplusResults then self._activeCurrencyID = nil; return MODE_MPLUS end
     local source, currencyKey
     local secondary = self:GetSetting(SYSTEM_ID, "SecondarySource")
     if self._hovered and IsShiftKeyDown() and secondary and secondary ~= "none" then
@@ -1242,7 +1240,7 @@ end
 -- A durability breakdown (per damaged slot + repair cost), shown only once overall durability drops into the warn band (<40%) — matches the cracked-metal warning threshold.
 function Plugin:_AppendDurabilityTooltip(tt)
     local overall = self:_DurabilityPct()
-    if not overall or overall >= 0.40 then return end
+    if not overall or overall >= DURA_WARN then return end
     local rows
     for _, s in ipairs(DURA_TT_SLOTS) do
         local du, mx = GetInventoryItemDurability(s[1])
@@ -1255,7 +1253,7 @@ function Plugin:_AppendDurabilityTooltip(tt)
     tt:AddLine(" ")
     tt:AddLine(L.PLU_DT_DURABILITY_TITLE, 1, 0.82, 0.25)
     for _, row in ipairs(rows) do
-        local c = (row.pct <= 0.20 and DURA_BROKEN_COLOR) or (row.pct <= 0.40 and DURA_DAMAGED_COLOR) or DURA_TT_OK
+        local c = (row.pct <= DURA_CRIT and DURA_BROKEN_COLOR) or (row.pct <= DURA_WARN and DURA_DAMAGED_COLOR) or DURA_TT_OK
         tt:AddDoubleLine(row.name, ("%d%%"):format(row.pct * 100 + 0.5), 0.9, 0.9, 0.9, c.r, c.g, c.b)
     end
     local cost = GetRepairAllCost and GetRepairAllCost() or 0
