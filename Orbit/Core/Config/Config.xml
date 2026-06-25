@@ -15,6 +15,6 @@
     <Script file="Entry\OrbitOptionsButton.lua"/>
     <Script file="Panels\OrbitAdvancedSettings.lua"/>
     <Script file="Advanced\PluginManager.lua"/>
-    <Script file="Advanced\VisibilityEngine.lua"/>
+    <Script file="Advanced\FadeProfiles.lua"/>
     <Script file="Advanced\QoL.lua"/>
 </Ui>

@@ -12,6 +12,11 @@ externals:
     url: https://github.com/rossnichols/LibSerialize
     tag: v1.0.0
   Orbit/Core/Libs/LibDBIcon-1.0: https://repos.curseforge.com/wow/libdbicon-1-0/trunk
+  # CurseForge no longer creates repos.curseforge.com SVN mirrors for new projects (only
+  # grandfathered libs have them -- the CF SVN URL 404s), so LibOrbitGlow is pulled from GitHub.
+  Orbit/Core/Libs/LibOrbitGlow-1.0:
+    url: https://github.com/MoONSHO7/LibOrbitGlow
+    path: LibOrbitGlow-1.0
 
 ignore:
   - .agent

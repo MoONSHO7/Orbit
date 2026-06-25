@@ -237,7 +237,7 @@ function Skin:ApplyRoundedBorder(frame, styleEntry)
     overlay:SetFrameLevel(frame:GetFrameLevel() + borderLevel)
     overlay:ClearAllPoints()
     overlay:SetAllPoints(frame)
-    self:_RenderSliceTexture(overlay, styleEntry, self:ResolveBorderTint(styleEntry.isIcon))
+    self:_RenderSliceTexture(overlay, styleEntry, styleEntry.color or self:ResolveBorderTint(styleEntry.isIcon))
     overlay:SetShown(not frame._groupBorderActive)
     if not frame._groupBorderActive then
         self:ApplyRoundedMaskToSurfaces(frame, styleEntry)
@@ -367,6 +367,12 @@ function Skin:SkinBorder(frame, backdrop, size, color, isIcon, forcePixel, force
         if not frame.SetBorderHidden then frame.SetBorderHidden = Skin.DefaultSetBorderHidden end
         frame._activeBorderMode = "nineslice"
         local styleEntry = isIcon and self:BuildIconStyle(edgeStyle) or edgeStyle
+        if color then   -- explicit tint over the selected style: copy so the shared active-style table isn't mutated
+            local tinted = {}
+            for k, v in pairs(styleEntry) do tinted[k] = v end
+            tinted.color = color
+            styleEntry = tinted
+        end
         if styleEntry.rounded then
             self:ApplyRoundedBorder(frame, styleEntry)
         else

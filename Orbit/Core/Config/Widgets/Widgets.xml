@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Script file="Checkbox.lua"/>
     <Script file="Slider.lua"/>
+    <Script file="RangeSlider.lua"/>
     <Script file="ValueSwatch.lua"/>
     <Script file="Dropdown.lua"/>
     <Script file="EditBox.lua"/>
@@ -11,4 +12,5 @@
     <Script file="MediaMenu.lua"/>
     <Script file="TexturePicker.lua"/>
     <Script file="FontPicker.lua"/>
+    <Script file="GlowPicker.lua"/>
 </Ui>

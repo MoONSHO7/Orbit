@@ -36,7 +36,7 @@ Config/
 | Entry/SlashCommands.lua | the `/orbit` (and `/orb`) slash — the only chat command; its entire body is `OptionsPanel:ToggleEditMode()`. Every former subcommand now lives in Spotlight, with its logic on the owning module (`Orbit.API` resets/version/inspect, `VisibilityEngine:ResetAll`, `Localization.SetLocaleOverride`). |
 | Entry/OrbitOptionsButton.lua | addon compartment button. |
 | Advanced/PluginManager.lua | plugin enable/disable checkbox grid content builder. |
-| Advanced/VisibilityEngine.lua | visibility engine scrollable table content builder. |
+| Advanced/FadeProfiles.lua | Fade Profiles tab content builder (`Orbit._AC.CreateFadeProfilesContent`) — named context-fade profiles; the tab is still titled "Visibility Engine". |
 | Advanced/QoL.lua | quality-of-life expandable accordion sections content builder. |
 | Widgets/ | individual control widgets (slider, checkbox, dropdown, color picker, font/texture pickers, etc.). `ValueSwatch.lua` holds the shared value-column helpers `Layout:ApplyValueColorSwatch` and `Layout:ApplyValueCheckbox` — every value-column control routes through these and right-aligns off `Constants.Widget.ValueInset`, so checkboxes/swatches stay consistent across Dropdown / ColorCurvePicker / TexturePicker / FontPicker. `ConfirmPopup.lua` holds `Layout:ShowConfirm({title, text, acceptText, cancelText, onAccept, data})` — a reusable confirmation dialog skinned to match the Canvas Mode frame (NineSlice metal panel + tiled rock background), used in place of Blizzard `StaticPopupDialogs`. |
 | WhatsNew.lua / ChangelogData.lua | post-update changelog popup. |

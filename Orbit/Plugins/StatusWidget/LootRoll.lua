@@ -5,7 +5,7 @@ local OrbitEngine = Orbit.Engine
 local Plugin = Orbit:GetPlugin("Status Widget")
 
 -- [ LOOT ROLL ]--------------------------------------------------------------------------------------
-local PANEL_W, PANEL_H = 250, 46
+local PANEL_W, PANEL_H = 200, 46   -- width matches the M+ info panel so the shared side stack aligns
 local ICON_SIZE = 34
 local BTN_SIZE = 22
 local BTN_GAP = 3
@@ -262,8 +262,8 @@ function Plugin:_StylePanel(panel)
     local c = Orbit.Skin:GetBackgroundColor()
     panel.bg:SetColorTexture(c.r, c.g, c.b, c.a or 1)
     if panel._isBonus then
-        -- forcePixel: the rounded/edge border path ignores an explicit colour, so gold needs the flat path.
-        Orbit.Skin:SkinBorder(panel, panel, math.max((gs and gs.BorderSize) or 0, 2), BONUS_BORDER_COLOR, false, true)
+        -- Same selected border style as a normal roll, tinted gold (SkinBorder now forwards the colour into the styled paths too).
+        Orbit.Skin:SkinBorder(panel, panel, (gs and gs.BorderSize) or 1, BONUS_BORDER_COLOR)
     else
         Orbit.Skin:SkinBorder(panel, panel, (gs and gs.BorderSize) or 1)
     end
@@ -304,9 +304,18 @@ function Plugin:_ReleasePanel(panel)
     self:_LayoutRolls()
 end
 
+-- Lays out ALL side widgets as one screen-edge-aware vertical stack BESIDE the orb so they never overlap: the M+ info panel (when shown) on top, then each loot/bonus roll panel. Shared by the M+ panel refresh and every roll add/remove. Side + grow direction follow the orb's screen quadrant.
 function Plugin:_LayoutRolls()
-    local panels = self._activePanels
-    if not panels or #panels == 0 or not self.frame then return end
+    if not self.frame then return end
+    local widgets = {}
+    local mp = self.frame.MPlusPanel
+    if mp and mp:IsShown() then widgets[#widgets + 1] = mp end
+    if self._activePanels then
+        for _, p in ipairs(self._activePanels) do
+            if p:IsShown() then widgets[#widgets + 1] = p end
+        end
+    end
+    if #widgets == 0 then return end
     local orb = self.frame
     local cx, cy = orb:GetCenter()
     local scale = orb:GetEffectiveScale()
@@ -316,18 +325,15 @@ function Plugin:_LayoutRolls()
     local growDown = not cy or (cy * scale) >= sh / 2
 
     local vP = growDown and "TOP" or "BOTTOM"
-    local hP = growRight and "LEFT" or "RIGHT"
     local vR = growDown and "BOTTOM" or "TOP"
+    local hP = growRight and "LEFT" or "RIGHT"
     local hR = growRight and "RIGHT" or "LEFT"
-    local dx = growRight and ANCHOR_GAP or -ANCHOR_GAP
-    local dy = growDown and -ANCHOR_GAP or ANCHOR_GAP
 
-    panels[1]:ClearAllPoints()
-    panels[1]:SetPoint(vP .. hP, orb, vR .. hR, dx, dy)
-    for i = 2, #panels do
-        local sdy = growDown and -PANEL_GAP or PANEL_GAP
-        panels[i]:ClearAllPoints()
-        panels[i]:SetPoint(vP .. hP, panels[i - 1], vR .. hP, 0, sdy)
+    widgets[1]:ClearAllPoints()
+    widgets[1]:SetPoint(vP .. hP, orb, vP .. hR, growRight and ANCHOR_GAP or -ANCHOR_GAP, 0)   -- first widget sits beside the orb, top/bottom-aligned
+    for i = 2, #widgets do
+        widgets[i]:ClearAllPoints()
+        widgets[i]:SetPoint(vP .. hP, widgets[i - 1], vR .. hP, 0, growDown and -PANEL_GAP or PANEL_GAP)
     end
 end
 

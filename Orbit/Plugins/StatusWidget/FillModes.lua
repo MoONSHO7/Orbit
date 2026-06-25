@@ -11,7 +11,8 @@ local RINGCRACK = {
     [1] = "Interface\\AddOns\\Orbit\\Core\\assets\\Radial\\orbit-radial-ringcrack-light",
     [2] = "Interface\\AddOns\\Orbit\\Core\\assets\\Radial\\orbit-radial-ringcrack-heavy",
 }
-local DURA_WARN, DURA_CRIT = 0.40, 0.20
+local DURA_WARN, DURA_CRIT, DURA_ALWAYS = 0.40, 0.20, 0.10
+local DURA_WARN_TIME, DURA_CRIT_TIME = 5, 10   -- centre warning auto-hides after this; below DURA_ALWAYS it never times out
 local DURA_WARN_COLOR = { r = 1.0, g = 0.78, b = 0.20 }   -- yellow (slow pulse)
 local DURA_CRIT_COLOR = { r = 1.0, g = 0.25, b = 0.18 }   -- red (faster pulse)
 
@@ -118,33 +119,57 @@ function Plugin:_RandomizeCrackedMetal()
     metal:SetRotation(math.random() * 2 * math.pi)
 end
 
+-- The centre warning is timed (5s warn / 10s crit), re-armed on every durability loss in the band; below DURA_ALWAYS (10%) it's persistent. It is NOT suppressed in M+ — it plays over the timer, which yields via _DuraWarnActive.
+function Plugin:_TriggerDuraWarning(realPct)
+    if self._duraTimer then self._duraTimer:Cancel(); self._duraTimer = nil end
+    if realPct < DURA_ALWAYS then return end   -- handled by _duraAlways; no timeout
+    local dur = (realPct <= DURA_CRIT) and DURA_CRIT_TIME or DURA_WARN_TIME
+    self._duraWarnUntil = GetTime() + dur
+    self._duraTimer = C_Timer.NewTimer(dur, function()
+        self._duraWarnUntil, self._duraTimer = nil, nil
+        if self.frame then self:UpdateBar() end
+    end)
+end
+
+function Plugin:_DuraWarnActive()
+    if self._duraAlways then return true end
+    return self._duraWarnUntil ~= nil and GetTime() < self._duraWarnUntil
+end
+
 function Plugin:_UpdateCrackedMetal(record)
     local frame = self.frame
     local metal = frame.CrackedMetal
     if not metal then return end
     local realPct = self:_DurabilityPct()
-    -- One-shot shatter on each downward crossing of 40% / 20%; the first read only seeds _lastDuraPct, so no fire on login.
     if realPct then
         local last = self._lastDuraPct
         if last then
+            -- Shatter shrapnel only on the downward 40% / 20% crossings.
             if realPct <= DURA_CRIT and last > DURA_CRIT then self:PlayShatterFlourish(true)
             elseif realPct <= DURA_WARN and last > DURA_WARN then self:PlayShatterFlourish(false) end
+            if realPct < last and realPct <= DURA_WARN then self:_TriggerDuraWarning(realPct) end   -- any loss in-band re-arms
+        elseif realPct <= DURA_WARN then
+            self:_TriggerDuraWarning(realPct)   -- first read already low (login / reload)
         end
         self._lastDuraPct = realPct
     end
     -- Ring cracks track the ACTUAL durability, so they persist through flourishes unlike the centre.
     self:_SetRingCrack((not realPct or realPct > DURA_WARN) and 0 or (realPct <= DURA_CRIT and 2 or 1))
-    -- A shatter flourish owns the centre cracked-metal mid-blast; don't let the idle warning tear it down while shatter holds the centre.
+    self._duraAlways = realPct ~= nil and realPct < DURA_ALWAYS
+    if not realPct or realPct > DURA_WARN then
+        self._duraWarnUntil = nil
+        if self._duraTimer then self._duraTimer:Cancel(); self._duraTimer = nil end
+    end
+    -- A shatter flourish owns the centre cracked-metal mid-blast; don't let the timed warning tear it down while it holds the centre.
     if self._event == "shatter" then return end
-    local pct = (self._event == nil) and realPct or nil
-    if not pct or pct > DURA_WARN then
-        frame.CrackedMetalPulse:Stop(); metal:Hide()
+    if not realPct or self._event ~= nil or self._mplusResults or not self:_DuraWarnActive() then
+        frame.CrackedMetalPulse:Stop(); metal:Hide()   -- the frozen M+ results tracker owns the centre; the border ring-cracks (above) still track real durability
         self._durabilityWarn, self._metalCrit = false, nil
         self:_RefreshInner()
         return
     end
     if not self._durabilityWarn then self:_RandomizeCrackedMetal() end   -- fresh fracture on each new warning
-    self:_ShowCrackedWarning(pct <= DURA_CRIT, pct)
+    self:_ShowCrackedWarning(realPct <= DURA_CRIT, realPct)
     self:_RefreshInner()
 end
 

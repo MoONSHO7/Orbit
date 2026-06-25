@@ -73,9 +73,9 @@ local function CreatePluginPanel()
     -- Content containers
     local pluginContent = CreateFrame("Frame", nil, frame)
     pluginContent:SetAllPoints()
-    local veContent = Orbit._AC.CreateVEContent(frame)
+    local fpContent = Orbit._AC.CreateFadeProfilesContent(frame)
     local qolContent = Orbit._AC.CreateQoLContent(frame)
-    local contentFrames = { [L.CFG_TAB_PLUGIN_MANAGER] = pluginContent, [L.CFG_TAB_VISIBILITY_ENGINE] = veContent, [L.CFG_TAB_QUALITY_OF_LIFE] = qolContent }
+    local contentFrames = { [L.CFG_TAB_PLUGIN_MANAGER] = pluginContent, [L.CFG_TAB_VISIBILITY_ENGINE] = fpContent, [L.CFG_TAB_QUALITY_OF_LIFE] = qolContent }
 
     -- Tab bar
     local tabBar
