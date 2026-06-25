@@ -29,7 +29,6 @@ local DEFAULT_KEYPRESS_COLOR = { r = 1, g = 1, b = 1, a = 0 }
 
 -- Reusable child buffer alias
 local PackChildren = function(...) return CooldownUtils:PackChildren(...) end
-local _activeChildBuf = {}
 
 local DESAT_CURVE = C_CurveUtil.CreateCurve()
 DESAT_CURVE:AddPoint(0.0, 0.0)
@@ -113,10 +112,7 @@ end
 -- [ ANCHOR LOOKUP ] ---------------------------------------------------------------------------------
 local function GetAnchorInfo(anchorFrame) return anchorFrame and OrbitEngine.FrameAnchor and OrbitEngine.FrameAnchor.anchors[anchorFrame] end
 
--- [ LIVE CANVAS PREVIEW ] ---------------------------------------------------------------------------
-Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", function(changedPlugin)
-    if changedPlugin == CDM and CDM.buffBarAnchor and not CDM.buffBarAnchor.orbitMountedSuppressed then CDM:ProcessChildren(CDM.buffBarAnchor) end
-end)
+-- Live Canvas preview is driven by the shared PluginMixin:WatchCanvasChanges watcher, whose default OnCanvasLivePreview re-applies settings (ApplySettings already reprocesses buffBarAnchor). A second subscription here double-processed the buff bar on every edit.
 
 -- [ PROCESS CHILDREN ] ------------------------------------------------------------------------------
 -- Re-entrancy guard + per-call snapshot — Skin:Apply / ORBIT_ICON_REPROCESSED can re-enter and corrupt the iteration.
@@ -860,28 +856,6 @@ do
                         if child:IsShown() and GetIconSpellID(child) == nextSpell then
                             SetHighlightShown(child, true)
                             highlightedIcons[child] = true
-                        end
-                    end
-                end
-                if entry.anchor and entry.anchor.activeIcons then
-                    for _, icon in pairs(entry.anchor.activeIcons) do
-                        if icon:IsShown() and GetIconSpellID(icon) == nextSpell then
-                            SetHighlightShown(icon, true)
-                            highlightedIcons[icon] = true
-                        end
-                    end
-                end
-            end
-        end
-
-        for _, childData in pairs(CDM.activeChildren or {}) do
-            if childData.frame and childData.frame.activeIcons then
-                local csi = childData.frame.systemIndex
-                if not csi or IsEnabledForSystem(csi) then
-                    for _, icon in pairs(childData.frame.activeIcons) do
-                        if icon:IsShown() and GetIconSpellID(icon) == nextSpell then
-                            SetHighlightShown(icon, true)
-                            highlightedIcons[icon] = true
                         end
                     end
                 end

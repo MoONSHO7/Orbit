@@ -101,7 +101,7 @@ function Config:Render(dialog, systemFrame, plugin, schema, tabKey)
     panel.ScrollFrame:SetScrollChild(targetContent)
 
     local needsRender = true
-    if tabKey and tabKey ~= "Profiles" and tabKey ~= "Textures" and targetContent.OrbitRendered then
+    if tabKey and tabKey ~= L.CFG_TAB_PROFILES and tabKey ~= L.CFG_TAB_TEXTURES and targetContent.OrbitRendered then
         needsRender = false
         targetContent:Show()
     end
@@ -188,8 +188,7 @@ function Config:RenderControl(container, systemFrame, plugin, systemIndex, def)
         if default ~= nil then return default end
         -- Preview-only: surface the inherited global FontColorCurve so the swatch matches what renders; mirrors OverrideUtils.ApplyTextColor's white fallback. Saving still writes locally.
         if key == "CustomColorCurve" then
-            local g = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.FontColorCurve
-            return g or { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
+            return Orbit:GetTheme("FontColorCurve") or Orbit.Constants.NewWhiteColorCurve()
         end
         return nil
     end
@@ -246,33 +245,36 @@ function Config:RenderFooter(footer, systemFrame, plugin, systemIndex, schema)
 
     -- Default Reset Button (unless hidden by schema)
     if not schema.hideResetButton then
-        local resetBtn = Layout:CreateButton(footer, "Reset to Defaults", function()
-            -- Reset Logic
-            if schema.controls then
-                for _, def in ipairs(schema.controls) do
-                    if def.key then
-                        plugin:SetSetting(systemIndex, def.key, nil)
+        local resetBtn = Layout:CreateButton(footer, L.CMN_RESET_TO_DEFAULTS, function()
+            Layout:ShowConfirm({
+                title = L.CMN_RESET_TO_DEFAULTS,
+                text = L.CFG_RESET_CONFIRM,
+                acceptText = L.CMN_RESET_TO_DEFAULTS,
+                onAccept = function()
+                    if schema.controls then
+                        for _, def in ipairs(schema.controls) do
+                            if def.key then
+                                plugin:SetSetting(systemIndex, def.key, nil)
+                            end
+                        end
                     end
-                end
-            end
-            if schema.onReset then
-                schema.onReset()
-            end
-
-            if plugin.ApplySettings then
-                plugin:ApplySettings(systemFrame)
-            end
-
-            -- Refresh UI
-            local dialog = footer:GetParent():GetParent()
-            Layout:Reset(dialog) -- Reset Dialog
-            self:Render(dialog, systemFrame, plugin, schema)
+                    if schema.onReset then
+                        schema.onReset()
+                    end
+                    if plugin.ApplySettings then
+                        plugin:ApplySettings(systemFrame)
+                    end
+                    local dialog = footer:GetParent():GetParent()
+                    Layout:Reset(dialog)
+                    self:Render(dialog, systemFrame, plugin, schema, footer:GetParent().CurrentTabKey)
+                end,
+            })
         end)
         table.insert(buttons, resetBtn)
     end
 
     if schema.openPluginManager then
-        local pmBtn = Layout:CreateButton(footer, "Advanced", function()
+        local pmBtn = Layout:CreateButton(footer, L.CMN_ADVANCED, function()
             if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
                 securecall("HideUIPanel", EditModeManagerFrame)
             end

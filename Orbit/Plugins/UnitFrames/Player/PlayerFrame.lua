@@ -20,7 +20,6 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         Width = 160,
         Height = 38,
         ClassColour = true,
-        ShowHealthValue = true,
         ShowLevel = true,
         ShowCombatIcon = true,
         ShowPvpIcon = false,
@@ -47,7 +46,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
         DisabledComponents = { "Status", "Portrait", "RoleIcon" },
         ComponentPositions = {
             Name              = { anchorX = "LEFT",   offsetX = 5,  anchorY = "CENTER", offsetY = 0,  justifyH = "LEFT",   selfAnchorY = "CENTER", posX = -75, posY = 0,   overrides = { FontSize = 14 } },
-            HealthText        = { anchorX = "RIGHT",  offsetX = 5,  anchorY = "CENTER", offsetY = 0,  justifyH = "RIGHT",  selfAnchorY = "CENTER", posX = 75,  posY = 0,   overrides = { FontSize = 14, HealthTextMode = "percent", ShowHealthValue = true } },
+            HealthText        = { anchorX = "RIGHT",  offsetX = 5,  anchorY = "CENTER", offsetY = 0,  justifyH = "RIGHT",  selfAnchorY = "CENTER", posX = 75,  posY = 0,   overrides = { FontSize = 14 } },
             LevelText         = { anchorX = "RIGHT",  offsetX = -6, anchorY = "TOP",    offsetY = 8,  justifyH = "RIGHT",  selfAnchorY = "TOP",    posX = 78,  posY = 11 },
             CombatIcon        = { anchorX = "CENTER", offsetX = 0,  anchorY = "CENTER", offsetY = 0,  justifyH = "CENTER", selfAnchorY = "CENTER", posX = 0,   posY = 0 },
             RoleIcon          = { anchorX = "RIGHT",  offsetX = 10, anchorY = "TOP",    offsetY = 3 },
@@ -64,6 +63,7 @@ local Plugin = Orbit:RegisterPlugin("Player Frame", SYSTEM_ID, {
 
 -- Apply Mixins (including aggro indicator support and shared status icons)
 Mixin(Plugin, Orbit.UnitFrameMixin, Orbit.VisualsExtendedMixin, Orbit.AggroIndicatorMixin, Orbit.StatusIconMixin)
+Plugin:RegisterSyncSource(PLAYER_FRAME_INDEX)
 Plugin.supportsHealthText = true
 
 -- [ SETTINGS UI ]------------------------------------------------------------------------------------
@@ -230,7 +230,7 @@ function Plugin:OnLoad()
         -- Preview TexCoords for Canvas Mode (frame 20 of 7x6 grid - shows full zZZ)
         self.frame.RestingIcon.Icon.orbitPreviewTexCoord = { 2 / 6, 3 / 6, 3 / 7, 4 / 7 }
 
-        -- FlipBook animation parameters (matches Blizzard's native implementation)
+        -- flipbook* fields are read by Canvas Mode preview, not by the engine-driven animation below
         local FLIPBOOK_ROWS = 7
         local FLIPBOOK_COLS = 6
         local FLIPBOOK_FRAMES = 42
@@ -239,28 +239,15 @@ function Plugin:OnLoad()
         self.frame.RestingIcon.flipbookCols = FLIPBOOK_COLS
         self.frame.RestingIcon.flipbookFrames = FLIPBOOK_FRAMES
         self.frame.RestingIcon.flipbookDuration = FLIPBOOK_DURATION
-        local frameTime = FLIPBOOK_DURATION / FLIPBOOK_FRAMES
-        local frameWidth = 1 / FLIPBOOK_COLS
-        local frameHeight = 1 / FLIPBOOK_ROWS
 
-        self.frame.RestingIcon.currentFrame = 0
-        self.frame.RestingIcon.elapsed = 0
-
-        local function SetFlipBookFrame(frameIndex)
-            local col = frameIndex % FLIPBOOK_COLS
-            local row = math.floor(frameIndex / FLIPBOOK_COLS)
-            self.frame.RestingIcon.Texture:SetTexCoord(col * frameWidth, (col + 1) * frameWidth, row * frameHeight, (row + 1) * frameHeight)
-        end
-        SetFlipBookFrame(0)
-
-        self.frame.RestingIcon:SetScript("OnUpdate", function(restFrame, elapsed)
-            restFrame.elapsed = restFrame.elapsed + elapsed
-            if restFrame.elapsed >= frameTime then
-                restFrame.elapsed = restFrame.elapsed - frameTime
-                restFrame.currentFrame = (restFrame.currentFrame + 1) % FLIPBOOK_FRAMES
-                SetFlipBookFrame(restFrame.currentFrame)
-            end
-        end)
+        local anim = self.frame.RestingIcon.Texture:CreateAnimationGroup()
+        anim:SetLooping("REPEAT")
+        local flip = anim:CreateAnimation("FlipBook")
+        flip:SetDuration(FLIPBOOK_DURATION)
+        flip:SetFlipBookRows(FLIPBOOK_ROWS)
+        flip:SetFlipBookColumns(FLIPBOOK_COLS)
+        flip:SetFlipBookFrames(FLIPBOOK_FRAMES)
+        self.frame.RestingIcon.Anim = anim
         self.frame.RestingIcon:Hide()
     end
 
@@ -301,11 +288,10 @@ function Plugin:OnLoad()
     self.frame:RegisterEvent("READY_CHECK")
     self.frame:RegisterEvent("READY_CHECK_CONFIRM")
     self.frame:RegisterEvent("READY_CHECK_FINISHED")
-    self.frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
     -- Register threat events for aggro indicator
     self.frame:RegisterUnitEvent("UNIT_THREAT_SITUATION_UPDATE", "player")
-    self.frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    self.frame:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE", "player")
     self.frame:RegisterEvent("PORTRAITS_UPDATED")
 
     -- Hook into existing OnEvent
@@ -352,8 +338,6 @@ function Plugin:OnLoad()
             return
         elseif event == "UNIT_PORTRAIT_UPDATE" or event == "PORTRAITS_UPDATED" then
             f:UpdatePortrait()
-            return
-        elseif event == "PLAYER_TARGET_CHANGED" then
             return
         end
         if originalOnEvent then
@@ -427,13 +411,11 @@ function Plugin:UpdateRestingIcon(frame)
     if not frame or not frame.RestingIcon then
         return
     end
-    if self:IsComponentDisabled("RestingIcon") then
-        frame.RestingIcon:Hide()
-        return
-    end
-    if IsResting() then
+    if not self:IsComponentDisabled("RestingIcon") and IsResting() then
         frame.RestingIcon:Show()
+        frame.RestingIcon.Anim:Play()
     else
+        frame.RestingIcon.Anim:Stop()
         frame.RestingIcon:Hide()
     end
 end

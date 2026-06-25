@@ -22,7 +22,7 @@ Mixin.sharedBuffDefaults = {
 
 Mixin.playerBuffDefaults = {
     IconLimit = 30, Rows = 1, Spacing = 1, IconSize = 34, aspectRatio = "1:1",
-    Collapsed = true,
+    Collapsed = false,
     DisabledComponents = { "Status" },
     ComponentPositions = {
         Timer  = { anchorX = "CENTER", anchorY = "CENTER", offsetX = 0, offsetY = 0, posX = 0,  posY = 0,   justifyH = "CENTER", selfAnchorY = "CENTER", overrides = { FontSize = 14 } },
@@ -54,6 +54,7 @@ local ARROW_TEX_SIZE = { w = 10, h = 16 }
 local COLLAPSED_AURA_COUNT = 3
 local ARROW_ATLAS = "bag-arrow"
 local ARROW_HOVER_POLL = 0.1
+local ARROW_REST_ALPHA = 0.25
 
 local function CreateCollapseArrow(frame, plugin)
     local btn = CreateFrame("Button", nil, frame)
@@ -66,7 +67,7 @@ local function CreateCollapseArrow(frame, plugin)
     btn.tex:SetSize(Pixel:Snap(ARROW_TEX_SIZE.w, bScale), Pixel:Snap(ARROW_TEX_SIZE.h, bScale))
     btn.tex:SetPoint("CENTER")
     btn.tex:SetAtlas(ARROW_ATLAS)
-    btn.tex:SetAlpha(0)
+    btn.tex:SetAlpha(ARROW_REST_ALPHA)
     btn:SetScript("OnClick", function(self)
         local collapsed = not plugin:GetSetting(1, "Collapsed")
         plugin:SetSetting(1, "Collapsed", collapsed)
@@ -87,7 +88,7 @@ local function CreateCollapseArrow(frame, plugin)
         self.elapsed = self.elapsed + elapsed
         if self.elapsed < ARROW_HOVER_POLL then return end
         self.elapsed = 0
-        local target = MouseIsOver(self) and 1 or (MouseIsOver(frame) and 0.7 or 0)
+        local target = MouseIsOver(self) and 1 or (MouseIsOver(frame) and 0.7 or ARROW_REST_ALPHA)
         if self.tex:GetAlpha() ~= target then self.tex:SetAlpha(target) end
     end)
     btn.tooltipText = plugin:GetSetting(1, "Collapsed") and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
@@ -98,7 +99,8 @@ end
 local ARROW_OFFSET = 4
 local function UpdateCollapseArrow(btn, collapsed, iconH, growthX, growthY, anchorIcon)
     -- Icon-anchored sits on the growth side; frame-edge fallback sits opposite it.
-    local arrowOnLeft = anchorIcon and (growthX == "LEFT") or (growthX == "RIGHT")
+    local arrowOnLeft
+    if anchorIcon then arrowOnLeft = (growthX == "LEFT") else arrowOnLeft = (growthX == "RIGHT") end
     local baseRot = arrowOnLeft and math.rad(180) or 0
     btn.tex:SetRotation(collapsed and (math.pi - baseRot) or baseRot)
     btn.tooltipText = collapsed and L.PLU_AURA_MY_BUFFS or L.PLU_AURA_ALL_BUFFS
@@ -259,10 +261,10 @@ function Mixin:AddAuraGridSettings(dialog, systemFrame)
 
     if cfg.enablePandemic then
         SB:SetTabRefreshCallback(dialog, self, systemFrame)
-        local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Glows" }, "Layout")
-        if currentTab == "Layout" then
+        local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_AURA_TAB_LAYOUT, L.PLU_AURA_TAB_GLOWS }, L.PLU_AURA_TAB_LAYOUT)
+        if currentTab == L.PLU_AURA_TAB_LAYOUT then
             self:_addLayoutControls(schema)
-        elseif currentTab == "Glows" then
+        elseif currentTab == L.PLU_AURA_TAB_GLOWS then
             self:_addGlowControls(schema, SB, dialog, systemFrame)
         end
     else
@@ -276,11 +278,11 @@ function Mixin:_addLayoutControls(schema)
     local cfg = self._agConfig
     if cfg.showIconLimit then
         table.insert(schema.controls, {
-            type = "dropdown", key = "aspectRatio", label = "Icon Aspect Ratio",
+            type = "dropdown", key = "aspectRatio", label = L.PLU_AURA_ICON_ASPECT_RATIO,
             options = ASPECT_RATIOS, default = "1:1",
         })
         table.insert(schema.controls, {
-            type = "slider", key = "IconLimit", label = "Icon Limit",
+            type = "slider", key = "IconLimit", label = L.PLU_AURA_ICON_LIMIT,
             min = 2, max = 40, step = 2, default = cfg.defaultIconLimit or 20,
             onChange = function(val) self:SetSetting(1, "IconLimit", val); self:ApplySettings() end,
         })
@@ -292,7 +294,7 @@ function Mixin:_addLayoutControls(schema)
         for i, v in ipairs(factors) do if v == currentRows then currentIndex = i; break end end
         if #factors > 1 then
             table.insert(schema.controls, {
-                type = "slider", key = "_RowsSlider", label = "Rows",
+                type = "slider", key = "_RowsSlider", label = L.PLU_AURA_ROWS,
                 min = 1, max = #factors, step = 1, default = currentIndex,
                 formatter = function(v) return tostring(factors[math.floor(v)] or 1) end,
                 onChange = function(val)
@@ -305,25 +307,25 @@ function Mixin:_addLayoutControls(schema)
             })
         end
         table.insert(schema.controls, {
-            type = "slider", key = "IconSize", label = "Icon Size",
+            type = "slider", key = "IconSize", label = L.PLU_AURA_ICON_SIZE,
             min = 20, max = 80, step = 1, default = 34,
             formatter = function(v) return v .. "px" end,
             onChange = function(val) self:SetSetting(1, "IconSize", val); self:ApplySettings() end,
         })
     else
         table.insert(schema.controls, {
-            type = "slider", key = "IconsPerRow", label = "Icons Per Row",
+            type = "slider", key = "IconsPerRow", label = L.PLU_AURA_ICONS_PER_ROW,
             min = 4, max = 10, step = 1, default = 5,
             onChange = function(val) self:SetSetting(1, "IconsPerRow", val); self:ApplySettings() end,
         })
         table.insert(schema.controls, {
-            type = "slider", key = "MaxRows", label = "Max Rows",
+            type = "slider", key = "MaxRows", label = L.PLU_AURA_MAX_ROWS,
             min = 1, max = cfg.maxRowsMax or 4, step = 1, default = 2,
         })
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(self._agFrame) ~= nil
         if not isAnchored then
             table.insert(schema.controls, {
-                type = "slider", key = "IconSize", label = "Icon Size (Unanchored)",
+                type = "slider", key = "IconSize", label = L.PLU_AURA_ICON_SIZE_UNANCHORED,
                 min = 20, max = 80, step = 1, default = 34,
                 formatter = function(v) return v .. "px" end,
                 onChange = function(val) self:SetSetting(1, "IconSize", val); self:ApplySettings() end,
@@ -331,8 +333,8 @@ function Mixin:_addLayoutControls(schema)
         end
     end
     table.insert(schema.controls, {
-        type = "slider", key = "Spacing", label = "Spacing",
-        min = 0, max = 50, step = 1, default = 2,
+        type = "slider", key = "Spacing", label = L.PLU_AURA_SPACING,
+        min = 0, max = 50, step = 1, default = 2, mergeAtZero = true,
         onChange = function(val) self:SetSetting(1, "Spacing", val); self:ApplySettings() end,
     })
 
@@ -341,7 +343,7 @@ end
 function Mixin:_addGlowControls(schema, SB, dialog, systemFrame)
     SB:AddGlowSettings(self, schema, 1, dialog, systemFrame, {
         prefix = "PandemicGlow",
-        label = "Pandemic Glow",
+        label = L.PLU_AURA_PANDEMIC_GLOW,
         default = Constants.Glow.Type.Pixel,
         onUpdate = function() self:ApplySettings() end
     })
@@ -429,7 +431,7 @@ function Mixin:CreateAuraGridPlugin(config)
             preview:SetBackdropColor(0, 0, 0, 0)
             Orbit.Skin:SkinBorder(preview, preview, borderSize, nil, true)
 
-            local savedPositions = plugin:GetSetting(1, "ComponentPositions") or {}
+            local savedPositions = plugin:GetComponentPositions(1)
             local LSM = LibStub("LibSharedMedia-3.0")
             local fontPath = LSM:Fetch("font", Orbit.db.GlobalSettings.Font) or "Fonts\\FRIZQT__.TTF"
             local fontOutline = Orbit.Skin:GetFontOutline()
@@ -682,7 +684,7 @@ function Mixin:UpdateAuras()
         skinSettings.overrides = overrides
     end
 
-    local componentPositions = self:GetSetting(1, "ComponentPositions")
+    local componentPositions = self:GetComponentPositions(1)
     Frame._scratchActiveIcons = Frame._scratchActiveIcons or {}
     local activeIcons = Frame._scratchActiveIcons
     wipe(activeIcons)
@@ -790,7 +792,7 @@ function Mixin:_applyGridGroupBorder(Frame, activeIcons, spacing, skinSettings, 
         if style.edgeFile then
             overlay:SetPoint("TOPLEFT", firstIcon, iconAnchor, math.min(0, extX), math.max(0, extY))
             overlay:SetPoint("BOTTOMRIGHT", firstIcon, iconAnchor, math.max(0, extX), math.min(0, extY))
-            Skin:_RenderSliceTexture(overlay, style, Skin:ResolveBorderColor(true))
+            Skin:_RenderSliceTexture(overlay, style, Skin:ResolveBorderTint(true))
             overlay:Show()
         else
             -- Border Thickness None: no grid outline — the corner-clip mask still applies.

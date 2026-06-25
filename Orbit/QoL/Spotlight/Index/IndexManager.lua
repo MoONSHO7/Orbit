@@ -105,8 +105,8 @@ function IndexManager:Rebuild(enabledKinds)
             end
             counts[name] = #entries
             for i = 1, #entries do master[#master + 1] = entries[i] end
+            self._sourceDirty[name] = nil
         end
-        self._sourceDirty[name] = nil
     end
     self._master = master
     self._lastCounts = counts

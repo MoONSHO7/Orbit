@@ -91,9 +91,9 @@ local function InvalidateColorCache() cachedOORColor = nil; cachedOOMColor = nil
 local function RefreshIconColor(plugin, button)
     if not button or not button.icon or not button.action then return end
     if not C_ActionBar.HasAction(button.action) then return end
-    local _, spellID = GetActionInfo(button.action)
+    local actionType, spellID = GetActionInfo(button.action)
     local isUsable, notEnoughMana = IsUsableAction(button.action)
-    local outOfRange = spellID and C_Spell.SpellHasRange(spellID) and C_Spell.IsSpellInRange(spellID) == false
+    local outOfRange = actionType == "spell" and spellID and C_Spell.SpellHasRange(spellID) and C_Spell.IsSpellInRange(spellID) == false
     if not cachedOORColor then cachedOORColor = plugin:GetSetting(1, "OORColor") or DEFAULT_OOR_COLOR end
     if not cachedOOMColor then cachedOOMColor = plugin:GetSetting(1, "OOMColor") or DEFAULT_OOM_COLOR end
     if not cachedUnusableColor then cachedUnusableColor = plugin:GetSetting(1, "UnusableColor") or DEFAULT_UNUSABLE_COLOR end
@@ -191,7 +191,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         end
         table.insert(schema.controls, { type = "slider", key = "IconSize", label = L.PLU_AB_ICON_SIZE, min = 20, max = 64, step = 1, default = DEFAULT_ICON_SIZE, formatter = function(v) return v .. "px" end,
             onChange = function(val) self:SetSetting(systemIndex, "IconSize", val); self:ApplySettings(container) end })
-        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_AB_ICON_PADDING, min = 0, max = 10, step = 1, default = 2,
+        table.insert(schema.controls, { type = "slider", key = "IconPadding", label = L.PLU_AB_ICON_PADDING, min = 0, max = 10, step = 1, default = 2, mergeAtZero = true,
             onChange = function(val) self:SetSetting(systemIndex, "IconPadding", val); self:ApplySettings(container) end })
         local isForcedHideEmpty = SPECIAL_BAR_INDICES[systemIndex]
         if not isForcedHideEmpty then table.insert(schema.controls, { type = "checkbox", key = "HideEmptyButtons", label = L.PLU_AB_HIDE_EMPTY, default = false }) end
@@ -299,7 +299,7 @@ function Plugin:OnLoad()
         if self.petDebounce then self.petDebounce:Cancel() end
         self.petDebounce = C_Timer.NewTimer(0.05, function()
             self.petDebounce = nil
-            if self.containers[PET_BAR_INDEX] then self:LayoutButtonPositions(PET_BAR_INDEX) end
+            if self.containers[PET_BAR_INDEX] then self:LayoutButtons(PET_BAR_INDEX) end
         end)
     end
 

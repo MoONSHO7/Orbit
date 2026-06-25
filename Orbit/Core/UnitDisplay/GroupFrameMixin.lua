@@ -54,10 +54,13 @@ function Mixin.UpdateInRange(frame)
         frame:SetAlpha(ResolveOutOfRangeAlpha(frame))
         Mixin.SetBackgroundAlpha(frame, 1)
     else
-        local inRangeValue = UnitInRange(frame.unit)
+        local inRangeValue, checkedRange = UnitInRange(frame.unit)
         local oorAlpha = ResolveOutOfRangeAlpha(frame)
-        frame:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, oorAlpha))
-        Mixin.SetBackgroundAlpha(frame, C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, 0))
+        -- Only fade when range was checkable AND out of range; nest the C-side boolean sinks so unchecked stays full alpha.
+        local frameAlpha = C_CurveUtil.EvaluateColorValueFromBoolean(checkedRange, C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, oorAlpha), 1)
+        local bgAlpha = C_CurveUtil.EvaluateColorValueFromBoolean(checkedRange, C_CurveUtil.EvaluateColorValueFromBoolean(inRangeValue, 1, 0), 1)
+        frame:SetAlpha(frameAlpha)
+        Mixin.SetBackgroundAlpha(frame, bgAlpha)
     end
-    frame:ApplyHealthColor()
+    -- No ApplyHealthColor here: range/phase/connection change ALPHA only; bar color is range-independent and is applied by UpdateHealth (UNIT_HEALTH) / UpdateAll (assignment). Re-resolving it on every range tick was redundant work on the hottest churn path.
 end

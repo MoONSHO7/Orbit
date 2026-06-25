@@ -21,6 +21,7 @@ settings are read from saved variables to build edit mode previews. when the use
 
 ```
 EditMode/
+  EditMode.xml          -- top-level script bundle (NativeFrame, EditMode, Frame\EditFrame.xml, PositionManager, MountedVisibility)
   EditMode.lua          -- edit mode entry/exit hooks, combat safety
   PositionManager.lua   -- ephemeral position buffer (cancel support)
   MountedVisibility.lua -- hide frames while mounted
@@ -49,6 +50,7 @@ EditMode/
   Handle/
     HandleCore.lua      -- shared handle frame infrastructure (used by both edit mode and canvas mode)
   Preview/
+    Preview.xml         -- xml script bundle (PreviewFrame.lua)
     PreviewFrame.lua    -- live preview-frame construction (`Create`, `CreateBasePreview`) consumed by Tracked, PlayerPower, PlayerCastBar, and DamageMeterUI
 ```
 
@@ -160,11 +162,12 @@ the two-frame defer matches the spec path — `RefreshForCurrentSpec` (Tracked) 
 ## rules
 
 - edit mode code must work without any specific plugin loaded
+- a frame may set `frame.orbitSelectionOutset = N` before `AttachSettingsListener` to grow its selection highlight N px on every side (default flush to the frame); honoured by `Selection.AnchorSelectionToParent`.
 - position data format: `{ point, relativeTo, relativePoint, x, y }`
 - anchor chains resolve recursively. guard against cycles with depth limits.
 - all pixel offsets must be snapped via `Pixel:Snap()`
 - mounted visibility checks belong in `MountedVisibility.lua`, not in plugins
-- `PositionManager` is ephemeral — it buffers changes until edit mode closes, enabling cancel support
+- `PositionManager` is ephemeral — it stages position changes and batches global writes, flushing to storage (and clearing the whole staging buffer) when edit mode closes, on `/reload`, and on logout. Spec-scoped writes go immediate. There is no Orbit edit-mode "cancel/revert" affordance; `DiscardChanges` is used only by profile switching
 - prefer `SetFrameVirtual` for content-empty frames, `SetFrameDisabled` for profile-level disable
 - cycle detection must use `AnchorGraph:WouldCreateCycle()` (pure-data, no `GetNumPoints`)
 - listen for edit mode lifecycle via `EventRegistry:RegisterCallback("EditMode.Enter"/"EditMode.Exit", ...)`. Never `EditModeManagerFrame:HookScript("OnShow"/"OnHide", ...)` — the hookscript callback rides the dangerous secure execution chain that runs `ResetPartyFrames` on exit; `EventRegistry` fires after the chain has settled and is the official Blizzard signal.
@@ -172,7 +175,7 @@ the two-frame defer matches the spec path — `RefreshForCurrentSpec` (Tracked) 
 
 ## native blizzard frame suppression (`NativeFrame.lua`)
 
-`NativeFrame:Park(frame)` is the canonical way to suppress a Blizzard-owned frame so Orbit's replacement can take its slot. It is taint-safe under WoW 12.0.5+ strict execution rules. The recipe is the addon-community consensus pattern verified across ElvUI, Cell, Bartender4, EllesmereUI, and DandersFrames at HEAD as of 2026-05-04:
+`NativeFrame:Park(frame)` is the canonical way to suppress a Blizzard-owned frame so Orbit's replacement can take its slot. It is taint-safe under WoW 12.0.5+ strict execution rules. The recipe is the consensus taint-safe pattern, verified against Orbit's own EditMode taint testing as of 2026-05-04:
 
 1. `frame:UnregisterAllEvents()` — silences Blizzard's update path so `CompactUnitFrame_UpdateAll` etc. never run.
 2. `(frame.HideBase or frame.Hide)(frame)` — uses the pre-EditMode-override `HideBase` reference saved by `EditModeSystemMixin:OnSystemLoad`. Calling `:HideBase()` skips Blizzard's tainted `HideOverride`. `pcall(frame.Hide, frame)` is the fallback for non-EditMode-registered frames.
@@ -184,7 +187,7 @@ What `Park` deliberately does NOT do (these were taint vectors in the pre-Park `
 - No `:ClearAllPoints` / `:SetPoint` writes — anchor mutations on a Blizzard secure frame taint its descendants. Verified bug: writes to `CompactPartyFrame` tainted `frame.healthBar:GetStatusBarColor()` at `CompactUnitFrame.lua:692` after EditMode exit ran `ResetPartyFrames → CompactPartyFrame:RefreshMembers → CompactUnitFrame_UpdateHealthColor`.
 - No `:SetAlpha` / `:EnableMouse` writes — same propagation surface as anchor writes.
 - No `hooksecurefunc(frame, "SetPoint", ...)` re-fire loop — the loop re-tainted on every Blizzard reposition. Removed entirely.
-- No `RegisterStateDriver(<Blizzard frame>, "visibility", "hide")` — EllesmereUI's HEAD source (Apr 2026) explicitly forbids this with the comment "No RegisterAttributeDriver calls on Blizzard-owned frames — those risk tainting protected state." `Park` covers the equivalent need without writing to the frame's secure attribute namespace.
+- No `RegisterStateDriver(<Blizzard frame>, "visibility", "hide")` — registering an attribute/state driver on a Blizzard-owned frame risks tainting its protected state. `Park` covers the equivalent need without writing to the frame's secure attribute namespace.
 
 Use `Park(frame)` for: PlayerFrame, TargetFrame, FocusFrame, BuffFrame, DebuffFrame, BossFrames, PartyMemberFrames, PartyFrame, CompactPartyFrame, CompactRaidFrameContainer, CompactRaidFrameManager, PlayerCastingBarFrame, action bar frames. Combined with `UIParent:UnregisterEvent('GROUP_ROSTER_UPDATE')` and `CompactRaidFrameManager_SetSetting('IsShown', '0')` at the call site (see `Plugins/GroupFrames/GroupFrame.lua:HideNativeGroupFrames`), it kills the entire Blizzard group-frame update path.
 

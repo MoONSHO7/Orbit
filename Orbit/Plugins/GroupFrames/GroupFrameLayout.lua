@@ -254,3 +254,5 @@ function Orbit.GroupFrameLayoutMixin:UpdateContainerSize()
 
     Orbit.Skin.DefaultSetBorderHidden(self.container, true)
 end
+
+table.freeze(Orbit.GroupFrameLayoutMixin)

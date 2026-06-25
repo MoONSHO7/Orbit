@@ -19,8 +19,6 @@ local Plugin = Orbit:RegisterPlugin("Raid Panel", SYSTEM_ID, {
         DisplayMode  = 3,
         DisplayShape = 1,
         Compactness  = 0,
-        FadeEffect   = 0,
-        Anchor       = false,
     },
 })
 
@@ -33,13 +31,14 @@ local SHAPE_CIRCLE = 1
 local SHAPE_SQUARE = 2
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
-local INITIAL_DOCK_WIDTH      = 44
-local INITIAL_DOCK_HEIGHT     = 400
+-- Square placeholder so the first orientation probe isn't biased toward the long axis before RefreshDock sets the real size.
+local INITIAL_DOCK_SIZE       = 44
 local INITIAL_DOCK_X_OFFSET   = 200
 local DOCK_FRAME_LEVEL        = 100
 local DOCK_FRAME_STRATA       = "MEDIUM"
 local CLAMP_VISIBLE_MARGIN    = 30
 local DOCK_THICKNESS_PAD      = 2
+local EDIT_MODE_PREVIEW_OWNER = "OrbitRaidPanelEditModePreview"
 
 -- [ STATE ] -----------------------------------------------------------------------------------------
 local dock
@@ -164,7 +163,7 @@ end
 -- [ DOCK CREATION ] ---------------------------------------------------------------------------------
 local function CreateDock()
     dock = CreateFrame("Frame", "OrbitRaidPanel", UIParent)
-    dock:SetSize(INITIAL_DOCK_WIDTH, INITIAL_DOCK_HEIGHT)
+    dock:SetSize(INITIAL_DOCK_SIZE, INITIAL_DOCK_SIZE)
     dock:SetPoint("LEFT", UIParent, "LEFT", INITIAL_DOCK_X_OFFSET, 0)
     OrbitEngine.Pixel:Enforce(dock)
 
@@ -224,8 +223,9 @@ function Plugin:OnLoad()
     end)
 
     if EventRegistry then
-        EventRegistry:RegisterCallback("EditMode.Enter", function() self:UpdateVisibility() end, self)
-        EventRegistry:RegisterCallback("EditMode.Exit",  function() self:UpdateVisibility() end, self)
+        -- Unique owner so RegisterStandardEvents' (event, self) ApplySettings callbacks don't clobber these.
+        EventRegistry:RegisterCallback("EditMode.Enter", function() self:UpdateVisibility() end, EDIT_MODE_PREVIEW_OWNER)
+        EventRegistry:RegisterCallback("EditMode.Exit",  function() self:UpdateVisibility() end, EDIT_MODE_PREVIEW_OWNER)
     end
 
     self:RegisterStandardEvents()
@@ -258,8 +258,8 @@ function Plugin:OnDisable()
         self.eventFrame:SetScript("OnEvent", nil)
     end
     if EventRegistry then
-        EventRegistry:UnregisterCallback("EditMode.Enter", self)
-        EventRegistry:UnregisterCallback("EditMode.Exit", self)
+        EventRegistry:UnregisterCallback("EditMode.Enter", EDIT_MODE_PREVIEW_OWNER)
+        EventRegistry:UnregisterCallback("EditMode.Exit", EDIT_MODE_PREVIEW_OWNER)
     end
     OrbitEngine.NativeFrame:Unpark(CompactRaidFrameManager)
     -- Reset module-level state so re-enable (without /reload) builds a fresh dock.
@@ -298,7 +298,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         formatter = function(v) return DISPLAY_LABELS[v] or "" end,
     })
     table.insert(schema.controls, { type = "slider", key = "IconSize",    label = L.PLU_PORTAL_ICON_SIZE,    min = 15, max = 30,  step = 1, default = 24 })
-    table.insert(schema.controls, { type = "slider", key = "Spacing",     label = L.PLU_PORTAL_ICON_PADDING, min = 0,  max = 20,  step = 1, default = 5  })
+    table.insert(schema.controls, { type = "slider", key = "Spacing",     label = L.PLU_PORTAL_ICON_PADDING, min = 0,  max = 20,  step = 1, default = 5, mergeAtZero = true })
     table.insert(schema.controls, { type = "slider", key = "Compactness", label = L.PLU_PORTAL_COMPACTNESS,  min = 0,  max = 100, step = 1, default = 0  })
     OrbitEngine.Config:Render(dialog, systemFrame, self, schema)
 end

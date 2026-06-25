@@ -75,15 +75,6 @@ function Renderer:UpdateMaxPower(plugin, frame, systemIndex)
     if not frame or not plugin.powerType then return end
     local max = plugin.powerType == Enum.PowerType.Runes and 6 or UnitPowerMax("player", plugin.powerType)
     frame.maxPower = max
-    if not frame.StatusBar then
-        frame.StatusBarContainer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        frame.StatusBarContainer:SetAllPoints()
-        frame.StatusBarContainer:SetBackdrop(nil)
-        frame.StatusBar = CreateFrame("StatusBar", nil, frame.StatusBarContainer)
-        frame.StatusBar:SetAllPoints()
-        frame.StatusBar:SetMinMaxValues(0, 1)
-        frame.StatusBar:SetValue(0)
-    end
     frame.Spacers = frame.Spacers or {}
     for i = 1, MAX_SPACER_COUNT do
         if not frame.Spacers[i] then
@@ -269,17 +260,19 @@ function Renderer:UpdatePower(plugin, frame, systemIndex, textEnabled)
     if frame.StatusBarContainer then frame.StatusBarContainer:Show() end
     local cur = UnitPower("player", plugin.powerType, true)
     local max = frame.maxPower or 5
-    local mod = UnitPowerDisplayMod(plugin.powerType)
-    if mod and mod > 0 then cur = cur / mod end
-    local spec = GetSpecialization()
-    local specID = spec and GetSpecializationInfo(spec)
-    local isDestruction = PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION
-    if not isDestruction then cur = math.floor(cur) end
-    local curveData = plugin:GetSetting(systemIndex, "BarColorCurve")
-    local r, g, b
-    if curveData and #curveData.pins > 1 then
-        local progress = (max > 0) and (cur / max) or 0
-        r, g, b = OrbitEngine.ColorCurve:SampleColorCurveUnpacked(curveData, progress)
+    local r, g, b, isDestruction
+    if not (issecretvalue and issecretvalue(cur)) then
+        local mod = UnitPowerDisplayMod(plugin.powerType)
+        if mod and mod > 0 then cur = cur / mod end
+        local spec = GetSpecialization()
+        local specID = spec and GetSpecializationInfo(spec)
+        isDestruction = PLAYER_CLASS == "WARLOCK" and specID == WARLOCK_SPEC_DESTRUCTION
+        if not isDestruction then cur = math.floor(cur) end
+        local curveData = plugin:GetSetting(systemIndex, "BarColorCurve")
+        if curveData and #curveData.pins > 1 then
+            local progress = (max > 0) and (cur / max) or 0
+            r, g, b = OrbitEngine.ColorCurve:SampleColorCurveUnpacked(curveData, progress)
+        end
     end
     if not r then r, g, b = self:GetResourceColorUnpacked(plugin, systemIndex, nil, nil, false) end
     if frame.StatusBar then

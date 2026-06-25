@@ -232,6 +232,12 @@ end
 
 function W:OnDisable()
     DT.DatatextManager:UnregisterFromScheduler(self.name .. "_mem", "SLOW")
+    if self.isPinned then
+        self.isPinned = false
+        if self.pinTicker then self.pinTicker:Cancel(); self.pinTicker = nil end
+        if self.graphFrame then self.graphFrame:Hide() end
+        if self.pinnedTooltip then self.pinnedTooltip:Hide() end
+    end
 end
 
 function W:Init()

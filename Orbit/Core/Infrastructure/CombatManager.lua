@@ -48,9 +48,7 @@ function CM:QueueUpdate(callback, context)
 end
 
 function CM:OnCombatStart()
-    if EventRegistry then
-        EventRegistry:TriggerEvent("Orbit.CombatStart")
-    end
+    Orbit.EventBus:Fire("ORBIT_COMBAT_START")
 end
 
 function CM:OnCombatEnd()
@@ -71,16 +69,14 @@ function CM:OnCombatEnd()
             end
         end
     end
-    if EventRegistry then
-        EventRegistry:TriggerEvent("Orbit.CombatEnd")
-    end
+    Orbit.EventBus:Fire("ORBIT_COMBAT_END")
 end
 
 function CM:RegisterCombatCallback(onStart, onEnd)
-    if onStart and EventRegistry then
-        EventRegistry:RegisterCallback("Orbit.CombatStart", onStart)
+    if onStart then
+        Orbit.EventBus:On("ORBIT_COMBAT_START", onStart)
     end
-    if onEnd and EventRegistry then
-        EventRegistry:RegisterCallback("Orbit.CombatEnd", onEnd)
+    if onEnd then
+        Orbit.EventBus:On("ORBIT_COMBAT_END", onEnd)
     end
 end

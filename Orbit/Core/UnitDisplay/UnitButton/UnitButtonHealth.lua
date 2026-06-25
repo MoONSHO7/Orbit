@@ -173,3 +173,4 @@ function HealthMixin:SetClassColour(enabled)
 end
 
 UnitButton.HealthMixin = HealthMixin
+if table.freeze then table.freeze(HealthMixin) end

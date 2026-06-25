@@ -21,6 +21,7 @@ local NEXT_BTN_WIDTH = 70
 local NEXT_BTN_GAP = 6
 local FADE_DURATION = 0.3
 local NEXT_ENABLE_TIMER = 10
+local EDIT_MODE_OPEN_DELAY = 0.1
 local STAR_COUNT = 150
 local STAR_SIZE = 2
 local STAR_SPEED_MIN = 0.10
@@ -40,6 +41,20 @@ local TITLE_CLR = ACCENT
 local ACCENT_WIDTH = 2
 local TOOLTIP_LEVEL = 9500
 local FONT = "GameFontNormalSmall"
+local EXIT_DIALOG_WIDTH = 340
+local EXIT_DIALOG_PAD = 16
+local EXIT_DIALOG_LEVEL = 9700
+local EXIT_BLOCKER_LEVEL = 9600
+local EXIT_BTN_WIDTH = 130
+local EXIT_BTN_HEIGHT = 24
+local EXIT_BTN_GAP = 5
+local EXIT_BG_INSET_LEFT = 6
+local EXIT_BG_INSET_TOP = 21
+local EXIT_BG_INSET_RIGHT = 2
+local EXIT_BG_INSET_BOTTOM = 2
+local EXIT_STREAKS_OVERSHOOT_X = 2
+local EXIT_STREAKS_OVERSHOOT_Y = 7
+local EXIT_TITLE_OFFSET = 6
 
 -- [ LOCALIZATION ] ----------------------------------------------------------------------------------
 local L = Orbit.L
@@ -146,6 +161,7 @@ overlay.welcomeSub:SetAlpha(0)
 local taskState = {}
 local savedDialogStrata = nil
 local savedDialogLevel = nil
+local originalDragCallbacks = {}
 
 local function ResetTaskState()
     taskState.dragged = false
@@ -251,7 +267,6 @@ tip.nextBtn:SetScript("OnClick", function()
     else
         Tour:EndTour()
         Tour:ShowCanvasHint()
-        Tour:ShowDrawerHint()
     end
 end)
 
@@ -647,7 +662,6 @@ function Tour:ShowTourStop(idx)
     self.index = idx
     checkElapsed = 0
     stopElapsed = 0
-    taskCompleteAt = nil
 
     local anchor = ResolveAnchor(stop)
     if not anchor then self:EndTour(); return end
@@ -731,7 +745,8 @@ function Tour:StartTour(force)
         if Selection then
             for _, tf in ipairs({ frameA, frameB }) do
                 local origCb = Selection.dragCallbacks[tf]
-                if origCb then
+                if origCb and not originalDragCallbacks[tf] then
+                    originalDragCallbacks[tf] = origCb
                     Selection.dragCallbacks[tf] = function(...)
                         origCb(...)
                         C_Timer.After(0, function()
@@ -809,6 +824,7 @@ function Tour:StartTour(force)
 end
 
 function Tour:EndTour()
+    self:HideExitConfirm()
     -- Clean up current step
     if self.index > 0 then
         local curStop = TOUR_STOPS[self.index]
@@ -859,6 +875,13 @@ function Tour:EndTour()
         AnchorMod.BreakAnchor = originalBreakAnchor
         originalBreakAnchor = nil
     end
+    -- Restore drag callbacks (factory owns them) so a replayed tour doesn't nest another wrapper
+    if Selection then
+        for tf, cb in pairs(originalDragCallbacks) do
+            Selection.dragCallbacks[tf] = cb
+            originalDragCallbacks[tf] = nil
+        end
+    end
     -- Break any anchors on playground frames
     if frameA and frameB and Engine.FrameAnchor then
         Engine.FrameAnchor:BreakAnchor(frameA, true)
@@ -888,7 +911,107 @@ function Tour:EndTour()
     end
     -- Restore Orbit and Blizzard selection overlays
     if Selection then Selection:RefreshVisuals() end
+    -- Exiting the tour (even early) must not skip the hints; mark them pending so they still show next entry.
+    local as = Orbit.db and Orbit.db.AccountSettings
+    if as then
+        if as.CanvasHintComplete == nil then as.CanvasHintComplete = false end
+        if as.DrawerHintComplete == nil then as.DrawerHintComplete = false end
+    end
 end
+
+-- [ EXIT CONFIRMATION ] -----------------------------------------------------------------------------
+-- The overlay consumes ESC so Edit Mode never closes mid-tour; confirming exits via the taint-safe securecall.
+local exitBlocker = CreateFrame("Frame", nil, UIParent)
+exitBlocker:SetFrameStrata(Orbit.Constants.Strata.Topmost)
+exitBlocker:SetFrameLevel(EXIT_BLOCKER_LEVEL)
+exitBlocker:SetAllPoints(UIParent)
+exitBlocker:EnableMouse(true)
+exitBlocker:Hide()
+
+local exitDialog = CreateFrame("Frame", "OrbitTourExitDialog", UIParent)
+exitDialog:SetFrameStrata(Orbit.Constants.Strata.Topmost)
+exitDialog:SetFrameLevel(EXIT_DIALOG_LEVEL)
+exitDialog:SetWidth(EXIT_DIALOG_WIDTH)
+exitDialog:SetPoint("CENTER")
+exitDialog:EnableMouse(true)
+exitDialog:Hide()
+
+exitDialog.NineSlice = CreateFrame("Frame", nil, exitDialog, "NineSlicePanelTemplate")
+exitDialog.NineSlice.layoutType = "ButtonFrameTemplateNoPortrait"
+NineSliceUtil.ApplyLayoutByName(exitDialog.NineSlice, "ButtonFrameTemplateNoPortrait")
+exitDialog.NineSlice:SetFrameLevel(exitDialog:GetFrameLevel() + 1)
+
+exitDialog.Bg = exitDialog:CreateTexture(nil, "BACKGROUND", nil, -6)
+exitDialog.Bg:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
+exitDialog.Bg:SetHorizTile(true)
+exitDialog.Bg:SetVertTile(true)
+exitDialog.Bg:SetPoint("TOPLEFT", EXIT_BG_INSET_LEFT, -EXIT_BG_INSET_TOP)
+exitDialog.Bg:SetPoint("BOTTOMRIGHT", -EXIT_BG_INSET_RIGHT, EXIT_BG_INSET_BOTTOM)
+
+exitDialog.TopTileStreaks = exitDialog:CreateTexture(nil, "BACKGROUND", nil, -5)
+exitDialog.TopTileStreaks:SetAtlas("_UI-Frame-TopTileStreaks", true)
+exitDialog.TopTileStreaks:SetPoint("TOPLEFT", exitDialog.Bg, "TOPLEFT", -EXIT_STREAKS_OVERSHOOT_X, EXIT_STREAKS_OVERSHOOT_Y)
+exitDialog.TopTileStreaks:SetPoint("TOPRIGHT", exitDialog.Bg, "TOPRIGHT", EXIT_STREAKS_OVERSHOOT_X, EXIT_STREAKS_OVERSHOOT_Y)
+
+-- Title sits above the NineSlice so the metal top bar never overdraws it.
+exitDialog.TitleContainer = CreateFrame("Frame", nil, exitDialog)
+exitDialog.TitleContainer:SetFrameLevel(exitDialog.NineSlice:GetFrameLevel() + 10)
+exitDialog.TitleContainer:SetPoint("TOPLEFT", EXIT_BG_INSET_LEFT, -EXIT_TITLE_OFFSET)
+exitDialog.TitleContainer:SetPoint("TOPRIGHT", -EXIT_BG_INSET_LEFT, -EXIT_TITLE_OFFSET)
+exitDialog.TitleContainer:SetHeight(EXIT_BG_INSET_TOP)
+exitDialog.title = exitDialog.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+exitDialog.title:SetPoint("TOP", exitDialog.TitleContainer, "TOP")
+exitDialog.title:SetText(L.TOUR_EM_EXIT_TITLE)
+
+exitDialog.text = exitDialog:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+exitDialog.text:SetPoint("TOPLEFT", exitDialog, "TOPLEFT", EXIT_DIALOG_PAD, -(EXIT_BG_INSET_TOP + EXIT_DIALOG_PAD))
+exitDialog.text:SetWidth(EXIT_DIALOG_WIDTH - EXIT_DIALOG_PAD * 2)
+exitDialog.text:SetJustifyH("LEFT")
+exitDialog.text:SetSpacing(2)
+exitDialog.text:SetText(L.TOUR_EM_EXIT_TEXT)
+
+exitDialog.returnBtn = CreateFrame("Button", nil, exitDialog, "UIPanelButtonTemplate")
+exitDialog.returnBtn:SetSize(EXIT_BTN_WIDTH, EXIT_BTN_HEIGHT)
+exitDialog.returnBtn:SetPoint("BOTTOMRIGHT", exitDialog, "BOTTOM", -EXIT_BTN_GAP, EXIT_DIALOG_PAD)
+exitDialog.returnBtn:SetText(L.TOUR_EM_EXIT_RETURN)
+exitDialog.returnBtn:SetScript("OnClick", function() Tour:HideExitConfirm() end)
+
+exitDialog.exitBtn = CreateFrame("Button", nil, exitDialog, "UIPanelButtonTemplate")
+exitDialog.exitBtn:SetSize(EXIT_BTN_WIDTH, EXIT_BTN_HEIGHT)
+exitDialog.exitBtn:SetPoint("BOTTOMLEFT", exitDialog, "BOTTOM", EXIT_BTN_GAP, EXIT_DIALOG_PAD)
+exitDialog.exitBtn:SetText(L.TOUR_EM_EXIT_CONFIRM)
+exitDialog.exitBtn:SetScript("OnClick", function()
+    Tour:HideExitConfirm()
+    Tour:EndTour()
+    if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
+        securecall("HideUIPanel", EditModeManagerFrame)
+    end
+end)
+
+function Tour:HideExitConfirm()
+    self.exitConfirmShown = false
+    exitDialog:Hide()
+    exitBlocker:Hide()
+end
+
+function Tour:ShowExitConfirm()
+    if self.exitConfirmShown then return end
+    self.exitConfirmShown = true
+    local textH = exitDialog.text:GetStringHeight()
+    exitDialog:SetHeight(EXIT_BG_INSET_TOP + EXIT_DIALOG_PAD + textH + EXIT_DIALOG_PAD + EXIT_BTN_HEIGHT + EXIT_DIALOG_PAD)
+    exitBlocker:Show()
+    exitDialog:Show()
+end
+
+overlay:EnableKeyboard(true)
+overlay:SetScript("OnKeyDown", function(self, key)
+    if Tour.active and key == "ESCAPE" then
+        self:SetPropagateKeyboardInput(false)
+        if Tour.exitConfirmShown then Tour:HideExitConfirm() else Tour:ShowExitConfirm() end
+    else
+        self:SetPropagateKeyboardInput(true)
+    end
+end)
 
 -- [ CANVAS MODE HINT ] ------------------------------------------------------------------------------
 local canvasTip = CreateFrame("Frame", nil, UIParent)
@@ -1066,6 +1189,7 @@ local originalDrawerToggle = nil
 function Tour:ShowDrawerHint()
     local as = Orbit.db and Orbit.db.AccountSettings
     if as and as.DrawerHintComplete then return end
+    if not Orbit:IsPluginEnabled("Datatexts") then return end
     if as and as.DrawerHintComplete == nil then as.DrawerHintComplete = false end
     drawerTip.title:SetText(L.TOUR_EM_DRAWER_TITLE)
     drawerTip.text:SetText(L.TOUR_EM_DRAWER_TEXT)
@@ -1100,26 +1224,35 @@ end
 
 -- [ EDIT MODE LIFECYCLE ] ---------------------------------------------------------------------------
 if EventRegistry then
+    -- Canvas hint lives in Edit Mode; the datatext hint is a main-screen hint (shown on Edit Mode exit).
     EventRegistry:RegisterCallback("EditMode.Enter", function()
         if Tour.active then return end
         local as = Orbit.db and Orbit.db.AccountSettings
         if not as then return end
         if as.CanvasHintComplete == false then Tour:ShowCanvasHint() end
-        if as.DrawerHintComplete == false then Tour:ShowDrawerHint() end
+        if Tour.drawerHintActive then Tour:HideDrawerHint(false) end
     end, Tour)
     EventRegistry:RegisterCallback("EditMode.Exit", function()
         if Tour.canvasHintActive then Tour:HideCanvasHint(false) end
-        if Tour.drawerHintActive then Tour:HideDrawerHint(false) end
+        local as = Orbit.db and Orbit.db.AccountSettings
+        if as and as.DrawerHintComplete == false then Tour:ShowDrawerHint() end
     end, Tour)
 end
 
--- [ SLASH COMMAND (testing) ] -----------------------------------------------------------------------
-SLASH_ORBITTOUR1 = "/orbittour"
-SlashCmdList["ORBITTOUR"] = function()
-    if not EditModeManagerFrame or not EditModeManagerFrame:IsShown() then
-        print("|cFF66DD66Orbit:|r Enter Edit Mode first (Escape > Edit Mode)")
-        return
+-- [ EXTERNAL ENTRY ] --------------------------------------------------------------------------------
+-- Force-starts the tour from outside Edit Mode (slash command, welcome dialog), opening Edit Mode first.
+function Tour:OpenAndStart()
+    if not EditModeManagerFrame then return end
+    -- Edit Mode (and therefore the tour) cannot be entered in combat; bail cleanly rather than blocked-action.
+    if InCombatLockdown() then return end
+    if self.active then self:EndTour() end
+    if EditModeManagerFrame:IsShown() then
+        self:StartTour(true)
+    else
+        -- Open Edit Mode first, then start once entry has built the frame selections the tour needs.
+        securecall("ShowUIPanel", EditModeManagerFrame)
+        C_Timer.After(EDIT_MODE_OPEN_DELAY, function()
+            if EditModeManagerFrame:IsShown() then Tour:StartTour(true) end
+        end)
     end
-    if Tour.active then Tour:EndTour() end
-    Tour:StartTour(true)
 end

@@ -58,6 +58,11 @@ local ATLAS_OUTER_FX = "UF-Arcane-OuterFX"
 local ATLAS_SPARKLES = "shop-toast-sparkles-flipbook"
 local ATLAS_VIGOR = "dragonriding_sgvigor_burst_flipbook"
 
+-- Orbit prime colors (orange / purple / teal) for the tooltip click lines.
+local PRIME_ORANGE = { r = 1.0, g = 0.55, b = 0.15 }
+local PRIME_PURPLE = { r = 0.70, g = 0.45, b = 1.0 }
+local PRIME_TEAL   = { r = 0.25, g = 0.80, b = 0.80 }
+
 local TWO_PI = math.pi * 2
 local sin, floor, mathmin = math.sin, math.floor, math.min
 
@@ -120,8 +125,9 @@ local function OnEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("Orbit", 1, 1, 1)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine(L.CMD_MINIMAP_LEFT_CLICK, 0.8, 0.8, 0.8)
-    GameTooltip:AddLine(L.CMD_MINIMAP_RIGHT_CLICK, 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(L.CMD_MINIMAP_LEFT_CLICK, PRIME_ORANGE.r, PRIME_ORANGE.g, PRIME_ORANGE.b)
+    GameTooltip:AddLine(L.CMD_MINIMAP_MIDDLE_CLICK, PRIME_TEAL.r, PRIME_TEAL.g, PRIME_TEAL.b)
+    GameTooltip:AddLine(L.CMD_MINIMAP_RIGHT_CLICK, PRIME_PURPLE.r, PRIME_PURPLE.g, PRIME_PURPLE.b)
     GameTooltip:Show()
     self.outerFX:Show()
     self._hover = true
@@ -151,6 +157,8 @@ local function OnClick(self, button)
         if Orbit._pluginSettingsCategoryID then
             Settings.OpenToCategory(Orbit._pluginSettingsCategoryID)
         end
+    elseif button == "MiddleButton" then
+        Orbit.EventBus:Fire("ORBIT_SPOTLIGHT_TOGGLE")
     end
 end
 
@@ -158,7 +166,7 @@ end
 local function CreateButton(parent)
     local btn = CreateFrame("Button", BUTTON_NAME, parent)
     btn:SetAllPoints(parent)
-    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp")
 
     btn.bg = btn:CreateTexture(nil, "BACKGROUND")
     btn.bg:SetColorTexture(0, 0, 0, 1)

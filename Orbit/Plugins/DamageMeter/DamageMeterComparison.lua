@@ -113,6 +113,8 @@ end
 -- source.sourceGUID is ConditionalSecret in combat; out-of-combat only.
 local function GetSpecMatches(def, originSource)
     if not originSource or InCombatLockdown() then return {} end
+    -- The combat gate can race; a secret origin GUID would throw on the `~=` compare below — bail.
+    if issecretvalue(originSource.sourceGUID) then return {} end
     local Data = OrbitEngine.DamageMeterData
     if not Data or not Data:IsAvailable() then return {} end
     local session = Data:ResolveSession(def.sessionID, def.sessionType, def.meterType)
@@ -123,6 +125,7 @@ local function GetSpecMatches(def, originSource)
     local matches = { originSource }
     for _, source in ipairs(session.combatSources) do
         if source ~= originSource
+           and not issecretvalue(source.sourceGUID)
            and source.sourceGUID ~= originSource.sourceGUID
            and source.specIconID == targetSpec
         then
@@ -149,10 +152,13 @@ local function GatherSpellMatrix(def, candidates)
         if sourceData and sourceData.combatSpells then
             for _, spell in ipairs(sourceData.combatSpells) do
                 local id = spell.spellID
-                if id then
-                    local amount = spell.totalAmount or 0
+                local amount = spell.totalAmount
+                -- id is a table key and amount feeds arithmetic; both throw if secret — drop the row in the race.
+                if id and not issecretvalue(id) and not issecretvalue(amount) then
+                    amount = amount or 0
+                    local dps = spell.amountPerSecond
                     slot.spellAmounts[id] = amount
-                    slot.spellDPS[id]     = spell.amountPerSecond or 0
+                    slot.spellDPS[id]     = (not issecretvalue(dps) and dps) or 0
                     slot.totalDamage      = slot.totalDamage + amount
                     unionByID[id]         = (unionByID[id] or 0) + amount
                     if i == 1 then originAmounts[id] = amount end
@@ -208,6 +214,8 @@ local function GetSpellTexture(spellID)
 end
 
 local function ShortName(fullName)
+    -- source.name is ConditionalSecret; find/sub on a secret string throws, so return it whole for the sink.
+    if issecretvalue(fullName) then return fullName end
     if not fullName or fullName == "" then return "?" end
     local dash = fullName:find("-", 1, true)
     return dash and fullName:sub(1, dash - 1) or fullName
@@ -393,7 +401,9 @@ local function InstallHoverBinding(hitFrame, ctx)
                 pctTotal = slot.totalDamage
             else
                 amount   = slot.totalDamage or 0
-                dps      = slot.source.amountPerSecond or 0
+                -- amountPerSecond is read live here (not laundered at gather), so it can be secret in the race.
+                local srcDps = slot.source.amountPerSecond
+                dps      = (not issecretvalue(srcDps) and srcDps) or 0
                 pctTotal = c.maxTotal
             end
             local pct = (pctTotal and pctTotal > 0) and (amount / pctTotal * 100) or 0

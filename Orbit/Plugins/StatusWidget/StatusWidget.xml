@@ -1,0 +1,15 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="StatusWidget.lua"/>
+    <Script file="FlourishQueue.lua"/>
+    <Script file="GreatVault.lua"/>
+    <Script file="SocialToast.lua"/>
+    <Script file="Mail.lua"/>
+    <Script file="Animation.lua"/>
+    <Script file="Loot.lua"/>
+    <Script file="LootRoll.lua"/>
+    <Script file="Milestones.lua"/>
+    <Script file="AlertToasts.lua"/>
+    <Script file="FillModes.lua"/>
+    <Script file="MythicPlus.lua"/>
+    <Script file="SourceMenu.lua"/>
+</Ui>

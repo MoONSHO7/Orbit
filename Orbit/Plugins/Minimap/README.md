@@ -36,7 +36,7 @@ all components below are individually positionable via canvas mode and can be di
 | **Compartment**   | collects all LibDBIcon + legacy minimap buttons into a hover-reveal drawer with icon, name, click/tooltip handlers. hidden if a minimap click is bound to `Addons` |
 | **Zoom**          | zoom in/out buttons, fade in on minimap hover, fade out on leave. dimmed/disabled at min/max zoom                                 |
 | **Difficulty**    | reparented blizzard instance difficulty indicator. icon mode and text mode now use separate internal canvas components, each with its own bounds and saved position |
-| **Missions**      | reparented blizzard expansion landing page button (garrison/covenant/etc.)                                                        |
+| **Missions**      | reparented blizzard expansion landing page button (garrison/covenant/etc.). Canvas **Reveal on Mouseover** override fades it unless the minimap is hovered (mirrors the Compartment/Zoom hover-reveal); the canvas preview shows the current expansion's live icon, falling back to the latest expansion graphic |
 | **Mail**          | reparented blizzard new mail indicator                                                                                            |
 | **CraftingOrder** | reparented blizzard crafting order indicator                                                                                      |
 
@@ -64,8 +64,9 @@ canvas overrides (font, size, color) are supported for ZoneText, Clock, Coords, 
 | key                | type    | default | description                                    |
 | ------------------ | ------- | ------- | ---------------------------------------------- |
 | `Scale`            | slider  | 100     | overall minimap scale (%)                      |
-| `Size`             | slider  | 220     | minimap diameter in pixels                     |
-| `BorderRing`       | dropdown | `none`  | decorative ring around the round minimap (`none` / `blizzard` = `ui-hud-minimap-frame` / `round` = solid fill / `fadedcircle` = soft-edge mask / `void` = `wowlabs_minimapvoid-ring-single`). Tinted by `BorderColor`. Only shown when `Shape = round` |
+| `Size`             | slider  | 300     | minimap diameter in pixels (100–400)           |
+| `Shape`            | dropdown | `round` | `square` / `round` / `splatter` (HUD view always renders as splatter) |
+| `BorderRing`       | dropdown | `fadedcircle` | decorative ring around the round minimap (`none` / `blizzard` = `ui-hud-minimap-frame` / `round` = solid fill / `fadedcircle` = soft-edge mask / `void` = `wowlabs_minimapvoid-ring-single`). Tinted by `BorderColor`. Only shown when `Shape = round` |
 | `ZoneTextColoring` | boolean | true    | colour zone text by pvp type (canvas override) |
 | `DifficultyShowBackground`| boolean | false   | show blizzard banner behind difficulty icon on the live minimap |
 | `LeftClickAction` | dropdown | `none` | left-click action for the minimap |

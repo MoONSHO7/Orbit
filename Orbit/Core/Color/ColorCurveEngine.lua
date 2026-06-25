@@ -156,3 +156,9 @@ function CCE:InvalidateNativeCurveCache(curveData)
         curveData._hasClassPin = nil
     end
 end
+
+-- Cache key is curveData identity, which survives a color override; flush so baked pins rebuild.
+Orbit.EventBus:On("ORBIT_COLORS_CHANGED", function()
+    nativeCurveCache = setmetatable({}, { __mode = "k" })
+    unitCurveCache = setmetatable({}, { __mode = "k" })
+end)

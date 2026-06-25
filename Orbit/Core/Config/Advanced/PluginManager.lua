@@ -12,6 +12,8 @@ local COLUMNS = 3
 local RELOAD_BUTTON_WIDTH = 160
 local RELOAD_BUTTON_HEIGHT = 32
 local BODY_PADDING = 8
+local SECTION_HEADER_HEIGHT = 28
+local GROUP_SPACING = 22
 
 local PLUGIN_GROUPS = {
     { header = L.PLG_UNIT_FRAMES, names = {
@@ -28,8 +30,7 @@ local PLUGIN_GROUPS = {
         "Queue Status",
         { label = L.PLG_NAME_TALKING_HEAD, plugins = { "Talking Head" }, triState = true },
         "Minimap", "Minimap Button", "Datatexts",
-        { label = L.PLG_NAME_EXPERIENCE_BAR, plugins = { "Experience Bar" }, triState = true },
-        { label = L.PLG_NAME_HONOR_BAR,      plugins = { "Honor Bar" },      triState = true },
+        { label = L.PLG_NAME_STATUS_BAR_V2,  plugins = { "Status Widget" } },
         "Objectives",
     }},
 }
@@ -47,6 +48,30 @@ local function GetTriState(primaryPlugin, pluginNames)
         if not Orbit:IsPluginEnabled(name) then return 0 end
     end
     return 1
+end
+
+-- [ TITLED SECTION ]---------------------------------------------------------------------------------
+local function CreatePlainSection(parent, headerText)
+    local section = CreateFrame("Frame", nil, parent)
+    local header = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    header:SetPoint("TOPLEFT", 4, 0)
+    header:SetJustifyH("LEFT")
+    header:SetText(headerText)
+    local divider = section:CreateTexture(nil, "ARTWORK")
+    divider:SetColorTexture(1, 0.82, 0, 0.3)
+    divider:SetHeight(1)
+    divider:SetPoint("TOPLEFT", section, "TOPLEFT", 4, -18)
+    divider:SetPoint("TOPRIGHT", section, "TOPRIGHT", -BODY_PADDING, -18)
+    local body = CreateFrame("Frame", nil, section)
+    body:SetPoint("TOPLEFT", 0, -SECTION_HEADER_HEIGHT)
+    body:SetPoint("TOPRIGHT", 0, -SECTION_HEADER_HEIGHT)
+    body:SetHeight(1)
+    function section:GetBody() return body end
+    function section:SetContentHeight(h)
+        body:SetHeight(h)
+        self:SetHeight(SECTION_HEADER_HEIGHT + h)
+    end
+    return section
 end
 
 -- [ BUILD ]------------------------------------------------------------------------------------------
@@ -71,11 +96,11 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
     local function CheckPendingChanges()
         pendingChanges = false
         for _, w in ipairs(widgets) do
-            if w._allLiveToggle then
-            elseif w._isTriState then
-                if w._initialTriState ~= w:GetTriState() then pendingChanges = true; break end
-            else
-                if w._initialState ~= w:GetChecked() then pendingChanges = true; break end
+            -- Live-toggle plugins apply immediately, so they never count toward a pending reload.
+            if not w._allLiveToggle then
+                if w._isTriState then
+                    if w._initialTriState ~= w:GetTriState() then pendingChanges = true; break end
+                elseif w._initialState ~= w:GetChecked() then pendingChanges = true; break end
             end
         end
         UpdateReloadButton()
@@ -177,11 +202,10 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
     -- Scrollable area
     local scrollFrame, scrollChild = Layout:CreateScrollArea(pluginContent, nil, A.PADDING + RELOAD_BUTTON_HEIGHT + 8)
 
-    -- Build accordion sections
+    -- Plain titled sections — always expanded, no collapse toggle.
     local sections = {}
     for _, group in ipairs(PLUGIN_GROUPS) do
-        local section = Layout:CreateAccordion(scrollChild, group.header)
-        section:SetParent(scrollChild)
+        local section = CreatePlainSection(scrollChild, group.header)
         section._group = group
         table.insert(sections, section)
     end
@@ -192,7 +216,7 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
             section:ClearAllPoints()
             section:SetPoint("TOPLEFT", 0, y)
             section:SetPoint("TOPRIGHT", 0, y)
-            y = y - section:GetHeight() - A.SECTION_SPACING
+            y = y - section:GetHeight() - GROUP_SPACING
         end
         scrollFrame:UpdateContentHeight(math.abs(y) + 10)
     end
@@ -250,6 +274,5 @@ function Orbit._AC.BuildPluginContent(pluginContent, frame)
         reloadButton:Show()
     end
 
-    for _, section in ipairs(sections) do section._onToggle = LayoutSections end
     pluginContent:SetScript("OnShow", BuildCheckboxes)
 end

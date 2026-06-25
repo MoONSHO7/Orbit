@@ -10,21 +10,15 @@ local CC = CanvasMode.CreatorConstants
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
 local HOLD_DURATION = 2.0
 local FADE_DURATION = 0.5
+local MISSIONS_DEFAULT_ATLAS = "midnight-landingbutton-up"
 
+-- Preview-only cycling sets (no live-mixin equivalent). Role/Leader atlases are NOT here — they come from Orbit.StatusIconMixin (the domain owner) so the strings live in one place.
 local CYCLING_ATLASES = {
     StatusIcons = {
         { atlas = "RaidFrame-Icon-Phasing" },
         { atlas = "UI-LFG-ReadyMark-Raid" },
         { atlas = "RaidFrame-Icon-Rez" },
         { atlas = "RaidFrame-Icon-SummonPending" },
-    },
-    RoleIcon = {
-        { atlas = "UI-LFG-RoleIcon-Tank" },
-        { atlas = "UI-LFG-RoleIcon-Healer" },
-        { atlas = "UI-LFG-RoleIcon-DPS" },
-    },
-    LeaderIcon = {
-        { atlas = "UI-HUD-UnitFrame-Player-Group-LeaderIcon" },
     },
     PvpIcon = {
         { atlas = "AllianceAssaultsMapBanner" },
@@ -37,37 +31,21 @@ local CYCLING_ATLASES = {
         { atlas = "icons_64x64_poison" },
         { atlas = "icons_64x64_bleed" },
     },
-    -- Expansion landing page button — cycles through all known expansion icons
-    Missions = {
-        { atlas = "GarrLanding-MinimapIcon-Horde-Up" },           -- WoD (Horde)
-        { atlas = "GarrLanding-MinimapIcon-Alliance-Up" },        -- WoD (Alliance)
-        { atlas = "legionmission-landingbutton-warrior-up" },     -- Legion
-        { atlas = "BFAMission-LandingButton-Horde-Up" },          -- BfA
-        { atlas = "Shadowlands-landingbutton-venthyr-up" },       -- Shadowlands
-        { atlas = "dragonflight-landingbutton-up" },              -- Dragonflight
-        { atlas = "TWWLandingPage-ButtonIcon-Earthen" },          -- The War Within
-    },
-}
-
-local ROUND_ROLE_ATLASES = {
-    { atlas = "icons_64x64_tank" },
-    { atlas = "icons_64x64_heal" },
-    { atlas = "icons_64x64_damage" },
-}
-
-local HEADER_ROLE_ATLASES = {
-    { atlas = "GO-icon-role-Header-Tank" },
-    { atlas = "GO-icon-role-Header-Healer" },
-    { atlas = "GO-icon-role-Header-DPS" },
-    { atlas = "GO-icon-role-Header-DPS-Ranged" },
-}
-
-local HEADER_LEADER_ATLASES = {
-    { atlas = "GO-icon-Header-Assist-Applied" },
-    { atlas = "GO-icon-Header-Assist-Available" },
 }
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
+local function ResolveMissionsAtlas()
+    local elp = ExpansionLandingPage
+    local info = elp and elp.GetOverlayMinimapDisplayInfo and elp:GetOverlayMinimapDisplayInfo()
+    local atlas = info and info.normalAtlas
+    if not atlas then
+        local btn = ExpansionLandingPageMinimapButton
+        local normal = btn and btn.GetNormalTexture and btn:GetNormalTexture()
+        atlas = normal and normal:GetAtlas()
+    end
+    return atlas or MISSIONS_DEFAULT_ATLAS
+end
+
 local function CreateFadeGroup(tex, fromAlpha, toAlpha)
     local group = tex:CreateAnimationGroup()
     local anim = group:CreateAnimation("Alpha")
@@ -83,21 +61,13 @@ local function Create(container, preview, key, source, data)
     local atlases = CYCLING_ATLASES[key]
     local overrides = data and data.overrides
 
-    -- Resolve atlas set from overrides for keys not in CYCLING_ATLASES or with style variants
+    -- Role/Leader atlas+style resolution lives in the domain owner; this creator is a generic crossfader.
     if key == "RoleIcon" then
-        if overrides and overrides.RoleIconStyle == "round" then atlases = ROUND_ROLE_ATLASES
-        elseif overrides and overrides.RoleIconStyle == "header" then atlases = HEADER_ROLE_ATLASES end
-        if overrides and overrides.HideDPS then
-            local dpsAtlas = (atlases == ROUND_ROLE_ATLASES) and "icons_64x64_damage" or (atlases == HEADER_ROLE_ATLASES) and "GO-icon-role-Header-DPS" or "UI-LFG-RoleIcon-DPS"
-            local rangedAtlas = (atlases == HEADER_ROLE_ATLASES) and "GO-icon-role-Header-DPS-Ranged" or nil
-            local filtered = {}
-            for _, entry in ipairs(atlases or {}) do
-                if entry.atlas ~= dpsAtlas and entry.atlas ~= rangedAtlas then filtered[#filtered + 1] = entry end
-            end
-            atlases = filtered
-        end
+        atlases = Orbit.StatusIconMixin:GetRoleCanvasAtlases(overrides)
     elseif key == "LeaderIcon" then
-        if overrides and overrides.LeaderIconStyle == "header" then atlases = HEADER_LEADER_ATLASES end
+        atlases = Orbit.StatusIconMixin:GetLeaderCanvasAtlases(overrides)
+    elseif key == "Missions" then
+        atlases = { { atlas = ResolveMissionsAtlas() } }
     end
 
     if not atlases or #atlases == 0 then return nil end

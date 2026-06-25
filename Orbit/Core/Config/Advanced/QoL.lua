@@ -58,9 +58,7 @@ local function BuildMoveMore(body)
     Layout:AddControl(body, saveCb)
 
     local resetBtn = Layout:CreateButton(body, L.PLU_MM_RESET_ALL, function()
-        if Orbit.MoveMore and Orbit.MoveMore.ClearSavedPositions then
-            Orbit.MoveMore:ClearSavedPositions()
-        end
+        Orbit.MoveMore:ClearSavedPositions()
     end)
     Layout:AddControl(body, resetBtn)
 
@@ -168,61 +166,67 @@ local SPOTLIGHT_SECTION_GAP = 14
 local SPOTLIGHT_ROW_H = 26
 local SPOTLIGHT_HOTKEY_BTN_W = 140
 local SPOTLIGHT_HOTKEY_BTN_H = 22
-local SPOTLIGHT_MODIFIERS = { "ALT", "CTRL", "SHIFT" }
-local SPOTLIGHT_MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
-
--- Composes the modifier prefix Blizzard's binding system expects (ALT-CTRL-SHIFT-KEY).
-local function BuildBindingString(key)
-    local parts = {}
-    if IsAltKeyDown() then parts[#parts + 1] = "ALT" end
-    if IsControlKeyDown() then parts[#parts + 1] = "CTRL" end
-    if IsShiftKeyDown() then parts[#parts + 1] = "SHIFT" end
-    parts[#parts + 1] = key
-    return table.concat(parts, "-")
-end
-
--- Click → listen; next non-modifier keypress saves via SetBinding. Right-click clears, ESCAPE cancels.
+-- Bind capture matching Orbit's Welcome dialog / Blizzard keybinds: same button skin + keyboard, mouse, wheel.
 local function CreateHotkeyCapture(parent, bindingName)
-    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    local btn = CreateFrame("Button", nil, parent, "UIMenuButtonStretchTemplate")
     btn:SetSize(SPOTLIGHT_HOTKEY_BTN_W, SPOTLIGHT_HOTKEY_BTN_H)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    btn.SelectedHighlight = btn:CreateTexture(nil, "OVERLAY")
+    btn.SelectedHighlight:SetTexture("Interface\\Buttons\\UI-Silver-Button-Select")
+    btn.SelectedHighlight:SetBlendMode("ADD")
+    btn.SelectedHighlight:SetPoint("CENTER", 0, -3)
+    btn.SelectedHighlight:SetSize(SPOTLIGHT_HOTKEY_BTN_W, SPOTLIGHT_HOTKEY_BTN_H)
+    btn.SelectedHighlight:Hide()
 
     local function Refresh()
-        btn:SetText(GetBindingKey(bindingName) or L.PLU_SPT_UNBOUND)
+        local key = GetBindingKey(bindingName)
+        local text = key and GetBindingText(key)
+        btn:SetText(text and text ~= "" and text or GRAY_FONT_COLOR:WrapTextInColorCode(L.PLU_SPT_UNBOUND))
     end
 
     local function StopListening()
-        -- Propagation stays false so the captured key doesn't bubble to the binding system — SetBinding+propagate would re-fire the new binding immediately.
-        btn:EnableKeyboard(false)
         btn._listening = false
+        btn.SelectedHighlight:Hide()
+        btn:EnableKeyboard(false)
+        btn:EnableMouseWheel(false)
+        btn:SetPropagateKeyboardInput(true)
+        btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        btn:SetScript("OnKeyDown", nil)
+        btn:SetScript("OnMouseWheel", nil)
         Refresh()
     end
 
-    btn:SetScript("OnClick", function(self, button)
-        if button == "RightButton" then
-            local existing = GetBindingKey(bindingName)
-            if existing then SetBinding(existing) end
-            SaveBindings(GetCurrentBindingSet())
-            if self._listening then StopListening() else Refresh() end
-            return
-        end
-        if self._listening then StopListening(); return end
-        self._listening = true
-        self:EnableKeyboard(true)
-        self:SetPropagateKeyboardInput(false)
-        self:SetText(L.PLU_SPT_PRESS_KEY)
-    end)
-
-    btn:SetScript("OnKeyDown", function(self, key)
-        if not self._listening then self:SetPropagateKeyboardInput(true); return end
+    local function Process(input)
+        local key = GetConvertedKeyOrButton(input)
         if key == "ESCAPE" then StopListening(); return end
-        if SPOTLIGHT_MODIFIER_KEYS[key] then return end
-        local fullKey = BuildBindingString(key)
+        if IsKeyPressIgnoredForBinding(key) then return end
         local existing = GetBindingKey(bindingName)
         if existing then SetBinding(existing) end
-        SetBinding(fullKey, bindingName)
+        SetBinding(CreateKeyChordStringUsingMetaKeyState(key), bindingName)
         SaveBindings(GetCurrentBindingSet())
         StopListening()
+    end
+
+    btn:SetScript("OnClick", function(self, mouseButton, isDown)
+        if self._listening then
+            if isDown then Process(mouseButton) end
+            return
+        end
+        if mouseButton == "RightButton" then
+            local existing = GetBindingKey(bindingName)
+            if existing then SetBinding(existing); SaveBindings(GetCurrentBindingSet()) end
+            Refresh()
+            return
+        end
+        self._listening = true
+        self.SelectedHighlight:Show()
+        self:RegisterForClicks("AnyDown", "AnyUp")
+        self:EnableMouseWheel(true)
+        self:EnableKeyboard(true)
+        self:SetPropagateKeyboardInput(false)
+        self:SetScript("OnKeyDown", function(s, k) Process(k) end)
+        self:SetScript("OnMouseWheel", function(s, d) Process(d > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN") end)
+        self:SetText(L.PLU_SPT_PRESS_KEY)
     end)
 
     Refresh()
@@ -234,10 +238,6 @@ local SPOTLIGHT_DESC_HEIGHT = 36
 local function BuildSpotlight(body)
     local yPos = -10
     local startX = SPOTLIGHT_COL_X_LEFT
-    -- Widgets gated by the Enable checkbox: hidden when disabled, shown when enabled.
-    local gated = {}
-    -- Heights captured during build so the accordion can shrink/expand on toggle without rebuilding.
-    local collapsedHeight, expandedHeight
 
     local desc = Layout:CreateDescription(body, L.PLU_SPT_DESC, A.MUTED)
     Layout:AddControl(body, desc)
@@ -246,41 +246,16 @@ local function BuildSpotlight(body)
     desc:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, yPos)
     yPos = yPos - SPOTLIGHT_DESC_HEIGHT
 
-    -- Resizes the enclosing accordion and triggers the panel reflow so the disabled state has no ghost space.
-    local function Refresh(enabled)
-        for _, w in ipairs(gated) do w:SetShown(enabled) end
-        local section = body:GetParent()
-        if section and section.SetContentHeight and collapsedHeight and expandedHeight then
-            section:SetContentHeight(enabled and expandedHeight or collapsedHeight)
-            if section._onToggle then section._onToggle() end
-        end
-    end
-
-    -- Compact checkbox needs a frame width; dual anchors give a dynamic half-width column for row 1.
-    local enableCb = Layout:CreateCheckbox(body, L.PLU_SPT_ENABLE, L.PLU_SPT_ENABLE_TT, GetAccountSetting("Spotlight", false), function(checked)
-        SetAccountSetting("Spotlight", checked)
-        if checked then Orbit.Spotlight:Enable() else Orbit.Spotlight:Disable() end
-        Refresh(checked)
-    end, { compact = true })
-    Layout:AddControl(body, enableCb)
-    enableCb:ClearAllPoints()
-    enableCb:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
-    enableCb:SetPoint("TOPRIGHT", body, "TOP", 0, yPos)
-
-    -- Hotkey row (right half): static "Hotkey:" label anchored at column-2 start; capture button to its right.
+    -- Hotkey row: static "Hotkey:" label with the capture button to its right.
     local hotkeyLabel = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     hotkeyLabel:SetText(L.PLU_SPT_HOTKEY .. ":")
-    hotkeyLabel:SetPoint("TOPLEFT", body, "TOP", 0, yPos - 4)
-    gated[#gated + 1] = hotkeyLabel
+    hotkeyLabel:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos - 4)
 
     local hotkeyBtn = CreateHotkeyCapture(body, SPOTLIGHT_BINDING)
     hotkeyBtn:SetPoint("LEFT", hotkeyLabel, "RIGHT", 8, 0)
-    gated[#gated + 1] = hotkeyBtn
     yPos = yPos - SPOTLIGHT_ROW_H
-    -- Capture the height of the always-visible header row so the section can collapse to it when disabled.
-    collapsedHeight = math.abs(yPos)
 
-    -- Row 2: Fuzzy (left column) + HidePassives (right column).
+    -- Fuzzy (left column) + Hide Passives (right column).
     yPos = yPos - SPOTLIGHT_SECTION_GAP
     local fuzzyCb = Layout:CreateCheckbox(body, L.PLU_SPT_FUZZY, L.PLU_SPT_FUZZY_TT, GetAccountSetting("Spotlight_Fuzzy", true), function(checked)
         SetAccountSetting("Spotlight_Fuzzy", checked)
@@ -289,7 +264,6 @@ local function BuildSpotlight(body)
     fuzzyCb:ClearAllPoints()
     fuzzyCb:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
     fuzzyCb:SetPoint("TOPRIGHT", body, "TOP", 0, yPos)
-    gated[#gated + 1] = fuzzyCb
 
     local passiveCb = Layout:CreateCheckbox(body, L.PLU_SPT_HIDE_PASSIVES, L.PLU_SPT_HIDE_PASSIVES_TT, GetAccountSetting("Spotlight_HidePassives", true), function(checked)
         SetAccountSetting("Spotlight_HidePassives", checked)
@@ -298,7 +272,6 @@ local function BuildSpotlight(body)
     passiveCb:ClearAllPoints()
     passiveCb:SetPoint("TOPLEFT", body, "TOP", 0, yPos)
     passiveCb:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, yPos)
-    gated[#gated + 1] = passiveCb
     yPos = yPos - SPOTLIGHT_ROW_H - SPOTLIGHT_ROW_GAP
 
     -- Scale (left half) + Max Results (right half) — slider template needs both anchors for label + value text.
@@ -311,16 +284,14 @@ local function BuildSpotlight(body)
     scaleSlider:ClearAllPoints()
     scaleSlider:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
     scaleSlider:SetPoint("TOPRIGHT", body, "TOP", -Pixel:Snap(SPOTLIGHT_COL_GAP / 2, body:GetEffectiveScale()), yPos)
-    gated[#gated + 1] = scaleSlider
 
-    local maxSlider = Layout:CreateSlider(body, L.PLU_SPT_MAX_RESULTS, 10, 100, 1, tostring, GetAccountSetting("Spotlight_MaxResults", 25), function(val)
+    local maxSlider = Layout:CreateSlider(body, L.PLU_SPT_MAX_RESULTS, 10, 100, 1, tostring, GetAccountSetting("Spotlight_MaxResults", 100), function(val)
         SetAccountSetting("Spotlight_MaxResults", math_floor(val + 0.5))
     end)
     Layout:AddControl(body, maxSlider)
     maxSlider:ClearAllPoints()
     maxSlider:SetPoint("TOPLEFT", body, "TOP", Pixel:Snap(SPOTLIGHT_COL_GAP / 2, body:GetEffectiveScale()), yPos)
     maxSlider:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, yPos)
-    gated[#gated + 1] = maxSlider
     yPos = yPos - 40 - SPOTLIGHT_ROW_GAP
 
     -- Search Categories header (full-width) — header template needs both left+right anchors to render.
@@ -330,11 +301,13 @@ local function BuildSpotlight(body)
     categoriesHdr:ClearAllPoints()
     categoriesHdr:SetPoint("TOPLEFT", body, "TOPLEFT", startX, yPos)
     categoriesHdr:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, yPos)
-    gated[#gated + 1] = categoriesHdr
     yPos = yPos - SPOTLIGHT_HEADER_GAP - 8
 
-    -- Source checkboxes in a 2-column grid, compact variant for self-sizing labels.
-    local kinds = Orbit.Spotlight.Kinds
+    -- Source checkboxes in a 2-column grid; prefixOnly kinds (help) are always on and get no toggle.
+    local kinds = {}
+    for _, src in ipairs(Orbit.Spotlight.Kinds) do
+        if not src.prefixOnly then kinds[#kinds + 1] = src end
+    end
     for i, src in ipairs(kinds) do
         local settingKey = "Spotlight_Src_" .. src.settingKey
         local initial = GetAccountSetting(settingKey, true)
@@ -354,18 +327,11 @@ local function BuildSpotlight(body)
             cb:SetPoint("TOPLEFT", body, "TOP", 0, rowY)
             cb:SetPoint("TOPRIGHT", body, "TOPRIGHT", -startX, rowY)
         end
-        gated[#gated + 1] = cb
     end
     local sourceRows = math.ceil(#kinds / 2)
     yPos = yPos - sourceRows * SPOTLIGHT_ROW_H
 
-    expandedHeight = math.abs(yPos)
-
-    -- Apply initial state — height follows saved Enable flag so the section opens at the right size.
-    local enabled = GetAccountSetting("Spotlight", false)
-    for _, w in ipairs(gated) do w:SetShown(enabled) end
-
-    return enabled and expandedHeight or collapsedHeight
+    return math.abs(yPos)
 end
 
 local function BuildAutomation(body)
@@ -476,7 +442,6 @@ local function BuildColors(body)
     local _, gridH2 = Layout:ComputeGridContainerSize(#reactions, limitsPerLine, 0, colWidth, rowHeight, padding)
     yPos = yPos - gridH2 - 15
 
-    -- [ REPUTATION BAR COLORS ]
     local headerRep = Layout:CreateSectionHeader(body, L.PLU_COLORS_REPUTATION)
     Layout:AddControl(body, headerRep)
     headerRep:SetPoint("TOPLEFT", body, "TOPLEFT", 10, yPos)
@@ -558,7 +523,6 @@ function Orbit._AC.CreateQoLContent(parent)
 
     -- Scrollable area
     local scrollFrame, scrollChild = Layout:CreateScrollArea(content)
-    -- "Keys"/"Markers"/"Inventory" are placeholders for unshipped features — not localized until implemented.
     local sectionDefs = {
         { L.PLU_QOL_SEC_UI, BuildUserInterface },
         { L.PLU_QOL_SEC_COLORS, BuildColors },
@@ -566,9 +530,6 @@ function Orbit._AC.CreateQoLContent(parent)
         { L.PLU_QOL_SEC_MOUSE, BuildMouse },
         { L.PLU_QOL_SEC_AUTOMATION, BuildAutomation },
         { L.PLU_SPT_SECTION_TITLE, BuildSpotlight },
-        { "Keys", nil },
-        { "Markers", nil },
-        { "Inventory", nil },
     }
     -- Build accordion sections
     local sections = {}

@@ -8,7 +8,7 @@ Engine.Layout = {}
 local Layout = Engine.Layout
 
 -- [ CONTROL POOLING ]--------------------------------------------------------------------------------
-Layout.pool = Layout.pool or {}
+Layout.checkboxPool = Layout.checkboxPool or {}
 Layout.sliderPool = Layout.sliderPool or {}
 Layout.dropdownPool = Layout.dropdownPool or {}
 Layout.buttonPool = Layout.buttonPool or {}
@@ -86,12 +86,17 @@ function Layout:RecycleControls(controls)
         control:ClearAllPoints()
 
         if control.OrbitType == "Checkbox" then
-            table.insert(self.pool, control)
+            -- Only standard checkboxes carry the template Button and match the acquire pool; compact ones have no pool and are dropped.
+            if control.Button then
+                self.checkboxPool = self.checkboxPool or {}
+                table.insert(self.checkboxPool, control)
+            end
         elseif control.OrbitType == "Slider" then
             if control.Slider and control.Slider.UnregisterCallback then
                 control.Slider:UnregisterCallback("OnValueChanged", control)
             end
             control.OnOrbitChange = nil
+            control._updateOnRelease = false
 
             -- MEMORY LEAK FIX: Clean up slider scripts to prevent stale callbacks
             if control.Slider then
@@ -101,7 +106,7 @@ function Layout:RecycleControls(controls)
                     innerSlider:SetScript("OnMouseUp", nil)
                 end
 
-                -- Stepper buttons are permanently HookScript'd; the hook checks frame.OnOrbitChange (nil'd above) so stale callbacks no-op.
+                -- Stepper buttons are permanently HookScript'd; the hook early-returns unless _updateOnRelease (false here, reset each acquire).
             end
 
             -- Cancel any pending stepper timer
@@ -122,10 +127,10 @@ function Layout:RecycleControls(controls)
         elseif control.Label and control.Swatch then
             table.insert(self.colorPool, control)
         elseif control.OrbitType == "Font" then
-            if control.DropdownFrame then control.DropdownFrame:Hide(); control.DropdownFrame = nil end
+            if control.Dropdown then control.Dropdown:Hide() end
             table.insert(self.fontPool, control)
         elseif control.OrbitType == "Texture" then
-            if control.DropdownFrame then control.DropdownFrame:Hide(); control.DropdownFrame = nil end
+            if control.Dropdown then control.Dropdown:Hide() end
             table.insert(self.texturePool, control)
         end
     end
@@ -288,6 +293,9 @@ function Layout:CreateAccordion(parent, name)
     local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("LEFT", 21, 2)
     label:SetText(name)
+    local status = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    status:SetPoint("RIGHT", bar, "RIGHT", -(right:GetWidth() + 4), 2)
+    status:SetJustifyH("RIGHT")
     -- Content container
     local body = CreateFrame("Frame", nil, section)
     body:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -4)
@@ -300,14 +308,27 @@ function Layout:CreateAccordion(parent, name)
         body:SetShown(section._expanded)
         section:SetHeight(section._expanded and Engine.Pixel:Snap(ACCORDION_BAR_HEIGHT + section._contentHeight + 4, section:GetEffectiveScale()) or ACCORDION_BAR_HEIGHT)
     end
-    -- Toggle
-    bar:SetScript("OnClick", function()
+    -- Toggle (left-click) / optional right-click action (e.g. rename), with a hover hint when one is wired
+    bar:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    bar:SetScript("OnClick", function(_, button)
+        if button == "RightButton" then
+            if section._onRightClick then section._onRightClick() end
+            return
+        end
         section._expanded = not section._expanded
         UpdateVisual()
         if section._onToggle then section._onToggle() end
     end)
+    bar:SetScript("OnEnter", function(self)
+        if not section._rightClickTip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(section._rightClickTip, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    bar:SetScript("OnLeave", GameTooltip_Hide)
     -- Public API
     function section:GetBody() return body end
+    function section:SetStatus(text) status:SetText(text or "") end
     function section:SetContentHeight(h)
         self._contentHeight = h
         body:SetHeight(h)
@@ -318,6 +339,18 @@ function Layout:CreateAccordion(parent, name)
         self._expanded = state
         UpdateVisual()
         if self._onToggle then self._onToggle() end
+    end
+    -- Returns a pooled section to a pristine collapsed state for reuse (title, status, expansion, callbacks).
+    function section:Reset(name)
+        label:SetText(name)
+        status:SetText("")
+        self._expanded = false
+        self._contentHeight = 1
+        self._onToggle = nil
+        self._profileId = nil
+        self._onRightClick = nil
+        self._rightClickTip = nil
+        UpdateVisual()
     end
     section.OrbitType = "Accordion"
     return section
@@ -382,6 +415,34 @@ function Layout:GetRegisteredTypes()
     return types
 end
 
+-- Sliders/dropdowns/pickers don't render a schema tooltip natively (only the checkbox creator does); wire one onto the label area.
+function Layout:AttachLabelTooltip(control, label, tooltip)
+    if not control then return end
+    local hover = control._tooltipHover
+    if not tooltip then
+        if hover then hover:Hide() end
+        return
+    end
+    if not hover then
+        hover = CreateFrame("Frame", nil, control)
+        hover:SetPoint("TOPLEFT", control, "TOPLEFT", 0, 0)
+        hover:SetPoint("BOTTOMLEFT", control, "BOTTOMLEFT", 0, 0)
+        hover:SetWidth(Constants.Widget.LabelWidth + Constants.Widget.LabelGap)
+        hover:EnableMouse(true)
+        control._tooltipHover = hover
+    end
+    hover._label, hover._tooltip = label, tooltip
+    hover:Show()
+    hover:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self._label or "", 1, 1, 1)
+        local tt = self._tooltip
+        GameTooltip:AddLine(type(tt) == "function" and tt(control) or tt, nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    hover:SetScript("OnLeave", GameTooltip_Hide)
+end
+
 -- Initialize default widget creators
 function Layout:InitializeWidgetTypes()
     self:RegisterWidgetType("checkbox", function(container, def, getValue, callback)
@@ -395,6 +456,7 @@ function Layout:InitializeWidgetTypes()
     self:RegisterWidgetType("slider", function(container, def, getValue, callback)
         local slider = self:CreateSlider(container, def.label, def.min, def.max, def.step, def.formatter, getValue(), callback, def)
         if slider then slider.SettingKey = def.key end
+        self:AttachLabelTooltip(slider, def.label, def.tooltip)
         return slider
     end)
 
@@ -403,13 +465,13 @@ function Layout:InitializeWidgetTypes()
         if type(options) == "function" then
             options = options()
         end
-        return self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox, def.valueColor)
+        local dropdown = self:CreateDropdown(container, def.label, options, getValue(), callback, def.valueCheckbox, def.valueColor)
+        self:AttachLabelTooltip(dropdown, def.label, def.tooltip)
+        return dropdown
     end)
 
     self:RegisterWidgetType("color", function(container, def, getValue, callback)
-        local widget = self:CreateColorCurvePicker(container, def.label, getValue(), callback)
-        if widget then widget.singleColorMode = true; widget.hasDesaturation = def.hasDesaturation end
-        return widget
+        return self:CreateColorPicker(container, def.label, getValue(), callback)
     end)
 
     self:RegisterWidgetType("colorcurve", function(container, def, getValue, callback)
@@ -431,11 +493,21 @@ function Layout:InitializeWidgetTypes()
     end)
 
     self:RegisterWidgetType("texture", function(container, def, getValue, callback)
-        return self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox, def.valueColor, def.mediaCategory)
+        local picker = self:CreateTexturePicker(container, def.label, getValue(), callback, def.previewColor, def.valueCheckbox, def.valueColor, def.mediaCategory)
+        self:AttachLabelTooltip(picker, def.label, def.tooltip)
+        return picker
     end)
 
     self:RegisterWidgetType("font", function(container, def, getValue, callback)
-        return self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
+        local picker = self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
+        self:AttachLabelTooltip(picker, def.label, def.tooltip)
+        return picker
+    end)
+
+    self:RegisterWidgetType("glowpicker", function(container, def, getValue, callback)
+        local picker = self:CreateGlowPicker(container, def.label, getValue(), callback, def.valueColor, def.engineOptions)
+        self:AttachLabelTooltip(picker, def.label, def.tooltip)
+        return picker
     end)
 
     self:RegisterWidgetType("editbox", function(container, def, getValue, callback)
@@ -476,7 +548,7 @@ function Layout:InitializeWidgetTypes()
         return frame
     end)
 
-    -- [ TABS WIDGET ]-----------------------------------------------------------------------------------
+    -- [ TABS WIDGET ]--------------------------------------------------------------------------------
     local TAB_HEIGHT = 24
     local TAB_SPACING = 4
     local TAB_TEXT_PADDING = 30
@@ -550,7 +622,7 @@ function Layout:InitializeWidgetTypes()
         end
     end
 
-    -- [ EYE TOGGLE CONSTANTS ]--------------------------------------------------------------------------
+    -- [ EYE TOGGLE CONSTANTS ]-----------------------------------------------------------------------
     local EYE_SIZE = TAB_HEIGHT
     local FLIPBOOK_ATLAS = "groupfinder-eye-flipbook-found-initial"
     -- From Blizzard QueueStatusFrame.xml: flipBookRows=7, flipBookColumns=11, flipBookFrames=70, duration=2

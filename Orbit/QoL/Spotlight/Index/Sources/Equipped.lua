@@ -1,6 +1,7 @@
 -- [ EQUIPPED SOURCE ]--------------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = Orbit.Spotlight.Search.Tokenize
+local ItemKeywords = Orbit.Spotlight.Index.ItemKeywords
 local Sources = Orbit.Spotlight.Index.Sources
 
 local FIRST_SLOT = 1
@@ -24,7 +25,7 @@ function Equipped:Build()
                     kind = "equipped",
                     id = GetInventoryItemID("player", slot) or slot,
                     name = name,
-                    lowerName = Tokenize:Fold(name),
+                    lowerName = Tokenize:Fold(name .. " " .. ItemKeywords:Build(link)),
                     icon = iconPath or GetInventoryItemTexture("player", slot),
                     quality = quality,
                     secure = { type = "item", item = link },

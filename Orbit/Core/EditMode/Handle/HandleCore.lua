@@ -122,7 +122,7 @@ function HandleCore:CreateFrame(options)
 end
 
 -- [ UTILITY FUNCTIONS ] -----------------------------------------------------------------------------
--- Safely get size — pcall required: native Blizzard frames may return secret-tainted dimensions in 12.0+
+-- Native Blizzard frames may return secret-tainted dimensions in 12.0+; guard with issecretvalue before any comparison.
 function HandleCore:SafeGetSize(frame)
     if not frame then
         return MIN_HANDLE_WIDTH, MIN_HANDLE_HEIGHT
@@ -130,28 +130,14 @@ function HandleCore:SafeGetSize(frame)
 
     local width, height = MIN_HANDLE_WIDTH, MIN_HANDLE_HEIGHT
 
-    local ok, w = pcall(function()
-        return frame:GetWidth()
-    end)
-    if ok and w and type(w) == "number" then
-        -- Check for secret value BEFORE comparing
-        if not (issecretvalue and issecretvalue(w)) then
-            if w > 0 then
-                width = w
-            end
-        end
+    local w = frame:GetWidth()
+    if type(w) == "number" and not (issecretvalue and issecretvalue(w)) and w > 0 then
+        width = w
     end
 
-    local ok2, h = pcall(function()
-        return frame:GetHeight()
-    end)
-    if ok2 and h and type(h) == "number" then
-        -- Check for secret value BEFORE comparing
-        if not (issecretvalue and issecretvalue(h)) then
-            if h > 0 then
-                height = h
-            end
-        end
+    local h = frame:GetHeight()
+    if type(h) == "number" and not (issecretvalue and issecretvalue(h)) and h > 0 then
+        height = h
     end
 
     return width, height

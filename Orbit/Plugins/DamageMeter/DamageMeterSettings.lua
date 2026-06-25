@@ -10,6 +10,7 @@ local BORDER = DM.Border
 local BG = DM.Background
 local TITLE = DM.Title
 local ICON = DM.IconPos
+local BREAKDOWN = DM.BreakdownMode
 local CVAR_AUTO_RESET = "damageMeterResetOnNewInstance"
 local BAR_HEIGHT_MIN = 14
 local BAR_HEIGHT_MAX = 60
@@ -42,6 +43,11 @@ local ICON_LABELS = {
     [ICON.Left]  = L.CMN_ICON_LEFT,
     [ICON.Off]   = L.CMN_ICON_OFF,
     [ICON.Right] = L.CMN_ICON_RIGHT,
+}
+local BREAKDOWN_LABELS = {
+    [BREAKDOWN.Click]     = L.PLU_DM_BREAKDOWN_CLICK,
+    [BREAKDOWN.Mouseover] = L.PLU_DM_BREAKDOWN_MOUSEOVER,
+    [BREAKDOWN.Detached]  = L.PLU_DM_BREAKDOWN_DETACHED,
 }
 
 local Plugin = Orbit:GetPlugin(DM.SystemID)
@@ -144,6 +150,21 @@ function Plugin:AddSettings(dialog, systemFrame)
                 OrbitEngine.Layout:Reset(dialog)
                 self:AddSettings(dialog, systemFrame)
             end)
+        end,
+    })
+
+    table.insert(schema.controls, {
+        type = "slider",
+        key = "BreakdownMode",
+        label = L.PLU_DM_BREAKDOWN,
+        min = BREAKDOWN.Click, max = BREAKDOWN.Detached, step = 1,
+        default = DM.DefaultDef.breakdownMode,
+        formatter = function(v) return BREAKDOWN_LABELS[v] or "" end,
+        onChange = function(v)
+            self:SetSetting(systemIndex, "BreakdownMode", v)
+            -- Drop any open popup for this meter so the mode change starts from a clean slate.
+            self:CloseBreakdownPopups(systemIndex)
+            self:RelayoutAllMeters()
         end,
     })
 

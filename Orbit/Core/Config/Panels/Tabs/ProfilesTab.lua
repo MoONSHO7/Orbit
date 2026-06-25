@@ -290,7 +290,7 @@ local ProfilesPlugin = {
             else
                 if Orbit.db.specMappings then wipe(Orbit.db.specMappings) end
             end
-            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel.currentTab = nil; Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES) end
+            if Orbit.OptionsPanel then Orbit.OptionsPanel.lastTab = nil; Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES) end
         elseif key == "CreateProfile" then
             Orbit.Profile._selectedToCreate = value
         elseif key == "ExportProfile" then
@@ -359,13 +359,14 @@ local flashActive = false
 local function ShowFlashMessage(msg)
     if not flashLabel or flashActive then return end
     flashActive = true
-    flashLabel.Text:SetText(msg)
-    flashLabel:SetAlpha(0)
-    flashLabel:Show()
-    UIFrameFadeIn(flashLabel, 0.2, 0, 1)
+    -- Capture the live label so a recreated statusmessage widget can't strand flashActive on a dead frame.
+    local lbl = flashLabel
+    lbl.Text:SetText(msg)
+    lbl:SetAlpha(0)
+    lbl:Show()
+    UIFrameFadeIn(lbl, 0.2, 0, 1)
     C_Timer.After(2, function()
-        if not flashLabel then flashActive = false; return end
-        UIFrameFadeOut(flashLabel, 0.5, 1, 0)
+        UIFrameFadeOut(lbl, 0.5, 1, 0)
         C_Timer.After(0.5, function() flashActive = false end)
     end)
 end
@@ -373,7 +374,6 @@ end
 local function ReopenProfiles()
     if Orbit.OptionsPanel then
         Orbit.OptionsPanel.lastTab = nil
-        Orbit.OptionsPanel.currentTab = nil
         Orbit.OptionsPanel:Open(L.CFG_TAB_PROFILES)
     end
 end
@@ -425,16 +425,26 @@ local function GetProfilesSchema()
                         for _, n in ipairs(Orbit.Profile:GetProfiles()) do
                             if n == importName then ShowFlashMessage(L.MSG_PROFILE_EXISTS_F:format(importName)); return end
                         end
-                        local ok, err = Orbit.Profile:ImportProfile(importString, importName)
-                        if ok then
-                            Orbit:Print(L.MSG_IMPORT_SUCCESS)
-                            profilesSubView = nil
-                            importString = ""
-                            importName = ""
-                            ReopenProfiles()
-                        else
-                            ShowFlashMessage(L.MSG_INVALID_IMPORT)
+                        local function applyImport(confirmed)
+                            local ok, err = Orbit.Profile:ImportProfile(importString, importName, confirmed)
+                            if ok then
+                                Orbit:Print(L.MSG_IMPORT_SUCCESS)
+                                profilesSubView = nil
+                                importString = ""
+                                importName = ""
+                                ReopenProfiles()
+                            elseif err == "COLLECTION_CONFIRM" then
+                                Layout:ShowConfirm({
+                                    title = L.CFG_IMPORT_COLLECTION_TITLE,
+                                    text = L.CFG_IMPORT_COLLECTION_WARNING,
+                                    acceptText = L.CMN_IMPORT,
+                                    onAccept = function() applyImport(true) end,
+                                })
+                            else
+                                ShowFlashMessage(L.MSG_INVALID_IMPORT)
+                            end
                         end
+                        applyImport(false)
                     end,
                 },
             },

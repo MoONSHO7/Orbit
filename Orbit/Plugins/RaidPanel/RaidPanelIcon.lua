@@ -5,6 +5,7 @@ local OrbitEngine = Orbit.Engine
 local GameTooltip = Orbit.Tooltip
 
 local InCombatLockdown = InCombatLockdown
+local IsShiftKeyDown = IsShiftKeyDown
 local math_floor = math.floor
 
 -- [ CONSTANTS ] -------------------------------------------------------------------------------------
@@ -30,6 +31,16 @@ local SHEEN_FADEOUT_START      = 0.30
 local SHEEN_PEAK_ALPHA         = 0.85
 
 local CLICK_SOUND_KIT = SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION or 856
+local ERROR_SOUND_KIT = SOUNDKIT and SOUNDKIT.IG_QUEST_FAILED or 847
+
+local DENY_FLASH_R, DENY_FLASH_G, DENY_FLASH_B = 0.9, 0.1, 0.1
+local DENY_FLASH_ALPHA        = 0.55
+local DENY_FADEIN_DURATION    = 0.08
+local DENY_FADEOUT_DURATION   = 0.28
+
+local CLEAR_WORLD_DELEGATE   = "OrbitRaidPanelClearWorld"
+local CLEAR_TARGETS_DELEGATE = "OrbitRaidPanelClearTargets"
+local CLEAR_MACROTEXT        = "/click " .. CLEAR_WORLD_DELEGATE .. "\n/click " .. CLEAR_TARGETS_DELEGATE
 
 -- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.RaidPanelIcon = {}
@@ -43,6 +54,24 @@ local function ApplyMask(tex, mask)
 end
 
 local SHAPE_CIRCLE = 1
+
+local clearDelegatesReady = false
+local function EnsureClearDelegates()
+    if clearDelegatesReady then return end
+    local world = CreateFrame("Button", CLEAR_WORLD_DELEGATE, UIParent, "SecureActionButtonTemplate")
+    world:RegisterForClicks("AnyUp")
+    world:SetAttribute("type1", "worldmarker")
+    world:SetAttribute("action1", "clear")
+    world:Hide()
+
+    local targets = CreateFrame("Button", CLEAR_TARGETS_DELEGATE, UIParent, "SecureActionButtonTemplate")
+    targets:RegisterForClicks("AnyUp")
+    targets:SetAttribute("type1", "raidtarget")
+    targets:SetAttribute("action1", "clear-all")
+    targets:Hide()
+
+    clearDelegatesReady = true
+end
 
 local function GetBackdropColor()
     local c = Orbit.Skin:GetBackgroundColor()
@@ -113,6 +142,24 @@ function Icon.Create(plugin, dockFrame, ctx)
     icon.sheenFadeOut:SetStartDelay(SHEEN_FADEOUT_START)
     icon.sheenFadeOut:SetOrder(1)
 
+    icon.denyFlash = icon:CreateTexture(nil, "OVERLAY", nil, 7)
+    icon.denyFlash:SetAllPoints()
+    icon.denyFlash:SetColorTexture(DENY_FLASH_R, DENY_FLASH_G, DENY_FLASH_B, 1)
+    icon.denyFlash:AddMaskTexture(icon.mask)
+    icon.denyFlash:SetAlpha(0)
+
+    icon.denyAnim = icon.denyFlash:CreateAnimationGroup()
+    local denyIn = icon.denyAnim:CreateAnimation("Alpha")
+    denyIn:SetFromAlpha(0)
+    denyIn:SetToAlpha(DENY_FLASH_ALPHA)
+    denyIn:SetDuration(DENY_FADEIN_DURATION)
+    denyIn:SetOrder(1)
+    local denyOut = icon.denyAnim:CreateAnimation("Alpha")
+    denyOut:SetFromAlpha(DENY_FLASH_ALPHA)
+    denyOut:SetToAlpha(0)
+    denyOut:SetDuration(DENY_FADEOUT_DURATION)
+    denyOut:SetOrder(2)
+
     icon.border = icon:CreateTexture(nil, "OVERLAY")
     icon.border:SetPoint("CENTER")
     icon.border:SetAtlas(BORDER_ATLAS_SILVER, false)
@@ -130,21 +177,29 @@ function Icon.Create(plugin, dockFrame, ctx)
     icon:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     icon:SetScript("PostClick", function(self, button)
+        local data = self.slotData
+        if button == "LeftButton" and IsShiftKeyDown() and data and data.kind == "marker"
+            and not Orbit.RaidPanelVisibility.ShouldShow() then
+            Icon.PlayDenied(self)
+            return
+        end
         if self.sheenAnim then self.sheenAnim:Stop(); self.sheenAnim:Play() end
         PlaySound(CLICK_SOUND_KIT)
-        if button == "LeftButton" then
-            local data = self.slotData
-            if data then
-                if data.kind == "menu" then
-                    Menus.Open(data.menuKey, self, ctx)
-                elseif data.action then
-                    data.action()
-                end
+        if button == "LeftButton" and data then
+            if data.kind == "menu" then
+                Menus.Open(data.menuKey, self, ctx)
+            elseif data.action then
+                data.action()
             end
         end
     end)
 
     return icon
+end
+
+function Icon.PlayDenied(icon)
+    if icon.denyAnim then icon.denyAnim:Stop(); icon.denyAnim:Play() end
+    PlaySound(ERROR_SOUND_KIT)
 end
 
 local function SizeInner(tex, iconSize, sizeMult)
@@ -293,19 +348,27 @@ function Icon.ApplySecureAttributes(icon, slotData, isEditMode)
     icon:EnableMouse(true)
 
     if slotData.kind == "marker" then
+        -- worldmarker needs the suffixed `shift-marker1` (the cascade ignores bare `shift-marker`); world index set differs from raid-target.
         icon:SetAttribute("type1", "raidtarget")
         icon:SetAttribute("shift-type1", "worldmarker")
         icon:SetAttribute("marker", slotData.markerIndex)
+        icon:SetAttribute("shift-marker1", Orbit.RaidPanelData.WORLD_MARKER_ORDER[slotData.markerIndex])
         icon:SetAttribute("action1", nil)
+        icon:SetAttribute("macrotext1", nil)
     elseif slotData.kind == "clearmarkers" then
-        icon:SetAttribute("type1", "worldmarker")
+        EnsureClearDelegates()
+        icon:SetAttribute("type1", "macro")
+        icon:SetAttribute("macrotext1", CLEAR_MACROTEXT)
         icon:SetAttribute("shift-type1", nil)
         icon:SetAttribute("marker", nil)
-        icon:SetAttribute("action1", "clear")
+        icon:SetAttribute("shift-marker1", nil)
+        icon:SetAttribute("action1", nil)
     else
         icon:SetAttribute("type1", nil)
         icon:SetAttribute("shift-type1", nil)
         icon:SetAttribute("marker", nil)
+        icon:SetAttribute("shift-marker1", nil)
         icon:SetAttribute("action1", nil)
+        icon:SetAttribute("macrotext1", nil)
     end
 end

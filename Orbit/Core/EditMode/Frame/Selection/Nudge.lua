@@ -18,6 +18,8 @@ function Nudge:Enable(Selection)
 
         Selection.keyboardHandler:SetScript("OnKeyDown", function(_, key)
             if InCombatLockdown() then
+                -- Combat may begin between an arrow nudge and the next keydown; restore propagation so it isn't stranded false.
+                Selection.keyboardHandler:SetPropagateKeyboardInput(true)
                 return
             end
 
@@ -112,7 +114,7 @@ function Nudge:NudgeFrame(frame, direction, Selection)
     frame:SetPoint(point, relativeTo, relativePoint, xOfs, yOfs)
 
     if Selection.dragCallbacks[frame] then
-        Selection.dragCallbacks[frame](frame, point, xOfs, yOfs)
+        Selection.dragCallbacks[frame](frame, { kind = "free", point = point, x = xOfs, y = yOfs })
     end
 
     Selection:UpdateVisuals(frame)

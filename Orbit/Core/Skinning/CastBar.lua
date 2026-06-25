@@ -104,7 +104,7 @@ function CastBar:Create(parent)
     parent.InterruptAnim = bar.InterruptAnim
     parent.Icon = bar.Icon
 
-    -- [ BORDER MANAGEMENT ]------------------------------------------------------------------------
+    -- [ BORDER MANAGEMENT ]--------------------------------------------------------------------------
     parent.SetBorder = function(self, size)
         Orbit.Skin:SkinBorder(self, self, size)
         self:UpdateBarInsets()

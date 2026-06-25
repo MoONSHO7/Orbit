@@ -1,6 +1,7 @@
 -- [ QUEST ITEMS SOURCE ]-----------------------------------------------------------------------------
 local _, Orbit = ...
 local Tokenize = Orbit.Spotlight.Search.Tokenize
+local ItemKeywords = Orbit.Spotlight.Index.ItemKeywords
 local Sources = Orbit.Spotlight.Index.Sources
 
 local QuestItems = {
@@ -23,7 +24,7 @@ function QuestItems:Build()
                 kind = "questitems",
                 id = link,
                 name = name,
-                lowerName = Tokenize:Fold(name),
+                lowerName = Tokenize:Fold(name .. " " .. ItemKeywords:Build(link)),
                 icon = icon,
                 count = charges,
                 secure = { type = "item", item = link },

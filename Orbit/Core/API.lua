@@ -3,7 +3,6 @@ local Orbit = addonTable
 local L = Orbit.L
 
 -- [ ORBIT API ]--------------------------------------------------------------------------------------
-
 ---@class OrbitAPI
 Orbit.API = {}
 local API = Orbit.API
@@ -31,8 +30,8 @@ function API:ResetProfile(profileName)
 
     profileName = profileName or pm:GetActiveProfileName()
 
-    -- Safety: Ensure Default profile exists before nuking
-    if not Orbit.db.profiles["Default"] then
+    -- Safety: Ensure the active profile exists before nuking
+    if not Orbit.db.profiles[pm:GetActiveProfileName()] then
         pm:Initialize()
     end
 
@@ -114,7 +113,7 @@ function API:UnlockFrames()
         Orbit.Engine.PositionManager:FlushToStorage()
     end
 
-    Orbit:Print(string.format("Reset positions for %d frames.", count))
+    Orbit:Print(L.MSG_FRAMES_RESET_F:format(count))
 end
 
 function API:DumpDebugInfo()
@@ -139,6 +138,99 @@ function API:DumpDebugInfo()
     end
 
     return table.concat(parts, "\n")
+end
+
+-- [ MAINTENANCE OPERATIONS ]-------------------------------------------------------------------------
+function API:ResetAccountSettings()
+    Orbit.Engine.Layout:ShowConfirm({
+        title = L.CMN_RESET_ACCOUNT_SETTINGS,
+        text = L.CMD_RESET_ACCOUNT_WARNING,
+        acceptText = L.CMN_RESET_ACCOUNT_SETTINGS,
+        onAccept = function()
+            if Orbit.db then Orbit.db.AccountSettings = {} end
+            Orbit:Print(L.MSG_ACCOUNT_RESET)
+            ReloadUI()
+        end,
+    })
+end
+
+function API:ResetPluginSettings(plugin)
+    Orbit.Engine.Layout:ShowConfirm({
+        title = L.CMN_RESET_PLUGIN,
+        text = L.CMD_RESET_PLUGIN_WARNING_F:format(plugin.name),
+        acceptText = L.CMN_RESET_PLUGIN,
+        onAccept = function()
+            if not plugin.system then return end
+            local db = Orbit.runtime and Orbit.runtime.Layouts
+            if db and db["Orbit"] then db["Orbit"][plugin.system] = nil end
+            if plugin.frame and Orbit.Engine.PositionManager then
+                Orbit.Engine.PositionManager:ClearFrame(plugin.frame)
+            end
+            if plugin.frame then
+                plugin.frame:ClearAllPoints()
+                plugin.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+            end
+            if plugin.ApplySettings then plugin:ApplySettings() end
+            Orbit:Print(L.MSG_PLUGIN_RESET_F:format(plugin.name))
+        end,
+    })
+end
+
+function API:ConfirmHardReset()
+    Orbit.Engine.Layout:ShowConfirm({
+        title = L.CMN_FACTORY_RESET,
+        text = L.CMD_HARD_RESET_WARNING,
+        acceptText = L.CMN_FACTORY_RESET,
+        onAccept = function() Orbit.API:HardReset() end,
+    })
+end
+
+-- [ DIAGNOSTICS ]------------------------------------------------------------------------------------
+local MAX_INSPECT_DEPTH = 2
+local MAX_INSPECT_ITEMS = 20
+
+local function FormatValue(v, depth)
+    if type(v) == "table" then
+        if depth >= MAX_INSPECT_DEPTH then return "{...}" end
+        local items = {}
+        local count = 0
+        for k, val in pairs(v) do
+            if count >= MAX_INSPECT_ITEMS then items[#items + 1] = "..."; break end
+            items[#items + 1] = tostring(k) .. "=" .. FormatValue(val, depth + 1)
+            count = count + 1
+        end
+        return "{" .. table.concat(items, ", ") .. "}"
+    elseif type(v) == "string" then
+        return "\"" .. v .. "\""
+    end
+    return tostring(v)
+end
+
+function API:PrintVersion()
+    local state = self:GetState()
+    local _, build = GetBuildInfo()
+    Orbit:Print("|cFFFFD100" .. L.CMD_VERSION_LABEL .. "|r " .. (state.Version or "?"))
+    print("  |cFFAAAAAA " .. L.CMD_PROFILE_LABEL .. "|r " .. (state.Profile or "?"))
+    print("  |cFFAAAAAA " .. L.CMD_SPEC_LABEL .. "|r " .. (state.Spec or "?"))
+    print("  |cFFAAAAAA " .. L.CMD_PLUGINS_LABEL .. "|r " .. (state.NumPlugins or 0))
+    print("  |cFFAAAAAA " .. L.CMD_COMBAT_LABEL .. "|r " .. (state.InCombat and L.CMN_YES or L.CMN_NO))
+    print("  |cFFAAAAAA " .. L.CMD_WOW_BUILD_LABEL .. "|r " .. (build or "?"))
+end
+
+function API:InspectPlugin(pluginName)
+    if not pluginName or pluginName == "" then return end
+    local plugin = Orbit:GetPlugin(pluginName)
+    if not plugin or not plugin.system then Orbit:Print(L.MSG_PLUGIN_NOT_FOUND_F:format(pluginName)); return end
+    local layouts = Orbit.runtime and Orbit.runtime.Layouts
+    local settings = layouts and layouts["Orbit"] and layouts["Orbit"][plugin.system]
+    if not settings then Orbit:Print(L.MSG_NO_SAVED_SETTINGS_F:format(pluginName)); return end
+    Orbit:Print(L.MSG_INSPECT_HEADER_F:format(plugin.name, tostring(plugin.system)))
+    local count = 0
+    for key, value in pairs(settings) do
+        if count >= MAX_INSPECT_ITEMS then print("  " .. L.MSG_INSPECT_TRUNCATED); break end
+        print("  |cFFFFD100" .. tostring(key) .. "|r = " .. FormatValue(value, 0))
+        count = count + 1
+    end
 end
 
 -- Export to global for external scripts

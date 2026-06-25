@@ -20,7 +20,8 @@ Selection.selectedFrames = {}
 Selection.isNativeFrame = false
 Selection.keyboardHandler = nil
 Selection.editModeHooked = false
-Selection.combatDeferredCallback = nil
+Selection.combatDeferredQueue = Selection.combatDeferredQueue or {}
+Selection.combatDrainRegistered = false
 
 -- [ VISIBILITY HELPERS ] ----------------------------------------------------------------------------
 local function ShouldShowOrbitFrames()
@@ -127,32 +128,50 @@ local ANCHOR_ALIGN_COLORS = {
 }
 local DEFAULT_ANCHOR_COLOR = { 0, 1, 0 }
 
+-- One permanent combat-end drain; registering per-defer would leak a listener each time and clobber an earlier deferred action.
 local function DeferUntilOutOfCombat(callback)
     if not InCombatLockdown() then
         callback()
         return
     end
-    Selection.combatDeferredCallback = callback
+    table.insert(Selection.combatDeferredQueue, callback)
+    if Selection.combatDrainRegistered then return end
+    Selection.combatDrainRegistered = true
     Orbit.CombatManager:RegisterCombatCallback(nil, function()
-        if Selection.combatDeferredCallback then
-            Selection.combatDeferredCallback()
-            Selection.combatDeferredCallback = nil
-        end
+        local queue = Selection.combatDeferredQueue
+        Selection.combatDeferredQueue = {}
+        for _, fn in ipairs(queue) do fn() end
     end)
+end
+
+-- Anchor the selection over its parent, honouring an optional per-frame outset so the highlight can grow N px on every side.
+local function AnchorSelectionToParent(selection, frame)
+    frame = frame or selection.parent
+    if not frame then return end
+    selection:ClearAllPoints()
+    local outset = frame.orbitSelectionOutset
+    if outset and outset ~= 0 then
+        selection:SetPoint("TOPLEFT", frame, "TOPLEFT", -outset, outset)
+        selection:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", outset, -outset)
+    else
+        selection:SetAllPoints(frame)
+    end
 end
 
 -- [ MAIN API ]---------------------------------------------------------------------------------------
 function Selection:GetSnapTargets(excludeFrame)
     local targets = {}
 
-    -- BFS through Orbit anchors AND UI parentage — catches circular deps across interleaved chains.
+    -- BFS through Orbit anchors AND UI parentage — catches circular deps across interleaved chains. Scratch tables are reused per candidate to avoid per-call allocation.
+    local visited, queue = {}, {}
     local function IsDependent(target, root)
         if not target or not root then
             return false
         end
 
-        local visited = {}
-        local queue = { target }
+        wipe(visited)
+        wipe(queue)
+        queue[1] = target
         local head = 1
 
         while head <= #queue do
@@ -213,7 +232,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     end
 
     local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
-    selection:SetAllPoints()
+    AnchorSelectionToParent(selection, frame)
     selection:SetToplevel(false) -- template has toplevel=true; disable to prevent auto-Raise on Show()
     selection:SetFrameStrata(Orbit.Constants.Strata.Overlay)
     selection:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
@@ -537,8 +556,7 @@ end
 function Selection:ForceUpdate(frame)
     local selection = self.selections[frame]
     if selection and selection:IsShown() then
-        selection:ClearAllPoints()
-        selection:SetAllPoints(frame)
+        AnchorSelectionToParent(selection, frame)
         self:UpdateVisuals(frame, selection)
     end
 end
@@ -646,8 +664,7 @@ function Selection:UpdateVisuals(frame, selection)
         end
 
         if selection.orbitInset or selection.orbitCanvasInset then
-            selection:ClearAllPoints()
-            selection:SetAllPoints(selection.parent)
+            AnchorSelectionToParent(selection, selection.parent)
             selection.orbitInset = nil
             selection.orbitCanvasInset = nil
         end
@@ -684,8 +701,7 @@ function Selection:UpdateVisuals(frame, selection)
         if selection.Label then selection.Label:SetText("") end
 
         if selection.orbitInset or selection.orbitCanvasInset then
-            selection:ClearAllPoints()
-            selection:SetAllPoints(selection.parent)
+            AnchorSelectionToParent(selection, selection.parent)
             selection.orbitInset = nil
             selection.orbitCanvasInset = nil
         end

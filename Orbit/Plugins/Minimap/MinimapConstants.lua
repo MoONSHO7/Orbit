@@ -7,7 +7,7 @@ local SYSTEM_ID = "Orbit_Minimap"
 
 Orbit.MinimapConstants = {
     SYSTEM_ID = SYSTEM_ID,
-    DEFAULT_SIZE = 220,
+    DEFAULT_SIZE = 300,
     MIN_SIZE = 100,
     MAX_SIZE = 400,
     DEFAULT_TEXT_SIZE = 12,
@@ -23,6 +23,13 @@ Orbit.MinimapConstants = {
     ZOOM_FADE_OUT = 0.3,
 
     MISSIONS_BASE_SIZE = 36,
+
+    -- Reparented Blizzard indicators: corner inset from container edge + default icon sizes.
+    COMPONENT_CORNER_INSET = 20,
+    CRAFTING_ORDER_OFFSET_Y = -38,
+    DIFFICULTY_DEFAULT_ICON_SIZE = 16,
+    MAIL_ICON_SIZE = 16,
+    CRAFTING_ICON_SIZE = 20,
 
     -- MASK_ROUND clips minimap + HybridMinimap + bg + border to the same pixel-identical circle (Orbit_Circle.tga).
     MASK_SQUARE = "Interface\\BUTTONS\\WHITE8x8",

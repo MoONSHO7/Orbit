@@ -9,7 +9,7 @@ local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
 
 -- [ BLIZZARD DAMAGEMETER DISABLE ] ------------------------------------------------------------------
--- damageMeterEnabled CVar is set to 0 (see DamageMeter.lua), so UpdateShownState won't re-show the frame after Hide. Mirrors Details!'s pattern.
+-- damageMeterEnabled CVar is set to 0 (see DamageMeter.lua), so UpdateShownState won't re-show the frame after Hide.
 function Plugin:DisableBlizzardMeter()
     local frame = _G.DamageMeter
     if not frame then return end

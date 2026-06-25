@@ -2,7 +2,7 @@
 
 | file | trigger | purpose |
 |---|---|---|
-| [`lint.yml`](lint.yml) | pr / push to `main` | `check-localization.py` status check |
+| [`lint.yml`](lint.yml) | pr / push to `main` | four status checks: `check-localization.py`, `check-readmes.py`, `check-comments.py`, `check_mixin_freeze.py` |
 | [`auto-tag.yml`](auto-tag.yml) | push to `main` (paths: `Orbit/**`, `.scripts/**`, `.pkgmeta`, `CHANGELOG.md`) | bumps minor, pushes `X.Y` tag |
 | [`release.yml`](release.yml) | tag push `X.Y` / `X.Y.Z` / `X.Y-alpha.*` | bigwigs packager → curseforge (alpha or release channel by tag suffix) |
 | [`alpha-release.yml`](alpha-release.yml) | manual (`workflow_dispatch`) | tags `ai-develop` HEAD as `X.Y-alpha.<timestamp>` |

@@ -6,6 +6,8 @@ shared plugin that adds extra side tabs to blizzard's `CooldownViewerSettings` f
 
 the tabs are not specific to the tracked plugin. anything that needs to spawn editable elements from the cooldown viewer settings panel should be able to add its own tab without coupling to tracked or knowing about blizzard's `LargeSideTabButtonTemplate`. keeping this as its own plugin also means tracked can be enabled/disabled (or rewritten again) without breaking the registration api.
 
+**Accepted exception to the "plugins never call other plugins" rule.** CVE is infrastructure that happens to live under `Plugins/` (it needs `liveToggle = false` and the plugin lifecycle). Consumers reaching it via `Orbit:GetPlugin("Orbit_CooldownViewerExtensions"):RegisterTab{...}` is sanctioned because `RegisterTab` returns/operates on a live frame handle that an EventBus signal cannot supply. Treat CVE as a registrar, not as a peer plugin.
+
 ## files
 
 | file | responsibility |
@@ -44,7 +46,7 @@ the first registered extension tab anchors `TOP -> BOTTOM` of `CooldownViewerSet
 
 ## parenting
 
-tabs are parented to `UIParent`, **not** `CooldownViewerSettings`. the `hooksecurefunc(tab, "SetChecked", ...)` and `SetCustomOnMouseUpHandler` hooks that live on each tab can be called by blizzard's click dispatch; if the tabs were children of `CooldownViewerSettings`, those callbacks would be writing to a child of a secure blizzard frame while on the panel's secure call stack, and the taint would propagate into the panel's attribute chain. strata and frame level are matched to the panel via `SetFrameStrata` / `SetFrameLevel(parent:GetFrameLevel() + 10)` so the tabs still render above the panel. visibility is synced via `parent:HookScript("OnShow"/"OnHide")` — script-handler hooks, not method hooks, which don't propagate method-level taint.
+tabs are parented to `UIParent`, **not** `CooldownViewerSettings`. the `hooksecurefunc(tab, "SetChecked", ...)` and `SetCustomOnMouseUpHandler` hooks that live on each tab can be called by blizzard's click dispatch; if the tabs were children of `CooldownViewerSettings`, those callbacks would be writing to a child of a secure blizzard frame while on the panel's secure call stack, and the taint would propagate into the panel's attribute chain. frame level is `parent:GetFrameLevel() + 10` so the tabs render above the panel. strata is pinned to `DIALOG` (not matched to the panel): `CooldownViewerSettings` sets no strata, so it sits at the default `MEDIUM`, which renders below `HIGH` frames like raid frames — `DIALOG` is WoW's standard menu/dialog altitude and keeps the tabs above them. visibility is synced via `parent:HookScript("OnShow"/"OnHide")` — script-handler hooks, not method hooks, which don't propagate method-level taint.
 
 `Plugin._lastBuiltTab` tracks the running tail of the chain across multiple `BuildPendingTabs` flushes. consumers commonly call `RegisterTab` more than once in a row (tracked registers Icons and Bars in two separate calls), and if the cooldown viewer is already open the first call flushes `pendingTabs` before the second call is queued — without `_lastBuiltTab` the second tab would re-anchor to `AurasTab` and overlap the first.
 

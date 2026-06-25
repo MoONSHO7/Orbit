@@ -191,3 +191,5 @@ function Orbit.DispelIndicatorMixin:UpdateAllDispelIndicators(plugin)
     end
 end
 
+if table.freeze then table.freeze(Orbit.DispelIndicatorMixin) end
+

@@ -28,6 +28,7 @@ local selectedComponent = nil -- Currently selected component for nudge
 local SnapEngine = Engine.CanvasMode.SnapEngine
 local SNAP_OPTIONS = { edgeThreshold = SnapEngine.EDGE_THRESHOLD, gridSize = SnapEngine.SNAP_SIZE }
 local PRECISION_OPTIONS = { precisionMode = true }
+local HANDLE_GREEN = { 0.3, 0.8, 0.3 }
 
 -- [ DRAG MECHANICS ]---------------------------------------------------------------------------------
 function ComponentDrag:OnDragUpdate(component, parent, data, handle)
@@ -151,7 +152,7 @@ function ComponentDrag:DeselectComponent()
     if selectedComponent then
         local data = registeredComponents[selectedComponent]
         if data and data.handle and not data.handle.isDragging then
-            data.handle:SetHandleColor(0.3, 0.8, 0.3, 0, 0)
+            data.handle:SetHandleColor(HANDLE_GREEN[1], HANDLE_GREEN[2], HANDLE_GREEN[3], 0, 0)
         end
     end
 

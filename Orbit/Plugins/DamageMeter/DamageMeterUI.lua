@@ -14,6 +14,7 @@ local BORDER = DM.Border
 local BG = DM.Background
 local TITLE = DM.Title
 local ICON = DM.IconPos
+local BREAKDOWN = DM.BreakdownMode
 local FRAME_PREFIX = "OrbitDamageMeter"
 local FRAME_LEVEL_BASE = DM.FrameLevelBase
 local FRAME_LEVEL_STRIDE = DM.FrameLevelStride
@@ -23,6 +24,8 @@ local VIEW_TIMEOUT_SECONDS = DM.ViewTimeoutSeconds
 local NAME_AFTER_RANK_PAD = DM.NameAfterRankPad
 local DPS_AFTER_TOTAL_PAD = DM.DpsAfterTotalPad
 local EMPTY_HOVER_ALPHA = 0.5
+local PREVIEW_DPS_VALUE = 13333
+local PREVIEW_TOTAL_VALUE = 2400000
 
 local Plugin = Orbit:GetPlugin(DM.SystemID)
 if not Plugin then return end
@@ -225,7 +228,9 @@ local function PickHistoryAtlas(entry)
         if entry.sessionType == DM.SessionType.Current then return HISTORY_ATLAS_CURRENT end
         if entry.sessionType == DM.SessionType.Overall then return HISTORY_ATLAS_OVERALL end
     end
-    local name = entry.name or ""
+    -- entry.name can be secret in combat (see the line-751 guard); :sub/== would throw, so fall back to normal.
+    local name = entry.name
+    if not name or issecretvalue(name) then return HISTORY_ATLAS_NORMAL end
     if name:sub(1, 3) == "(!)" then return HISTORY_ATLAS_ELITE end
     return HISTORY_ATLAS_NORMAL
 end
@@ -425,6 +430,8 @@ local function LayoutBarInternals(bar, def)
 end
 
 local function AttachCanvasComponents(frame)
+    -- Breakdown popups never enter Canvas Mode; they borrow the meter's componentPositions read-only.
+    if frame._isPopup then return end
     if frame._canvasComponentsAttached then return end
     local bar = frame.bars[1]
     if not bar then return end
@@ -441,10 +448,9 @@ local function AttachCanvasComponents(frame)
 end
 
 local TITLE_GAP                = 2
-local STRETCH_TAB_ATLAS_LEFT   = "glues-characterSelect-TopHUD-selected-left"
-local STRETCH_TAB_ATLAS_RIGHT  = "glues-characterSelect-TopHUD-selected-right"
-local STRETCH_TAB_WIDTH        = 60
-local STRETCH_TAB_HEIGHT       = 12
+local STRETCH_TAB_ATLAS        = "lootroll-resizehandle"
+local STRETCH_TAB_WIDTH        = 72
+local STRETCH_TAB_HEIGHT       = 14.4
 local STRETCH_TAB_INSET        = 0
 local STRETCH_TAB_IDLE_ALPHA   = 0
 local STRETCH_TAB_HOVER_ALPHA  = 1
@@ -468,10 +474,10 @@ local function BuildTitleText(def)
     local metricLabel = L[DM.MetricLabelKeys[def.meterType] or "PLU_DM_METRIC_DAMAGE"] or ""
     if def.viewMode == "breakdown" then
         local name
-        -- Skip API call on secret GUID: returned name would be secret and concat/equality would throw.
+        -- Skip the API on a secret GUID, and re-check the return: a non-secret GUID can still yield a secret name in combat.
         if def.breakdownGUID and not issecretvalue(def.breakdownGUID) then
             local _, _, _, _, _, apiName = GetPlayerInfoByGUID(def.breakdownGUID)
-            if apiName and apiName ~= "" then name = apiName end
+            if apiName and not issecretvalue(apiName) and apiName ~= "" then name = apiName end
         end
         if not name or name == "" then name = def.breakdownName end
         if name and name ~= "" then
@@ -511,6 +517,8 @@ local function RefreshTitle(frame, def)
     if rectWidth and rectWidth > 0 and title:GetStringWidth() > rectWidth then
         title:SetWidth(rectWidth)
     end
+    -- Popup titles stay click-through so the detached frame's drag / right-click-close isn't intercepted.
+    title:EnableMouse(not InEditMode() and not frame._isPopup)
     title:Show()
 end
 
@@ -533,6 +541,8 @@ local function ApplyStretchAtlas(tex, atlasName, flipV)
 end
 
 local function RefreshStretchTab(frame, def)
+    -- Popups have no stretch tab — bar count is inherited from the meter, not resized here.
+    if frame._isPopup then return end
     local tab = frame._stretchTab
     -- Freeze position mid-drag: SetClampedToScreen can flip isOnTop and invert stretchPx.
     if tab._dragging then return end
@@ -557,11 +567,7 @@ local function RefreshStretchTab(frame, def)
     local xInset = tabOnLeft and STRETCH_TAB_INSET or -STRETCH_TAB_INSET
     tab:SetPoint(innerEdge .. side, frame, outerEdge .. side, xInset, 0)
 
-    -- Atlas names reflect pointing direction not position: `-right` art visually fits LEFT corner.
-    tab.texLeft:SetShown(not tabOnLeft)
-    tab.texRight:SetShown(tabOnLeft)
-    ApplyStretchAtlas(tab.texLeft,  STRETCH_TAB_ATLAS_LEFT,  not isOnTop)
-    ApplyStretchAtlas(tab.texRight, STRETCH_TAB_ATLAS_RIGHT, not isOnTop)
+    ApplyStretchAtlas(tab.tex, STRETCH_TAB_ATLAS, isOnTop)
 end
 
 local function GetAvailableRowCount(def)
@@ -615,11 +621,12 @@ local function RefreshBorders(frame, def)
     end
 
     for _, bar in ipairs(frame.bars) do
-        HideBorder(bar)
+        HideBorder(bar.StatusBar)
+        -- Skin the whole row, not just the StatusBar, so the icon sits inside the per-bar border (cf. the cast bar).
         if mode == BORDER.PerBar then
-            Orbit.Skin:SkinBorder(bar.StatusBar, bar.StatusBar, borderSize)
+            Orbit.Skin:SkinBorder(bar, bar, borderSize)
         else
-            HideBorder(bar.StatusBar)
+            HideBorder(bar)
         end
     end
 end
@@ -671,15 +678,33 @@ local function LayoutBars(frame, def)
 end
 
 -- [ FRAME FACTORY ] ---------------------------------------------------------------------------------
--- significandDivisor * fractionDivisor = order of magnitude (10×100=1000 → "K"); breakpoint=0 catches sub-1 floats so nothing falls through to raw tostring.
-local SHORT_BREAKPOINTS = {
-    { breakpoint = 1000000000000, abbreviation = "T", significandDivisor = 10000000000, fractionDivisor = 100, abbreviationIsGlobal = false },
-    { breakpoint = 1000000000,    abbreviation = "B", significandDivisor = 10000000,    fractionDivisor = 100, abbreviationIsGlobal = false },
-    { breakpoint = 1000000,       abbreviation = "M", significandDivisor = 10000,       fractionDivisor = 100, abbreviationIsGlobal = false },
-    { breakpoint = 1000,          abbreviation = "K", significandDivisor = 10,          fractionDivisor = 100, abbreviationIsGlobal = false },
-    { breakpoint = 0,             abbreviation = "",  significandDivisor = 0.01,        fractionDivisor = 100, abbreviationIsGlobal = false },
+-- significandDivisor * fractionDivisor = order of magnitude (10×100=1000 → "K"); breakpoint=0 (magnitude 1) catches sub-1000 floats so nothing falls through to raw tostring.
+local ABBREV_ORDERS = {
+    { breakpoint = 1000000000000, abbreviation = "T" },
+    { breakpoint = 1000000000,    abbreviation = "B" },
+    { breakpoint = 1000000,       abbreviation = "M" },
+    { breakpoint = 1000,          abbreviation = "K" },
+    { breakpoint = 0,             abbreviation = "",  magnitude = 1 },
 }
-local SHORT_OPTIONS = { breakpointData = SHORT_BREAKPOINTS }
+
+-- fractionDivisor caps displayed precision (1/10/100 → 0/1/2 places); AbbreviateNumbers trims trailing zeros.
+local FRACTION_DIVISORS = { [0] = 1, [1] = 10, [2] = 100 }
+local function BuildAbbrevOptions(decimals)
+    local fractionDivisor = FRACTION_DIVISORS[decimals]
+    local data = {}
+    for i, order in ipairs(ABBREV_ORDERS) do
+        local magnitude = order.magnitude or order.breakpoint
+        data[i] = {
+            breakpoint = order.breakpoint, abbreviation = order.abbreviation, abbreviationIsGlobal = false,
+            significandDivisor = magnitude / fractionDivisor, fractionDivisor = fractionDivisor,
+        }
+    end
+    return { breakpointData = data }
+end
+
+-- Format override → decimal places. "Short" is the legacy 2-decimal value, kept so saved layouts still resolve.
+local ABBREV_OPTIONS = { [0] = BuildAbbrevOptions(0), [1] = BuildAbbrevOptions(1), [2] = BuildAbbrevOptions(2) }
+local FORMAT_DECIMALS = { Round = 0, Tenth = 1, Short = 2 }
 
 -- Hoisted above BuildMeterFrame for the CreateCanvasPreview closure. value (totalAmount/amountPerSecond) is secret-in-combat; Abbreviate/BreakUpLargeNumbers accept secret args, SetFormattedText is a C-sink.
 local function WriteNumberField(fs, value, overrides)
@@ -688,8 +713,23 @@ local function WriteNumberField(fs, value, overrides)
     if format == "Full" then
         fs:SetFormattedText("%s", BreakUpLargeNumbers(value))
     else
-        fs:SetFormattedText("%s", AbbreviateNumbers(value, SHORT_OPTIONS))
+        fs:SetFormattedText("%s", AbbreviateNumbers(value, ABBREV_OPTIONS[FORMAT_DECIMALS[format] or 2]))
     end
+end
+
+-- Canvas ApplyCustomOverride hook: reformat the preview number on a Format change, which generic ApplyStyle (font/colour only) can't.
+local function ReformatPreviewNumber(container, key, _, overrides)
+    if key ~= "Format" or not container.visual or not container._rawValue then return end
+    WriteNumberField(container.visual, container._rawValue, overrides)
+    C_Timer.After(0, function()
+        local visual = container.visual
+        if not visual then return end
+        local w, h = visual:GetStringWidth(), visual:GetStringHeight()
+        if not w or w <= 0 then return end
+        local s = container:GetEffectiveScale()
+        container:SetSize(Pixel:Snap(w, s), Pixel:Snap(h, s))
+        if OrbitEngine.CanvasMode.ReanchorContainer then OrbitEngine.CanvasMode.ReanchorContainer(container) end
+    end)
 end
 
 local function BuildMeterFrame(id, def)
@@ -746,7 +786,7 @@ local function BuildMeterFrame(id, def)
                 -- Drop-time capture: session names from C_DamageMeter can be secret in combat; skip if so.
                 local capturedName
                 if entry.kind == "id" and entry.name
-                   and (not issecretvalue or not issecretvalue(entry.name)) then
+                   and not issecretvalue(entry.name) then
                     capturedName = entry.name
                 end
                 Plugin:UpdateMeterDef(id, {
@@ -759,11 +799,14 @@ local function BuildMeterFrame(id, def)
                 Plugin:RenderAllMeters()
                 return
             end
+            -- Only drill in from the chart (nil renders as chart); never from breakdown/history.
+            if def2.viewMode == "breakdown" or def2.viewMode == "history" then return end
             -- Refuse drill-in during combat: sourceGUID is ConditionalSecret and secrets never un-secret.
-            if def2.viewMode ~= "chart" then return end
             if not bar._source then return end
             if InCombatLockdown() then return end
             local src = bar._source
+            -- Combat gate can race; bail on any secret identifier before either drill-in path reads or stores it.
+            if issecretvalue(src.sourceGUID) or issecretvalue(src.sourceCreatureID) then return end
             if IsShiftKeyDown() and src.sourceGUID and src.classFilename and src.classFilename ~= "" then
                 Plugin:OpenSpecComparison(id, src)
                 return
@@ -772,9 +815,14 @@ local function BuildMeterFrame(id, def)
                 local displayName = src.name
                 if src.sourceGUID then
                     local _, _, _, _, _, apiName = GetPlayerInfoByGUID(src.sourceGUID)
-                    if apiName and apiName ~= "" then displayName = apiName end
+                    if apiName and not issecretvalue(apiName) and apiName ~= "" then displayName = apiName end
                 end
-                Plugin:EnterBreakdown(id, src.sourceGUID, src.sourceCreatureID, src.classFilename, displayName)
+                if issecretvalue(displayName) then displayName = "" end
+                if (def2.breakdownMode or BREAKDOWN.Click) == BREAKDOWN.Detached then
+                    Plugin:OpenDetachedBreakdown(id, src, displayName)
+                else
+                    Plugin:EnterBreakdown(id, src.sourceGUID, src.sourceCreatureID, src.classFilename, displayName)
+                end
             end
             return
         end
@@ -791,11 +839,30 @@ local function BuildMeterFrame(id, def)
             end
         end
     end)
+    -- Hover-to-breakdown: OnUpdate lives only between OnEnter/OnLeave, so there's no always-on per-frame cost.
+    local function MouseoverActive()
+        local d = Plugin:GetMeterDef(id)
+        return d and d.breakdownMode == BREAKDOWN.Mouseover
+            and (d.viewMode == nil or d.viewMode == "chart")
+            and not InEditMode() and not InCombatLockdown()
+    end
+    local function OnHoverUpdate(self, elapsed)
+        self._hoverElapsed = (self._hoverElapsed or 0) + elapsed
+        if self._hoverElapsed < DM.MouseoverThrottleSeconds then return end
+        self._hoverElapsed = 0
+        Plugin:TrackMouseoverBreakdown(id)
+    end
     frame:SetScript("OnEnter", function(self)
         if self._isEmpty then self._visibleRect:SetAlpha(EMPTY_HOVER_ALPHA) end
+        if MouseoverActive() then
+            self._hoverElapsed = DM.MouseoverThrottleSeconds
+            self:SetScript("OnUpdate", OnHoverUpdate)
+        end
     end)
     frame:SetScript("OnLeave", function(self)
         if self._isEmpty then self._visibleRect:SetAlpha(0) end
+        self:SetScript("OnUpdate", nil)
+        Plugin:HideMouseoverBreakdown()
     end)
     frame:SetScript("OnMouseWheel", function(self, delta)
         self._lastInteraction = GetTime()
@@ -835,6 +902,14 @@ local function BuildMeterFrame(id, def)
     frame._title = frame:CreateFontString(nil, "OVERLAY")
     frame._title:SetFont(GetFont(), def.titleSize, GetFontOutline())
     frame._title:SetTextColor(1, 1, 1)
+    frame._title:SetScript("OnMouseUp", function(_, button)
+        if button == "LeftButton" and not InEditMode() then
+            frame._lastInteraction = GetTime()
+            ShowContextMenu(frame, id)
+        end
+    end)
+    frame._title:SetScript("OnEnter", function(self) self:SetTextColor(NORMAL_FONT_COLOR:GetRGB()) end)
+    frame._title:SetScript("OnLeave", function(self) self:SetTextColor(1, 1, 1) end)
     frame._title:Hide()
 
     do
@@ -846,17 +921,11 @@ local function BuildMeterFrame(id, def)
         tab:EnableMouse(true)
         tab:RegisterForClicks("LeftButtonDown", "LeftButtonUp")
 
-        local texLeft = tab:CreateTexture(nil, "OVERLAY")
-        texLeft:SetAtlas(STRETCH_TAB_ATLAS_LEFT)
-        texLeft:SetAllPoints(tab)
-        texLeft:Hide()
-        local texRight = tab:CreateTexture(nil, "OVERLAY")
-        texRight:SetAtlas(STRETCH_TAB_ATLAS_RIGHT)
-        texRight:SetAllPoints(tab)
-        texRight:Hide()
+        local tex = tab:CreateTexture(nil, "OVERLAY")
+        tex:SetAtlas(STRETCH_TAB_ATLAS)
+        tex:SetAllPoints(tab)
 
-        tab.texLeft  = texLeft
-        tab.texRight = texRight
+        tab.tex = tex
         tab._meterID = id
 
         tab:SetScript("OnEnter", function(self)
@@ -946,10 +1015,12 @@ local function BuildMeterFrame(id, def)
         local parent = options and options.parent or UIParent
         local borderSize = options and options.borderSize or OrbitEngine.Pixel:DefaultBorderSize(scale)
 
+        -- Mirror LayoutBars' Pixel:Multiple sizing — Pixel:Snap on the raw def value diverges when UIParent scale ≠ screen scale and stretched the preview bar taller than the live bar.
+        local barHeightLogical = Pixel:Multiple(currentDef.barHeight, frame:GetEffectiveScale())
         local iconSide = currentDef.iconPosition
         local showIcon = iconSide ~= ICON.Off
-        local iconSize = showIcon and currentDef.barHeight or 0
-        local fillWidth = currentDef.barWidth - iconSize
+        local iconSize = showIcon and barHeightLogical or 0
+        local fillWidth = GetEffectiveWidth(frame, currentDef) - iconSize
 
         local _, playerClassFile = UnitClass("player")
         playerClassFile = playerClassFile or "WARRIOR"
@@ -958,16 +1029,17 @@ local function BuildMeterFrame(id, def)
 
         local preview = OrbitEngine.Preview.Frame:CreateBasePreview(frame, scale, parent, borderSize)
         local effScale = preview:GetEffectiveScale()
-        preview:SetSize(Pixel:Multiple(fillWidth * scale, effScale), Pixel:Multiple(currentDef.barHeight * scale, effScale))
+        preview:SetSize(Pixel:Snap(fillWidth * scale, effScale), Pixel:Snap(barHeightLogical * scale, effScale))
         preview.sourceFrame = frame
         preview.sourceWidth = fillWidth
-        preview.sourceHeight = currentDef.barHeight
+        preview.sourceHeight = barHeightLogical
         preview.previewScale = scale
         preview.components = {}
+        preview.fixedSize = true
 
         if showIcon then
             local icon = preview:CreateTexture(nil, "ARTWORK")
-            local iconLogical = Pixel:Multiple(iconSize * scale, effScale)
+            local iconLogical = Pixel:Snap(iconSize * scale, effScale)
             icon:SetSize(iconLogical, iconLogical)
             if iconSide == ICON.Right then
                 icon:SetPoint("LEFT", preview, "RIGHT", 0, 0)
@@ -978,7 +1050,7 @@ local function BuildMeterFrame(id, def)
             Orbit.Skin:RegisterMaskedSurface(preview, icon)
         end
 
-        local previewFillHeight = Pixel:Multiple(currentDef.barHeight * currentDef.style / 100 * scale, effScale)
+        local previewFillHeight = Pixel:Snap(barHeightLogical * currentDef.style / 100 * scale, effScale)
 
         local bar = CreateFrame("StatusBar", nil, preview)
         bar:SetPoint("BOTTOMLEFT",  preview, "BOTTOMLEFT",  0, 0)
@@ -1016,12 +1088,12 @@ local function BuildMeterFrame(id, def)
         local dps = preview:CreateFontString(nil, "OVERLAY")
         dps:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
         dps:SetTextColor(1, 1, 1)
-        WriteNumberField(dps, 13333, dpsOverrides)
+        WriteNumberField(dps, PREVIEW_DPS_VALUE, dpsOverrides)
 
         local damageDone = preview:CreateFontString(nil, "OVERLAY")
         damageDone:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
         damageDone:SetTextColor(1, 1, 1)
-        WriteNumberField(damageDone, 2400000, totalOverrides)
+        WriteNumberField(damageDone, PREVIEW_TOTAL_VALUE, totalOverrides)
 
         -- StartX/StartY must be center-relative: CanvasModeDrag derives dragGripX from them.
         local AnchorToCenter = OrbitEngine.PositionUtils.AnchorToCenter
@@ -1039,8 +1111,8 @@ local function BuildMeterFrame(id, def)
         local fl = preview:GetFrameLevel() + DM.PreviewLevelBump
         if rankComp       then rankComp:SetFrameLevel(fl);       preview.components.Rank       = rankComp;       rank:Hide()       end
         if nameComp       then nameComp:SetFrameLevel(fl);       preview.components.Name       = nameComp;       name:Hide()       end
-        if dpsComp        then dpsComp:SetFrameLevel(fl);        preview.components.DPS        = dpsComp;        dps:Hide()        end
-        if damageDoneComp then damageDoneComp:SetFrameLevel(fl); preview.components.DamageDone = damageDoneComp; damageDone:Hide() end
+        if dpsComp        then dpsComp:SetFrameLevel(fl);        preview.components.DPS        = dpsComp;        dps:Hide();        dpsComp._rawValue = PREVIEW_DPS_VALUE;          dpsComp.ApplyCustomOverride = ReformatPreviewNumber        end
+        if damageDoneComp then damageDoneComp:SetFrameLevel(fl); preview.components.DamageDone = damageDoneComp; damageDone:Hide(); damageDoneComp._rawValue = PREVIEW_TOTAL_VALUE; damageDoneComp.ApplyCustomOverride = ReformatPreviewNumber end
 
         Orbit.Skin:UpdateRoundedMask(preview, false)
         return preview
@@ -1206,6 +1278,84 @@ end
 
 local _breakdownSource = { name = nil, classFilename = nil, specIconID = nil, totalAmount = nil, amountPerSecond = nil }
 
+local function RenderBreakdownView(frame, def)
+    local count = def.barCount
+    local offset = def.scrollOffset or 0
+    local iconPosition = def.iconPosition
+    local positions, disabled = GetCanvasStateForMeter(def, def.id)
+    local meterType = def.meterType
+
+    -- Legacy recovery: secret breakdown IDs from pre-guard saves auto-exit (secrets never un-secret).
+    if (def.breakdownGUID and issecretvalue(def.breakdownGUID))
+       or (def.breakdownCreatureID and issecretvalue(def.breakdownCreatureID)) then
+        -- Popups have no persisted view state to unwind; the popup module hides them on the next pass.
+        if not frame._isPopup then
+            C_Timer.After(0, function() Plugin:ExitBreakdown(def.id) end)
+        end
+        RenderEmpty(frame, def)
+        return
+    end
+    local sourceData = OrbitEngine.DamageMeterData:ResolveSessionSource(
+        def.sessionID, def.sessionType, def.meterType,
+        def.breakdownGUID, def.breakdownCreatureID
+    )
+    if not sourceData or not sourceData.combatSpells then
+        RenderEmpty(frame, def)
+        return
+    end
+    local spells = sourceData.combatSpells
+    local spellMax = sourceData.maxAmount
+    -- Hostile-parent breakdown rows are the friendly casters (unitName/unitClassFilename) not spells.
+    local isHostileParent = HOSTILE_SOURCE_METRICS[meterType]
+    local metricForBreakdown = isHostileParent and DM.MeterType.DamageDone or meterType
+    local fallbackClass = def.breakdownClass or ""
+    local visibleCount = 0
+    for i = 1, count do
+        local bar = frame.bars[i]
+        if not bar then break end
+        local spell = spells[offset + i]
+        if spell then
+            local details = spell.combatSpellDetails
+            local rowName, rowClass, iconID
+            -- spell.spellID and details.unitName are secret-in-combat — hasSpellID is a non-throwing presence test (secret values are non-nil by definition); rowName "" normalization skips the secret path.
+            local spellID = spell.spellID
+            local hasSpellID = issecretvalue(spellID) or (spellID ~= nil)
+            if isHostileParent then
+                rowName = details and details.unitName
+                rowClass = (details and details.unitClassFilename) or ""
+                if rowClass == "" then rowClass = fallbackClass end
+                iconID = details and details.specIconID
+                if (not iconID or iconID == 0) and hasSpellID then
+                    iconID = C_Spell.GetSpellTexture(spellID)
+                end
+            else
+                if hasSpellID then
+                    rowName = C_Spell.GetSpellName(spellID)
+                    iconID  = C_Spell.GetSpellTexture(spellID)
+                end
+                rowClass = fallbackClass
+            end
+            if not issecretvalue(rowName) and (not rowName or rowName == "") then
+                rowName = "?"
+            end
+            -- GetSpellTexture returns a secret for a secret spellID; PaintBar's `~= 0` test would throw, so drop it and fall back to the class icon.
+            if issecretvalue(iconID) then iconID = nil end
+            _breakdownSource.name            = rowName
+            _breakdownSource.classFilename   = rowClass
+            _breakdownSource.specIconID      = iconID
+            _breakdownSource.totalAmount     = spell.totalAmount
+            _breakdownSource.amountPerSecond = spell.amountPerSecond
+            PaintRow(bar, offset + i, _breakdownSource, spellMax, iconPosition, positions, disabled, meterType, metricForBreakdown)
+            -- Repoint past PaintBar's bar._source = _breakdownSource (shared mutable) to the per-spell entry.
+            bar._source = spell
+            visibleCount = i
+        else
+            bar:Hide()
+        end
+    end
+    SetFrameHeightForVisible(frame, def, visibleCount)
+end
+
 function RenderFrame(id)
     local frame = meters[id]
     if not frame then return end
@@ -1265,70 +1415,7 @@ function RenderFrame(id)
     end
 
     if def.viewMode == "breakdown" and (def.breakdownGUID or def.breakdownCreatureID) then
-        -- Legacy recovery: secret breakdown IDs from pre-guard saves auto-exit (secrets never un-secret).
-        if (def.breakdownGUID and issecretvalue(def.breakdownGUID))
-           or (def.breakdownCreatureID and issecretvalue(def.breakdownCreatureID)) then
-            C_Timer.After(0, function() Plugin:ExitBreakdown(id) end)
-            RenderEmpty(frame, def)
-            return
-        end
-        local sourceData = OrbitEngine.DamageMeterData:ResolveSessionSource(
-            def.sessionID, def.sessionType, def.meterType,
-            def.breakdownGUID, def.breakdownCreatureID
-        )
-        if not sourceData or not sourceData.combatSpells then
-            RenderEmpty(frame, def)
-            return
-        end
-        local spells = sourceData.combatSpells
-        local spellMax = sourceData.maxAmount
-        -- Hostile-parent breakdown rows are the friendly casters (unitName/unitClassFilename) not spells.
-        local isHostileParent = HOSTILE_SOURCE_METRICS[meterType]
-        local metricForBreakdown = isHostileParent and DM.MeterType.DamageDone or meterType
-        local fallbackClass = def.breakdownClass or ""
-        local visibleCount = 0
-        for i = 1, count do
-            local bar = frame.bars[i]
-            if not bar then break end
-            local spell = spells[offset + i]
-            if spell then
-                local details = spell.combatSpellDetails
-                local rowName, rowClass, iconID
-                -- spell.spellID and details.unitName are secret-in-combat — hasSpellID is a non-throwing presence test (secret values are non-nil by definition); rowName "" normalization skips the secret path.
-                local spellID = spell.spellID
-                local hasSpellID = issecretvalue(spellID) or (spellID ~= nil)
-                if isHostileParent then
-                    rowName = details and details.unitName
-                    rowClass = (details and details.unitClassFilename) or ""
-                    if rowClass == "" then rowClass = fallbackClass end
-                    iconID = details and details.specIconID
-                    if (not iconID or iconID == 0) and hasSpellID then
-                        iconID = C_Spell.GetSpellTexture(spellID)
-                    end
-                else
-                    if hasSpellID then
-                        rowName = C_Spell.GetSpellName(spellID)
-                        iconID  = C_Spell.GetSpellTexture(spellID)
-                    end
-                    rowClass = fallbackClass
-                end
-                if not issecretvalue(rowName) and (not rowName or rowName == "") then
-                    rowName = "?"
-                end
-                _breakdownSource.name            = rowName
-                _breakdownSource.classFilename   = rowClass
-                _breakdownSource.specIconID      = iconID
-                _breakdownSource.totalAmount     = spell.totalAmount
-                _breakdownSource.amountPerSecond = spell.amountPerSecond
-                PaintRow(bar, offset + i, _breakdownSource, spellMax, iconPosition, positions, disabled, meterType, metricForBreakdown)
-                -- Repoint past PaintBar's bar._source = _breakdownSource (shared mutable) to the per-spell entry.
-                bar._source = spell
-                visibleCount = i
-            else
-                bar:Hide()
-            end
-        end
-        SetFrameHeightForVisible(frame, def, visibleCount)
+        RenderBreakdownView(frame, def)
         return
     end
 
@@ -1392,6 +1479,8 @@ function Plugin:RebuildAllMeters()
         Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, 1, "OutOfCombatFade", false)
     end
 
+    -- Drop popups whose owning meter was just torn down before the render pass re-paints survivors.
+    self:PruneBreakdownPopups()
     self:RenderAllMeters()
 
     -- Re-fire OnEditModeEnter so a meter created mid-Edit-Mode becomes selectable without an exit/re-enter (OnEditModeEnter runs only at enter).
@@ -1420,6 +1509,7 @@ end
 
 function Plugin:RenderAllMeters()
     for id in pairs(meters) do RenderFrame(id) end
+    self:RenderBreakdownPopups()
 end
 
 function Plugin:RelayoutAllMeters()
@@ -1438,11 +1528,42 @@ function Plugin:GetFrameBySystemIndex(systemIndex)
     return meters[systemIndex]
 end
 
+-- [ BREAKDOWN POPUP API ] ---------------------------------------------------------------------------
+function Plugin:BuildBreakdownFrame()
+    local frame = CreateFrame("Frame", nil, UIParent)
+    Pixel:Enforce(frame)
+    frame:SetFrameStrata("HIGH")
+    frame._isPopup = true
+    frame.bars = {}
+
+    frame._visibleRect = CreateFrame("Frame", nil, frame)
+    frame._backdrop = frame._visibleRect:CreateTexture(nil, "BACKGROUND")
+    frame._backdrop:SetAllPoints(frame._visibleRect)
+    Orbit.Skin:RegisterMaskedSurface(frame._visibleRect, frame._backdrop)
+
+    frame._title = frame:CreateFontString(nil, "OVERLAY")
+    frame._title:SetFont(GetFont(), DM.DefaultDef.titleSize, GetFontOutline())
+    frame._title:SetTextColor(1, 1, 1)
+    frame._title:Hide()
+
+    return frame
+end
+
+function Plugin:LayoutBreakdownFrame(frame, def)
+    LayoutBars(frame, def)
+end
+
+function Plugin:RenderBreakdownFrame(frame, def)
+    RenderBreakdownView(frame, def)
+end
+
 local function RegisterComponentSchemas()
     local Schema = OrbitEngine.CanvasMode.SettingsSchema
     local FORMAT_DROPDOWN = {
         type = "dropdown", key = "Format", label = L.PLU_DM_FORMAT, default = "Short",
         options = {
+            { text = L.PLU_DM_FORMAT_WHOLE, value = "Round" },
+            { text = L.PLU_DM_FORMAT_TENTH, value = "Tenth" },
             { text = L.PLU_DM_FORMAT_SHORT, value = "Short" },
             { text = L.PLU_DM_FORMAT_FULL,  value = "Full"  },
         },

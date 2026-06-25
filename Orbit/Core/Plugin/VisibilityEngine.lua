@@ -11,59 +11,21 @@ local VE = Orbit.VisibilityEngine
 local DEFAULTS = { oocFade = false, opacity = 100, hideMounted = false, mouseOver = true, showWithTarget = true, alphaLock = false }
 local STARTUP_DELAY = 0.5
 
-local FRAME_REGISTRY = {
-    { key = "PlayerFrame",          display = L.PLU_VE_PLAYER_FRAME,     plugin = "Player Frame",       index = 1 },
-    { key = "PlayerPower",          display = L.PLU_VE_PLAYER_POWER,     plugin = "Player Power",       index = 1 },
-    { key = "PlayerCastBar",        display = L.PLU_VE_PLAYER_CAST_BAR,  plugin = "Player Cast Bar",    index = 1, opacityOnly = true },
-    { key = "PlayerResources",      display = L.PLU_VE_PLAYER_RESOURCES, plugin = "Player Resources",   index = 1 },
-    { key = "PetFrame",             display = L.PLU_VE_PET_FRAME,        plugin = "Pet Frame",          index = 1 },
-    { key = "PlayerBuffs",          display = L.PLU_VE_PLAYER_BUFFS,     plugin = "Player Buffs",       index = 1 },
-    { key = "PlayerDebuffs",        display = L.PLU_VE_PLAYER_DEBUFFS,   plugin = "Player Debuffs",     index = 1 },
-    { key = "TargetFrame",          display = L.PLU_VE_TARGET_FRAME,     plugin = "Target Frame",       index = 1 },
-    { key = "FocusFrame",           display = L.PLU_VE_FOCUS_FRAME,      plugin = "Focus Frame",        index = 1 },
-    { key = "ActionBar1",           display = L.PLU_VE_ACTION_BAR_1,     plugin = "Action Bars",        index = 1 },
-    { key = "ActionBar2",           display = L.PLU_VE_ACTION_BAR_2,     plugin = "Action Bars",        index = 2 },
-    { key = "ActionBar3",           display = L.PLU_VE_ACTION_BAR_3,     plugin = "Action Bars",        index = 3 },
-    { key = "ActionBar4",           display = L.PLU_VE_ACTION_BAR_4,     plugin = "Action Bars",        index = 4 },
-    { key = "ActionBar5",           display = L.PLU_VE_ACTION_BAR_5,     plugin = "Action Bars",        index = 5 },
-    { key = "ActionBar6",           display = L.PLU_VE_ACTION_BAR_6,     plugin = "Action Bars",        index = 6 },
-    { key = "ActionBar7",           display = L.PLU_VE_ACTION_BAR_7,     plugin = "Action Bars",        index = 7 },
-    { key = "ActionBar8",           display = L.PLU_VE_ACTION_BAR_8,     plugin = "Action Bars",        index = 8 },
-    { key = "PetBar",               display = L.PLU_VE_PET_BAR,          plugin = "Action Bars",        index = 9 },
-    { key = "StanceBar",            display = L.PLU_VE_STANCE_BAR,       plugin = "Action Bars",        index = 10 },
-    { key = "EssentialCooldowns",   display = L.PLU_VE_ESSENTIAL_CDS,    plugin = "Cooldown Manager",   index = 1 },
-    { key = "UtilityCooldowns",     display = L.PLU_VE_UTILITY_CDS,      plugin = "Cooldown Manager",   index = 2 },
-    { key = "BuffIcons",            display = L.PLU_VE_BUFF_ICONS,       plugin = "Cooldown Manager",   index = 3 },
-    { key = "ChargeBars",           display = L.PLU_VE_CHARGE_BARS,      plugin = "Cooldown Manager",   index = 20 },
-    { key = "BuffBars",             display = L.PLU_VE_BUFF_BARS,        plugin = "Cooldown Manager",   index = 30 },
-    -- Sentinel indices 1/2 — real Tracked record IDs are >= SystemIndexBase (1000) so they can't collide.
-    { key = "TrackedIcons",         display = L.PLU_VE_TRACKED_ICONS,    plugin = "Tracked Items",      index = 1 },
-    { key = "TrackedBars",          display = L.PLU_VE_TRACKED_BARS,     plugin = "Tracked Items",      index = 2 },
-    { key = "DamageMeters",         display = L.PLU_VE_DAMAGE_METERS,    plugin = "Damage Meter",       index = 1 },
-    { key = "GroupFrames",          display = L.PLU_VE_GROUP_FRAMES,     plugin = "Group Frames",       index = 1 },
-    { key = "BossFrames",           display = L.PLU_VE_BOSS_FRAMES,      plugin = "Boss Frames",        index = 1, opacityOnly = true },
-    { key = "MenuBar",              display = L.PLU_VE_MENU_BAR,         plugin = "Menu Bar",           index = 1 },
-    { key = "BagBar",               display = L.PLU_VE_BAG_BAR,          plugin = "Bag Bar",            index = 1 },
-    { key = "QueueStatus",          display = L.PLU_VE_QUEUE_STATUS,     plugin = "Queue Status",       index = 1 },
-    { key = "PerformanceInfo",      display = L.PLU_VE_PERFORMANCE_INFO, plugin = "Performance Info",   index = 1 },
-    { key = "CombatTimer",          display = L.PLU_VE_COMBAT_TIMER,     plugin = "Combat Timer",       index = 1 },
-    { key = "Minimap",              display = L.PLU_VE_MINIMAP,          plugin = "Minimap",            index = 1 },
-    { key = "MinimapButton",        display = L.PLU_VE_MINIMAP_BUTTON,   plugin = "Minimap Button",     index = 1 },
-    { key = "Datatexts",            display = L.PLU_VE_DATATEXTS,        plugin = "Datatexts",          index = 1 },
-    { key = "ExperienceBar",        display = L.PLU_VE_XP_REP_BAR,       plugin = "Experience Bar",     index = 1 },
-    { key = "HonorBar",             display = L.PLU_VE_HONOR_BAR,        plugin = "Honor Bar",          index = 1 },
-    { key = "PortalDock",           display = L.PLU_VE_PORTAL_DOCK,      plugin = "Portal Dock",        index = 1 },
-    { key = "RaidPanel",            display = L.PLU_VE_RAID_PANEL,       plugin = "Raid Panel",         index = 1 },
-}
-
+-- Orbit-plugin frames are registered at load by the Plugins-layer manifest (Plugins/VisibilityManifest.lua) via VE:RegisterFrame, so Core holds no plugin names (inward-dependency rule).
+local FRAME_REGISTRY = {}
 -- O(1) reverse lookup: { [pluginName] = { [systemIndex] = key } }
 local REVERSE_LOOKUP = {}
-for _, entry in ipairs(FRAME_REGISTRY) do
+
+-- Called by the Plugins-layer visibility manifest. entry = { key, display, plugin (name string), index, opacityOnly? }.
+function VE:RegisterFrame(entry)
+    if not entry or not entry.key then return end
+    entry.index = entry.index or 1
+    FRAME_REGISTRY[#FRAME_REGISTRY + 1] = entry
     REVERSE_LOOKUP[entry.plugin] = REVERSE_LOOKUP[entry.plugin] or {}
     REVERSE_LOOKUP[entry.plugin][entry.index] = entry.key
 end
 
--- Blizzard frames (no Orbit plugin, resolved via _G[blizzardFrame])
+-- Blizzard frames (no Orbit plugin, resolved via _G[blizzardFrame]). This is Core's catalog of BLIZZARD frames, which Core legitimately owns. `ownedBy` is an accepted exception to the no-plugin-names rule: it is graceful-degrading integration metadata (hide this Blizzard frame's row when the named Orbit replacement is enabled); a stale name just leaves the Blizzard row visible, never errors. Orbit's own designable frames are registered from the Plugins layer (Plugins/VisibilityManifest.lua), not here.
 local BLIZZARD_REGISTRY = {
     -- Insecure (full feature set: opacity, oocFade, hideMounted, mouseOver, showWithTarget)
     { key = "BlizzMinimap",          display = L.PLU_VE_MINIMAP,             blizzardFrame = "MinimapCluster",            ownedBy = "Minimap" },
@@ -71,7 +33,7 @@ local BLIZZARD_REGISTRY = {
     { key = "BuffFrame",             display = L.PLU_VE_BUFF_FRAME,          blizzardFrame = "BuffFrame",                 ownedBy = "Player Buffs" },
     { key = "DebuffFrame",           display = L.PLU_VE_DEBUFF_FRAME,        blizzardFrame = "DebuffFrame",               ownedBy = "Player Debuffs" },
     { key = "ChatFrame",             display = L.PLU_VE_CHAT_FRAME,          blizzardFrame = "ChatFrame1" },
-    { key = "StatusTrackingBar",     display = L.PLU_VE_XP_REP_HONOR_BAR,    blizzardFrame = "StatusTrackingBarManager",  ownedBy = { "Experience Bar", "Honor Bar" } },
+    { key = "StatusTrackingBar",     display = L.PLU_VE_XP_REP_HONOR_BAR,    blizzardFrame = "StatusTrackingBarManager",  ownedBy = "Status Widget" },
     { key = "DurabilityFrame",       display = L.PLU_VE_DURABILITY,          blizzardFrame = "DurabilityFrame" },
     { key = "VehicleSeatIndicator",  display = L.PLU_VE_VEHICLE_SEAT,        blizzardFrame = "VehicleSeatIndicator" },
     { key = "DamageMeter",           display = L.PLU_VE_DAMAGE_METER,        blizzardFrame = "DamageMeter",               ownedBy = "Damage Meter" },
@@ -90,7 +52,7 @@ local BLIZZARD_REGISTRY = {
     { key = "BlizzPartyFrame",       display = L.PLU_VE_PARTY_FRAME,         blizzardFrame = "PartyFrame",                ownedBy = "Group Frames",     secure = true },
     { key = "BlizzRaidFrame",        display = L.PLU_VE_RAID_FRAMES,         blizzardFrame = "CompactRaidFrameContainer", ownedBy = "Group Frames",     secure = true },
     { key = "BlizzRaidManager",      display = L.PLU_VE_RAID_MANAGER,        blizzardFrame = "CompactRaidFrameManager",   ownedBy = "Raid Panel",       secure = true },
-    { key = "BlizzMainMenuBar",      display = L.PLU_VE_ACTION_BAR_1,        blizzardFrame = "MainMenuBar",               ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
+    { key = "BlizzMainMenuBar",      display = L.PLU_VE_ACTION_BAR_1,        blizzardFrame = "MainActionBar",             ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
     { key = "BlizzMultiBarBL",       display = L.PLU_VE_ACTION_BAR_2,        blizzardFrame = "MultiBarBottomLeft",        ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
     { key = "BlizzMultiBarBR",       display = L.PLU_VE_ACTION_BAR_3,        blizzardFrame = "MultiBarBottomRight",       ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
     { key = "BlizzMultiBarRight",    display = L.PLU_VE_ACTION_BAR_4,        blizzardFrame = "MultiBarRight",             ownedBy = "Action Bars",      secure = true, propagateAlpha = true },
@@ -110,23 +72,18 @@ local BLIZZARD_REGISTRY = {
     { key = "ZoneAbility",           display = L.PLU_VE_ZONE_ABILITY,        blizzardFrame = "ZoneAbilityFrame",          secure = true },
 }
 
--- Custom third-party addon frames (resolved via _G[frame] when addon is loaded)
-local ADDON_REGISTRY = {
-    { key = "Details1",         display = L.PLU_VE_DETAILS_W1,     addon = "Details",         frame = "DetailsBaseFrame1" },
-    { key = "Details2",         display = L.PLU_VE_DETAILS_W2,     addon = "Details",         frame = "DetailsBaseFrame2" },
-    { key = "Details3",         display = L.PLU_VE_DETAILS_W3,     addon = "Details",         frame = "DetailsBaseFrame3" },
-    { key = "OmniCD",           display = L.PLU_VE_OMNICD,         addon = "OmniCD",          frame = "OmniCD" },
-    { key = "Plater",           display = L.PLU_VE_PLATER,         addon = "Plater",          frame = "PlaterMainFrame" },
-    { key = "Platynator",       display = L.PLU_VE_PLATYNATOR,     addon = "Platynator",      frame = "PlatynatorFrame" },
-    { key = "Chattynator",      display = L.PLU_VE_CHATTYNATOR,    addon = "Chattynator",     frame = "ChattynatorFrame" },
-    { key = "DandersFrames",    display = L.PLU_VE_DANDERS_FRAMES, addon = "DandersFrames",   frame = "DandersFramesMainFrame" },
-    { key = "Cell",             display = L.PLU_VE_CELL,           addon = "Cell",            frame = "CellMainFrame" },
-    { key = "BigWigs",          display = L.PLU_VE_BIGWIGS,        addon = "BigWigs",         frame = "BigWigsAnchor" },
-    { key = "LittleWigs",       display = L.PLU_VE_LITTLEWIGS,     addon = "LittleWigs",      frame = "LittleWigsAnchor" },
-    { key = "DBM",              display = L.PLU_VE_DBM,            addon = "DBM-Core",        frame = "DBMMinimapButton" },
-    { key = "Bartender1",       display = L.PLU_VE_BARTENDER_1,    addon = "Bartender4",      frame = "BT4Bar1" },
-    { key = "Bartender2",       display = L.PLU_VE_BARTENDER_2,    addon = "Bartender4",      frame = "BT4Bar2" },
-    { key = "Bartender3",       display = L.PLU_VE_BARTENDER_3,    addon = "Bartender4",      frame = "BT4Bar3" },
+-- Category taxonomy for the Fade Profiles picker. Orbit-plugin frames carry their own `category` from Plugins/VisibilityManifest.lua (the sole place plugins are enumerated by name); Blizzard frames map by registry key here, which Core legitimately owns. Returns a stable category KEY the UI localizes.
+local CATEGORY_ORDER = { "UnitFrames", "ActionBars", "Cooldowns", "HUD", "Other" }
+local CATEGORY_BY_KEY = {
+    BlizzPlayerFrame = "UnitFrames", BlizzPetFrame = "UnitFrames", BlizzTargetFrame = "UnitFrames",
+    BlizzTargetOfTarget = "UnitFrames", BlizzFocusFrame = "UnitFrames", BlizzPartyFrame = "UnitFrames",
+    BlizzRaidFrame = "UnitFrames", BlizzRaidManager = "UnitFrames", BlizzPlayerCastBar = "UnitFrames",
+    BlizzMainMenuBar = "ActionBars", BlizzMultiBarBL = "ActionBars", BlizzMultiBarBR = "ActionBars",
+    BlizzMultiBarRight = "ActionBars", BlizzMultiBarLeft = "ActionBars", BlizzMultiBar5 = "ActionBars",
+    BlizzMultiBar6 = "ActionBars", BlizzMultiBar7 = "ActionBars", BlizzStanceBar = "ActionBars",
+    BlizzPetActionBar = "ActionBars", BlizzPossessBar = "ActionBars", BlizzMicroMenu = "ActionBars",
+    BlizzBagsBar = "ActionBars", ExtraActionBar = "ActionBars", ZoneAbility = "ActionBars",
+    BlizzEssentialCDs = "Cooldowns", BlizzUtilityCDs = "Cooldowns", BlizzBuffIconCDs = "Cooldowns",
 }
 
 -- ownedBy: string or {strings} — entry is hidden from VE when ANY listed plugin is enabled (e.g. StatusTrackingBarManager → Experience + Honor).
@@ -195,6 +152,16 @@ function VE:GetFrameDefaults()
     return DEFAULTS
 end
 
+function VE:GetCategoryOrder()
+    return CATEGORY_ORDER
+end
+
+function VE:GetCategory(entry)
+    if entry.plugin then return entry.category or "Other" end
+    if entry.blizzardFrame then return CATEGORY_BY_KEY[entry.key] or "HUD" end
+    return "Other"
+end
+
 function VE:GetBlizzardFrames()
     local result = {}
     for _, entry in ipairs(BLIZZARD_REGISTRY) do
@@ -205,15 +172,21 @@ function VE:GetBlizzardFrames()
     return result
 end
 
-function VE:GetThirdPartyFrames()
-    local active = {}
-    local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
-    for _, entry in ipairs(ADDON_REGISTRY) do
-        if isLoaded(entry.addon) and _G[entry.frame] then
-            table.insert(active, entry)
+function VE:ResetAll()
+    if Orbit.db then Orbit.db.VisibilityEngine = {} end
+    for _, entry in ipairs(self:GetBlizzardFrames()) do
+        local f = _G[entry.blizzardFrame]
+        if f then f:SetAlpha(1) end
+    end
+    if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
+    Orbit.MountedVisibility:Refresh(true)
+    local systems = Orbit.Engine and Orbit.Engine.systems
+    if systems then
+        for _, plugin in pairs(systems) do
+            if plugin.ApplySettings then plugin:ApplySettings() end
         end
     end
-    return active
+    Orbit:Print(L.MSG_VE_RESET)
 end
 
 function VE:IsBlizzardEntry(entry)
@@ -283,7 +256,8 @@ function VE:ApplySecureBlizzardFrame(entry)
     if IsOwnedByEnabledPlugin(entry) then return end
     local frame = _G[entry.blizzardFrame]
     if not frame then return end
-    if not SECURE_FRAMES[entry.key] and not HasNonDefaultSecureSettings(self, entry) then return end
+    local profileCap = Orbit.FadeProfiles and Orbit.FadeProfiles:GetResolvedAlpha(entry.key) or 1
+    if not SECURE_FRAMES[entry.key] and not HasNonDefaultSecureSettings(self, entry) and profileCap >= 1 then return end
     SECURE_FRAMES[entry.key] = entry
     local opacity = (self:GetFrameSetting(entry.key, "opacity") or 100) / 100
     local oocFade = not entry.opacityOnly and self:GetFrameSetting(entry.key, "oocFade")
@@ -293,7 +267,7 @@ function VE:ApplySecureBlizzardFrame(entry)
     local revealedByTarget = showWithTarget and UnitExists("target")
     local inCombat = InCombatLockdown() or UnitAffectingCombat("player")
     local oocHide = oocFade and not inCombat and not revealedByTarget and not Orbit:IsEditMode()
-    local alpha = (mounted or oocHide) and 0 or (revealedByTarget and 1 or opacity)
+    local alpha = math.min((mounted or oocHide) and 0 or (revealedByTarget and 1 or opacity), profileCap)
     local function apply()
         frame:SetAlpha(alpha)
         if entry.propagateAlpha then
@@ -355,17 +329,6 @@ end)
 function VE:ApplyAll()
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
     self:ApplyBlizzardSettings()
-    self:ApplyAddonSettings()
-end
-
-function VE:ApplyAddonSettings()
-    if not Orbit.OOCFadeMixin then return end
-    for _, entry in ipairs(self:GetThirdPartyFrames()) do
-        local frame = _G[entry.frame]
-        if frame then
-            Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, entry.key)
-        end
-    end
 end
 
 function VE:ApplyFrame(key)
@@ -388,15 +351,6 @@ function VE:ApplyFrame(key)
             return
         end
     end
-    for _, entry in ipairs(ADDON_REGISTRY) do
-        if entry.key == key then
-            local frame = _G[entry.frame]
-            if frame then
-                Orbit.OOCFadeMixin:ApplyOOCFade(frame, nil, nil, nil, false, key)
-            end
-            return
-        end
-    end
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:RefreshAll() end
 end
 
@@ -407,6 +361,5 @@ initFrame:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     C_Timer.After(STARTUP_DELAY, function()
         VE:ApplyBlizzardSettings()
-        VE:ApplyAddonSettings()
     end)
 end)

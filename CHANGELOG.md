@@ -1,5 +1,22 @@
 [start]
 
+### New!
+- **Visibility Engine Overhaul**
+  - Your current visibility options will be reset.
+  - New Engine is much more powerful with more functionality.
+  - As it's new, please report bugs asap.
+
+- **Mythic+ Integration with StatusWidget**
+  - Please send feedback my way about this.
+  - Click the widget to dismiss the panel.
+
+  devnote: I do plan on making some different shapes in the future & onboarding to canvas mode.
+
+- **New Addon: Orbit Pack: Glows**
+  - Download on Curseforge for 46 new glow types to add to your CDM & Action Bars.
+  - It's a large addon that won't be updated often, so better to keep it out of Orbit.
+  - Check out all glows with `/Orbitglow`
+
 ### Updates
 - Added Objectives Colours tab: font size sliders for quest titles and objectives, custom colour pickers for normal, completed, and focused quests, and a top-line decoration option
 - Added QoL > Automation section: auto-accept quests, auto-turn-in quests (hold Shift to skip), with optional guard against accidentally accepting multiple quests at once
@@ -16,14 +33,14 @@
 - Fixed Minimap clock randomly switching between 12h and 24h format
 - Added Minimap tracking button (fades in on hover)
 - Fixed Minimap compartment flyout closing while a dropdown menu is open
-
-### Hints
-You can always open this window again by typing `/orbit whatsnew`
-You can always disable a plugin in `/orbit plugins`
-Visibility settings are found in the VE Engine `/orbit ve`
-Click in four corners of the screen to open the `Datatext Drawer`
+- Slight Performance Hack to Group Frames
+- Minor Adjustments to StatusWidget
 
 ### Message
 Please report bugs in discord and I will address them ASAP.
+
+*Remember, can use the Spotlight feature and type 'Help' to query things about Orbit.*
+
+*Things will only get better with YOUR feedback! Jump on the Discord and let me know your pain points*
 
 [end]

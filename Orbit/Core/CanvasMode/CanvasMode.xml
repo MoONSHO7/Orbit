@@ -16,4 +16,8 @@
     <Script file="CanvasModeDrag.lua"/>
     <Script file="Dialog.lua"/>
     <Script file="DialogActions.lua"/>
+    <Script file="ComponentSettingsSchema.lua"/>
+    <Script file="ComponentSettingsWidgets.lua"/>
+    <Script file="ComponentSettings.lua"/>
+    <Script file="ComponentSettingsPreview.lua"/>
 </Ui>

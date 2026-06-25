@@ -24,8 +24,7 @@ local EMPTY_FLYOUT_W = 140
 local EMPTY_FLYOUT_H = 30
 local PRESSED_ALPHA = 0.6
 
--- No-op function used to block addons from repositioning their buttons
-local function doNothing() end
+local function DoNothing() end
 
 -- Blizzard-owned children whose names don't match the generic Minimap/MiniMap prefix filter below — enumerate explicitly so they're never collected.
 local BLIZZARD_MINIMAP_CHILDREN = {
@@ -374,8 +373,8 @@ local function GetOrCreateProxyButton(originalBtn, parent)
 
         local script = originalBtn:GetScript("OnEnter")
         if not script then return end
-        -- Retarget SetOwner so the tooltip anchors to the visible proxy instead of the offscreen original.
-        local tt = GameTooltip
+        -- Legacy third-party OnEnter scripts anchor to the GLOBAL GameTooltip; retarget its SetOwner so the tooltip follows the visible proxy, not the offscreen original.
+        local tt = _G.GameTooltip
         local origSetOwner = tt.SetOwner
         tt.SetOwner = function(t, owner, ...)
             if owner == originalBtn then return origSetOwner(t, self, ...) end
@@ -610,15 +609,15 @@ function Plugin:GrabCollectedButtons()
                 button._orbitOrigScale = button:GetScale()
             end
 
-            -- Reparent to hidden holder via raw SetParent (ours is overridden with doNothing)
+            -- Reparent to hidden holder via raw SetParent (ours is overridden with DoNothing)
             FrameSetParent(button, holder)
             button:SetFrameStrata(holder:GetFrameStrata())
 
             -- Block addons from repositioning their buttons back.
             if not button._orbitMethodsOverridden then
-                button.ClearAllPoints = doNothing
-                button.SetPoint = doNothing
-                button.SetParent = doNothing
+                button.ClearAllPoints = DoNothing
+                button.SetPoint = DoNothing
+                button.SetParent = DoNothing
                 button._orbitMethodsOverridden = true
             end
 
@@ -710,6 +709,8 @@ function Plugin:ApplyAddonCompartment()
             btn:HookScript("OnLeave", hideBtn)
             frame._compartmentHoverHooked = true
         end
+
+        self:HideCompartmentButtonIfIdle()
 
         -- Re-collect after ADDON_LOADED / PLAYER_ENTERING_WORLD so late-attaching addon buttons get picked up.
         if not self._rescanHook then

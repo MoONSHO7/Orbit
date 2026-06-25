@@ -14,11 +14,11 @@ local Mixin = Orbit.UnitFrameMixin
 local INHERIT_PLUGIN = Orbit.Constants.UnitFrame.InheritPlugin
 local INHERIT_INDEX = Orbit.Constants.UnitFrame.InheritIndex
 
-local SYNC_PLUGINS = {
-    [Enum.EditModeUnitFrameSystemIndices.Player] = "Orbit_PlayerFrame",
-    [Enum.EditModeUnitFrameSystemIndices.Target] = "Orbit_TargetFrame",
-    [Enum.EditModeUnitFrameSystemIndices.Focus or 3] = "Orbit_FocusFrame",
-}
+-- Populated by each unit-frame plugin at load via RegisterSyncSource, so Core does not hardcode plugin names (inward-dependency rule).
+local SYNC_SOURCES = {}
+function Mixin:RegisterSyncSource(systemIndex)
+    if systemIndex then SYNC_SOURCES[systemIndex] = self end
+end
 
 function Mixin:GetPlayerSetting(key)
     return Orbit:ReadPluginSetting(self.inheritPlugin or INHERIT_PLUGIN, self.inheritIndex or INHERIT_INDEX, key)
@@ -42,7 +42,10 @@ function Mixin:GetSyncedSize(systemIndex, visited)
     if source == systemIndex then
         return self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
     end
-    local sourcePlugin = Orbit:GetPlugin(SYNC_PLUGINS[source])
+    local sourcePlugin = SYNC_SOURCES[source]
+    if not sourcePlugin then
+        return self:GetSetting(systemIndex, "Width"), self:GetSetting(systemIndex, "Height")
+    end
     return sourcePlugin:GetSyncedSize(source, visited)
 end
 
@@ -97,7 +100,6 @@ function Mixin:ApplyTextStyling(frame, textSize)
         return
     end
     if not textSize or textSize <= 0 then
-        local height = frame:GetHeight() or 40
         textSize = 14
     end
     Orbit.Skin:ApplyUnitFrameText(frame.Name, "LEFT", nil, textSize)
@@ -205,6 +207,7 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     local borderSize = Orbit.db.GlobalSettings.BorderSize
     local textureName = self:GetSetting(systemIndex, "Texture")
     local healthTextMode = self:GetInheritedSetting(systemIndex, "HealthTextMode", options.inheritFromPlayer) or "percent_short"
+    local healthTextFormat = self:GetInheritedSetting(systemIndex, "HealthTextFormat", options.inheritFromPlayer)
 
     -- Apply texture
     self:ApplyTexture(frame, textureName)
@@ -220,15 +223,14 @@ function Mixin:ApplyBaseVisuals(frame, systemIndex, options)
     -- Apply text styling
     self:ApplyTextStyling(frame)
 
-    -- Apply health text mode (replaces simple enabled boolean)
+    -- Health text has no separate visibility toggle — a blank format hides the value (status still shows).
+    if frame.SetHealthTextEnabled then frame:SetHealthTextEnabled(true) end
     if frame.SetHealthTextMode then
         frame:SetHealthTextMode(healthTextMode)
     end
-
-    -- Apply health value visibility
-    local showHealthValue = self:GetInheritedSetting(systemIndex, "ShowHealthValue", options.inheritFromPlayer)
-    if showHealthValue == nil then showHealthValue = true end
-    if frame.SetHealthTextEnabled then frame:SetHealthTextEnabled(showHealthValue) end
+    if frame.SetHealthTextFormat then
+        frame:SetHealthTextFormat(healthTextFormat)
+    end
 
     -- Apply absorbs (if available)
     if frame.SetAbsorbsEnabled then
@@ -427,3 +429,5 @@ function Mixin:CreateOverlayIcons(frame, systemIndex)
     OrbitEngine.ComponentDrag:Attach(frame.MarkerIcon, frame, { key = "MarkerIcon", onPositionChange = MPC("MarkerIcon") })
     OrbitEngine.ComponentDrag:Attach(frame.Portrait, frame, { key = "Portrait", onPositionChange = MPC("Portrait") })
 end
+
+if table.freeze then table.freeze(Mixin) end

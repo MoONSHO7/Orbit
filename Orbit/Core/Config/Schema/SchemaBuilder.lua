@@ -197,9 +197,9 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
     
     local currentColor = plugin:GetSetting(systemIndex, colorKey) or Constants.Glow.DefaultColor
     
-    tinsert(schema.controls, { 
-        type = "dropdown", key = typeKey, label = label,
-        options = OPTIONS, default = defaultType,
+    tinsert(schema.controls, {
+        type = "glowpicker", key = typeKey, label = label,
+        engineOptions = OPTIONS, default = defaultType,
         valueColor = {
             initialValue = currentColor,
             tooltip = L.CFG_GLOW_COLOR,
@@ -222,8 +222,16 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
             if plugin.ApplySettings then plugin:ApplySettings(systemFrame) end
         end
     end
+
+    -- Speed multiplier, shared across all glow types: 0.5-1.5 shown as 50-150% (100% = natural, higher = faster).
+    local function SpeedControl(speedKey)
+        return { type = "slider", key = speedKey, label = L.CFG_GLOW_SLIDER_SPEED, min = 0.5, max = 1.5, step = 0.05, default = 1.0,
+            formatter = function(v) return string.format("%.0f%%", v * 100) end, onChange = MakeOnChange(speedKey) }
+    end
     
-    if currentType == GlowType.Pixel then
+    if type(currentType) == "string" then
+        tinsert(schema.controls, SpeedControl(prefix .. "PackSpeed"))
+    elseif currentType == GlowType.Pixel then
         local def = Constants.Glow.Defaults.Pixel
         tinsert(schema.controls, { type = "slider", key = prefix .. "PixelLines", label = L.CFG_GLOW_SLIDER_LINES, min = 1, max = 20, step = 1, default = def.Lines, onChange = MakeOnChange(prefix .. "PixelLines") })
         tinsert(schema.controls, { type = "slider", key = prefix .. "PixelFrequency", label = L.CFG_GLOW_SLIDER_FREQUENCY, min = 0, max = 0.20, step = 0.02, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = MakeOnChange(prefix .. "PixelFrequency") })
@@ -231,8 +239,7 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
         tinsert(schema.controls, { type = "slider", key = prefix .. "PixelThickness", label = L.CFG_GLOW_SLIDER_THICKNESS, min = 1, max = 10, step = 1, default = def.Thickness, onChange = MakeOnChange(prefix .. "PixelThickness") })
         tinsert(schema.controls, { type = "checkbox", key = prefix .. "PixelBorder", label = L.CFG_USE_BORDER, default = def.Border, onChange = MakeOnChange(prefix .. "PixelBorder") })
     elseif currentType == GlowType.Medium then
-        local def = Constants.Glow.Defaults.Medium
-        tinsert(schema.controls, { type = "slider", key = prefix .. "MediumSpeed", label = L.CFG_GLOW_SLIDER_SPEED, min = 0.1, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. "MediumSpeed") })
+        tinsert(schema.controls, SpeedControl(prefix .. "MediumSpeed"))
     elseif currentType == GlowType.Autocast then
         local def = Constants.Glow.Defaults.Autocast
         tinsert(schema.controls, { type = "slider", key = prefix .. "AutocastParticles", label = L.CFG_GLOW_SLIDER_PARTICLES, min = 1, max = 16, step = 1, default = def.Particles, onChange = MakeOnChange(prefix .. "AutocastParticles") })
@@ -242,13 +249,7 @@ function SB:AddGlowSettings(plugin, schema, systemIndex, dialog, systemFrame, pa
         tinsert(schema.controls, { type = "slider", key = prefix .. "ClassicFrequency", label = L.CFG_GLOW_SLIDER_FREQUENCY, min = 0.05, max = 1.0, step = 0.05, default = def.Frequency, formatter = function(v) return string.format("%.2f", v) end, onChange = MakeOnChange(prefix .. "ClassicFrequency") })
     elseif currentType == GlowType.Thin or currentType == GlowType.Thick then
         local defKey = (currentType == GlowType.Thin and "Thin") or "Thick"
-        local def = Constants.Glow.Defaults[defKey]
-        tinsert(schema.controls, { type = "slider", key = prefix .. defKey .. "Speed", label = L.CFG_GLOW_SLIDER_SPEED, min = 0, max = 5.0, step = 0.1, default = def.Speed, onChange = MakeOnChange(prefix .. defKey .. "Speed") })
-    end
-
-    -- Reverse checkbox: available for all animated glow types
-    if currentType ~= GlowType.None and currentType ~= nil then
-        tinsert(schema.controls, { type = "checkbox", key = prefix .. "Reverse", label = L.CFG_REVERSE_DIRECTION, default = false, onChange = MakeOnChange(prefix .. "Reverse") })
+        tinsert(schema.controls, SpeedControl(prefix .. defKey .. "Speed"))
     end
 end
 

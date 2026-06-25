@@ -533,6 +533,8 @@ end
 
 -- [ IMMUTABLE STATE CACHE ] -------------------------------------------------------------------------
 function Bar:CacheImmutableState(frame, payload)
+    -- Reset the cast clock on every Apply so a payload swap/clear can't mis-drive active_cd phase.
+    frame._castTime = nil
     if not payload or not payload.id then
         frame._cachedName = nil
         frame._cachedIcon = nil
@@ -781,7 +783,8 @@ end
 -- [ CHARGES MODE UPDATE ] ---------------------------------------------------------------------------
 -- Pure sink: currentCharges (secret) piped directly into SetValue/SetText.
 function Bar:UpdateChargesMode(frame, payload)
-    local ci = C_Spell.GetSpellCharges(payload.id)
+    local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
+    local ci = C_Spell.GetSpellCharges(activeId)
     if not ci then return "cooldown" end
 
     self:SetBarColor(frame, "ready")
@@ -792,7 +795,7 @@ function Bar:UpdateChargesMode(frame, payload)
     frame.RechargePositioner:SetMinMaxValues(0, payload.maxCharges)
     frame.RechargePositioner:SetValue(ci.currentCharges)
 
-    local chargeDurObj = C_Spell.GetSpellChargeDuration(payload.id)
+    local chargeDurObj = C_Spell.GetSpellChargeDuration(activeId)
     if chargeDurObj and RECHARGE_PROGRESS_CURVE then
         local progress = chargeDurObj:EvaluateRemainingPercent(RECHARGE_PROGRESS_CURVE)
         local alphaVal = chargeDurObj:EvaluateRemainingPercent(RECHARGE_ALPHA_CURVE)

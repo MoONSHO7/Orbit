@@ -23,6 +23,7 @@ function IconCanvasPreview:Create(sourceFrame, parent, width, height, iconTextur
     preview.previewScale = 1
     preview.components = {}
     preview.fixedSize = true
+    preview.scalesTextWithSize = true
 
     local icon = preview:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
@@ -76,7 +77,7 @@ function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPo
         if CreateDraggableComponent then
             local comp = CreateDraggableComponent(preview, def.key, fs, startX, startY, data)
             if comp then
-                comp:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
+                comp:SetFrameLevel(preview:GetFrameLevel() + Orbit.Constants.Levels.CanvasOverlay)
                 preview.components[def.key] = comp
                 fs:Hide()
             end

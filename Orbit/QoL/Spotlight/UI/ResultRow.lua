@@ -26,11 +26,15 @@ local STAR_SHADOW_ALPHA = 0.95
 local STAR_OFFSET_X = 3
 local STAR_OFFSET_Y = 3
 local STAR_SHADOW_Y_OFFSET = -1
+local QUALITY_SCALE = 0.8
+local QUALITY_OFFSET_X = -7
+local QUALITY_OFFSET_Y = 7
 local SELECTED_BG_COLOR = { r = 1, g = 1, b = 1, a = 0.18 }
 local LABEL_COLOR = { r = 1, g = 1, b = 1, a = 1 }
 local KIND_LABEL_COLOR = { r = 0.6, g = 0.6, b = 0.6, a = 1 }
 local COUNT_COLOR = { r = 1, g = 1, b = 1, a = 1 }
-local SECURE_ATTR_KEYS = { "type", "type1", "item", "spell", "toy", "macro", "macrotext", "battlepet", "mount", "unit" }
+local TOOLTIP_HINT_COLOR = { 0.40, 0.73, 0.40 }
+local SECURE_ATTR_KEYS = { "type", "type1", "item", "spell", "toy", "macro", "macrotext", "battlepet", "mount", "unit", "shift-type1", "shift-macrotext1" }
 
 local function FormatCount(n)
     if not n or n <= 1 then return nil end
@@ -45,24 +49,102 @@ local function GetGlobalFontName() return Orbit.db.GlobalSettings.Font end
 local KIND_LABEL = {}
 for _, k in ipairs(Orbit.Spotlight.Kinds) do KIND_LABEL[k.kind] = L[k.labelKey] end
 
+-- [ KIND HANDLERS ]----------------------------------------------------------------------------------
+-- Each kind maps to optional pickup/tooltip/link closures; tooltip closures run between SetOwner and Show.
+local function ItemPickup(entry)
+    local itemRef = entry.secure and entry.secure.item or entry.id
+    if itemRef then PickupItem(itemRef) end
+end
+local function ItemTooltip(entry)
+    if entry.secure and entry.secure.item then GameTooltip:SetHyperlink(entry.secure.item) end
+end
+local function ItemLink(entry)
+    return entry.secure and entry.secure.item
+end
+
+local ITEM_HANDLER = { pickup = ItemPickup, tooltip = ItemTooltip, link = ItemLink }
+
+local KIND_HANDLERS = {
+    spellbook = {
+        pickup = function(entry) C_Spell.PickupSpell(entry.id) end,
+        tooltip = function(entry) GameTooltip:SetSpellByID(entry.id) end,
+        link = function(entry) return C_Spell.GetSpellLink(entry.id) end,
+    },
+    professions = {
+        pickup = function(entry) C_Spell.PickupSpell(entry.spellID) end,
+        tooltip = function(entry) GameTooltip:SetSpellByID(entry.spellID) end,
+        link = function(entry) return C_Spell.GetSpellLink(entry.spellID) end,
+    },
+    mounts = {
+        pickup = function(entry)
+            local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
+            if spellID then C_Spell.PickupSpell(spellID) end
+        end,
+        tooltip = function(entry)
+            local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
+            if spellID then GameTooltip:SetMountBySpellID(spellID) end
+        end,
+        link = function(entry)
+            local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
+            return spellID and C_MountJournal.GetMountLink(spellID)
+        end,
+    },
+    pets = {
+        pickup = function(entry)
+            if entry.petGUID then C_PetJournal.PickupPet(entry.petGUID) end
+        end,
+        tooltip = function(entry)
+            if entry.petGUID then
+                local link = C_PetJournal.GetBattlePetLink(entry.petGUID)
+                if link then GameTooltip:SetHyperlink(link) end
+            end
+        end,
+        link = function(entry) return entry.petGUID and C_PetJournal.GetBattlePetLink(entry.petGUID) end,
+    },
+    toys = {
+        pickup = function(entry) C_ToyBox.PickupToyBoxItem(entry.id) end,
+        tooltip = function(entry) GameTooltip:SetToyByItemID(entry.id) end,
+        link = function(entry) return C_ToyBox.GetToyLink(entry.id) end,
+    },
+    macros = {
+        pickup = function(entry) PickupMacro(entry.id) end,
+        tooltip = function(entry)
+            local name, _, body = GetMacroInfo(entry.id)
+            GameTooltip:SetText(name or entry.name, 1, 1, 1)
+            if body and body ~= "" then GameTooltip:AddLine(body, 0.8, 0.8, 0.8, true) end
+        end,
+    },
+    heirlooms = {
+        pickup = ItemPickup,
+        tooltip = function(entry) GameTooltip:SetItemByID(entry.id) end,
+        link = function(entry) return select(2, C_Item.GetItemInfo(entry.id)) end,
+    },
+    bags = ITEM_HANDLER,
+    equipped = ITEM_HANDLER,
+    questitems = ITEM_HANDLER,
+    currencies = {
+        tooltip = function(entry)
+            if entry.tooltipLink then GameTooltip:SetHyperlink(entry.tooltipLink) end
+        end,
+        link = function(entry) return entry.tooltipLink end,
+    },
+    help = {
+        tooltip = function(entry)
+            GameTooltip:SetText(entry.name, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+            if entry.trigger then GameTooltip:AddLine(entry.trigger, TOOLTIP_HINT_COLOR[1], TOOLTIP_HINT_COLOR[2], TOOLTIP_HINT_COLOR[3], true) end
+            if entry.desc then GameTooltip:AddLine(entry.desc, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true) end
+            if entry.note then
+                if entry.desc then GameTooltip:AddLine(" ") end
+                GameTooltip:AddLine(entry.note, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true)
+            end
+        end,
+    },
+}
+
 -- [ PICKUP DISPATCH ]--------------------------------------------------------------------------------
 local function PickupEntry(entry)
-    local k = entry.kind
-    if k == "spellbook" or k == "professions" then
-        C_Spell.PickupSpell(entry.id)
-    elseif k == "mounts" then
-        local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
-        if spellID then C_Spell.PickupSpell(spellID) end
-    elseif k == "pets" then
-        if entry.petGUID then C_PetJournal.PickupPet(entry.petGUID) end
-    elseif k == "toys" then
-        C_ToyBox.PickupToyBoxItem(entry.id)
-    elseif k == "macros" then
-        PickupMacro(entry.id)
-    elseif k == "bags" or k == "heirlooms" or k == "equipped" or k == "questitems" then
-        local itemRef = entry.secure and entry.secure.item or entry.id
-        if itemRef then PickupItem(itemRef) end
-    end
+    local h = KIND_HANDLERS[entry.kind]
+    if h and h.pickup then h.pickup(entry) end
 end
 
 -- [ TOOLTIP DISPATCH ]-------------------------------------------------------------------------------
@@ -70,31 +152,25 @@ local function ShowTooltip(row)
     local entry = row._entry
     if not entry then return end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    local k = entry.kind
-    if k == "bags" or k == "equipped" or k == "questitems" then
-        if entry.secure and entry.secure.item then GameTooltip:SetHyperlink(entry.secure.item) end
-    elseif k == "heirlooms" then
-        GameTooltip:SetItemByID(entry.id)
-    elseif k == "spellbook" or k == "professions" then
-        GameTooltip:SetSpellByID(entry.id)
-    elseif k == "toys" then
-        GameTooltip:SetToyByItemID(entry.id)
-    elseif k == "mounts" then
-        local _, spellID = C_MountJournal.GetMountInfoByID(entry.id)
-        if spellID then GameTooltip:SetMountBySpellID(spellID) end
-    elseif k == "pets" then
-        if entry.petGUID then
-            local link = C_PetJournal.GetBattlePetLink(entry.petGUID)
-            if link then GameTooltip:SetHyperlink(link) end
-        end
-    elseif k == "currencies" then
-        if entry.tooltipLink then GameTooltip:SetHyperlink(entry.tooltipLink) end
-    elseif k == "macros" then
-        local name, _, body = GetMacroInfo(entry.id)
-        GameTooltip:SetText(name or entry.name, 1, 1, 1)
-        if body and body ~= "" then GameTooltip:AddLine(body, 0.8, 0.8, 0.8, true) end
-    end
+    local h = KIND_HANDLERS[entry.kind]
+    if h and h.tooltip then h.tooltip(entry) end
     GameTooltip:Show()
+end
+
+-- [ CHAT LINK ]--------------------------------------------------------------------------------------
+local function GetEntryLink(entry)
+    local h = KIND_HANDLERS[entry.kind]
+    return h and h.link and h.link(entry) or nil
+end
+
+local function TryLinkEntry(entry)
+    if not entry then return false end
+    local editBox = ChatEdit_GetActiveWindow()
+    if not editBox then return false end
+    local link = GetEntryLink(entry)
+    if not link then return false end
+    editBox:Insert(link)
+    return true
 end
 
 -- [ FACTORY ]----------------------------------------------------------------------------------------
@@ -155,9 +231,16 @@ function ResultRow:Create(parent, width)
     starShadow:SetPoint("CENTER", star, "CENTER", 0, STAR_SHADOW_Y_OFFSET)
     iconBtn.star = star
 
+    local qualityOverlay = iconBtn:CreateTexture(nil, "OVERLAY", nil, 6)
+    qualityOverlay:SetPoint("TOPLEFT", iconBtn, "TOPLEFT", QUALITY_OFFSET_X, QUALITY_OFFSET_Y)
+    qualityOverlay:SetSnapToPixelGrid(true)
+    qualityOverlay:SetTexelSnappingBias(0)
+    qualityOverlay:Hide()
+    iconBtn.qualityOverlay = qualityOverlay
+
     local kindLabel = row:CreateFontString(nil, "OVERLAY")
     Skin:SkinText(kindLabel, { font = GetGlobalFontName(), textSize = KIND_FONT_SIZE, textColor = KIND_LABEL_COLOR })
-    kindLabel:SetPoint("TOPRIGHT", row, "TOPRIGHT", -LABEL_RIGHT_PAD, -3)
+    kindLabel:SetPoint("RIGHT", row, "RIGHT", -LABEL_RIGHT_PAD, 0)
     kindLabel:SetJustifyH("RIGHT")
     row.kindLabel = kindLabel
 
@@ -205,9 +288,24 @@ local function HandleFavoriteRightClick(row)
     row.iconBtn.starShadow:SetShown(newState)
 end
 
+local ITEM_KINDS = { bags = true, equipped = true, questitems = true }
+local function GetCraftingQualityAtlas(entry)
+    if not ITEM_KINDS[entry.kind] then return nil end
+    local ref = (entry.secure and entry.secure.item) or entry.id
+    if not ref then return nil end
+    local info = C_TradeSkillUI.GetItemReagentQualityInfo(ref) or C_TradeSkillUI.GetItemCraftedQualityInfo(ref)
+    return info and info.iconInventory
+end
+
 function ResultRow:Bind(row, entry)
     row._entry = entry
     row.iconBtn.icon:SetTexture(entry.icon)
+    -- Help glyphs are full-bleed; game-item icons keep the standard border crop.
+    if entry.kind == "help" then
+        row.iconBtn.icon:SetTexCoord(0, 1, 0, 1)
+    else
+        row.iconBtn.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
     row.label:SetText(entry.name)
     if entry.quality and C_Item and C_Item.GetItemQualityColor then
         local r, g, b = C_Item.GetItemQualityColor(entry.quality)
@@ -215,7 +313,7 @@ function ResultRow:Bind(row, entry)
     else
         row.label:SetTextColor(LABEL_COLOR.r, LABEL_COLOR.g, LABEL_COLOR.b, LABEL_COLOR.a)
     end
-    row.kindLabel:SetText(KIND_LABEL[entry.kind] or entry.kind)
+    row.kindLabel:SetText(entry.topic or KIND_LABEL[entry.kind] or entry.kind)
     local countLabel = FormatCount(entry.count)
     if countLabel then
         row.iconBtn.countText:SetText(countLabel)
@@ -225,6 +323,17 @@ function ResultRow:Bind(row, entry)
     end
     row.iconBtn.star:SetShown(entry.favorite == true)
     row.iconBtn.starShadow:SetShown(entry.favorite == true)
+    local qualityAtlas = GetCraftingQualityAtlas(entry)
+    if qualityAtlas then
+        local overlay = row.iconBtn.qualityOverlay
+        overlay:SetAtlas(qualityAtlas, true)
+        local w, h = overlay:GetSize()
+        overlay:SetSize(w * QUALITY_SCALE, h * QUALITY_SCALE)
+        overlay:SetPoint("TOPLEFT", row.iconBtn, "TOPLEFT", QUALITY_OFFSET_X + w * (1 - QUALITY_SCALE) * 0.5, QUALITY_OFFSET_Y - h * (1 - QUALITY_SCALE) * 0.5)
+        overlay:Show()
+    else
+        row.iconBtn.qualityOverlay:Hide()
+    end
 
     ClearSecureAttrs(row)
     if entry.secure then
@@ -233,11 +342,17 @@ function ResultRow:Bind(row, entry)
             if k == "type" then k = "type1" end
             row:SetAttribute(k, v)
         end
+        -- Shift+left is reserved for chat-link; an empty macro neutralizes the use/cast so the item isn't consumed.
+        row:SetAttribute("shift-type1", "macro")
+        row:SetAttribute("shift-macrotext1", "")
     end
     row:SetScript("PostClick", function(self, button)
         if button == "RightButton" then HandleFavoriteRightClick(self); return end
+        if button == "LeftButton" and IsShiftKeyDown() and TryLinkEntry(self._entry) then return end
         RecordActivation(self)
-        if not self._entry.secure and self._entry.onClick then self._entry.onClick(self._entry) end
-        Orbit.Spotlight.UI.SpotlightFrame:Close()
+        -- onClick gets the row as a second arg so menu entries can anchor a context menu to it.
+        if not self._entry.secure and self._entry.onClick then self._entry.onClick(self._entry, self) end
+        -- Explainer help rows keep Spotlight open so the user can read other tooltips; actions close.
+        if not self._entry.keepOpen then Orbit.Spotlight.UI.SpotlightFrame:Close() end
     end)
 end

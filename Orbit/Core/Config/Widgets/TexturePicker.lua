@@ -69,7 +69,7 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
             tex:SetColorTexture(color.r or 0.3, color.g or 0.3, color.b or 0.3, 1)
         else
             local path = LSM:Fetch("statusbar", frame.selectedTexture)
-            if path and path ~= "" then
+            if path and path ~= "" and Orbit.Skin:IsMediaFileValid(path) then
                 tex:SetTexture(path)
                 tex:SetVertexColor(color.r or 0.8, color.g or 0.8, color.b or 0.8, 1)
                 tex:SetTexCoord(0, 1, 0, 1)
@@ -107,7 +107,7 @@ function Layout:CreateTexturePicker(parent, label, initialTexture, callback, pre
                         row.Texture:SetColorTexture(0.15, 0.15, 0.15, 1)
                     else
                         local path = LSM:Fetch("statusbar", name)
-                        if path and path ~= "" then
+                        if path and path ~= "" and Orbit.Skin:IsMediaFileValid(path) then
                             row.Texture:SetTexture(path)
                             row.Texture:SetVertexColor(0.7, 0.7, 0.7, 1)
                             row.Texture:SetTexCoord(0, 1, 0, 1)

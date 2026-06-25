@@ -398,7 +398,7 @@ function Injection:StartUpdateTicker()
             local frames = Plugin.injectedFrames[sysIdx]
             if frames then
                 for _, icon in ipairs(frames) do
-                    if icon:IsShown() then Injection:UpdateIcon(icon) end
+                    if icon:IsShown() and not icon.isPhantom then Injection:UpdateIcon(icon) end
                 end
             end
         end

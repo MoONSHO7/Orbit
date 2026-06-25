@@ -30,7 +30,6 @@ Core\Shared\Shared.xml
 Core\Infrastructure\Infrastructure.xml
 Core\Plugin\Plugin.xml
 Core\Color\Color.xml
-Core\Config\ChangelogData.lua
 Core\Config\Config.xml
 Core\EditMode\EditMode.xml
 Core\Onboarding\Onboarding.xml
@@ -40,15 +39,12 @@ Core\Plugin\Profiles.xml
 Core\API.lua
 Core\EditMode\Preview\Preview.xml
 Core\CanvasMode\CanvasMode.xml
-Core\CanvasMode\ComponentSettingsSchema.lua
-Core\CanvasMode\ComponentSettingsWidgets.lua
-Core\CanvasMode\ComponentSettings.lua
-Core\CanvasMode\ComponentSettingsPreview.lua
 Core\Skinning\Skins.xml
 
 # ==============================================================
 # PLUGINS
 # ==============================================================
+Plugins\VisibilityManifest.lua
 Plugins\UnitFrames\UnitFrames.xml
 Plugins\GroupFrames\GroupFrames.xml
 Plugins\BossFrames\BossFrames.xml
@@ -61,7 +57,7 @@ Plugins\MenuItems\MenuItems.xml
 Plugins\Minimap\Minimap.xml
 Plugins\Datatexts\Datatexts.xml
 Plugins\DamageMeter\DamageMeter.xml
-Plugins\StatusBars\StatusBars.xml
+Plugins\StatusWidget\StatusWidget.xml
 Plugins\RaidPanel\RaidPanel.xml
 Plugins\Objectives\Objectives.xml
 Plugins\Extras\TalkingHead.lua

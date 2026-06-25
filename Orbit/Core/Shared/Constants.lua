@@ -158,7 +158,8 @@ C.Settings = {
 }
 
 -- [ BORDER STYLE ] ----------------------------------------------------------------------------------
--- Built-in "orbit" style → nil styleEntry → flat-border path; `lsm:`-keyed styles render via edge-file path.
+-- "orbit" → nil styleEntry → flat path; `lsm:` → edge-file path; "orbit-*" rounded → slice-border + slice mask (BorderStyle.Rounded).
+local ROUNDED_PATH = "Interface\\AddOns\\Orbit\\Core\\assets\\Border\\"
 C.BorderStyle = {
     Default = "orbit",
     Offset = 6,
@@ -166,7 +167,16 @@ C.BorderStyle = {
     DefaultPixelSize = 2,
     PixelSize = { Min = 0, Max = 5, Step = 1 },
     Styles = {
-        { label = "Orbit", value = "orbit", pixel = true },
+        { label = "Orbit Pixel", value = "orbit", pixel = true },
+        { label = "Orbit Pixel Soft", value = "orbit-soft", rounded = true },
+        { label = "Orbit Pixel Rounded", value = "orbit-rounded", rounded = true },
+        { label = "Orbit Pixel Rounder", value = "orbit-rounder", rounded = true },
+    },
+    -- Slice border + mask share sliceMargin (= corner radius): corners render 1:1, edges stretch, so the mask contour matches the border at any size.
+    Rounded = {
+        ["orbit-soft"]    = { edgeFile = ROUNDED_PATH .. "orbit-soft.tga",    mask = ROUNDED_PATH .. "orbit-soft-mask.tga",    sliceMargin = 4,  rounded = true },
+        ["orbit-rounded"] = { edgeFile = ROUNDED_PATH .. "orbit-rounded.tga", mask = ROUNDED_PATH .. "orbit-rounded-mask.tga", sliceMargin = 8,  rounded = true },
+        ["orbit-rounder"] = { edgeFile = ROUNDED_PATH .. "orbit-rounder.tga", mask = ROUNDED_PATH .. "orbit-rounder-mask.tga", sliceMargin = 12, rounded = true },
     },
 }
 
@@ -182,6 +192,39 @@ function C.BorderStyle.SyncEffectiveSize(gs)
     local d = C.BorderStyle.DefaultPixelSize
     gs.BorderSize = gs.PixelBorderSize or d
     gs.IconBorderSize = gs.IconPixelBorderSize or d
+end
+
+-- Idempotent: legacy "flat"/"rounded" styles and the interim None=-1 roundness rewrite to the unified "orbit" style. Lives here (theme schema) rather than in the persistence layer.
+local MIGRATE_PAIRS = {
+    { style = "BorderStyle",     corner = "RoundedCorner",     thickness = "RoundedThickness",     size = "BorderSize" },
+    { style = "IconBorderStyle", corner = "IconRoundedCorner", thickness = "IconRoundedThickness", size = "IconBorderSize" },
+}
+function C.BorderStyle.Migrate(gs)
+    if not gs then return end
+    for _, p in ipairs(MIGRATE_PAIRS) do
+        local v = gs[p.style]
+        if v == "flat" then
+            gs[p.style] = "orbit"
+            if gs[p.corner] == nil then gs[p.corner] = 0 end          -- Square ≈ the old flat look
+            -- Old flat BorderSize (0-5) maps onto Border Thickness (None=0 .. Thick=3).
+            if gs[p.thickness] == nil then gs[p.thickness] = math.min(gs[p.size] or 2, 3) end
+        elseif v == "rounded" then
+            gs[p.style] = "orbit"
+            -- Preserve the pre-consolidation Rounded default (Round) for untouched profiles.
+            if gs[p.corner] == nil then gs[p.corner] = 2 end
+        end
+        -- Interim None=-1 roundness meant "no border" — now Border Thickness None, Square corner.
+        if gs[p.corner] == -1 then
+            gs[p.corner] = 0
+            gs[p.thickness] = 0
+        end
+    end
+    C.BorderStyle.SyncEffectiveSize(gs)
+end
+
+-- Fresh table each call (curves are mutated in place) — the white single-pin curve used as the FontColorCurve fallback in multiple config/preview paths.
+function C.NewWhiteColorCurve()
+    return { pins = { { position = 0, color = { r = 1, g = 1, b = 1, a = 1 } } } }
 end
 
 -- [ TIMING CONSTANTS ]-------------------------------------------------------------------------------

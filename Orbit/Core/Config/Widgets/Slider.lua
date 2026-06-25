@@ -2,6 +2,7 @@ local _, Orbit = ...
 local Engine = Orbit.Engine
 local Constants = Orbit.Constants
 local Layout = Engine.Layout
+local L = Orbit.L
 local math_floor = math.floor
 
 -- [ SLIDER WIDGET ]----------------------------------------------------------------------------------
@@ -25,10 +26,21 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
 
     frame:SetParent(parent)
 
-    frame.valueFormatter = formatter or function(value)
+    local baseFormatter = formatter or function(value)
         return math_floor(value * 10 or 0) / 10
     end
+    -- mergeAtZero: a 0-spacing slider reads "Merged" (borders share a single edge) instead of "0".
+    if options and options.mergeAtZero then
+        frame.valueFormatter = function(value)
+            if math_floor(value + 0.5) == 0 then return L.CFG_MERGED end
+            return baseFormatter(value)
+        end
+    else
+        frame.valueFormatter = baseFormatter
+    end
     frame.OnOrbitChange = callback
+    -- Stepper hooks are permanent across pool reuse; the hook body checks this so a reused slider in normal mode doesn't double-fire.
+    frame._updateOnRelease = options and options.updateOnRelease or false
 
     if frame.Slider then
         -- Unregister before re-registering — pool reuse would otherwise stack callbacks each acquire.
@@ -94,6 +106,7 @@ function Layout:CreateSlider(parent, label, min, max, step, formatter, initialVa
             -- Create debounced stepper callback to prevent rapid-click spam
             local function createStepperCallback()
                 return function()
+                    if not frame._updateOnRelease then return end
                     -- Cancel any pending stepper timer
                     if frame._stepperTimer then
                         frame._stepperTimer:Cancel()

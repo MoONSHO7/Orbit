@@ -42,7 +42,7 @@ graph LR
 ## rules
 
 - pet bar has special handling (index-based, no ooc fade)
-- pet bar visibility driver: `[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide` — positive `pet` form, with `nooverridebar`/`nopossessbar` exclusions so the bar stays hidden during mind-control / possession (matches ElvUI/Bartender pattern; `[nopet]` alone leaks the bar through these states)
+- pet bar visibility driver: `[petbattle][vehicleui] hide; [pet,nooverridebar,nopossessbar] show; hide` — positive `pet` form, with `nooverridebar`/`nopossessbar` exclusions so the bar stays hidden during mind-control / possession (`[nopet]` alone leaks the bar through these states)
 - pet bar listens for `UNIT_PET`, `PET_BAR_UPDATE`, `PET_UI_UPDATE`, `UPDATE_VEHICLE_ACTIONBAR`, `PLAYER_CONTROL_GAINED`, `PLAYER_ENTERING_WORLD`. handler runs `LayoutButtons(PET_BAR_INDEX)` only — Blizzard's `PetActionButtonMixin` still drives icon/cooldown updates on the reparented buttons; we only need to refresh hide-empty + skinning + layout
 - 50ms trailing-edge debounce coalesces UNIT_PET (which fires before action info loads) with the immediately-following PET_BAR_UPDATE (which fires once info is loaded) into a single LayoutButtons call with fresh data
 - state driver is set once at container creation and once in `ApplySettings`; it does NOT need re-registration on pet events — WoW state drivers re-evaluate macro conditions automatically when the underlying state changes

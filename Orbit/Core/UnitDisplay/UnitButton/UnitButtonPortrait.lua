@@ -218,11 +218,11 @@ function PortraitMixin:ApplyPortraitRing(style, ringKey)
         SetFrame(0)
         portrait:SetScript("OnUpdate", function(_, elapsed)
             portrait._flipElapsed = portrait._flipElapsed + elapsed
-            if portrait._flipElapsed >= frameTime then
-                portrait._flipElapsed = portrait._flipElapsed - frameTime
-                portrait._flipCurrent = (portrait._flipCurrent + 1) % data.frames
-                SetFrame(portrait._flipCurrent)
-            end
+            if portrait._flipElapsed < frameTime then return end
+            local advance = math.floor(portrait._flipElapsed / frameTime)
+            portrait._flipElapsed = portrait._flipElapsed - advance * frameTime
+            portrait._flipCurrent = (portrait._flipCurrent + advance) % data.frames
+            SetFrame(portrait._flipCurrent)
         end)
     else
         portrait.Ring:SetTexCoord(0, 1, 0, 1)
@@ -244,3 +244,4 @@ function PortraitMixin:ApplyPortraitBackdrop(style)
 end
 
 UnitButton.PortraitMixin = PortraitMixin
+if table.freeze then table.freeze(PortraitMixin) end

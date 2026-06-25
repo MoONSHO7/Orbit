@@ -15,6 +15,7 @@ local Plugin = Orbit:RegisterPlugin("Datatexts", SYSTEM_ID, {
     liveToggle = true,
     defaults = {
         datatextPositions = {},
+        datatextOptions = {},
     },
 })
 
@@ -40,4 +41,5 @@ function Plugin:ApplySettings()
         DT.DatatextManager:RestorePositions()
     end
     DT.DatatextManager:UpdateAllDatatexts()
+    DT.DatatextManager:ApplyInstanceVisibility()
 end

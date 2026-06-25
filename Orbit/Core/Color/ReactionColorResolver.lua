@@ -32,6 +32,7 @@ function RC:GetOverride(reactionType)
 end
 
 function RC:SetOverride(reactionType, colorTable)
+    if colorTable then colorTable.type = nil end
     SetAccountSetting("ReactionColor_" .. reactionType, colorTable)
     Orbit.EventBus:Fire("ORBIT_COLORS_CHANGED")
 end

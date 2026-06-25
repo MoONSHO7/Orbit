@@ -8,11 +8,7 @@ local Helpers = Orbit.GroupFrameHelpers
 local Pixel = Orbit.Engine.Pixel
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
-local GF = Orbit.Constants.GroupFrames
 local MAX_GROUP_FRAMES = Helpers.LAYOUT.MaxGroupFrames
-local MAX_RAID_GROUPS = Helpers.LAYOUT.MaxRaidGroups
-local FRAMES_PER_GROUP = Helpers.LAYOUT.FramesPerGroup
-local MAX_PARTY_MEMBERS = 4
 local DEFAULT_WIDTH = Helpers.LAYOUT.DefaultWidth
 local DEFAULT_HEIGHT = Helpers.LAYOUT.DefaultHeight
 local AURA_BASE_ICON_SIZE = Helpers.LAYOUT.AuraBaseIconSize
@@ -26,21 +22,7 @@ local RAID_PRIVATE_AURA_SIZE = 18
 local RAID_HEALER_AURA_SIZE = 12
 local RAID_STATUS_ICON_SIZE = 18
 local RAID_ROLE_ICON_SIZE = 12
-local OUT_OF_RANGE_ALPHA = GF.OutOfRangeAlpha
-local OFFLINE_ALPHA = GF.OfflineAlpha
-local ROLE_PRIORITY = GF.RolePriority
-local MAX_PRIVATE_AURA_ANCHORS = GF.MaxPrivateAuraAnchors
 local HealerReg = Orbit.HealerAuraRegistry
-local OVERLAY_LEVEL_BOOST = Orbit.Constants.Levels.Tooltip
-
-local UNIT_REREGISTER_EVENTS = {
-    "UNIT_HEALTH", "UNIT_MAXHEALTH",
-    "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_HEAL_PREDICTION",
-    "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_POWER_FREQUENT",
-    "UNIT_AURA", "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PHASE", "UNIT_FLAGS",
-    "UNIT_NAME_UPDATE", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_OTHER_PARTY_CHANGED",
-    "INCOMING_RESURRECT_CHANGED", "UNIT_IN_RANGE_UPDATE", "UNIT_CONNECTION",
-}
 
 -- [ TIER DEFAULTS ]----------------------------------------------------------------------------------
 local TIER_DEFAULTS = {
@@ -48,7 +30,7 @@ local TIER_DEFAULTS = {
         Width = 160, Height = 40, Scale = 100, Spacing = 3, Orientation = 0,
         GrowthDirection = "down", IncludePlayer = true,
         ShowPowerBar = true, PowerBarHeight = 10,
-        HealthTextMode = "percent_short", ShowHealthValue = true,
+        HealthTextMode = "percent_short",
         OutOfRangeOpacity = 30,
         ComponentPositions = {
             Name = { anchorX = "LEFT", offsetX = 5, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT", selfAnchorY = "CENTER", posX = -75, posY = 0 },
@@ -92,11 +74,11 @@ local TIER_DEFAULTS = {
         GroupsPerRow = 6, GrowthDirection = "down", SortMode = "group",
         Orientation = "horizontal", FlatRows = 1,
         ShowPowerBar = true, PowerBarHeight = 16, ShowGroupLabels = true,
-        ShowHealthValue = false, HealthTextMode = "percent_short",
+        HealthTextFormat = "", HealthTextMode = "percent_short",
         OutOfRangeOpacity = 30,
         ComponentPositions = {
             Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 10, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 10 },
-            HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -10, overrides = { ShowHealthValue = false, FontSize = 10 } },
+            HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 10, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -10, overrides = { FontSize = 10 } },
             MarkerIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = -1, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 21 },
             RoleIcon = { anchorX = "RIGHT", offsetX = 5, anchorY = "TOP", offsetY = 5, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 45, posY = 15, overrides = { Scale = 0.7 } },
             LeaderIcon = { anchorX = "LEFT", offsetX = 8, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -42, posY = 20, overrides = { Scale = 0.8 } },
@@ -146,7 +128,7 @@ TIER_DEFAULTS.World = setmetatable({
         Name = { anchorX = "CENTER", offsetX = 0, anchorY = "TOP", offsetY = 8, justifyH = "CENTER", selfAnchorY = "TOP", posX = 0, posY = 6 },
         ResIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
         PhaseIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
-        HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 7, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -7, overrides = { ShowHealthValue = false, FontSize = 8 } },
+        HealthText = { anchorX = "CENTER", offsetX = 0, anchorY = "BOTTOM", offsetY = 7, justifyH = "CENTER", selfAnchorY = "BOTTOM", posX = 0, posY = -7, overrides = { FontSize = 8 } },
         ReadyCheckIcon = { anchorX = "CENTER", offsetX = 0, anchorY = "CENTER", offsetY = 0, justifyH = "CENTER", posX = 0, posY = 0 },
         MainTankIcon = { anchorX = "LEFT", offsetX = 20, anchorY = "TOP", offsetY = 0, justifyH = "LEFT", selfAnchorY = "TOP", posX = -16, posY = 14, overrides = { Scale = 0.6 } },
         DispelIcon = { anchorX = "RIGHT", offsetX = 1, anchorY = "TOP", offsetY = 1, justifyH = "RIGHT", selfAnchorY = "TOP", posX = 22, posY = 10, overrides = { IconSize = 10 } },
@@ -184,7 +166,8 @@ Plugin.supportsHealthText = true
 -- [ TIER API ]---------------------------------------------------------------------------------------
 function Plugin:GetCurrentTier()
     if self._editTierOverride then return self._editTierOverride end
-    return self:GetRealTier()
+    -- Cached: CheckTierChange refreshes _currentTier on every tier-affecting event (roster, PLAYER_ENTERING_WORLD, ZONE_CHANGED_NEW_AREA), so hot callers (GetTierSetting on the per-UNIT_AURA path) skip GetRealTier's 3 C calls.
+    return self._currentTier or self:GetRealTier()
 end
 
 function Plugin:GetRealTier()
@@ -637,9 +620,10 @@ function Plugin:OnLoad()
     self.skipEditModeApply = true
     self:RegisterStandardEvents()
 
-    -- Edit Mode callbacks
+    -- Unique string owner so these tier-switching handlers don't overwrite RegisterStandardEvents' (event, self) ApplySettings pair.
     if EventRegistry and not self.editModeCallbacksRegistered then
         self.editModeCallbacksRegistered = true
+        local editModeOwner = "OrbitGroupFramesEditModePreview"
         EventRegistry:RegisterCallback("EditMode.Enter", function()
             if not InCombatLockdown() then
                 local activeTier = self:GetRealTier() or "Party"
@@ -652,7 +636,7 @@ function Plugin:OnLoad()
                 self.container:Show()
                 self:ShowPreview()
             end
-        end, self)
+        end, editModeOwner)
         EventRegistry:RegisterCallback("EditMode.Exit", function()
             if not InCombatLockdown() then
                 self._undoSnapshot = nil
@@ -663,7 +647,7 @@ function Plugin:OnLoad()
                 UpdateVisibilityDriver()
                 self:UpdateFrameUnits()
             end
-        end, self)
+        end, editModeOwner)
     end
 
     -- Canvas Mode dialog hook (sanctioned API; replaces the previous Dialog.Open monkey-patch).
@@ -733,7 +717,8 @@ end
 
 -- [ TIER CHANGE DETECTION ]--------------------------------------------------------------------------
 function Plugin:CheckTierChange()
-    local newTier = self:GetCurrentTier()
+    -- Compute the fresh real tier (not the cached GetCurrentTier) so change detection still works.
+    local newTier = self._editTierOverride or self:GetRealTier()
     if newTier ~= self._currentTier then
         local oldTier = self._currentTier
         self._currentTier = newTier
@@ -1005,6 +990,15 @@ function Plugin:ApplySettings()
     self._dispelSettingsCache = nil
     self._aggroSettingsCache = nil
 
+    -- Color-by-aura is off for virtually all users; cache whether ANY tier configures it so UpdateColorByAura can bail O(1) per UNIT_AURA instead of resolving tier settings.
+    self._anyColorByAura = false
+    local tiers = self:GetSetting(1, "Tiers")
+    if tiers then
+        for _, t in pairs(tiers) do
+            if t.ColorByAuraSpellId and t.ColorByAuraSpellId ~= 0 then self._anyColorByAura = true; break end
+        end
+    end
+
     local tierWidth = self:GetTierSetting("Width") or DEFAULT_WIDTH
     local tierHeight = self:GetTierSetting("Height") or DEFAULT_HEIGHT
     local borderSize = self:GetSetting(1, "BorderSize")
@@ -1017,9 +1011,9 @@ function Plugin:ApplySettings()
 
             local healthTextMode = self:GetTierSetting("HealthTextMode") or "percent_short"
             if frame.SetHealthTextMode then frame:SetHealthTextMode(healthTextMode) end
-            local showHealthValue = self:GetTierSetting("ShowHealthValue")
-            if showHealthValue == nil then showHealthValue = true end
-            frame.healthTextEnabled = showHealthValue
+            local healthTextFormat = self:GetTierSetting("HealthTextFormat")
+            if frame.SetHealthTextFormat then frame:SetHealthTextFormat(healthTextFormat) end
+            frame.healthTextEnabled = true
             if frame.UpdateHealthText then frame:UpdateHealthText() end
             StatusDispatch(frame, self, "UpdateStatusText")
             if frame.SetClassColour then frame:SetClassColour(true) end
@@ -1052,7 +1046,11 @@ local function FindSpecSpellAltId(spellId)
     end
 end
 
-local function IsTrackedAuraPresent(unit, spellId, altSpellId)
+local function IsTrackedAuraPresent(snapshot, unit, spellId, altSpellId)
+    -- O(1) against the per-event snapshot's spellId map (built once, any caster); same secret-skip semantics as the scan below.
+    local m = snapshot and snapshot.helpfulBySpell
+    if m then return m[spellId] ~= nil or (altSpellId ~= nil and m[altSpellId] ~= nil) end
+    -- Fallback only when no snapshot is in scope (e.g. forced refresh / preview).
     local found = false
     AuraUtil.ForEachAura(unit, "HELPFUL", 40, function(aura)
         local sid = aura.spellId
@@ -1066,19 +1064,16 @@ end
 
 function Plugin:UpdateColorByAura(frame)
     if not frame or not frame.Health or not frame.unit then return end
-    local hadOverride = frame._colorByAuraOverride ~= nil
-    local function clear()
-        if hadOverride then frame._colorByAuraOverride = nil; frame:ApplyHealthColor() end
-    end
-    local spellId = self:GetTierSetting("ColorByAuraSpellId")
-    if not spellId or spellId == 0 then clear(); return end
-    local unit = frame.unit
-    if not UnitExists(unit) then clear(); return end
-    if IsTrackedAuraPresent(unit, spellId, FindSpecSpellAltId(spellId)) then
+    -- _anyColorByAura (cached on settings-change) lets the default/most users skip the whole tier+aura resolution on every UNIT_AURA.
+    local spellId = self._anyColorByAura and self:GetTierSetting("ColorByAuraSpellId")
+    local active = spellId and spellId ~= 0 and UnitExists(frame.unit)
+        and IsTrackedAuraPresent(frame._auraSnapshot, frame.unit, spellId, FindSpecSpellAltId(spellId))
+    if active then
         frame._colorByAuraOverride = self:GetTierSetting("ColorByAuraColor")
         frame:ApplyHealthColor()
-    else
-        clear()
+    elseif frame._colorByAuraOverride ~= nil then
+        frame._colorByAuraOverride = nil
+        frame:ApplyHealthColor()
     end
 end
 
@@ -1090,13 +1085,3 @@ function Plugin:UpdateAllColorByAura()
         end
     end
 end
-
--- [ DISPEL EVENT BUS ]-------------------------------------------------------------------------------
-Orbit.EventBus:On("DISPEL_STATE_CHANGED", function(unit)
-    if not Plugin.frames then return end
-    for _, frame in ipairs(Plugin.frames) do
-        if frame and frame.unit == unit and frame:IsShown() and Plugin.UpdateDispelIndicator then
-            Plugin:UpdateDispelIndicator(frame, Plugin)
-        end
-    end
-end, Plugin)

@@ -126,6 +126,8 @@ function CanvasMode:Enter(frame, updateVisualsCallback)
     end
 
     self.currentFrame = frame
+    -- Published as shared namespace state so lower layers (UnitDisplay) can read canvas-active state without depending on the CanvasMode module.
+    Orbit.canvasActiveFrame = frame
 
     local dialog = Engine.CanvasModeDialog or Orbit.CanvasModeDialog
     if dialog then
@@ -142,6 +144,7 @@ function CanvasMode:Exit(frame, updateVisualsCallback)
     if self.currentFrame ~= frame then return end
 
     self.currentFrame = nil
+    Orbit.canvasActiveFrame = nil
 
     local dialog = Engine.CanvasModeDialog or Orbit.CanvasModeDialog
     if dialog and dialog:IsShown() then dialog:Cancel() end

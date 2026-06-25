@@ -263,7 +263,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
 
     for cb in pairs(self._beforeOpenCallbacks) do
-        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, frame, plugin, systemIndex)
+        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, "CanvasMode.BeforeOpen")(frame, plugin, systemIndex)
         else cb(frame, plugin, systemIndex) end
     end
 
@@ -477,7 +477,7 @@ function Dialog:Open(frame, plugin, systemIndex)
             else
                 local comp = CanvasMode.CreateDraggableComponent(self.previewFrame, key, data.component, data.x, data.y, data)
                 if comp then
-                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + Orbit.Constants.Levels.Overlay)
+                    comp:SetFrameLevel(self.previewFrame:GetFrameLevel() + Orbit.Constants.Levels.CanvasOverlay)
                 end
                 self.previewComponents[key] = comp
             end
@@ -545,7 +545,7 @@ function Dialog:Open(frame, plugin, systemIndex)
     end
 
     for cb in pairs(self._afterOpenCallbacks) do
-        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, frame, plugin, systemIndex)
+        if Orbit.ErrorHandler then Orbit.ErrorHandler:Wrap(cb, "CanvasMode.AfterOpen")(frame, plugin, systemIndex)
         else cb(frame, plugin, systemIndex) end
     end
 
@@ -637,6 +637,9 @@ function Dialog:CloseDialog()
     self:EndTourCleanup()
     self:CleanupPreview()
 
+    -- Apply keeps mid-session direct writes; Cancel already replayed reverts before closing. Either way, drop the list.
+    self._sessionReverts = nil
+
     self.targetFrame = nil
     self.targetPlugin = nil
     self.targetSystemIndex = nil
@@ -644,6 +647,7 @@ function Dialog:CloseDialog()
     self:Hide()
 
     OrbitEngine.CanvasMode.currentFrame = nil
+    Orbit.canvasActiveFrame = nil
 
     OrbitEngine.FrameSelection:RefreshVisuals()
 end

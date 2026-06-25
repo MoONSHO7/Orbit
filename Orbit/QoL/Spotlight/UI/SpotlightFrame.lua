@@ -26,7 +26,7 @@ local INPUT_FONT_SIZE = 14
 local EMPTY_FONT_SIZE = 12
 local DEBOUNCE_KEY = "Spotlight.Matcher"
 local DEBOUNCE_DELAY = 0.05
-local DEFAULT_MAX_RESULTS = 25
+local DEFAULT_MAX_RESULTS = 100
 local INPUT_TEXT_PAD_LEFT = 8
 local INPUT_TEXT_PAD_RIGHT = 8
 local EMPTY_LABEL_PAD = 10
@@ -64,7 +64,7 @@ local function GetEnabledKinds()
     local acct = GetAcct()
     local kinds = {}
     for _, k in ipairs(Orbit.Spotlight.Kinds) do
-        kinds[k.kind] = acct["Spotlight_Src_" .. k.settingKey] ~= false
+        kinds[k.kind] = k.prefixOnly or acct["Spotlight_Src_" .. k.settingKey] ~= false
     end
     return kinds
 end
@@ -77,19 +77,24 @@ local function GetScale() return GetAcct().Spotlight_Scale or 1.0 end
 -- [ HINT SAMPLE ]------------------------------------------------------------------------------------
 local function PickHintSamples()
     local enabled = GetEnabledKinds()
-    local labels = {}
+    -- Pin "help" first so the feature is always advertised; fill the rest with random enabled sources.
+    local helpLabel, labels = nil, {}
     for _, k in ipairs(Orbit.Spotlight.Kinds) do
         local label = L[k.labelKey]
-        if label and enabled[k.kind] then labels[#labels + 1] = label:lower() end
+        if label and enabled[k.kind] then
+            if k.kind == "help" then helpLabel = label:lower()
+            else labels[#labels + 1] = label:lower() end
+        end
     end
     for i = #labels, 2, -1 do
         local j = math.random(i)
         labels[i], labels[j] = labels[j], labels[i]
     end
-    local take = math.min(HINT_SAMPLE_COUNT, #labels)
-    if take == 0 then return "" end
     local out = {}
-    for i = 1, take do out[i] = labels[i] end
+    if helpLabel then out[#out + 1] = helpLabel end
+    local take = math.min(HINT_SAMPLE_COUNT - #out, #labels)
+    for i = 1, take do out[#out + 1] = labels[i] end
+    if #out == 0 then return "" end
     return table.concat(out, ", ") .. "..."
 end
 

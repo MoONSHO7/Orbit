@@ -27,20 +27,10 @@ local HEALTH_TEXT_MODES = {
 }
 UnitButton.HEALTH_TEXT_MODES = HEALTH_TEXT_MODES
 
-local FORMAT_MAP = {
-    [HEALTH_TEXT_MODES.PERCENT] = { "percent", "percent" },
-    [HEALTH_TEXT_MODES.SHORT] = { "short", "short" },
-    [HEALTH_TEXT_MODES.RAW] = { "raw", "raw" },
-    [HEALTH_TEXT_MODES.PERCENT_SHORT] = { "percent", "short" },
-    [HEALTH_TEXT_MODES.PERCENT_RAW] = { "percent", "raw" },
-    [HEALTH_TEXT_MODES.SHORT_PERCENT] = { "short", "percent" },
-    [HEALTH_TEXT_MODES.SHORT_RAW] = { "short", "raw" },
-    [HEALTH_TEXT_MODES.RAW_SHORT] = { "raw", "short" },
-    [HEALTH_TEXT_MODES.RAW_PERCENT] = { "raw", "percent" },
-}
-local DEFAULT_FORMAT = { "percent", "short" }
+local DEFAULT_MODE = HEALTH_TEXT_MODES.PERCENT_SHORT
 
 -- [ LOCAL FORMATTERS ]-------------------------------------------------------------------------------
+-- Formatters may return secret values (UnitHealth/UnitHealthMax are secret in 12.0); RenderHealthText combines via SetFormattedText C-side, never Lua concat.
 
 local function SafeHealthPercent(unit)
     if type(UnitHealthPercent) ~= "function" then
@@ -64,47 +54,202 @@ local function FormatHealthPercent(unit)
     return string.format("%.0f%%", percent)
 end
 
--- pcall the formatter directly — Lua-side `if health` / `type(health)` throws on a secret UnitHealth in combat.
-local function FormatShortHealth(unit)
-    local health = UnitHealth(unit)
-    if AbbreviateLargeNumbers then
-        local ok, result = pcall(AbbreviateLargeNumbers, health)
-        if ok and result then
-            return result
+-- AbbreviateNumbers accepts secret values (UnitHealth is secret in 12.0, where Lua arithmetic throws); custom breakpoints give a clean "466K"/"1.5M" only above 10,000.
+local HEALTH_ABBREV_BREAKPOINTS = {
+    { breakpoint = 1000000, abbreviation = "M", abbreviationIsGlobal = false, significandDivisor = 100000, fractionDivisor = 10 },
+    { breakpoint = 10000,   abbreviation = "K", abbreviationIsGlobal = false, significandDivisor = 1000,   fractionDivisor = 1 },
+}
+local healthAbbrevOpts
+local function AbbreviateHealth(value)
+    if not AbbreviateNumbers then return value end
+    if healthAbbrevOpts == nil then
+        healthAbbrevOpts = false
+        if CreateAbbreviateConfig then
+            local ok, config = pcall(CreateAbbreviateConfig, HEALTH_ABBREV_BREAKPOINTS)
+            if ok and config then healthAbbrevOpts = { config = config } end
         end
     end
-    return nil
+    return AbbreviateNumbers(value, healthAbbrevOpts or nil)
 end
 
-local function FormatRawHealth(unit)
-    local health = UnitHealth(unit)
-    if BreakUpLargeNumbers then
-        local ok, result = pcall(BreakUpLargeNumbers, health)
-        if ok and result then
-            return result
+-- Short tokens abbreviate via the secret-safe C call; full tokens forward the raw value to the FontString sink, which renders a plain number (no separators).
+local function FormatCurrentK(unit) return AbbreviateHealth(UnitHealth(unit)) end
+local function FormatCurrentFull(unit) return UnitHealth(unit) end
+local function FormatMaxK(unit) return AbbreviateHealth(UnitHealthMax(unit)) end
+local function FormatMaxFull(unit) return UnitHealthMax(unit) end
+
+-- [ HEALTH TOKENS ]----------------------------------------------------------------------------------
+local HEALTH_TOKENS = {
+    { id = "percent",      key = "%",            sample = "100%",    format = function(u) return FormatHealthPercent(u) or "??%" end },
+    { id = "currentk", key = "CurrentK", sample = "466K",    format = FormatCurrentK },
+    { id = "current",      key = "Current",      sample = "466095",  format = FormatCurrentFull },
+    { id = "maxk",     key = "MaxK",     sample = "500K",    format = FormatMaxK },
+    { id = "max",          key = "Max",          sample = "500000",  format = FormatMaxFull },
+}
+local TOKEN_BY_ID = {}
+for _, t in ipairs(HEALTH_TOKENS) do TOKEN_BY_ID[t.id] = t end
+UnitButton.HEALTH_TOKENS = HEALTH_TOKENS
+
+-- Parser key table, longest-first so a shorter key can't pre-empt a longer one; `&` is the mouseover divider.
+local FORMAT_KEYS = {}
+for _, t in ipairs(HEALTH_TOKENS) do FORMAT_KEYS[#FORMAT_KEYS + 1] = { key = t.key, id = t.id } end
+FORMAT_KEYS[#FORMAT_KEYS + 1] = { key = "&", mo = true }
+table.sort(FORMAT_KEYS, function(a, b) return #a.key > #b.key end)
+
+-- [ LEGACY MODE MAPPING ]----------------------------------------------------------------------------
+-- Maps retired HealthTextMode presets onto the segment model so existing saved values render unchanged.
+local LEGACY_SEGMENTS = {
+    [HEALTH_TEXT_MODES.PERCENT]           = { { t = "value", v = "percent" } },
+    [HEALTH_TEXT_MODES.SHORT]             = { { t = "value", v = "currentk" } },
+    [HEALTH_TEXT_MODES.RAW]               = { { t = "value", v = "current" } },
+    [HEALTH_TEXT_MODES.PERCENT_SHORT]     = { { t = "value", v = "percent" }, { t = "mo" }, { t = "value", v = "currentk" } },
+    [HEALTH_TEXT_MODES.PERCENT_RAW]       = { { t = "value", v = "percent" }, { t = "mo" }, { t = "value", v = "current" } },
+    [HEALTH_TEXT_MODES.SHORT_PERCENT]     = { { t = "value", v = "currentk" }, { t = "mo" }, { t = "value", v = "percent" } },
+    [HEALTH_TEXT_MODES.SHORT_RAW]         = { { t = "value", v = "currentk" }, { t = "mo" }, { t = "value", v = "current" } },
+    [HEALTH_TEXT_MODES.RAW_SHORT]         = { { t = "value", v = "current" }, { t = "mo" }, { t = "value", v = "currentk" } },
+    [HEALTH_TEXT_MODES.RAW_PERCENT]       = { { t = "value", v = "current" }, { t = "mo" }, { t = "value", v = "percent" } },
+    [HEALTH_TEXT_MODES.SHORT_AND_PERCENT] = { { t = "value", v = "currentk" }, { t = "sep", v = " - " }, { t = "value", v = "percent" } },
+}
+local function LegacyModeToSegments(mode)
+    return LEGACY_SEGMENTS[mode] or LEGACY_SEGMENTS[DEFAULT_MODE]
+end
+
+-- Typed-string equivalent of each legacy preset, used to seed the format input box for existing users.
+local LEGACY_FORMAT_STRINGS = {
+    [HEALTH_TEXT_MODES.PERCENT]           = "%",
+    [HEALTH_TEXT_MODES.SHORT]             = "CurrentK",
+    [HEALTH_TEXT_MODES.RAW]               = "Current",
+    [HEALTH_TEXT_MODES.PERCENT_SHORT]     = "% & CurrentK",
+    [HEALTH_TEXT_MODES.PERCENT_RAW]       = "% & Current",
+    [HEALTH_TEXT_MODES.SHORT_PERCENT]     = "CurrentK & %",
+    [HEALTH_TEXT_MODES.SHORT_RAW]         = "CurrentK & Current",
+    [HEALTH_TEXT_MODES.RAW_SHORT]         = "Current & CurrentK",
+    [HEALTH_TEXT_MODES.RAW_PERCENT]       = "Current & %",
+    [HEALTH_TEXT_MODES.SHORT_AND_PERCENT] = "CurrentK - %",
+}
+function UnitButton.LegacyHealthModeToFormatString(mode)
+    return LEGACY_FORMAT_STRINGS[mode] or LEGACY_FORMAT_STRINGS[DEFAULT_MODE]
+end
+
+-- [ SEGMENT RENDERING ]------------------------------------------------------------------------------
+-- SetFormattedText accepts secret args (AllowedWhenTainted), so several secret health values combine (e.g. "466K - 500K") where Lua concat would throw.
+local function RenderHealthText(fs, unit, segs)
+    local parts, values = {}, {}
+    for _, seg in ipairs(segs) do
+        if seg.t == "value" then
+            local token = TOKEN_BY_ID[seg.v]
+            if token then
+                parts[#parts + 1] = "%s"
+                values[#values + 1] = token.format(unit)
+            end
+        elseif seg.t == "sep" then
+            parts[#parts + 1] = (seg.v or ""):gsub("%%", "%%%%")
         end
     end
-    local ok, s = pcall(tostring, health)
-    return ok and s or nil
+    fs:SetFormattedText(table.concat(parts), unpack(values))
 end
 
-local function GetHealthTextForFormat(unit, format)
-    if format == "percent" then
-        return FormatHealthPercent(unit) or "??%"
-    elseif format == "short" then
-        return FormatShortHealth(unit) or "???"
-    elseif format == "raw" then
-        return FormatRawHealth(unit) or "???"
+-- [ FORMAT STRING PARSING ]--------------------------------------------------------------------------
+local function ParseFormat(str)
+    str = strtrim(str or "")
+    local segments = {}
+    local buffer, trimNextLeading = "", false
+    local function pushBuffer(trimTrailing)
+        local b = buffer
+        buffer = ""
+        if trimNextLeading then b = b:gsub("^%s+", ""); trimNextLeading = false end
+        if trimTrailing then b = b:gsub("%s+$", "") end
+        if b ~= "" then segments[#segments + 1] = { t = "sep", v = b } end
     end
-    return "???"
+    local i, n = 1, #str
+    while i <= n do
+        local matched
+        for _, entry in ipairs(FORMAT_KEYS) do
+            local klen = #entry.key
+            if str:sub(i, i + klen - 1):lower() == entry.key:lower() then matched = entry; break end
+        end
+        if matched then
+            if matched.mo then
+                pushBuffer(true)
+                segments[#segments + 1] = { t = "mo" }
+                trimNextLeading = true
+            else
+                pushBuffer(false)
+                segments[#segments + 1] = { t = "value", v = matched.id }
+            end
+            i = i + #matched.key
+        else
+            buffer = buffer .. str:sub(i, i)
+            i = i + 1
+        end
+    end
+    pushBuffer(false)
+    return segments
+end
+
+function UnitButton.HealthFormatRestSample(formatString, legacyMode, noFallback)
+    local segs = (type(formatString) == "string") and ParseFormat(formatString) or LegacyModeToSegments(legacyMode)
+    local moIndex
+    for i = 1, #segs do
+        if segs[i].t == "mo" then moIndex = i; break end
+    end
+    local function sample(from, to)
+        local out = {}
+        for i = from, to do
+            local seg = segs[i]
+            if seg.t == "value" then
+                local tk = TOKEN_BY_ID[seg.v]
+                out[#out + 1] = (tk and tk.sample) or seg.v
+            elseif seg.t == "sep" then
+                out[#out + 1] = seg.v or ""
+            end
+        end
+        return table.concat(out)
+    end
+    local rest = sample(1, moIndex and moIndex - 1 or #segs)
+    if rest ~= "" or noFallback then return rest end
+    return moIndex and sample(moIndex + 1, #segs) or rest
+end
+
+-- Valid when there is at most one `&` divider and no value token repeats within the same (rest/hover) side.
+function UnitButton.ValidateHealthFormat(str)
+    if type(str) ~= "string" then return true end
+    local moCount, seen = 0, {}
+    for _, seg in ipairs(ParseFormat(str)) do
+        if seg.t == "mo" then
+            moCount = moCount + 1
+            if moCount > 1 then return false end
+            seen = {}
+        elseif seg.t == "value" then
+            if seen[seg.v] then return false end
+            seen[seg.v] = true
+        end
+    end
+    return true
 end
 
 -- [ TEXT MIXIN ]-------------------------------------------------------------------------------------
 local TextMixin = {}
 
-function TextMixin:GetHealthTextFormats()
-    local formats = FORMAT_MAP[self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT] or DEFAULT_FORMAT
-    return formats[1], formats[2]
+function TextMixin:RecomputeHealthSegments()
+    -- A string (even "") is the user's chosen format — "" parses to no segments (blank); only nil falls back to the legacy preset.
+    local fmt = self.healthTextFormat
+    local segs = (type(fmt) == "string") and ParseFormat(fmt) or LegacyModeToSegments(self.healthTextMode)
+    local moIndex
+    for i = 1, #segs do
+        if segs[i].t == "mo" then moIndex = i; break end
+    end
+    if not moIndex then
+        self._healthRestSegs = segs
+        self._healthHoverSegs = nil
+        return
+    end
+    local rest, hover = {}, {}
+    for j = 1, moIndex - 1 do rest[#rest + 1] = segs[j] end
+    for j = moIndex + 1, #segs do hover[#hover + 1] = segs[j] end
+    self._healthRestSegs = rest
+    -- An empty side is kept as {} (not nil) so a divider with nothing on that side renders blank — distinct from nil (no divider), where mouseover mirrors the rest.
+    self._healthHoverSegs = hover
 end
 
 function TextMixin:UpdateHealthText()
@@ -121,14 +266,15 @@ function TextMixin:UpdateHealthText()
         return
     end
 
+    -- Status precedes value (mirrors Blizzard's CompactUnitFrame_UpdateStatusText): offline, then dead-or-ghost, via Blizzard's localized globals.
     if not UnitIsConnected(self.unit) then
-        self.HealthText:SetText(Orbit.L.CMN_OFFLINE)
+        self.HealthText:SetText(PLAYER_OFFLINE)
         self.HealthText:Show()
         return
     end
 
     if UnitIsDeadOrGhost(self.unit) then
-        self.HealthText:SetText(Orbit.L.CMN_DEAD)
+        self.HealthText:SetText(DEAD)
         self.HealthText:Show()
         return
     end
@@ -139,17 +285,9 @@ function TextMixin:UpdateHealthText()
         return
     end
 
-    local mode = self.healthTextMode or HEALTH_TEXT_MODES.PERCENT_SHORT
-
-    if mode == HEALTH_TEXT_MODES.SHORT_AND_PERCENT then
-        self.HealthText:SetText(GetHealthTextForFormat(self.unit, "short") .. " - " .. GetHealthTextForFormat(self.unit, "percent"))
-        self.HealthText:Show()
-        self:ApplyHealthTextColor()
-        return
-    end
-
-    local mainFormat, mouseoverFormat = self:GetHealthTextFormats()
-    self.HealthText:SetText(GetHealthTextForFormat(self.unit, self.isMouseOver and mouseoverFormat or mainFormat))
+    if not self._healthRestSegs then self:RecomputeHealthSegments() end
+    local active = (self.isMouseOver and self._healthHoverSegs) or self._healthRestSegs
+    RenderHealthText(self.HealthText, self.unit, active)
     self.HealthText:Show()
     self:ApplyHealthTextColor()
 end
@@ -168,6 +306,13 @@ end
 
 function TextMixin:SetHealthTextMode(mode)
     self.healthTextMode = mode
+    self:RecomputeHealthSegments()
+    self:UpdateHealthText()
+end
+
+function TextMixin:SetHealthTextFormat(formatString)
+    self.healthTextFormat = formatString
+    self:RecomputeHealthSegments()
     self:UpdateHealthText()
 end
 
@@ -219,12 +364,7 @@ end
 -- [ NAME WIDTH CONSTRAINT ]--------------------------------------------------------------------------
 local FALLBACK_FONT_HEIGHT = 12
 local HEALTH_CHAR_WIDTH_RATIO = 0.6
-local HEALTH_MODE_CHAR_COUNTS = {
-    percent = 4, short = 5, raw = 9,
-    percent_short = 4, percent_raw = 4, short_percent = 5,
-    short_raw = 5, raw_short = 9, raw_percent = 9,
-    short_and_percent = 12,
-}
+local TOKEN_CHAR_COUNTS = { percent = 4, currentk = 5, current = 9, maxk = 5, max = 9 }
 
 local function SafeGetValue(fn)
     local ok, val = pcall(fn)
@@ -248,9 +388,17 @@ function TextMixin:EstimateHealthTextWidth()
     local _, fontHeight = self.Name:GetFont()
     fontHeight = fontHeight or FALLBACK_FONT_HEIGHT
     if issecretvalue and issecretvalue(fontHeight) then fontHeight = FALLBACK_FONT_HEIGHT end
-    local mode = self.healthTextMode or "percent_short"
-    local charCount = HEALTH_MODE_CHAR_COUNTS[mode] or 5
-    return fontHeight * HEALTH_CHAR_WIDTH_RATIO * charCount
+    if not self._healthRestSegs then self:RecomputeHealthSegments() end
+    local chars = 0
+    for _, seg in ipairs(self._healthRestSegs) do
+        if seg.t == "value" then
+            chars = chars + (TOKEN_CHAR_COUNTS[seg.v] or 5)
+        elseif seg.t == "sep" then
+            chars = chars + #(seg.v or "")
+        end
+    end
+    if chars == 0 then chars = 5 end
+    return fontHeight * HEALTH_CHAR_WIDTH_RATIO * chars
 end
 
 function TextMixin:GetNameAvailableWidth()
@@ -358,3 +506,4 @@ function TextMixin:ApplyHealthTextColor()
 end
 
 UnitButton.TextMixin = TextMixin
+if table.freeze then table.freeze(TextMixin) end

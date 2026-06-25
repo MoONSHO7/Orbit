@@ -40,7 +40,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 { value = "round", label = L.PLU_MINIMAP_ROUND },
                 { value = "splatter", label = L.PLU_MINIMAP_SPLATTER },
             },
-            default = "square",
+            default = "round",
             onChange = function(val)
                 self:SetSetting(SYSTEM_ID, "Shape", val)
                 self:ApplySettings()
@@ -60,7 +60,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 { value = "fadedcircle", label = L.PLU_MINIMAP_BORDER_RING_FADED_CIRCLE },
                 { value = "void",        label = L.PLU_MINIMAP_BORDER_RING_VOID },
             },
-            default = "none",
+            default = "fadedcircle",
             visibleIf = function() return self:GetSetting(SYSTEM_ID, "Shape") == "round" end,
             onChange = function(val)
                 self:SetSetting(SYSTEM_ID, "BorderRing", val)

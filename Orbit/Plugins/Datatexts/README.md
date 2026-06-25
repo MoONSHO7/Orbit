@@ -47,7 +47,7 @@ Datatexts/
 
 | drawer state | datatext drag | datatext tooltip / click |
 |---|---|---|
-| closed | locked | enabled |
+| closed | locked | enabled — left-click runs the action, right-click opens the options menu (e.g. "Only Show in Instance") |
 | open | unlocked (draggable) | enabled |
 
 ## corner triggers
@@ -56,7 +56,7 @@ Datatexts/
 
 ## persistence
 
-datatext positions are stored in `OrbitDB.Profiles[activeProfile].Orbit_Datatexts.datatextPositions`. positions travel with profile switches.
+datatext positions are stored in `OrbitDB.Profiles[activeProfile].Orbit_Datatexts.datatextPositions`. positions travel with profile switches. per-datatext options (e.g. "only show in instance") live alongside them in `Orbit_Datatexts.datatextOptions`, evaluated by `DatatextManager:ApplyInstanceVisibility` on zone changes and drawer open/close.
 
 ## adding a new datatext
 

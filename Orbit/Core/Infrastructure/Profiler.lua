@@ -1,5 +1,6 @@
 local _, addonTable = ...
 local Orbit = addonTable
+local L = Orbit.L
 
 -- [ ORBIT PROFILER ] --------------------------------------------------------------------------------
 Orbit.Profiler = {}
@@ -14,15 +15,15 @@ end
 
 function Profiler:Start()
     if self.active then
-        Orbit:Print("[Profiler] Already active.")
+        Orbit:Print(L.MSG_PROFILER_ALREADY_ACTIVE)
         return
     end
     self.active = true
     self.records = {}
-    Orbit:Print("[Profiler] Started. Tracking EventBus cycles...")
+    Orbit:Print(L.MSG_PROFILER_STARTED)
 end
 
--- Returns start-tick if profiler is active, nil otherwise. Pair with Profiler:Stop(context, name, start).
+-- Returns start-tick if profiler is active, nil otherwise. Pair with Profiler:End(context, name, start).
 function Profiler:Begin()
     if not self.active then return nil end
     return debugprofilestop()
@@ -58,12 +59,12 @@ end
 
 function Profiler:Stop()
     if not self.active then
-        Orbit:Print("[Profiler] Not currently running.")
+        Orbit:Print(L.MSG_PROFILER_NOT_RUNNING)
         return
     end
     self.active = false
-    
-    Orbit:Print("[Profiler] Results:")
+
+    Orbit:Print(L.MSG_PROFILER_RESULTS)
     
     local sorted = {}
     for name, data in pairs(self.records) do
@@ -72,7 +73,7 @@ function Profiler:Stop()
     table.sort(sorted, function(a, b) return a.data.totalMs > b.data.totalMs end)
     
     if #sorted == 0 then
-        Orbit:Print("  No data recorded.")
+        Orbit:Print(L.MSG_PROFILER_NO_DATA)
         return
     end
     
@@ -82,18 +83,5 @@ function Profiler:Stop()
         local color = d.totalMs > 100 and "|cFFFF0000" or (d.totalMs > 20 and "|cFFFFFF00" or "|cFF00FF00")
         Orbit:Print(string.format("  [%d] %s%s|r: %.1fms (Max: %.2fms) | Calls: %d", 
             i, color, name, d.totalMs, d.maxSpike, d.calls))
-    end
-end
-
--- [ SLASH COMMAND ] ---------------------------------------------------------------------------------
-_G.SLASH_ORBITPERF1 = "/orbitperf"
-SlashCmdList["ORBITPERF"] = function(msg)
-    local cmd = string.lower(strtrim(msg))
-    if cmd == "start" then
-        Profiler:Start()
-    elseif cmd == "stop" then
-        Profiler:Stop()
-    else
-        Orbit:Print("Usage: /orbitperf start | stop")
     end
 end

@@ -3,7 +3,8 @@ local Orbit = addonTable
 local L = Orbit.L
 
 -- [ CONSTANTS ]--------------------------------------------------------------------------------------
-local DEFAULT_LAYOUT_ID = "Default"
+-- Theme keys inherited globally from Orbit.db.GlobalSettings; consulted by both GetSetting (read) and SetSetting (write) so the pair stays symmetric.
+local GLOBAL_INHERIT_KEYS = { Texture = true, Font = true, BorderSize = true }
 
 local function SafeTablePath(tbl, ...)
     for i = 1, select("#", ...) do
@@ -44,12 +45,6 @@ function Orbit.PluginMixin:RegisterStandardEvents()
         end, debounceDelay)
     end, self)
 
-    Orbit.EventBus:On("ORBIT_STRATA_UPDATED", function()
-        Orbit.Async:Debounce(debounceKey, function()
-            self:ApplySettings()
-        end, debounceDelay)
-    end, self)
-
     if Orbit.Engine and Orbit.Engine.EditMode then
         Orbit.Engine.EditMode:RegisterCallbacks({
             Enter = function()
@@ -72,14 +67,9 @@ function Orbit.PluginMixin:RegisterUpdate(callback)
         self._updateFrame = CreateFrame("Frame")
     end
     self._updateFrame:SetScript("OnUpdate", function(_, elapsed)
-        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
-        local start = profilerActive and debugprofilestop() or nil
-        
+        local start = Orbit.Profiler and Orbit.Profiler:Begin()
         callback(self, elapsed)
-        
-        if start then
-            Orbit.Profiler:RecordContext(self, "OnUpdate", debugprofilestop() - start)
-        end
+        if start then Orbit.Profiler:End(self, "OnUpdate", start) end
     end)
 end
 
@@ -91,14 +81,9 @@ end
 
 function Orbit.PluginMixin:NewTicker(interval, callback, iterations)
     return C_Timer.NewTicker(interval, function()
-        local profilerActive = Orbit.Profiler and Orbit.Profiler:IsActive()
-        local start = profilerActive and debugprofilestop() or nil
-        
+        local start = Orbit.Profiler and Orbit.Profiler:Begin()
         callback(self)
-        
-        if start then
-            Orbit.Profiler:RecordContext(self, "C_Timer.Ticker", debugprofilestop() - start)
-        end
+        if start then Orbit.Profiler:End(self, "C_Timer.Ticker", start) end
     end, iterations)
 end
 
@@ -114,19 +99,20 @@ function Orbit.PluginMixin:GetComponentPositions(systemIndex)
     return (txn and txn:GetPositions()) or self:GetSetting(systemIndex or 1, "ComponentPositions") or {}
 end
 
--- Weak-keyed side cache so we never pollute SavedVariables with the lazy hash set.
+-- Weak-keyed side cache; entry tracks array length so an in-place mutation (Canvas dock inserts/removes without changing identity) invalidates the cached hash.
 local _disabledHashCache = setmetatable({}, { __mode = "k" })
 
 function Orbit.PluginMixin:IsComponentDisabled(componentKey)
     local txn = self:_ActiveTransaction()
     local disabled = txn and txn:GetDisabledComponents() or self:GetSetting(self.frame and self.frame.systemIndex or 1, "DisabledComponents") or {}
-    local hash = _disabledHashCache[disabled]
-    if not hash then
-        hash = {}
+    local entry = _disabledHashCache[disabled]
+    if not entry or entry.count ~= #disabled then
+        local hash = {}
         for _, key in ipairs(disabled) do hash[key] = true end
-        _disabledHashCache[disabled] = hash
+        entry = { hash = hash, count = #disabled }
+        _disabledHashCache[disabled] = entry
     end
-    return hash[componentKey] or false
+    return entry.hash[componentKey] or false
 end
 
 -- Single entry point for Canvas Mode Apply — updates live frames + edit mode previews
@@ -135,17 +121,31 @@ function Orbit.PluginMixin:OnCanvasApply()
     if self.SchedulePreviewUpdate then self:SchedulePreviewUpdate() end
 end
 
--- Subscribe to live preview updates during Canvas Mode editing
+-- Single live-preview refresh hook; plugins override for bespoke refresh (default re-applies settings).
+function Orbit.PluginMixin:OnCanvasLivePreview(frame)
+    if self.ApplySettings then self:ApplySettings(frame) end
+end
+
+-- Subscribe to live preview updates during Canvas Mode editing. Registered with self as context so OffContext(plugin) reclaims it on teardown.
 function Orbit.PluginMixin:WatchCanvasChanges()
-    self._canvasLiveCallback = function(targetPlugin)
+    if self._canvasWatched then return end
+    self._canvasLiveCallback = self._canvasLiveCallback or function(_, targetPlugin)
         if targetPlugin ~= self then return end
         if InCombatLockdown() then return end
         local txn = Orbit.Engine.CanvasMode and Orbit.Engine.CanvasMode.Transaction
         local sysIdx = txn and txn:GetSystemIndex()
         local frame = sysIdx and self.GetFrameBySystemIndex and self:GetFrameBySystemIndex(sysIdx)
-        if self.ApplySettings then self:ApplySettings(frame) end
+        self:OnCanvasLivePreview(frame)
     end
-    Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", self._canvasLiveCallback)
+    Orbit.EventBus:On("ORBIT_CANVAS_SETTINGS_CHANGED", self._canvasLiveCallback, self)
+    self._canvasWatched = true
+end
+
+function Orbit.PluginMixin:UnwatchCanvasChanges()
+    if self._canvasLiveCallback then
+        Orbit.EventBus:Off("ORBIT_CANVAS_SETTINGS_CHANGED", self._canvasLiveCallback)
+    end
+    self._canvasWatched = false
 end
 
 function Orbit.PluginMixin:GetLayoutID()
@@ -159,17 +159,19 @@ function Orbit:ReadPluginSetting(system, systemIndex, key)
     return node and node[key]
 end
 
+-- Sanctioned read for globally-inherited theme values; the single door plugins/core use instead of indexing Orbit.db.GlobalSettings directly.
+function Orbit:GetTheme(key)
+    return Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings[key]
+end
+
 -- [ SETTINGS ]---------------------------------------------------------------------------------------
 function Orbit.PluginMixin:GetSetting(systemIndex, key)
     systemIndex = systemIndex or 1
     local layoutID = self:GetLayoutID()
     local db = Orbit.runtime and Orbit.runtime.Layouts
 
-    -- Global Inheritance
-    if key == "Texture" or key == "Font" or key == "BorderSize" then
-        local val = Orbit.db.GlobalSettings[key]
-
-        return val
+    if GLOBAL_INHERIT_KEYS[key] then
+        return Orbit.db.GlobalSettings[key]
     end
     -- Canvas Mode Transaction override — return staged values during live preview
     local txn = self:_ActiveTransaction()
@@ -180,11 +182,6 @@ function Orbit.PluginMixin:GetSetting(systemIndex, key)
 
     local node = SafeTablePath(db, layoutID, self.system, systemIndex)
     local val = node and node[key]
-    -- Backward compatibility: Fallback to "Default" layout
-    if val == nil then
-        node = SafeTablePath(db, DEFAULT_LAYOUT_ID, self.system, systemIndex)
-        val = node and node[key]
-    end
 
     if val == nil and self.indexDefaults and self.indexDefaults[systemIndex] and self.indexDefaults[systemIndex][key] ~= nil then
         return self.indexDefaults[systemIndex][key]
@@ -197,6 +194,12 @@ end
 
 function Orbit.PluginMixin:SetSetting(systemIndex, key, value)
     systemIndex = systemIndex or 1
+    if GLOBAL_INHERIT_KEYS[key] then
+        if not Orbit.db.GlobalSettings then Orbit.db.GlobalSettings = {} end
+        Orbit.db.GlobalSettings[key] = value
+        if Orbit.EventBus then Orbit.EventBus:Fire("ORBIT_COLORS_CHANGED") end
+        return
+    end
     local layoutID = self:GetLayoutID()
     local db = Orbit.runtime and Orbit.runtime.Layouts
     if not self.system then
@@ -290,3 +293,5 @@ function Orbit.PluginMixin:UpdateVisibility()
         for _, container in pairs(self.containers) do container:SetAlpha(opacity) end
     end
 end
+
+if table.freeze then table.freeze(Orbit.PluginMixin) end

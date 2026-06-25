@@ -75,13 +75,6 @@ function Mixin:CreateCastBarFrame(name, config)
     bar.casting = false
     bar.channeling = false
     bar.empowering = false
-    bar.numStages = 0
-    bar.currentStage = 0
-    bar.stageDurations = {}
-    bar.startTime = 0
-    bar.endTime = 0
-    bar.maxValue = 1
-    bar.value = 0
     bar.preview = false
 
     -- Frame options
@@ -174,15 +167,15 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
     local schema = { hideNativeSettings = true, controls = {} }
 
     SB:SetTabRefreshCallback(dialog, self, systemFrame)
-    local currentTab = SB:AddSettingsTabs(schema, dialog, { "Layout", "Colour" }, "Layout")
+    local currentTab = SB:AddSettingsTabs(schema, dialog, { L.PLU_CAST_TAB_LAYOUT, L.PLU_CAST_TAB_COLOUR }, L.PLU_CAST_TAB_LAYOUT)
 
-    if currentTab == "Layout" then
+    if currentTab == L.PLU_CAST_TAB_LAYOUT then
         local isAnchored = OrbitEngine.Frame:GetAnchorParent(bar) ~= nil
         local anchorAxis = isAnchored and self:GetAnchorAxis(bar) or nil
         if not (isAnchored and anchorAxis == "x") then
             SB:AddSizeSettings(self, schema, systemIndex, systemFrame, nil, {
                 key = "CastBarHeight",
-                label = "Height",
+                label = L.CMN_HEIGHT,
                 min = 5,
                 max = 40,
                 default = 18,
@@ -192,7 +185,7 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
             table.insert(schema.controls, {
                 type = "slider",
                 key = "CastBarWidth",
-                label = "Width",
+                label = L.CMN_WIDTH,
                 min = 100,
                 max = 600,
                 step = 10,
@@ -212,18 +205,18 @@ function Mixin:AddCastBarSettings(dialog, systemFrame)
                 self:ApplySettings(systemFrame)
             end,
         })
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = "Show Spell Name", default = true })
-        table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = "Show Timer", default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarText", label = L.PLU_CAST_SHOW_NAME, default = true })
+        table.insert(schema.controls, { type = "checkbox", key = "CastBarTimer", label = L.PLU_CAST_SHOW_TIMER, default = true })
     elseif currentTab == "Colour" then
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "CastBarColorCurve",
-            label = "Normal",
+            label = L.PLU_CAST_NORMAL,
             default = { pins = { { position = 0, color = DEFAULT_CAST_COLOR } } },
             singleColor = true,
         })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, {
             key = "NonInterruptibleColorCurve",
-            label = "Protected",
+            label = L.PLU_CAST_PROTECTED,
             default = { pins = { { position = 0, color = DEFAULT_PROTECTED_COLOR } } },
             singleColor = true,
         })
@@ -523,7 +516,24 @@ function Mixin:SetupUnitCastBar(bar, unit, nativeSpellbar)
             end)
         end,
         UNIT_SPELLCAST_INTERRUPTED = function()
-            bar:StopCast()
+            if UnitChannelInfo(unit) or UnitCastingInfo(unit) then
+                return
+            end
+            local interruptTimestamp = bar.castTimestamp
+            bar.casting = false
+            bar.channeling = false
+            bar.durationObj = nil
+            if bar.Text then
+                bar.Text:SetText(INTERRUPTED)
+            end
+            if bar.InterruptAnim then
+                bar.InterruptAnim:Play()
+            end
+            C_Timer.After(INTERRUPT_FLASH_DURATION, function()
+                if bar.castTimestamp == interruptTimestamp and not bar.casting and not bar.channeling then
+                    bar:StopCast()
+                end
+            end)
         end,
         UNIT_SPELLCAST_INTERRUPTIBLE = function()
             bar.notInterruptible = false

@@ -18,7 +18,6 @@ Sources.currencies = Currencies
 
 -- Walk headers in reverse so earlier indices stay valid as later ones grow; restore originally-collapsed state at the end.
 local function WithAllExpanded(fn)
-    local originallyCollapsed = {}
     local headerNames = {}
     local size = C_CurrencyInfo.GetCurrencyListSize() or 0
     for i = size, 1, -1 do
@@ -28,7 +27,8 @@ local function WithAllExpanded(fn)
             C_CurrencyInfo.ExpandCurrencyList(i, true)
         end
     end
-    fn()
+    -- pcall so a throw in fn() can't strand the player's currency list fully expanded; re-raise after restoring.
+    local ok, err = pcall(fn)
     size = C_CurrencyInfo.GetCurrencyListSize() or 0
     for i = size, 1, -1 do
         local info = C_CurrencyInfo.GetCurrencyListInfo(i)
@@ -36,6 +36,7 @@ local function WithAllExpanded(fn)
             C_CurrencyInfo.ExpandCurrencyList(i, false)
         end
     end
+    if not ok then error(err, 0) end
 end
 
 function Currencies:Build()

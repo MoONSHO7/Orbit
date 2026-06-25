@@ -82,7 +82,7 @@ function Layout:CreateFontPicker(parent, label, initialFont, callback, valueColo
                 end,
                 renderRow = function(row, name, isSelected)
                     local path = LSM:Fetch("font", name)
-                    if path then
+                    if path and Orbit.Skin:IsMediaFileValid(path) then
                         row.Text:SetFont(path, ROW_PREVIEW, "")
                         row.Text:SetText(name)
                         row.Text:SetTextColor(0.9, 0.9, 0.9, 1)

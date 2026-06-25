@@ -132,3 +132,4 @@ function PredictionMixin:SetHealAbsorbColor(r, g, b, a)
 end
 
 UnitButton.PredictionMixin = PredictionMixin
+if table.freeze then table.freeze(PredictionMixin) end
