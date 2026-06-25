@@ -293,6 +293,9 @@ function Layout:CreateAccordion(parent, name)
     local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("LEFT", 21, 2)
     label:SetText(name)
+    local status = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    status:SetPoint("RIGHT", bar, "RIGHT", -(right:GetWidth() + 4), 2)
+    status:SetJustifyH("RIGHT")
     -- Content container
     local body = CreateFrame("Frame", nil, section)
     body:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -4)
@@ -305,14 +308,27 @@ function Layout:CreateAccordion(parent, name)
         body:SetShown(section._expanded)
         section:SetHeight(section._expanded and Engine.Pixel:Snap(ACCORDION_BAR_HEIGHT + section._contentHeight + 4, section:GetEffectiveScale()) or ACCORDION_BAR_HEIGHT)
     end
-    -- Toggle
-    bar:SetScript("OnClick", function()
+    -- Toggle (left-click) / optional right-click action (e.g. rename), with a hover hint when one is wired
+    bar:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    bar:SetScript("OnClick", function(_, button)
+        if button == "RightButton" then
+            if section._onRightClick then section._onRightClick() end
+            return
+        end
         section._expanded = not section._expanded
         UpdateVisual()
         if section._onToggle then section._onToggle() end
     end)
+    bar:SetScript("OnEnter", function(self)
+        if not section._rightClickTip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(section._rightClickTip, 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    bar:SetScript("OnLeave", GameTooltip_Hide)
     -- Public API
     function section:GetBody() return body end
+    function section:SetStatus(text) status:SetText(text or "") end
     function section:SetContentHeight(h)
         self._contentHeight = h
         body:SetHeight(h)
@@ -323,6 +339,18 @@ function Layout:CreateAccordion(parent, name)
         self._expanded = state
         UpdateVisual()
         if self._onToggle then self._onToggle() end
+    end
+    -- Returns a pooled section to a pristine collapsed state for reuse (title, status, expansion, callbacks).
+    function section:Reset(name)
+        label:SetText(name)
+        status:SetText("")
+        self._expanded = false
+        self._contentHeight = 1
+        self._onToggle = nil
+        self._profileId = nil
+        self._onRightClick = nil
+        self._rightClickTip = nil
+        UpdateVisual()
     end
     section.OrbitType = "Accordion"
     return section
@@ -472,6 +500,12 @@ function Layout:InitializeWidgetTypes()
 
     self:RegisterWidgetType("font", function(container, def, getValue, callback)
         local picker = self:CreateFontPicker(container, def.label, getValue(), callback, def.valueColor)
+        self:AttachLabelTooltip(picker, def.label, def.tooltip)
+        return picker
+    end)
+
+    self:RegisterWidgetType("glowpicker", function(container, def, getValue, callback)
+        local picker = self:CreateGlowPicker(container, def.label, getValue(), callback, def.valueColor, def.engineOptions)
         self:AttachLabelTooltip(picker, def.label, def.tooltip)
         return picker
     end)

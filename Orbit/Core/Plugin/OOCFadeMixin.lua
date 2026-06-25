@@ -68,6 +68,9 @@ local function RefreshVESnapshot(frame, data)
     else
         frame._veHideMounted = false
     end
+    frame._veKey = veKey
+    frame._veProfileCap = (veKey and Orbit.FadeProfiles and Orbit.FadeProfiles:GetResolvedAlpha(veKey)) or 1
+    frame._veMouseoverProfile = (veKey and Orbit.FadeProfiles and Orbit.FadeProfiles:FrameHasMouseoverProfile(veKey)) or false
 end
 
 local function RefreshAllSnapshots()
@@ -105,8 +108,17 @@ local function SyncMinimapChildrenAlpha(frame, alpha)
     ApplyChildAlpha(alpha, frame:GetChildren())
 end
 
+local function ResolveProfileCap(frame)
+    local cap = frame._veProfileCap or 1
+    if frame._veMouseoverProfile and Orbit.FadeProfiles then
+        cap = math.min(cap, Orbit.FadeProfiles:GetMouseoverAlpha(frame._veKey, frame.orbitMouseOver))
+    end
+    return cap
+end
+
 local function UpdateFrameVisibility(frame, _, data)
     if not frame then return end
+    local profileCap = ResolveProfileCap(frame)
     -- Mounted: supreme override — completely hide
     local isMountedHidden = false
     if data and Orbit.MountedVisibility and Orbit.MountedVisibility:IsCachedHidden() then
@@ -133,8 +145,8 @@ local function UpdateFrameVisibility(frame, _, data)
     if not oocFade and rawOpacity >= 1 and not mouseOver then
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         Orbit.Animation:StopHoverFade(frame)
-        frame:SetAlpha(1)
-        SyncMinimapChildrenAlpha(frame, 1)
+        frame:SetAlpha(profileCap)
+        SyncMinimapChildrenAlpha(frame, profileCap)
         return
     end
     local isHovering = frame.orbitMouseOver
@@ -150,12 +162,13 @@ local function UpdateFrameVisibility(frame, _, data)
     else
         finalAlpha = baseAlpha
     end
+    finalAlpha = math.min(finalAlpha, profileCap)
     -- Apply alpha and mouse state
     if finalAlpha > 0 then
         Orbit.Animation:ApplyHoverFade(frame, finalAlpha, 1, Orbit:IsEditMode())
         if frame._oocFadeHidden then frame._oocFadeHidden = nil; SetGroupBorderOOCHidden(frame, false) end
         local revealChildAlpha = alphaLock and (frame.orbitOpacityExternal and rawOpacity or baseAlpha) or 1
-        local childAlpha = revealFull and revealChildAlpha or (frame.orbitOpacityExternal and rawOpacity or baseAlpha)
+        local childAlpha = math.min(revealFull and revealChildAlpha or (frame.orbitOpacityExternal and rawOpacity or baseAlpha), profileCap)
         SyncMinimapChildrenAlpha(frame, childAlpha)
     else
         frame:SetAlpha(0)
@@ -170,9 +183,10 @@ local function UpdateAllFrames()
         local veKey = data.veKey
         if veKey and Orbit.VisibilityEngine then
             local mouseOver = Orbit.VisibilityEngine:GetFrameSetting(veKey, "mouseOver")
-            data.enableHover = mouseOver or false
+            local hoverWanted = mouseOver or (Orbit.FadeProfiles and Orbit.FadeProfiles:FrameHasMouseoverProfile(veKey)) or false
+            data.enableHover = hoverWanted
             if frame.orbitOOCHoverTicker then
-                if mouseOver then frame.orbitOOCHoverTicker:Show()
+                if hoverWanted then frame.orbitOOCHoverTicker:Show()
                 else frame.orbitOOCHoverTicker:Hide(); frame.orbitMouseOver = nil end
             end
         end
@@ -257,7 +271,10 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
         settingKey = settingKey or "OutOfCombatFade"
         veKey = Orbit.VisibilityEngine and Orbit.VisibilityEngine:GetKeyForPlugin(plugin.name, systemIndex)
     end
-    if veKey and Orbit.VisibilityEngine then enableHover = Orbit.VisibilityEngine:GetFrameSetting(veKey, "mouseOver") end
+    if veKey and Orbit.VisibilityEngine then
+        enableHover = Orbit.VisibilityEngine:GetFrameSetting(veKey, "mouseOver")
+            or (Orbit.FadeProfiles and Orbit.FadeProfiles:FrameHasMouseoverProfile(veKey)) or false
+    end
     ManagedFrames[frame] = { plugin = plugin, systemIndex = systemIndex, settingKey = settingKey, enableHover = enableHover or false, veKey = veKey }
     RefreshVESnapshot(frame, ManagedFrames[frame])
     -- Create hover ticker (parented to UIParent to avoid corrupting LayoutFrame sizing)
@@ -276,9 +293,11 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
             if isOver and not target.orbitMouseOver then
                 target.orbitMouseOver = true
                 UpdateFrameVisibility(target, nil, ManagedFrames[target])
+                if Orbit.FadeProfiles then Orbit.FadeProfiles:OnFrameHoverChanged(target._veKey, true) end
             elseif not isOver and target.orbitMouseOver then
                 target.orbitMouseOver = nil
                 UpdateFrameVisibility(target, nil, ManagedFrames[target])
+                if Orbit.FadeProfiles then Orbit.FadeProfiles:OnFrameHoverChanged(target._veKey, false) end
             end
             if p then
                 local d = ManagedFrames[target]
@@ -335,6 +354,7 @@ function Mixin:ApplyOOCFade(frame, plugin, systemIndex, settingKey, enableHover,
                 finalAlpha = math.min(alpha, maxAlpha)
             end
             
+            finalAlpha = math.min(finalAlpha, ResolveProfileCap(self))
             -- Apply guarded alpha correction if necessary
             if finalAlpha ~= alpha then
                 self._orbitSetAlphaGuard = true

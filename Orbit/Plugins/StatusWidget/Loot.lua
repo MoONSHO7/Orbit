@@ -79,8 +79,14 @@ function Plugin:_CancelLootReel(name)
 end
 
 -- [ CAPTURE + SUPPRESSION ]--------------------------------------------------------------------------
-local function IsEnabled()
-    return not Plugin._disabled and Plugin:GetSetting(Plugin.system, "ReplaceLootToast")
+-- Suppress Blizzard's banner when we'd replace it OR when a key wants every toast silenced.
+local function ShouldSuppress()
+    return not Plugin._disabled and (Plugin:GetSetting(Plugin.system, "ReplaceLootToast") or Plugin:_MPlusSilencing())
+end
+
+-- Capture + replay only when replacing AND not silencing (a silenced key shows nothing).
+local function ShouldCapture()
+    return not Plugin._disabled and Plugin:GetSetting(Plugin.system, "ReplaceLootToast") and not Plugin:_MPlusSilencing()
 end
 
 -- Item wins / upgrades only; currency rides the LootWon template too, so it's excluded (left to Blizzard).
@@ -116,7 +122,7 @@ function Plugin:SetupLoot()
     -- Post-hook + Stop, never a global replace — mirrors the SocialToast taint fix; capture is independent via our own frame.
     if BossBanner_Play and BossBanner_Stop then
         hooksecurefunc("BossBanner_Play", function(banner)
-            if not IsEnabled() then return end
+            if not ShouldSuppress() then return end
             BossBanner_Stop(banner)
             if TopBannerManager_BannerFinished then TopBannerManager_BannerFinished(banner) end
         end)
@@ -125,7 +131,7 @@ function Plugin:SetupLoot()
     -- Suppress the personal loot toast (we reel it outside the window; inside it, the group reel already covers it). Isolated hook, independent of SocialToast's.
     if AlertFrame_ShowNewAlert then
         hooksecurefunc("AlertFrame_ShowNewAlert", function(frame)
-            if IsEnabled() and IsLootAlert(frame) then DismissAlert(frame) end
+            if ShouldSuppress() and IsLootAlert(frame) then DismissAlert(frame) end
         end)
     end
 end
@@ -146,7 +152,7 @@ end
 
 -- ENCOUNTER_LOOT_RECEIVED args follow BossBanner (the generated docs mis-label 5-6): encounterID, itemID, itemLink, quantity, playerName, className.
 function Plugin:OnLootEvent(event, ...)
-    if not IsEnabled() then return end
+    if not ShouldCapture() then return end
     if event == "BOSS_KILL" then
         local _, name = ...
         self._encounterUntil = GetTime() + ENCOUNTER_WINDOW

@@ -18,6 +18,7 @@ end
 
 function Plugin:Enqueue(req)
     if self._disabled or not self.frame then return end   -- a live-disabled orb plays no centre flourishes
+    if self:_MPlusSilencing() and req.kind ~= "shatter" then return end   -- silence toasts in a key, but never the durability warning
     self._fqQueue = self._fqQueue or {}
     self._fqQueue[#self._fqQueue + 1] = req
     if not self._fqActive then

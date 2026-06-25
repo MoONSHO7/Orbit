@@ -39,7 +39,9 @@ function Plugin:SetupAlertToasts()
     self._alertToastsHooked = true
     local plugin = self
     hooksecurefunc("AlertFrame_ShowNewAlert", function(frame)
-        if not frame or plugin._disabled or not plugin:GetSetting(plugin.system, "ShowRewardToasts") then return end
+        -- During a silenced key we still dismiss the toast; PlayIconFlourish then no-ops via the Enqueue gate.
+        if not frame or plugin._disabled then return end
+        if not (plugin:GetSetting(plugin.system, "ShowRewardToasts") or plugin:_MPlusSilencing()) then return end
         for _, m in ipairs(MATCHERS) do
             if m.detect(frame) then
                 local icon, name, colorKey = m.get(frame)

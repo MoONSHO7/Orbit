@@ -47,7 +47,9 @@ function Plugin:SetupSocialToast()
     local plugin = self
     -- hooksecurefunc, NOT a global replacement: replacing the Blizzard global taints it and bleeds into secure paths (EditMode party-frame secret health-colour compare).
     hooksecurefunc("AlertFrame_ShowNewAlert", function(frame)
-        if not plugin._disabled and IsSocialToast(frame) and plugin:GetSetting(plugin.system, "ReplaceSocialToast") then
+        -- During a silenced key we still dismiss the toast; PlaySocialFlourish then no-ops via the Enqueue gate.
+        if not plugin._disabled and IsSocialToast(frame)
+           and (plugin:GetSetting(plugin.system, "ReplaceSocialToast") or plugin:_MPlusSilencing()) then
             local title, subtitle = CaptureLines(frame)
             local iconTex, coords = CaptureIcon(frame)
             DismissAlert(frame)   -- BN sound already played in ShowToast; only the visual is suppressed

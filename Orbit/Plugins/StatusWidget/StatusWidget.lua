@@ -92,6 +92,7 @@ local MODE_XP = "xp"
 local MODE_REP = "rep"
 local MODE_HONOR = "honor"
 local MODE_CURRENCY = "currency"
+local MODE_MPLUS = "mplus"
 
 local XP_COLOR = { r = 0.58, g = 0.0, b = 0.55, a = 1 }
 local HONOR_COLOR = { r = 0.85, g = 0.20, b = 0.15, a = 1 }
@@ -128,6 +129,9 @@ local Plugin = Orbit:RegisterPlugin("Status Widget", SYSTEM_ID, {
         ReplaceLootRoll = true,
         ShowMilestones = true,
         ShowRewardToasts = true,
+        MPlusEnabled = true,
+        ReplaceBlizzardTimer = true,
+        MPlusCollapsed = false,
         PrimarySource = "auto",
         SecondarySource = "honor",
         PrimaryCurrencyID = 0,
@@ -276,6 +280,7 @@ function Plugin:OnLoad()
     self:SetupMilestones()
     self:SetupAlertToasts()
     self:SetupFillModes()
+    self:SetupMythicPlus()
     HideBlizzardStatusBar()
 end
 
@@ -289,6 +294,9 @@ function Plugin:OnDisable()
     self:_CancelLootReel("")                       -- cancels the reel timer + wipes the loot queue
     self:_ClearCenterFX()                          -- cancels the mail timer, stops every centre anim
     self._event, self._innerShown = nil, false
+    if self._mplusActive then self._mplusActive = false; self:_SetBlizMPlusHidden(false) end
+    if self.frame.MPlusPanel then self.frame.MPlusPanel:Hide() end   -- panel is a UIParent child; the orb's Hide doesn't cascade to it
+    if self._mplusDriver then self._mplusDriver:Hide(); self._mplusDriver = nil end
     if self._impactDriver then self._impactDriver:Hide(); self._impactDriver = nil end
     if self._lvlNumDriver then self._lvlNumDriver:Hide(); self._lvlNumDriver = nil end
     if self._animDriver then self._animDriver:Hide(); self._animDriver = nil end
@@ -582,13 +590,14 @@ function Plugin:ApplyFlourishFont()
         Orbit.Skin:SkinText(self.frame.OldNumber, { font = gs.Font, textSize = CENTER_NUMBER_SIZE })
         self.frame.OldNumber:SetTextColor(0.7, 0.7, 0.7)
     end
+    if self.frame.MPlusTimer then self:ApplyMPlusFont() end
 end
 
 -- Optional idle centre numeral: record.numeral (the bare renown number, not "Renown 11") falling back to record.level.
 function Plugin:_UpdateNumeral(record)
     local num = self.frame.CenterNumber
     if not num or self._durabilityWarn then return end   -- the durability % owns the centre when low
-    local on = self:GetSetting(SYSTEM_ID, "ShowCenterNumber") and self._event == nil
+    local on = self:GetSetting(SYSTEM_ID, "ShowCenterNumber") and self._event == nil and not self._mplusActive
     local val = record.numeral or record.level
     if on and val and val ~= "" and val ~= 0 then
         num:SetText(tostring(val))
@@ -811,6 +820,12 @@ function Plugin:PlayRenownFlourish(level, faction, oldLevel)
 end
 function Plugin:PlayHonorFlourish(level, oldLevel)
     self:Enqueue({ kind = "honor", render = function(p) p:_RenderHonor(level, oldLevel) end })
+end
+-- M+ completion: slam the KEY LEVEL into the centre (gold timed / red depleted) with the dungeon name beside it.
+function Plugin:PlayMPlusCompleteFlourish(level, timed, sub)
+    self:Enqueue({ kind = "mplusdone", render = function(p)
+        p:_RenderMilestone(level, timed and FLOURISH_COLOR or DURA_BROKEN_COLOR, "slam", sub, nil, MILESTONE_FX_LEVELUP)
+    end })
 end
 
 -- value is the big centre number; color tints the impact set + number; motion is "slam" (level-up) or "grow" (renown); oldValue is the previous number, stomped out when the new one lands.
@@ -1036,6 +1051,7 @@ function Plugin:SetupInteraction()
         if button == "RightButton" then self:OpenSourceMenu(); return end
         if button ~= "LeftButton" then return end
         if self._event == "vault" then self:OpenGreatVault()
+        elseif self._mplusActive then self:_ToggleMPlusCollapsed()   -- in a key the orb opens/closes the M+ panel
         elseif not self._event then self:OpenForMode() end   -- no flourish: open the panel the orb shows
     end)
 end
@@ -1046,6 +1062,7 @@ end
 
 function Plugin:OpenForMode()
     local mode = self.record and self.record.mode
+    if mode == MODE_MPLUS then return end   -- no panel to open mid-key; the orb is the tracker
     if mode == MODE_HONOR then
         if TogglePVPUI then TogglePVPUI() end
     elseif mode == MODE_CURRENCY then
@@ -1088,6 +1105,7 @@ end
 
 -- Primary source at rest; hover+Shift swaps to the secondary (re-resolved on hover and MODIFIER_STATE_CHANGED so Shift flips it live), stashing the active slot's currency id for CurrencyRecord.
 function Plugin:ResolveMode()
+    if self._mplusActive then self._activeCurrencyID = nil; return MODE_MPLUS end
     local source, currencyKey
     local secondary = self:GetSetting(SYSTEM_ID, "SecondarySource")
     if self._hovered and IsShiftKeyDown() and secondary and secondary ~= "none" then
@@ -1102,7 +1120,8 @@ end
 -- Each mode returns the same record shape {mode,name,level,current,max,color[,rested]}.
 function Plugin:BuildRecord()
     local mode = self:ResolveMode()
-    if mode == MODE_HONOR then return self:HonorRecord()
+    if mode == MODE_MPLUS then return self:MythicPlusRecord()
+    elseif mode == MODE_HONOR then return self:HonorRecord()
     elseif mode == MODE_XP then return self:XPRecord()
     elseif mode == MODE_CURRENCY then return self:CurrencyRecord() end
     return self:BuildRepRecord()
@@ -1174,6 +1193,8 @@ function Plugin:UpdateBar()
     self:RenderFill(record)
     self:_UpdateCrackedMetal(record)   -- durability warning (FillModes)
     self:_UpdateNumeral(record)       -- optional idle centre numeral
+    self:_UpdateMPlusCenter()         -- sticky M+ timer (MythicPlus); owns the centre during a key
+    self:_RefreshMPlusPanel()         -- M+ info panel (MythicPlus); bosses + stats to the side
 end
 
 -- Guard the Lua division so a secret current/max holds the last displayed sweep instead of throwing (mirrors StatusBarBase:SetFill).
@@ -1218,8 +1239,10 @@ function Plugin:RefreshTooltip()
     self:ShowTooltip()
 end
 
--- A durability breakdown (per damaged slot + repair cost), shown only when gear is actually damaged; mirrors the Durability datatext.
+-- A durability breakdown (per damaged slot + repair cost), shown only once overall durability drops into the warn band (<40%) — matches the cracked-metal warning threshold.
 function Plugin:_AppendDurabilityTooltip(tt)
+    local overall = self:_DurabilityPct()
+    if not overall or overall >= 0.40 then return end
     local rows
     for _, s in ipairs(DURA_TT_SLOTS) do
         local du, mx = GetInventoryItemDurability(s[1])
@@ -1270,6 +1293,7 @@ function Plugin:ApplySettings()
     OrbitEngine.Frame:RestorePosition(frame, self, SYSTEM_ID)
     if Orbit.OOCFadeMixin then Orbit.OOCFadeMixin:ApplyOOCFade(frame, self, SYSTEM_ID) end
 
+    self:_SyncMPlusState()   -- pick up the M+ toggles / an in-progress key live (profile switch, settings change)
     -- Snap the orb to its resting reveal state (concealed when an animation is active, shown when Off).
     self:ApplyAnimationState()
     -- Keep Blizzard's BN toast window enabled so there's something to intercept + replay in the orb.
@@ -1320,6 +1344,12 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
         table.insert(schema.controls, {
             type = "checkbox", key = "ShowRewardToasts", label = L.PLU_SB_V2_REWARD_TOASTS, default = true,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "MPlusEnabled", label = L.PLU_SB_V2_MPLUS, default = true,
+        })
+        table.insert(schema.controls, {
+            type = "checkbox", key = "ReplaceBlizzardTimer", label = L.PLU_SB_V2_MPLUS_REPLACE, default = true,
         })
         -- Show-at-rest / Shift-shows sources live on the right-click menu (SourceMenu.lua), not here.
         table.insert(schema.controls, {

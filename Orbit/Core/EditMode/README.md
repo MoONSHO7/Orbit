@@ -175,7 +175,7 @@ the two-frame defer matches the spec path — `RefreshForCurrentSpec` (Tracked) 
 
 ## native blizzard frame suppression (`NativeFrame.lua`)
 
-`NativeFrame:Park(frame)` is the canonical way to suppress a Blizzard-owned frame so Orbit's replacement can take its slot. It is taint-safe under WoW 12.0.5+ strict execution rules. The recipe is the addon-community consensus pattern verified across ElvUI, Cell, Bartender4, EllesmereUI, and DandersFrames at HEAD as of 2026-05-04:
+`NativeFrame:Park(frame)` is the canonical way to suppress a Blizzard-owned frame so Orbit's replacement can take its slot. It is taint-safe under WoW 12.0.5+ strict execution rules. The recipe is the consensus taint-safe pattern, verified against Orbit's own EditMode taint testing as of 2026-05-04:
 
 1. `frame:UnregisterAllEvents()` — silences Blizzard's update path so `CompactUnitFrame_UpdateAll` etc. never run.
 2. `(frame.HideBase or frame.Hide)(frame)` — uses the pre-EditMode-override `HideBase` reference saved by `EditModeSystemMixin:OnSystemLoad`. Calling `:HideBase()` skips Blizzard's tainted `HideOverride`. `pcall(frame.Hide, frame)` is the fallback for non-EditMode-registered frames.
@@ -187,7 +187,7 @@ What `Park` deliberately does NOT do (these were taint vectors in the pre-Park `
 - No `:ClearAllPoints` / `:SetPoint` writes — anchor mutations on a Blizzard secure frame taint its descendants. Verified bug: writes to `CompactPartyFrame` tainted `frame.healthBar:GetStatusBarColor()` at `CompactUnitFrame.lua:692` after EditMode exit ran `ResetPartyFrames → CompactPartyFrame:RefreshMembers → CompactUnitFrame_UpdateHealthColor`.
 - No `:SetAlpha` / `:EnableMouse` writes — same propagation surface as anchor writes.
 - No `hooksecurefunc(frame, "SetPoint", ...)` re-fire loop — the loop re-tainted on every Blizzard reposition. Removed entirely.
-- No `RegisterStateDriver(<Blizzard frame>, "visibility", "hide")` — EllesmereUI's HEAD source (Apr 2026) explicitly forbids this with the comment "No RegisterAttributeDriver calls on Blizzard-owned frames — those risk tainting protected state." `Park` covers the equivalent need without writing to the frame's secure attribute namespace.
+- No `RegisterStateDriver(<Blizzard frame>, "visibility", "hide")` — registering an attribute/state driver on a Blizzard-owned frame risks tainting its protected state. `Park` covers the equivalent need without writing to the frame's secure attribute namespace.
 
 Use `Park(frame)` for: PlayerFrame, TargetFrame, FocusFrame, BuffFrame, DebuffFrame, BossFrames, PartyMemberFrames, PartyFrame, CompactPartyFrame, CompactRaidFrameContainer, CompactRaidFrameManager, PlayerCastingBarFrame, action bar frames. Combined with `UIParent:UnregisterEvent('GROUP_ROSTER_UPDATE')` and `CompactRaidFrameManager_SetSetting('IsShown', '0')` at the call site (see `Plugins/GroupFrames/GroupFrame.lua:HideNativeGroupFrames`), it kills the entire Blizzard group-frame update path.
 

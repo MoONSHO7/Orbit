@@ -31,6 +31,6 @@ body:
     attributes:
       label: Alternatives Considered
       description: Have you considered other ways to solve this?
-      placeholder: I tried using WeakAuras but...
+      placeholder: I tried another approach but...
     validations:
       required: false

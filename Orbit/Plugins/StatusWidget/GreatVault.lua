@@ -26,8 +26,11 @@ function Plugin:SetupGreatVault()
     local orig = mgr.DisplayToast
     -- Display the front via orig(self, true) so it won't re-remove the toast we already advanced past.
     mgr.DisplayToast = function(frame, firstToast)
-        local doVault = plugin:GetSetting(plugin.system, "ReplaceVaultToast")
-        local doSpell = plugin:GetSetting(plugin.system, "ShowRewardToasts")
+        if plugin._disabled then return orig(frame, firstToast) end
+        -- A silenced key drains (suppresses) vault + spell toasts; the Play* replays then no-op via the Enqueue gate.
+        local silence = plugin:_MPlusSilencing()
+        local doVault = plugin:GetSetting(plugin.system, "ReplaceVaultToast") or silence
+        local doSpell = plugin:GetSetting(plugin.system, "ShowRewardToasts") or silence
         if not (doVault or doSpell) then return orig(frame, firstToast) end
         if not firstToast then C_EventToastManager.RemoveCurrentToast() end
         local info = C_EventToastManager.GetNextToastToDisplay()

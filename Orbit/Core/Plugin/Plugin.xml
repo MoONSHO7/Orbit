@@ -5,4 +5,5 @@
     <Script file="OOCFadeMixin.lua"/>
     <Script file="VisibilityState.lua"/>
     <Script file="VisibilityEngine.lua"/>
+    <Script file="FadeProfiles.lua"/>
 </Ui>

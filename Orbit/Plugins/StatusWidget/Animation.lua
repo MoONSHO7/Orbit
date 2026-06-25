@@ -65,7 +65,7 @@ end
 local function RestingTarget(plugin)
     local mode = plugin:GetSetting(plugin.system, "Animation") or ANIM_NONE
     if mode == ANIM_NONE or Orbit:IsEditMode() then return 1 end
-    if plugin._hovered or plugin._event ~= nil then return 1 end
+    if plugin._hovered or plugin._event ~= nil or plugin._mplusActive then return 1 end
     return 0
 end
 

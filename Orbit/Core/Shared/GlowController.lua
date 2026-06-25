@@ -8,6 +8,33 @@ local LCG = LibStub("LibOrbitGlow-1.0", true)
 Engine.GlowController = {}
 local GC = Engine.GlowController
 
+-- A registered typeName is a pack glow (lowercase, played via lib.Proc); engine glows (Capitalized, e.g. Pixel) go via lib.Show.
+local function IsRegistryGlow(typeName)
+    return type(typeName) == "string" and LCG and LCG.IsGlowRegistered and LCG:IsGlowRegistered(typeName)
+end
+
+local function DoShow(frame, typeName, options)
+    if IsRegistryGlow(typeName) then
+        LCG.Proc:Loop(frame, { glow = typeName, shape = "square", color = options.color, key = options.key, frameLevel = options.frameLevel, loopDuration = options.speed })
+    else
+        LCG.Show(frame, typeName, options)
+    end
+end
+
+local function DoHide(frame, typeName, glowKey)
+    if IsRegistryGlow(typeName) then
+        LCG.Proc:Clear(frame, { glow = typeName, key = glowKey })
+    else
+        LCG.Hide(frame, typeName, glowKey)
+    end
+end
+
+-- [ GEOMETRY INJECTION ] ----------------------------------------------------------------------------
+local function InjectGeometry(options)
+    if not options then return end
+    options.pixelScale = Engine.Pixel:GetScale()
+end
+
 -- [ STATE HELPERS ] ---------------------------------------------------------------------------------
 local function GetState(frame)
     if not frame._orbitGlow then frame._orbitGlow = { active = {} } end
@@ -24,10 +51,11 @@ function GC:Show(frame, glowKey, typeName, options)
         options.frameLevel = Constants.Levels.IconGlow
     end
     
+    InjectGeometry(options)
     local hash = Engine.GlowUtils:GetOptionsHash(options)
     if entry and entry.typeName == typeName and entry.hash == hash then return end
-    if entry then LCG.Hide(frame, entry.typeName, glowKey) end
-    LCG.Show(frame, typeName, options)
+    if entry then DoHide(frame, entry.typeName, glowKey) end
+    DoShow(frame, typeName, options)
     state.active[glowKey] = { typeName = typeName, hash = hash }
 end
 
@@ -37,7 +65,7 @@ function GC:Hide(frame, glowKey)
     if not state then return end
     local entry = state.active[glowKey]
     if not entry then return end
-    LCG.Hide(frame, entry.typeName, glowKey)
+    DoHide(frame, entry.typeName, glowKey)
     state.active[glowKey] = nil
 end
 
@@ -126,7 +154,7 @@ local function GetOrCreateWrapper(icon)
             w:SetSize(snW, snH)
             local entry = state.active[PANDEMIC_KEY]
             if entry then
-                LCG.Hide(w, entry.typeName, PANDEMIC_KEY)
+                DoHide(w, entry.typeName, PANDEMIC_KEY)
                 state.active[PANDEMIC_KEY] = nil
             end
         end
@@ -151,11 +179,12 @@ function GC:ShowPandemic(frame, typeName, options, alpha)
         options.frameLevel = Constants.Levels.IconGlow
     end
     
+    InjectGeometry(options)
     local hash = Engine.GlowUtils:GetOptionsHash(options)
     local entry = state.active[PANDEMIC_KEY]
     if entry and entry.typeName == typeName and entry.hash == hash then return end
-    if entry then LCG.Hide(wrapper, entry.typeName, PANDEMIC_KEY) end
-    LCG.Show(wrapper, typeName, options)
+    if entry then DoHide(wrapper, entry.typeName, PANDEMIC_KEY) end
+    DoShow(wrapper, typeName, options)
     state.active[PANDEMIC_KEY] = { typeName = typeName, hash = hash }
 end
 
@@ -180,7 +209,7 @@ function GC:StopPandemic(frame)
     local entry = state.active[PANDEMIC_KEY]
     if entry then
         if state.pandemicWrapper then
-            LCG.Hide(state.pandemicWrapper, entry.typeName, PANDEMIC_KEY)
+            DoHide(state.pandemicWrapper, entry.typeName, PANDEMIC_KEY)
         end
     end
     state.active[PANDEMIC_KEY] = nil
