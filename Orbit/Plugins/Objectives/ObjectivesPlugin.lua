@@ -29,6 +29,7 @@ local Plugin = Orbit:RegisterPlugin("Objectives", SYSTEM_ID, {
         FocusColor = C.FOCUS_COLOR_DEFAULT,
         CustomColors = true,
     },
+    displayName = Orbit.L.PLG_NAME_OBJECTIVES,
 })
 
 -- Key binding label for ORBIT_OBJECTIVES_TOGGLE (Bindings.xml); shown under BINDING_HEADER_ORBIT.
@@ -36,7 +37,7 @@ _G.BINDING_NAME_ORBIT_OBJECTIVES_TOGGLE = Orbit.L.PLU_OBJ_BINDING_TOGGLE
 
 Mixin(Plugin, Orbit.NativeBarMixin)
 
--- [ COLOUR MIGRATION ]--------------------------------------------------------------------------------
+-- [ COLOUR MIGRATION ]-------------------------------------------------------------------------------
 -- Migrates colour-curve {pins=...} format to plain {r,g,b,a} tables. Runs once at OnLoad.
 local COLOR_KEYS = { "TitleColor", "CompletedColor", "FocusColor" }
 
@@ -61,11 +62,9 @@ function Plugin:OnLoad()
     self.frame = CreateFrame("Frame", "OrbitObjectivesContainer", UIParent)
     self.frame:SetSize(C.DEFAULT_WIDTH, C.DEFAULT_HEIGHT)
     self.frame:SetClampedToScreen(true)
-    -- NOTE: SetClipsChildren must NOT be on self.frame — the Edit Mode selection (and its
-    -- resize handle) are parented to self.frame and extend outside its bounds. Instead we
-    -- clip at a dedicated inner frame so only the scroll content is cropped.
+    -- Clip on an inner frame, not self.frame, so the Edit Mode selection/resize handle (children of self.frame) stay visible past its bounds
     self.frame.systemIndex = SYSTEM_ID
-    self.frame.editModeName = "Objectives"
+    self.frame.editModeName = self.displayName
     self.frame.orbitResizeBounds = {
         minW     = C.WIDTH_MIN,
         maxW     = C.WIDTH_MAX,
@@ -80,8 +79,6 @@ function Plugin:OnLoad()
         vertical = true,
     }
 
-    -- Clip frame: same bounds as self.frame but clips its children so tracker content
-    -- doesn't overflow, while the selection/resize handle (children of self.frame) remain visible.
     self.clipFrame = CreateFrame("Frame", nil, self.frame)
     self.clipFrame:SetAllPoints(self.frame)
     self.clipFrame:SetClipsChildren(true)
@@ -188,7 +185,6 @@ function Plugin:CaptureTracker()
         tracker:SetScript("OnMouseWheel", HandleScroll)
 
         -- Replace UpdateHeight to track exact height of modules
-        local origUpdateHeight = tracker.UpdateHeight
         tracker.UpdateHeight = function(container)
             local h = 0
             if container.Header and container.Header:IsShown() then
@@ -270,7 +266,7 @@ function Plugin:ApplySettings()
     self:ApplyMouseOver(frame, SYSTEM_ID)
 end
 
--- [ BORDER ]------------------------------------------------------------------------------------------
+-- [ BORDER ]-----------------------------------------------------------------------------------------
 function Plugin:ApplyBorder()
     local frame = self.frame
     local showBorder = self:GetSetting(SYSTEM_ID, "ShowBorder")
@@ -285,7 +281,7 @@ function Plugin:ApplyBorder()
     Orbit.Skin:SkinBorder(frame, frame, borderSize)
 end
 
--- [ CONTENT INSET ]-----------------------------------------------------------------------------------
+-- [ CONTENT INSET ]----------------------------------------------------------------------------------
 function Plugin:GetContentInset()
     local showBorder = self:GetSetting(SYSTEM_ID, "ShowBorder")
     local borderInset = 0
@@ -295,7 +291,7 @@ function Plugin:GetContentInset()
     return borderInset + C.CONTENT_PADDING
 end
 
--- [ BACKDROP ]----------------------------------------------------------------------------------------
+-- [ BACKDROP ]---------------------------------------------------------------------------------------
 function Plugin:ApplyBackdrop()
     local frame = self.frame
     local opacity = (self:GetSetting(SYSTEM_ID, "BackgroundOpacity") or C.BG_OPACITY_DEFAULT) / 100
@@ -315,7 +311,7 @@ function Plugin:ApplyBackdrop()
     end
 end
 
--- [ COLLAPSE PERSISTENCE ]----------------------------------------------------------------------------
+-- [ COLLAPSE PERSISTENCE ]---------------------------------------------------------------------------
 function Plugin:SaveCollapseState()
     if not Orbit.db or not Orbit.db.AccountSettings then return end
     local state = {}

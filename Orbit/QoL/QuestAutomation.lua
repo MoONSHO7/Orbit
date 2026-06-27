@@ -11,7 +11,7 @@ local function GetAccountSetting(key, default)
     return v
 end
 
--- [ EVENT HANDLER ]-----------------------------------------------------------------------------------
+-- [ EVENT HANDLER ]----------------------------------------------------------------------------------
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("QUEST_DETAIL")
 frame:RegisterEvent("QUEST_COMPLETE")
@@ -19,12 +19,10 @@ frame:RegisterEvent("QUEST_AUTOCOMPLETE")
 frame:RegisterEvent("GOSSIP_SHOW")
 
 frame:SetScript("OnEvent", function(_, event, ...)
-    -- ------------------------------------------------------------------ QUEST_DETAIL
     if event == "QUEST_DETAIL" then
         if not GetAccountSetting("AutoAcceptQuests", false) then return end
         AcceptQuest()
 
-    -- ------------------------------------------------------------------ QUEST_COMPLETE
     elseif event == "QUEST_COMPLETE" then
         if not GetAccountSetting("AutoTurnInQuests", false) then return end
         if GetAccountSetting("AutoTurnInHoldShift", true) and IsShiftKeyDown() then return end
@@ -33,12 +31,10 @@ frame:SetScript("OnEvent", function(_, event, ...)
             GetQuestReward(numChoices)
         end
 
-    -- ------------------------------------------------------------------ QUEST_AUTOCOMPLETE
     elseif event == "QUEST_AUTOCOMPLETE" then
         local questID = ...
         if questID then ShowQuestComplete(questID) end
 
-    -- ------------------------------------------------------------------ GOSSIP_SHOW
     elseif event == "GOSSIP_SHOW" then
         -- Auto turn-in: look for a completable active quest
         if GetAccountSetting("AutoTurnInQuests", false) then

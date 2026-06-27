@@ -49,6 +49,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minimap",
         PLG_NAME_MINIMAP_BUTTON    = "Minimap Button",
         PLG_NAME_DATATEXTS         = "Datatexts",
+        PLG_NAME_OBJECTIVES        = "Objectives",
         PLG_NAME_STATUS_BAR_V2    = "Status Widget",
     },
     deDE = {
@@ -98,6 +99,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minikarte",
         PLG_NAME_MINIMAP_BUTTON    = "Minikarten-Schaltfläche",
         PLG_NAME_DATATEXTS         = "Datentexte",
+        PLG_NAME_OBJECTIVES        = "Ziele",
         PLG_NAME_STATUS_BAR_V2    = "Status-Widget",
     },
     frFR = {
@@ -147,6 +149,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minicarte",
         PLG_NAME_MINIMAP_BUTTON    = "Bouton de minicarte",
         PLG_NAME_DATATEXTS         = "Barres d'infos",
+        PLG_NAME_OBJECTIVES        = "Objectifs",
         PLG_NAME_STATUS_BAR_V2    = "Widget de statut",
     },
     esES = {
@@ -196,6 +199,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minimapa",
         PLG_NAME_MINIMAP_BUTTON    = "Botón del minimapa",
         PLG_NAME_DATATEXTS         = "Textos de datos",
+        PLG_NAME_OBJECTIVES        = "Objetivos",
         PLG_NAME_STATUS_BAR_V2    = "Widget de estado",
     },
     ptBR = {
@@ -245,6 +249,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Minimapa",
         PLG_NAME_MINIMAP_BUTTON    = "Botão do Minimapa",
         PLG_NAME_DATATEXTS         = "Datatexts",
+        PLG_NAME_OBJECTIVES        = "Objetivos",
         PLG_NAME_STATUS_BAR_V2    = "Widget de status",
     },
     ruRU = {
@@ -294,6 +299,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "Миникарта",
         PLG_NAME_MINIMAP_BUTTON    = "Кнопка миникарты",
         PLG_NAME_DATATEXTS         = "Информблоки",
+        PLG_NAME_OBJECTIVES        = "Задания",
         PLG_NAME_STATUS_BAR_V2    = "Виджет статуса",
     },
     koKR = {
@@ -343,6 +349,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "미니맵",
         PLG_NAME_MINIMAP_BUTTON    = "미니맵 버튼",
         PLG_NAME_DATATEXTS         = "데이터텍스트",
+        PLG_NAME_OBJECTIVES        = "목표",
         PLG_NAME_STATUS_BAR_V2    = "상태 위젯",
     },
     zhCN = {
@@ -392,6 +399,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "小地图",
         PLG_NAME_MINIMAP_BUTTON    = "小地图按钮",
         PLG_NAME_DATATEXTS         = "数据文本",
+        PLG_NAME_OBJECTIVES        = "任务",
         PLG_NAME_STATUS_BAR_V2    = "状态小部件",
     },
     zhTW = {
@@ -441,6 +449,7 @@ local LOCALE_STRINGS = {
         PLG_NAME_MINIMAP           = "小地圖",
         PLG_NAME_MINIMAP_BUTTON    = "小地圖按鈕",
         PLG_NAME_DATATEXTS         = "資料文字",
+        PLG_NAME_OBJECTIVES        = "任務",
         PLG_NAME_STATUS_BAR_V2    = "狀態小工具",
     }
 }

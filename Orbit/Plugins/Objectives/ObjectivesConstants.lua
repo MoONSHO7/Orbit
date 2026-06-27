@@ -48,6 +48,10 @@ Orbit.ObjectivesConstants = {
     TITLE_COLOR_DEFAULT     = { r = 1.00, g = 0.82, b = 0.00, a = 1 },
     COMPLETED_COLOR_DEFAULT = { r = 0.90, g = 0.80, b = 0.10, a = 1 },
     FOCUS_COLOR_DEFAULT     = { r = 1.00, g = 1.00, b = 1.00, a = 1 },
+    CHEVRON_COLOR           = { r = 0.80, g = 0.80, b = 0.80 },
+    QUEST_COUNT_COLOR       = { r = 0.60, g = 0.60, b = 0.60 },
+    SEPARATOR_ALPHA         = 0.15,
+    SEPARATOR_ALPHA_CLASS   = 0.4,
 
     -- POI tag-specific title colours (overrides classification when tag matches)
     TAG_COLOR_GROUP   = { r = 0.40, g = 0.70, b = 1.00 },

@@ -23,7 +23,7 @@ function Plugin:SetSkinEnabled(state)
     _enabled = state
 end
 
--- [ SETTING CACHES ]----------------------------------------------------------------------------------
+-- [ SETTING CACHES ]---------------------------------------------------------------------------------
 -- Populated once per ApplySkins() call to avoid per-block GetSetting() / Orbit.db reads.
 local _cachedFont              = nil  -- nil until first ApplySkins(); falls back to STANDARD_TEXT_FONT
 local _cachedTitleFontSize     = C.TITLE_FONT_SIZE_DEFAULT
@@ -67,9 +67,7 @@ local function IsUnderObjectivesTracker(frame)
         if p == ObjectiveTrackerFrame or (ObjectiveTrackerManager and (ObjectiveTrackerManager.containers[p] or ObjectiveTrackerManager.moduleToContainerMap[p])) then
             return true
         end
-        local ok, parent = pcall(p.GetParent, p)
-        if not ok then return false end
-        p = parent
+        p = p:GetParent()
     end
     return false
 end
@@ -117,7 +115,7 @@ local function EnsureSeparator(header)
     sep:SetHeight(C.HEADER_SEPARATOR_HEIGHT)
     sep:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 0, -2)
     sep:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, -2)
-    sep:SetColorTexture(1, 1, 1, 0.15)
+    sep:SetColorTexture(1, 1, 1, C.SEPARATOR_ALPHA)
     header._orbitSeparator = sep
     return sep
 end
@@ -134,12 +132,12 @@ local function ApplyHeaderSeparator(header, show, classColor)
     if classColor then
         local color = C_ClassColor.GetClassColor(select(2, UnitClass("player")))
         if color then
-            sep:SetColorTexture(color.r, color.g, color.b, 0.4)
+            sep:SetColorTexture(color.r, color.g, color.b, C.SEPARATOR_ALPHA_CLASS)
             sep:Show()
             return
         end
     end
-    sep:SetColorTexture(1, 1, 1, 0.15)
+    sep:SetColorTexture(1, 1, 1, C.SEPARATOR_ALPHA)
     sep:Show()
 end
 
@@ -175,7 +173,7 @@ local function SkinMinimizeButton(header)
     local chevron = btn:CreateFontString(nil, "OVERLAY")
     chevron:SetFont(GetGlobalFont(), 14, Orbit.Skin:GetFontOutline())
     chevron:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    chevron:SetTextColor(0.8, 0.8, 0.8)
+    chevron:SetTextColor(C.CHEVRON_COLOR.r, C.CHEVRON_COLOR.g, C.CHEVRON_COLOR.b)
     btn._orbitChevron = chevron
 
     UpdateMinimizeChevron(btn)
@@ -250,7 +248,7 @@ local function SkinQuestItemButton(button)
     button._orbitSkinned = true
 end
 
--- [ SKIN: POI BUTTON / BLOCK ICON ]-----------------------------------------------------------------
+-- [ SKIN: POI BUTTON / BLOCK ICON ]------------------------------------------------------------------
 -- Style native poiButton with slim atlas icon. Button stays functional for click-to-focus.
 
 -- Quest classification → header text color mapping
@@ -316,8 +314,7 @@ local function GetPOIAtlas(block)
         return POI_ATLAS_COMPLETE
     end
 
-    -- Classification checked first — Legendary / Campaign / Important should
-    -- take visual priority over generic tags like Raid or Dungeon.
+    -- Classification first: Legendary/Campaign/Important outrank generic tags (Raid, Dungeon)
     if C_CampaignInfo.IsCampaignQuest(questID) then
         return POI_CLASSIFICATION_ATLAS[Enum.QuestClassification.Campaign]
     end
@@ -347,21 +344,17 @@ local function GetPOIColor(block)
     if block.poiIsComplete then return GetCompletedQuestColor() end
     if not questID then return GetNormalQuestColor() end
 
-    -- When custom colours are disabled, all non-focus/non-complete quests
-    -- use the plain title colour (Blizzard default behaviour).
     if not _cachedCustomColors then
         return GetNormalQuestColor()
     end
 
-    -- Legendary classification takes priority over tags — a legendary raid quest
-    -- is still legendary.
+    -- Legendary outranks tags (a legendary raid quest is still legendary)
     local classification = C_QuestInfoSystem.GetQuestClassification(questID)
     if classification == Enum.QuestClassification.Legendary then
         return POI_COLORS[Enum.QuestClassification.Legendary]
     end
 
-    -- Tag colour — Raid/Dungeon/PvP/etc. should be distinguishable even when
-    -- the quest is also a campaign or questline quest.
+    -- Tag colour (Raid/Dungeon/PvP) beats campaign/questline so it stays distinguishable
     local tagInfo = C_QuestLog.GetQuestTagInfo(questID)
     if tagInfo and tagInfo.tagID and POI_TAG_COLOR[tagInfo.tagID] then
         return POI_TAG_COLOR[tagInfo.tagID]
@@ -561,6 +554,21 @@ local function EnsureProgressLabelHook(bar)
     FormatProgressLabel(bar)
 end
 
+local function ApplyOrbitBarStyle(bar)
+    local texture = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
+    local barTexture = texture and LSM:Fetch("statusbar", texture) or LSM:Fetch("statusbar", "Solid")
+    bar:SetStatusBarTexture(barTexture)
+    if not bar._orbitBG then
+        local bg = bar:CreateTexture(nil, "BACKGROUND", nil, -1)
+        bg:SetAllPoints(bar)
+        bar._orbitBG = bg
+    end
+    local gs = Orbit.db and Orbit.db.GlobalSettings
+    local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
+    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
+    Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
+end
+
 -- [ SKIN: PROGRESS BAR ]-----------------------------------------------------------------------------
 local function SkinProgressBar(tracker, key)
     if not _enabled then return end
@@ -593,23 +601,7 @@ local function SkinProgressBar(tracker, key)
     end
     progressBar:SetHeight(C.PROGRESS_BAR_CONTAINER_HEIGHT)
 
-    -- Apply Orbit bar texture
-    local texture = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
-    local barTexture = texture and LSM:Fetch("statusbar", texture) or LSM:Fetch("statusbar", "Solid")
-    bar:SetStatusBarTexture(barTexture)
-
-    -- Add solid background behind the bar
-    if not bar._orbitBG then
-        local bg = bar:CreateTexture(nil, "BACKGROUND", nil, -1)
-        bg:SetAllPoints(bar)
-        bar._orbitBG = bg
-    end
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
-
-    -- Add Orbit border around the bar
-    Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
+    ApplyOrbitBarStyle(bar)
 
     -- Skin the icon if present
     local icon = bar.Icon
@@ -653,23 +645,7 @@ local function SkinTimerBar(tracker, key)
     bar:SetPoint("TOPRIGHT", timerBar, "TOPRIGHT", 0, 0)
     timerBar:SetHeight(C.PROGRESS_BAR_CONTAINER_HEIGHT)
 
-    -- Apply Orbit bar texture
-    local texture = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
-    local barTexture = texture and LSM:Fetch("statusbar", texture) or LSM:Fetch("statusbar", "Solid")
-    bar:SetStatusBarTexture(barTexture)
-
-    -- Add solid background
-    if not bar._orbitBG then
-        local bg = bar:CreateTexture(nil, "BACKGROUND", nil, -1)
-        bg:SetAllPoints(bar)
-        bar._orbitBG = bg
-    end
-    local gs = Orbit.db and Orbit.db.GlobalSettings
-    local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
-
-    -- Add Orbit border
-    Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
+    ApplyOrbitBarStyle(bar)
 
     bar._orbitSkinned = true
 end
@@ -698,20 +674,7 @@ local function SkinWidgetStatusBar(self)
         if self.LabelBG then self.LabelBG:SetAlpha(0) end
         if self.LabelBGDivider then self.LabelBGDivider:SetAlpha(0) end
 
-        local texture = Orbit.db and Orbit.db.GlobalSettings and Orbit.db.GlobalSettings.Texture
-        local barTexture = texture and LSM:Fetch("statusbar", texture) or LSM:Fetch("statusbar", "Solid")
-        bar:SetStatusBarTexture(barTexture)
-
-        if not bar._orbitBG then
-            local bg = bar:CreateTexture(nil, "BACKGROUND", nil, -1)
-            bg:SetAllPoints(bar)
-            bar._orbitBG = bg
-        end
-        local gs = Orbit.db and Orbit.db.GlobalSettings
-        local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-        bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
-
-        Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
+        ApplyOrbitBarStyle(bar)
         bar._orbitSkinned = true
     end
 
@@ -731,7 +694,7 @@ local function SkinWidgetStatusBar(self)
     end
 end
 
--- [ SKIN: UI WIDGET ICON AND TEXT ]----------------------------------------------------------------
+-- [ SKIN: UI WIDGET ICON AND TEXT ]------------------------------------------------------------------
 local function SkinWidgetIconAndText(self)
     if not _enabled then return end
     if not IsUnderObjectivesTracker(self) then return end
@@ -850,7 +813,7 @@ function Plugin:InstallSkinHooks()
 
 end
 
--- [ FIT WIDTHS ]--------------------------------------------------------------------------------------
+-- [ FIT WIDTHS ]-------------------------------------------------------------------------------------
 -- Blizzard hardcodes headers/modules to 260px. Resize them to match our container.
 function Plugin:FitTrackerWidths()
     local trackerFrame = ObjectiveTrackerFrame
@@ -881,8 +844,7 @@ function Plugin:FitTrackerWidths()
             if tracker.ContentsFrame then
                 tracker.ContentsFrame:SetWidth(width)
             end
-            -- MawBuffsBlock is a FixedBlock with hardcoded width 243. Its Container button is
-            -- anchored TOPRIGHT, so if ContentsFrame is wider the button drifts off-center.
+            -- MawBuffsBlock is a 243px FixedBlock whose TOPRIGHT-anchored Container drifts if ContentsFrame is wider
             if tracker.MawBuffsBlock then
                 tracker.MawBuffsBlock:SetWidth(width)
             end
@@ -928,7 +890,7 @@ function Plugin:ApplySkins()
             local counter = EnsureQuestCounter(trackerFrame.Header)
             if counter then
                 ApplyFont(counter, GetObjectiveFontSize())
-                counter:SetTextColor(0.6, 0.6, 0.6)
+                counter:SetTextColor(C.QUEST_COUNT_COLOR.r, C.QUEST_COUNT_COLOR.g, C.QUEST_COUNT_COLOR.b)
                 UpdateQuestCounter(trackerFrame.Header)
                 counter:Show()
             end
