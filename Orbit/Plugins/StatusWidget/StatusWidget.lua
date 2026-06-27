@@ -88,11 +88,13 @@ local MODE_XP = "xp"
 local MODE_REP = "rep"
 local MODE_HONOR = "honor"
 local MODE_CURRENCY = "currency"
+local MODE_HOUSE = "house"
 local MODE_MPLUS = "mplus"
 
 local XP_COLOR = { r = 0.58, g = 0.0, b = 0.55, a = 1 }
 local HONOR_COLOR = { r = 0.85, g = 0.20, b = 0.15, a = 1 }
 local REP_COLOR = { r = 0.20, g = 0.62, b = 0.34, a = 1 }
+local HOUSE_COLOR = { r = 0.95, g = 0.73, b = 0.30, a = 1 }   -- warm amber-gold (Blizzard fills the House Favor bar with the ArtifactPower art)
 local RESTED_COLOR = { r = 0.30, g = 0.45, b = 0.95, a = 1 }
 local BACKDROP_COLOR = { r = 0.14, g = 0.14, b = 0.17, a = 1 }   -- dim groove by default; tints the white fill ring
 -- Flourish glow palette shared with the milestone / toast modules via Plugin.FlourishColors.
@@ -138,6 +140,7 @@ local Plugin = Orbit:RegisterPlugin("Status Widget", SYSTEM_ID, {
         XPColor = { pins = { { position = 0, color = { r = XP_COLOR.r, g = XP_COLOR.g, b = XP_COLOR.b, a = 1 } } } },
         HonorColor = { pins = { { position = 0, color = { r = HONOR_COLOR.r, g = HONOR_COLOR.g, b = HONOR_COLOR.b, a = 1 } } } },
         RepColor = { pins = { { position = 0, color = { r = REP_COLOR.r, g = REP_COLOR.g, b = REP_COLOR.b, a = 1 } } } },
+        HousingColor = { pins = { { position = 0, color = { r = HOUSE_COLOR.r, g = HOUSE_COLOR.g, b = HOUSE_COLOR.b, a = 1 } } } },
         RestedColor = { pins = { { position = 0, color = { r = RESTED_COLOR.r, g = RESTED_COLOR.g, b = RESTED_COLOR.b, a = 1 } } } },
         BackdropColor = { pins = { { position = 0, color = { r = BACKDROP_COLOR.r, g = BACKDROP_COLOR.g, b = BACKDROP_COLOR.b, a = 1 } } } },
     },
@@ -277,6 +280,7 @@ function Plugin:OnLoad()
     self:SetupMilestones()
     self:SetupAlertToasts()
     self:SetupFillModes()
+    self:SetupHousing()
     self:SetupMythicPlus()
     HideBlizzardStatusBar()
 end
@@ -475,7 +479,7 @@ function Plugin:SetupCenterFX(frame)
     frame.FlourishTextAnim = textIn
     frame.FlourishTextOut = textOut
 
-    local num = frame.Center:CreateFontString(nil, "ARTWORK")
+    local num = frame.Center:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     num:SetPoint("CENTER")
     num:SetJustifyH("CENTER")
     num:Hide()
@@ -514,7 +518,7 @@ function Plugin:_BuildLevelUpFX(frame)
     frame.LevelRays, frame.LevelRaysAnim = rays, ra
 
     -- the OLD level / renown number, stomped out when the new one lands; created before LevelNumber so the new number draws on top of it.
-    local oldNum = center:CreateFontString(nil, "OVERLAY")
+    local oldNum = center:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     oldNum:SetPoint("CENTER"); oldNum:SetJustifyH("CENTER"); oldNum:Hide()
     frame.OldNumber = oldNum
     local oldIn = oldNum:CreateAnimationGroup()
@@ -530,7 +534,7 @@ function Plugin:_BuildLevelUpFX(frame)
     frame.OldNumberOutAnim = oldOut
 
     -- the big milestone number, anchored dead-centre; _PlayMilestoneNumber's manual tween offsets and scales it from there.
-    local lvl = center:CreateFontString(nil, "OVERLAY")
+    local lvl = center:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     lvl:SetPoint("CENTER"); lvl:SetJustifyH("CENTER"); lvl:Hide()
     frame.LevelNumber = lvl
 
@@ -1065,6 +1069,8 @@ function Plugin:OpenForMode()
         if TogglePVPUI then TogglePVPUI() end
     elseif mode == MODE_CURRENCY then
         if ToggleCharacter then ToggleCharacter("TokenFrame") end
+    elseif mode == MODE_HOUSE then
+        if HousingFramesUtil and HousingFramesUtil.ToggleHousingDashboard then HousingFramesUtil.ToggleHousingDashboard() end
     elseif ToggleCharacter then
         ToggleCharacter("PaperDollFrame")
     end
@@ -1089,12 +1095,16 @@ function Plugin:OnEvent()
 end
 
 -- [ MODE RESOLUTION ]--------------------------------------------------------------------------------
--- A source key maps to a concrete mode; "auto" is xp while leveling, reputation once capped (xp disabled / max level).
+-- A source key maps to a concrete mode; "auto" prefers a tracked house (Blizzard ranks HouseFavor above XP), else xp while leveling, reputation once capped (xp disabled / max level).
 function Plugin:_ResolveSource(source)
     if source == "xp" then return MODE_XP
     elseif source == "rep" then return MODE_REP
     elseif source == "honor" then return MODE_HONOR
-    elseif source == "currency" then return MODE_CURRENCY end
+    elseif source == "currency" then return MODE_CURRENCY
+    elseif source == "house" then
+        if self:_HousingTracked() then return MODE_HOUSE end   -- a stale "house" pick with no tracked house falls through to auto, so the orb never blanks
+    end
+    if self:_HousingReady() then return MODE_HOUSE end   -- auto: only once favor data is cached, so auto never shows an empty housing fill
     local level = UnitLevel("player")
     local xpDisabled = IsXPUserDisabled and IsXPUserDisabled() or false
     if level and level < GetMaxPlayerLevel() and not xpDisabled then return MODE_XP end
@@ -1121,7 +1131,8 @@ function Plugin:BuildRecord()
     if mode == MODE_MPLUS then return self:MythicPlusRecord()
     elseif mode == MODE_HONOR then return self:HonorRecord()
     elseif mode == MODE_XP then return self:XPRecord()
-    elseif mode == MODE_CURRENCY then return self:CurrencyRecord() end
+    elseif mode == MODE_CURRENCY then return self:CurrencyRecord()
+    elseif mode == MODE_HOUSE then return self:HousingRecord() end
     return self:BuildRepRecord()
 end
 
@@ -1181,6 +1192,23 @@ function Plugin:BuildRepRecord()
              current = (watched.currentStanding or reactionMin) - reactionMin,
              max = reactionMax - reactionMin,
              color = repColor }
+end
+
+-- House Favor (WoW 12.0's housing progression bar). Favor + per-level thresholds are plain non-secret numbers — Blizzard does Lua arithmetic on them in HouseFavorBarMixin:Update — reduced to a 0-based current/max like reputation. The async payload is cached by Housing.lua (_houseFavor); at max house level the next-level threshold collapses, so the bar reads full.
+function Plugin:HousingRecord()
+    local color = self:GetColor("HousingColor", HOUSE_COLOR)
+    local favor, C = self._houseFavor, C_Housing
+    if not favor or not (C and C.GetHouseLevelFavorForLevel) then
+        return { mode = MODE_HOUSE, name = L.PLU_SB_V2_SOURCE_HOUSE, level = "", current = 0, max = 1, color = color }
+    end
+    local level = favor.houseLevel
+    local minBar = C.GetHouseLevelFavorForLevel(level)
+    local maxBar = C.GetHouseLevelFavorForLevel(level + 1)
+    if maxBar <= minBar then
+        return { mode = MODE_HOUSE, name = L.PLU_SB_V2_SOURCE_HOUSE, level = level, current = 1, max = 1, color = color }
+    end
+    return { mode = MODE_HOUSE, name = L.PLU_SB_V2_SOURCE_HOUSE, level = level,
+             current = favor.houseFavor - minBar, max = maxBar - minBar, color = color }
 end
 
 -- [ UPDATE ]-----------------------------------------------------------------------------------------
@@ -1320,6 +1348,7 @@ function Plugin:AddSettings(dialog, systemFrame)
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "RestedColor",   label = L.PLU_SB_V2_RESTED_COLOR,  singleColor = true })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "HonorColor",    label = L.PLU_SB_V2_HONOR_COLOR,   singleColor = true })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "RepColor",      label = L.PLU_SB_V2_REP_COLOR,     singleColor = true })
+        SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "HousingColor",  label = L.PLU_SB_V2_HOUSE_COLOR,    singleColor = true })
         SB:AddColorCurveSettings(self, schema, systemIndex, systemFrame, { key = "BackdropColor", label = L.PLU_SB_V2_BACKDROP_COLOR, singleColor = true })
     elseif currentTab == L.PLU_SB_TAB_BEHAVIOUR then
         table.insert(schema.controls, {

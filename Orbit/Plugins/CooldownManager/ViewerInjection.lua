@@ -75,7 +75,7 @@ local function CreateInjectedIcon(parent, systemIndex)
     local chargeCount = CreateFrame("Frame", nil, textOverlay)
     chargeCount:SetAllPoints(icon)
     chargeCount:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
-    local chargeText = chargeCount:CreateFontString(nil, "OVERLAY", nil, 7)
+    local chargeText = chargeCount:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
     chargeText:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
     chargeText:SetFont(STANDARD_TEXT_FONT, 12, Orbit.Skin:GetFontOutline())
     chargeCount.Current = chargeText

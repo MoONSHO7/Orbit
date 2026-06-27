@@ -443,7 +443,7 @@ function Mixin:CreateAuraGridPlugin(config)
 
             local CreateDraggableComponent = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.CreateDraggableComponent
             for _, def in ipairs(textComponents) do
-                local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+                local fs = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
                 fs:SetFont(fontPath, 12, fontOutline)
                 Orbit.Skin:ApplyFontShadow(fs)
                 fs:SetText(def.preview)

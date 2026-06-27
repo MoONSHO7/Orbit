@@ -690,6 +690,23 @@ function Plugin:UpdateDifficultyVisuals(textMultiplier)
     textFrame:SetShown(mode == "text")
 end
 
+-- Blizzard only re-Show()s these reparented indicators from its own events, so restore the shown state we clobber on re-enable — else Missions/Mail/CraftingOrder stay hidden after a HUD toggle until /reload.
+function Plugin:ApplyReparentedIndicator(indicator, key, baseW, overrides)
+    if not indicator then return end
+    if self:IsComponentDisabled(key) then
+        if indicator:IsShown() then indicator._orbitForceHidden = true end
+        indicator:Hide()
+        indicator:SetScript("OnShow", function(f) f:Hide() end)
+    else
+        indicator:SetScript("OnShow", nil)
+        if indicator._orbitForceHidden then
+            indicator._orbitForceHidden = nil
+            indicator:Show()
+        end
+        ApplyIconScale(indicator, overrides, baseW)
+    end
+end
+
 function Plugin:ApplySettings()
     local frame = self.frame
     if InCombatLockdown() then Orbit.CombatManager:QueueUpdate(function() self:ApplySettings() end); return end
@@ -834,40 +851,11 @@ function Plugin:ApplySettings()
         end
     end
 
-    -- Missions / Expansion Landing Page button (disabled via Canvas Mode dock)
-    if frame.Missions then
-        if not self:IsComponentDisabled("Missions") then
-            -- Don't force-show; the button has its own visibility logic (hidden when no active expansion feature)
-            frame.Missions:SetScript("OnShow", nil)
-            ApplyIconScale(frame.Missions, (savedPositions.Missions or {}).overrides, MISSIONS_BASE_SIZE)
-        else
-            frame.Missions:Hide()
-            frame.Missions:SetScript("OnShow", function(f) f:Hide() end)
-        end
-        self:ApplyMissionsHoverReveal()
-    end
-
-    -- Mail indicator (disabled via Canvas Mode dock)
-    if frame.Mail then
-        if not self:IsComponentDisabled("Mail") then
-            frame.Mail:SetScript("OnShow", nil)
-            ApplyIconScale(frame.Mail, (savedPositions.Mail or {}).overrides, frame.Mail:GetWidth())
-        else
-            frame.Mail:Hide()
-            frame.Mail:SetScript("OnShow", function(f) f:Hide() end)
-        end
-    end
-
-    -- Crafting Order indicator (disabled via Canvas Mode dock)
-    if frame.CraftingOrder then
-        if not self:IsComponentDisabled("CraftingOrder") then
-            frame.CraftingOrder:SetScript("OnShow", nil)
-            ApplyIconScale(frame.CraftingOrder, (savedPositions.CraftingOrder or {}).overrides, frame.CraftingOrder:GetWidth())
-        else
-            frame.CraftingOrder:Hide()
-            frame.CraftingOrder:SetScript("OnShow", function(f) f:Hide() end)
-        end
-    end
+    -- Reparented Blizzard indicators (disabled via Canvas Mode dock or HUD view)
+    self:ApplyReparentedIndicator(frame.Missions, "Missions", MISSIONS_BASE_SIZE, (savedPositions.Missions or {}).overrides)
+    if frame.Missions then self:ApplyMissionsHoverReveal() end
+    self:ApplyReparentedIndicator(frame.Mail, "Mail", frame.Mail and frame.Mail:GetWidth(), (savedPositions.Mail or {}).overrides)
+    self:ApplyReparentedIndicator(frame.CraftingOrder, "CraftingOrder", frame.CraftingOrder and frame.CraftingOrder:GetWidth(), (savedPositions.CraftingOrder or {}).overrides)
 
     -- Restore component positions from saved variables
     local isInCanvasMode = OrbitEngine.CanvasMode:IsActive(frame)

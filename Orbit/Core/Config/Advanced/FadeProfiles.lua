@@ -54,9 +54,10 @@ end
 local REC
 local function NewRecycler()
     local rec = { free = {}, used = {} }
+    -- Pop the FRONT of the free list (FIFO): widgets are released in row order each rebuild, so taking the front hands each row back the SAME frame it had last time. LIFO (removing the last) would reverse the mapping every rebuild, teleporting a just-dragged slider into the adjacent profile's row.
     function rec:Get(kind, create)
         local list = self.free[kind]
-        local w = list and table.remove(list)
+        local w = list and table.remove(list, 1)
         if not w then w = create(); w._recKind = kind end
         self.used[#self.used + 1] = w
         return w
@@ -107,6 +108,32 @@ local function IconButton(parent, atlas, tooltip, onClick)
     return btn
 end
 
+-- Priority up-arrow on the right of each profile bar. The horizontal chevron atlas is rotated a quarter turn counter-clockwise to point up.
+local function UpArrowButton(parent, tooltip, onClick)
+    local btn = REC:Get("uparrow", function()
+        local b = CreateFrame("Button", nil, parent)
+        b:SetSize(ICON + 2, ICON + 2)
+        local icon = b:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(ICON - 3, ICON)
+        icon:SetPoint("CENTER")
+        icon:SetAtlas("common-icon-forwardarrow")
+        icon:SetRotation(math.pi / 2)
+        b.Icon = icon
+        b:SetScript("OnEnter", function(self)
+            self.Icon:SetVertexColor(1, 0.82, 0)
+            if not self._tip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(self._tip, 1, 1, 1, nil, true); GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function(self) self.Icon:SetVertexColor(0.7, 0.7, 0.7); GameTooltip:Hide() end)
+        return b
+    end)
+    btn:SetParent(parent); btn:Show()
+    btn.Icon:SetVertexColor(0.7, 0.7, 0.7)
+    btn._tip = tooltip
+    btn:SetScript("OnClick", onClick)
+    return btn
+end
+
 local function AddLink(parent, text, onClick, atlas, iconColor)
     local btn = REC:Get("link", function()
         local b = CreateFrame("Button", nil, parent)
@@ -126,20 +153,25 @@ local function AddLink(parent, text, onClick, atlas, iconColor)
     return btn
 end
 
-local function ConditionToggle(parent, text, onClick)
+local function ConditionToggle(parent, text, onClick, impossible)
     local btn = REC:Get("condtoggle", function()
         local b = CreateFrame("Button", nil, parent)
         b:SetHeight(18)
         b._label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b._label:SetPoint("LEFT")
         b:SetScript("OnEnter", function(self)
             self._label:SetTextColor(1, 1, 1)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L.CFG_FP_COND_TOGGLE_TT, 1, 1, 1, nil, true); GameTooltip:Show()
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(self._impossible and L.CFG_FP_IMPOSSIBLE or L.CFG_FP_COND_TOGGLE_TT, 1, 1, 1, nil, true)
+            GameTooltip:Show()
         end)
-        b:SetScript("OnLeave", function(self) self._label:SetTextColor(0.55, 0.78, 1); GameTooltip:Hide() end)
+        b:SetScript("OnLeave", function(self) self._label:SetTextColor(self._cr, self._cg, self._cb); GameTooltip:Hide() end)
         return b
     end)
     btn:SetParent(parent); btn:Show()
-    btn._label:SetText(text); btn._label:SetTextColor(0.55, 0.78, 1)
+    -- Conditions that can never be true together render red with an "impossible combination" tooltip; normal conditions stay the usual blue.
+    btn._impossible = impossible
+    btn._cr, btn._cg, btn._cb = impossible and 1 or 0.55, impossible and 0.35 or 0.78, impossible and 0.35 or 1
+    btn._label:SetText(text); btn._label:SetTextColor(btn._cr, btn._cg, btn._cb)
     btn:SetWidth(btn._label:GetStringWidth() + 6)
     btn:SetScript("OnClick", onClick)
     return btn
@@ -170,20 +202,55 @@ local function ZebraRow(body, y, h)
 end
 
 -- [ HELPERS ]----------------------------------------------------------------------------------------
+-- Condition labels are Title-case for the menu/toggle buttons; lowercase the leading letter so they read mid-sentence inside the blurb. ASCII-only, so CJK scripts are left untouched.
+local function LowerFirst(s) return (s:gsub("^%u", string.lower)) end
+
+-- Verb-initial conditions ("Has a target") break after the blurb's "While" lead-in (English only), so they get a dedicated clause fragment ("you have a target"). Other locales kept prepositional labels, so their fragments just mirror the label; the leading letter is lowercased either way for mid-sentence flow.
+local PHRASE_KEY = { target = "CFG_FP_PHRASE_TARGET", focus = "CFG_FP_PHRASE_FOCUS", pet = "CFG_FP_PHRASE_PET" }
+local function CondPhrase(c)
+    local base = PHRASE_KEY[c.key]
+    local raw = base and L[c.state == "false" and base .. "_NO" or base] or CondLabel(c)
+    return LowerFirst(raw)
+end
+
+-- Join one AND-group, Oxford-style: "a", "a and b", "a, b and c".
+local function JoinGroup(g)
+    if #g == 1 then return g[1] end
+    return table.concat(g, L.CFG_FP_LIST_SEP, 1, #g - 1) .. L.CFG_FP_AND .. g[#g]
+end
+
 local function BuildSentence(p)
     local fade = p.fade or 100
-    local s, moPhrase
+    local groups, moPhrase = {}, nil
     for _, c in ipairs(p.conditions) do
         if c.key == "mouseover" then
-            moPhrase = (c.state == "group") and L.CFG_FP_SENTENCE_MO_GROUP or L.CFG_FP_SENTENCE_MO_SEPARATE
-        else
-            local label = CondLabel(c)
-            if not s then
-                s = label
+            -- Surface the reveal ceiling only when it is dimmed below full; the common 100% reveal keeps the cleaner wording.
+            local cap = p.maxOpacity or 100
+            if cap < 100 then
+                moPhrase = (c.state == "group" and L.CFG_FP_SENTENCE_MO_GROUP_PCT or L.CFG_FP_SENTENCE_MO_SEPARATE_PCT):format(cap)
             else
-                s = s .. ((c.connector == "or") and L.CFG_FP_OR or L.CFG_FP_AND) .. label
+                moPhrase = (c.state == "group") and L.CFG_FP_SENTENCE_MO_GROUP or L.CFG_FP_SENTENCE_MO_SEPARATE
+            end
+        else
+            -- An "or" connector (or the first condition) opens a new AND-group; "and" extends the current one — matching the engine's group semantics.
+            if #groups == 0 or c.connector == "or" then
+                groups[#groups + 1] = { CondPhrase(c) }
+            else
+                local g = groups[#groups]; g[#g + 1] = CondPhrase(c)
             end
         end
+    end
+    local s
+    if #groups == 1 then
+        s = JoinGroup(groups[1])
+    elseif #groups > 1 then
+        -- Keep "and" inside each group and parenthesize multi-member groups so the AND-binds-tighter-than-OR nesting stays unambiguous: "(a and b) or (c and d)".
+        local parts = {}
+        for _, g in ipairs(groups) do
+            local joined = JoinGroup(g)
+            parts[#parts + 1] = (#g > 1) and ("(" .. joined .. ")") or joined
+        end
+        s = table.concat(parts, L.CFG_FP_OR)
     end
     if not s then
         if moPhrase then return L.CFG_FP_SENTENCE_MO_ONLY_F:format(fade, moPhrase) end
@@ -191,6 +258,34 @@ local function BuildSentence(p)
     end
     if moPhrase then return L.CFG_FP_SENTENCE_MO_F:format(fade, s, moPhrase) end
     return L.CFG_FP_SENTENCE_F:format(fade, s)
+end
+
+-- Conditions that can't be simultaneously true: a player is in at most one instance type, and raid vs party are exclusive group kinds. Two positive members of one set inside a single AND-group make that group — and the profile — unable to ever fire.
+local EXCLUSIVE = { dungeon = "inst", mythicplus = "inst", raidinst = "inst", delve = "inst",
+    battleground = "inst", arena = "inst", raid = "grp", party = "grp" }
+local function ImpossibleConditions(p)
+    local groups, flagged = {}, nil
+    for idx, c in ipairs(p.conditions) do
+        if c.key ~= "mouseover" then
+            if #groups == 0 or c.connector == "or" then groups[#groups + 1] = {} end
+            local g = groups[#groups]; g[#g + 1] = idx
+        end
+    end
+    for _, g in ipairs(groups) do
+        local bySet = {}
+        for _, idx in ipairs(g) do
+            local c = p.conditions[idx]
+            local set = c.state ~= "false" and EXCLUSIVE[c.key]
+            if set then bySet[set] = bySet[set] or {}; local b = bySet[set]; b[#b + 1] = idx end
+        end
+        for _, idxs in pairs(bySet) do
+            if #idxs >= 2 then
+                flagged = flagged or {}
+                for _, idx in ipairs(idxs) do flagged[idx] = true end
+            end
+        end
+    end
+    return flagged
 end
 
 local function FrameLookup()
@@ -295,15 +390,54 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
     emptyHint:Hide()
     content._emptyHint = emptyHint
 
+    local SLIDE_DURATION = 0.18
+    local function SetSectionY(sec, y)
+        sec:ClearAllPoints()
+        sec:SetPoint("TOPLEFT", 0, y)
+        sec:SetPoint("TOPRIGHT", 0, y)
+        sec._layoutY = y
+    end
+    -- Ease a section from its previous Y to its new Y when a reorder shuffled the list. The section's own OnUpdate is the sole driver; SetSectionY each tick keeps _layoutY current.
+    local function SlideSectionTo(sec, fromY, toY)
+        sec._slideT = 0
+        SetSectionY(sec, fromY)
+        sec:SetScript("OnUpdate", function(self, elapsed)
+            self._slideT = self._slideT + elapsed
+            local t = self._slideT / SLIDE_DURATION
+            if t >= 1 then
+                self:SetScript("OnUpdate", nil)
+                SetSectionY(self, toY)
+                return
+            end
+            local e = 1 - (1 - t) * (1 - t)
+            SetSectionY(self, fromY + (toY - fromY) * e)
+        end)
+    end
     local function Relayout()
+        local animate, prevY = content._animateNextLayout, content._prevY
         local y = 0
         for _, sec in ipairs(content._sections) do
-            sec:ClearAllPoints()
-            sec:SetPoint("TOPLEFT", 0, y)
-            sec:SetPoint("TOPRIGHT", 0, y)
+            local fromY = animate and prevY and sec._profileId and prevY[sec._profileId]
+            if fromY and fromY ~= y then
+                SlideSectionTo(sec, fromY, y)
+            else
+                sec:SetScript("OnUpdate", nil)
+                SetSectionY(sec, y)
+            end
             y = y - sec:GetHeight() - SECTION_GAP
         end
         scrollFrame:UpdateContentHeight(-y + PAD)
+        content._animateNextLayout, content._prevY = nil, nil
+    end
+    -- Snapshot each profile's current Y keyed by id (survives the recycler reassigning section frames), flag the next Relayout to animate, then commit the swap — the rebuild it triggers slides the two moved rows into place.
+    local function MoveProfileUpAnimated(profileId)
+        local prevY = {}
+        for _, sec in ipairs(content._sections) do
+            if sec._profileId then prevY[sec._profileId] = sec._layoutY end
+        end
+        content._prevY = prevY
+        content._animateNextLayout = true
+        FP:MoveProfileUp(profileId)
     end
 
     local function BuildProfileBody(section, p, byKey, byCat, memberCount)
@@ -350,22 +484,24 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
         local hasMouseover = false
         for _, c in ipairs(p.conditions) do if c.key == "mouseover" then hasMouseover = true; break end end
         local function FadeText(low, high)
-            return low .. "% – " .. high .. "%"
+            if hasMouseover then return low .. "% – " .. high .. "%" end
+            return low .. "%"
         end
-        local rangeSlider = REC:Get("rangeslider", function() return Layout:CreateRangeSlider(fadeGroup, SLIDER_W, {}) end)
+        local rangeSlider = REC:Get("rangeslider", function() return Layout:CreateRangeSlider(fadeGroup, SLIDER_W) end)
         rangeSlider:SetParent(fadeGroup); rangeSlider:Show()
+        -- onCommit writes straight to THIS row's profile table p (never an id lookup), so a drag can only ever edit the profile it belongs to. The drag gate suppresses the panel rebuild until release so no slider is torn down mid-drag.
         rangeSlider:Configure({
-            minGap = FADE_MIN_GAP, dual = true,
+            minGap = FADE_MIN_GAP, dual = hasMouseover,
             lowTip = L.CFG_FP_THUMB_FADE, highTip = L.CFG_FP_THUMB_MAX,
-            onChange = function(low, high)
-                sVal:SetText(FadeText(low, high))
-                Orbit.Async:Debounce("FP_Fade_" .. p.id, function() FP:SetFadeRange(p.id, low, high) end, 0.3)
-            end,
+            onPreview = function(low, high) sVal:SetText(FadeText(low, high)) end,
+            onCommit = function(low, high) FP:SetProfileFade(p, low, high) end,
+            onDragStart = function() content._fadeDragging = true end,
+            onDragStop = function() content._fadeDragging = false end,
         })
         rangeSlider:SetPoint("LEFT", fadeLabel, "RIGHT", SLIDER_LABEL_GAP, 0)
         sVal:SetPoint("LEFT", rangeSlider, "RIGHT", SLIDER_READOUT_GAP, 0)
         -- Reserve a constant readout width (the widest possible value) so a changing %-digit count never alters the group's width. The group is centered, so a width that tracked the live text would re-center it every commit and the whole slider would visibly jiggle while dragging.
-        sVal:SetText("100% – 100%")
+        sVal:SetText(hasMouseover and "100% – 100%" or "100%")
         local readoutW = math.ceil(sVal:GetStringWidth())
         sVal:SetWidth(readoutW)
         sVal:SetWordWrap(false)
@@ -388,14 +524,18 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
         whenLabel:SetText(L.CFG_FP_WHEN)
         whenLabel:SetTextColor(0.6, 0.8, 1)
         local addCond = AddLink(body, L.CFG_FP_ADD_CONDITION, function(self)
+            local present = {}
+            for _, c in ipairs(p.conditions) do present[c.key] = true end
             MenuUtil.CreateContextMenu(self, function(_, root)
                 local instanceSub
                 for _, d in ipairs(FP:GetConditionCatalog()) do
-                    if d.category == "Instance" then
-                        instanceSub = instanceSub or root:CreateButton(L.CFG_FP_INSTANCE_TYPE)
-                        instanceSub:CreateButton(L[d.labelKey], function() FP:AddCondition(p.id, d.key) end)
-                    else
-                        root:CreateButton(L[d.labelKey], function() FP:AddCondition(p.id, d.key) end)
+                    if not present[d.key] then
+                        if d.category == "Instance" then
+                            instanceSub = instanceSub or root:CreateButton(L.CFG_FP_INSTANCE_TYPE)
+                            instanceSub:CreateButton(L[d.labelKey], function() FP:AddCondition(p.id, d.key) end)
+                        else
+                            root:CreateButton(L[d.labelKey], function() FP:AddCondition(p.id, d.key) end)
+                        end
                     end
                 end
             end)
@@ -410,10 +550,17 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
             y = y - 16
         end
 
-        -- The engine ignores the connector on the FIRST non-mouseover condition (it opens the first group), so only show a toggle once a real condition already precedes this one — gating on raw index would render an inert toggle when a Mouseover sits at index 1.
+        -- Mouseover renders first regardless of its stored slot (its position never affects firing — the engine filters perFrame conditions out of the AND/OR eval); real conditions keep stored order so callbacks still index the live array via i.
+        local order = {}
+        for i, c in ipairs(p.conditions) do if c.key == "mouseover" then order[#order + 1] = i end end
+        for i, c in ipairs(p.conditions) do if c.key ~= "mouseover" then order[#order + 1] = i end end
+
+        local impossible = ImpossibleConditions(p)
+        -- The engine ignores the connector on the FIRST non-mouseover condition (it opens the first group), so only show a toggle once a real condition already precedes this one — gating on raw index would render an inert toggle when a Mouseover sits first.
         local seenReal = false
-        for i, c in ipairs(p.conditions) do
-            if i % 2 == 0 then ZebraRow(body, y, 20) end
+        for di, i in ipairs(order) do
+            local c = p.conditions[i]
+            if di % 2 == 0 then ZebraRow(body, y, 20) end
             local isReal = c.key ~= "mouseover"
             if isReal and seenReal then
                 local connBtn = ConnectorToggle(body, c.connector or "and", function()
@@ -428,7 +575,7 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
                 else
                     FP:SetConditionState(p.id, i, c.state == "false" and "true" or "false")
                 end
-            end)
+            end, impossible and impossible[i])
             condBtn:SetPoint("TOPLEFT", SUBINDENT + CONNECTOR_W + 6, y - 1)
             local rmBtn = IconButton(body, "transmog-icon-remove", nil, function() FP:RemoveCondition(p.id, i) end)
             rmBtn:SetPoint("TOPRIGHT", -INDENT, y - 3)
@@ -514,7 +661,7 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
             local count = memberCount[key] or 1
             if count > 1 then
                 local resolvedPct = math.floor(FP:GetResolvedAlpha(key) * 100 + 0.5)
-                local thisWins = FP:IsProfileFiring(p.id) and (math.floor((p.fade or 100) + 0.5) == resolvedPct)
+                local thisWins = FP:GetWinningProfile(key) == p.id
                 local res = PoolFS(body, "GameFontDisableSmall")
                 res:SetPoint("RIGHT", rmBtn, "LEFT", -6, 0)
                 res:SetText((thisWins and "|cFFFFD100" or "|cFF888888") .. "-> " .. resolvedPct .. "%|r")
@@ -528,7 +675,7 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                         GameTooltip:SetText(self._title, 1, 1, 1)
                         for _, prof in ipairs(FP:GetProfilesForMember(self._key)) do
-                            local win = FP:IsProfileFiring(prof.id) and (math.floor((prof.fade or 100) + 0.5) == self._resolvedPct)
+                            local win = FP:GetWinningProfile(self._key) == prof.id
                             local cr, cg, cb = win and 1 or 0.7, win and 0.82 or 0.7, win and 0 or 0.7
                             GameTooltip:AddDoubleLine(prof.name, (prof.fade or 100) .. "%", cr, cg, cb, cr, cg, cb)
                         end
@@ -541,7 +688,6 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
                 warn:SetPoint("LEFT", mLabel, "RIGHT", 6, 0)
                 warn._title = entry and entry.display or key
                 warn._key = key
-                warn._resolvedPct = resolvedPct
             end
         end
         y = y - math.ceil(#memberKeys / MEMBER_COLS) * ROW_H
@@ -560,6 +706,8 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
     function content:Rebuild()
         -- Recycle every per-profile widget (sections and their body controls) from the previous build; WoW frames are never GC'd, so pooling is the only way to avoid an unbounded leak across rebuilds.
         REC = self._rec
+        -- Backstop: a rebuild means we are rebuilding the tree fresh, so no drag can be live to preserve — clear the gate in case a drag ever ended without a Stop (reopening the tab via OnShow always lands here).
+        self._fadeDragging = false
         local expanded = {}
         for _, sec in ipairs(self._sections) do
             if sec._profileId then expanded[sec._profileId] = sec:IsExpanded() end
@@ -568,7 +716,7 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
         wipe(self._sections)
         local byKey, byCat = FrameLookup()
         local memberCount = MembershipCounts()
-        for _, p in ipairs(FP:GetProfiles()) do
+        for idx, p in ipairs(FP:GetProfiles()) do
             local firing = FP:IsProfileFiring(p.id)
             local title = (p.name or "?") .. "  |cFF999999" .. (p.fade or 100) .. "%|r"
             local sec = REC:Get("accordion", function() return Layout:CreateAccordion(scrollChild, "") end)
@@ -582,6 +730,11 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
                 PromptName(L.CFG_FP_RENAME_PROMPT, p.name, function(name) FP:SetName(p.id, name) end)
             end
             BuildProfileBody(sec, p, byKey, byCat, memberCount)
+            -- List order is priority (top wins); every profile but the first gets an up-arrow to promote it one slot.
+            if idx > 1 then
+                local up = UpArrowButton(sec, L.CFG_FP_PRIORITY_TT, function() MoveProfileUpAnimated(p.id) end)
+                up:SetPoint("LEFT", sec:GetBar(), "RIGHT", 3, 2)
+            end
             if expanded[p.id] or p.id == self._pendingExpandId then sec:SetExpanded(true) end
             self._sections[#self._sections + 1] = sec
         end
@@ -592,13 +745,16 @@ function Orbit._AC.CreateFadeProfilesContent(parent)
     end
 
     local rebuildPending
+    -- A rebuild armed one frame BEFORE the user grabs a thumb would otherwise execute mid-drag and recycle the slider out from under the cursor; re-check the gate at execution time and re-defer until the drag ends.
+    local function RunRebuild()
+        if content._fadeDragging then C_Timer.After(0, RunRebuild) return end
+        rebuildPending = false
+        if content:IsShown() then content:Rebuild() end
+    end
     local function ScheduleRebuild()
-        if rebuildPending then return end
+        if rebuildPending or content._fadeDragging then return end
         rebuildPending = true
-        C_Timer.After(0, function()
-            rebuildPending = false
-            if content:IsShown() then content:Rebuild() end
-        end)
+        C_Timer.After(0, RunRebuild)
     end
 
     content:SetScript("OnShow", function(self) self:Rebuild() end)

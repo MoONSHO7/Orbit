@@ -44,7 +44,7 @@ function IconCanvasPreview:AttachTextComponents(preview, textComponents, savedPo
     local halfW, halfH = preview.sourceWidth / 2, preview.sourceHeight / 2
 
     for _, def in ipairs(textComponents) do
-        local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+        local fs = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
         fs:SetFont(fontPath, 12, Orbit.Skin:GetFontOutline())
         Orbit.Skin:ApplyFontShadow(fs)
         fs:SetText(def.preview)

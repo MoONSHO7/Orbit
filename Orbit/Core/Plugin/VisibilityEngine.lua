@@ -109,9 +109,8 @@ end
 
 -- [ DB ACCESS ]--------------------------------------------------------------------------------------
 local function GetDB()
-    if not Orbit.db then return nil end
-    if not Orbit.db.VisibilityEngine then Orbit.db.VisibilityEngine = {} end
-    return Orbit.db.VisibilityEngine
+    local vis = Orbit.Profile and Orbit.Profile:GetActiveVisibility()
+    return vis and vis.frames
 end
 
 local function GetFrameDB(key)
@@ -173,7 +172,8 @@ function VE:GetBlizzardFrames()
 end
 
 function VE:ResetAll()
-    if Orbit.db then Orbit.db.VisibilityEngine = {} end
+    local vis = Orbit.Profile and Orbit.Profile:GetActiveVisibility()
+    if vis then vis.frames = {} end
     for _, entry in ipairs(self:GetBlizzardFrames()) do
         local f = _G[entry.blizzardFrame]
         if f then f:SetAlpha(1) end
@@ -323,7 +323,13 @@ secureEvents:SetScript("OnEvent", function(_, event)
     if p then p:End("Orbit_VisibilityEngine", event, s) end
 end)
 C_Timer.After(0, function()
-    if Orbit.EventBus then Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() VE:ApplyAllSecureBlizzardFrames() end) end
+    if not Orbit.EventBus then return end
+    Orbit.EventBus:On("ORBIT_MOUNTED_VISIBILITY_CHANGED", function() VE:ApplyAllSecureBlizzardFrames() end)
+    -- New profile = different per-profile visibility store: re-apply Blizzard frames and refresh OOCFade snapshots (which key on ORBIT_VISIBILITY_CHANGED).
+    Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
+        VE:ApplyBlizzardSettings()
+        Orbit.EventBus:Fire("ORBIT_VISIBILITY_CHANGED")
+    end)
 end)
 
 function VE:ApplyAll()

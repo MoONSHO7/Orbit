@@ -109,6 +109,11 @@ local function GetFontOutline()
     return (Orbit.Skin and Orbit.Skin:GetFontOutline()) or "OUTLINE"
 end
 
+local function SetTextFont(fs, size)
+    fs:SetFont(GetFont(), size, GetFontOutline())
+    if Orbit.Skin then Orbit.Skin:ApplyFontShadow(fs) end
+end
+
 -- [ CANDIDATE ENUMERATION ] -------------------------------------------------------------------------
 -- source.sourceGUID is ConditionalSecret in combat; out-of-combat only.
 local function GetSpecMatches(def, originSource)
@@ -324,8 +329,8 @@ local function EnsureFrame()
     f.Scroll:SetScrollChild(f.Content)
 
     f._sectionPool = {}
-    f._empty = f:CreateFontString(nil, "OVERLAY")
-    f._empty:SetFont(GetFont(), HEADER_FONT_SIZE, GetFontOutline())
+    f._empty = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(f._empty, HEADER_FONT_SIZE)
     f._empty:SetPoint("CENTER", f.Scroll, "CENTER")
     f._empty:SetTextColor(0.75, 0.75, 0.75)
     f._empty:Hide()
@@ -448,13 +453,13 @@ local function LayoutLegend(f, perPlayer)
             entry.btn = CreateFrame("Button", nil, f.Legend)
             entry.btn:RegisterForClicks("LeftButtonUp")
             entry.swatch = entry.btn:CreateTexture(nil, "ARTWORK")
-            entry.label  = entry.btn:CreateFontString(nil, "OVERLAY")
+            entry.label  = entry.btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             f.Legend._entries[i] = entry
         end
         entry.swatch:SetSize(LEGEND_SWATCH, LEGEND_SWATCH)
         local r, g, b = ColorFor(slot.colorIndex or i)
         entry.swatch:SetColorTexture(r, g, b, 1)
-        entry.label:SetFont(GetFont(), LEGEND_FONT_SIZE, GetFontOutline())
+        SetTextFont(entry.label, LEGEND_FONT_SIZE)
         entry.label:SetText(ShortName(slot.source.name))
 
         local disabled = IsSlotDisabled(f, slot)
