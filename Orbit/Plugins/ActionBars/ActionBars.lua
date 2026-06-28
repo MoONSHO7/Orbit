@@ -51,7 +51,7 @@ local BAR_CONFIG = {
 local Plugin = Orbit:RegisterPlugin("Action Bars", "Orbit_ActionBars", {
     displayName = L.PLG_NAME_ACTION_BARS,
     defaults = {
-        IconSize = 34, IconPadding = 1, Rows = 1, NumIcons = 12, NumActionBars = 6,
+        IconSize = 34, IconPadding = 1, Rows = 1, NumIcons = 12, NumActionBars = 4,
         Scale = 100, Opacity = 100, HideEmptyButtons = false, UseGlobalTextStyle = true,
         DisabledComponents = {},
         ComponentPositions = {}, GlobalComponentPositions = {

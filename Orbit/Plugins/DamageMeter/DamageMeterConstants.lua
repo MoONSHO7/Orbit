@@ -86,6 +86,7 @@ Constants.DamageMeter = {
         title        = 2,
         titleSize    = 14,
         breakdownMode = 2,
+        autoSwitch   = true,
     },
 
     -- Default position when a def has none (CreateMeter uses CENTER; seed overrides explicitly).

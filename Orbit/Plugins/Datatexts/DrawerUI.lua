@@ -12,7 +12,8 @@ local DRAWER_CELL_HEIGHT = 24
 local DRAWER_COLS = 4
 local DRAWER_PAD = 10
 local DRAWER_OUTER_PAD = 15
-local DRAWER_BOTTOM_PAD = 40
+local DRAWER_HELP_GAP = 10
+local DRAWER_HELP_MIN_HEIGHT = 56
 local SLIDE_DURATION = 0.25
 local CORNER_STRATA = "TOOLTIP"
 local DRAWER_STRATA = "DIALOG"
@@ -114,7 +115,16 @@ function DrawerUI:CreatePanel()
         }
     }
     drawerPanel.footerHeight = Orbit.Engine.Config:RenderFooter(drawerPanel.Footer, nil, nil, nil, schema)
-    
+
+    drawerPanel.help = drawerPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    drawerPanel.help:SetWidth(drawerPanel:GetWidth() - (FO_INSET * 2))
+    drawerPanel.help:SetWordWrap(true)
+    drawerPanel.help:SetJustifyH("CENTER")
+    drawerPanel.help:SetSpacing(3)
+    drawerPanel.help:SetTextColor(0.6, 0.6, 0.6, 1)
+    drawerPanel.help:SetText(L.PLU_DT_DRAWER_HELP)
+    drawerPanel.help:SetPoint("BOTTOM", drawerPanel.Footer, "TOP", 0, DRAWER_HELP_GAP)
+
     drawerPanel:Hide()
 end
 
@@ -266,11 +276,14 @@ function DrawerUI:LayoutDrawer()
     
     local FO_INSET = 12
     local panelScale = drawerPanel:GetEffectiveScale()
+    -- Reserve the gap between grid and footer for the help text (measured so long, wrapped translations still fit).
+    local helpHeight = math.max(drawerPanel.help and drawerPanel.help:GetStringHeight() or 0, DRAWER_HELP_MIN_HEIGHT)
+    local bottomRegion = helpHeight + (DRAWER_HELP_GAP * 2)
     if #alldatatexts > 0 then
         local rows = math.ceil(#alldatatexts / DRAWER_COLS)
-        drawerPanel:SetHeight(Orbit.Engine.Pixel:Snap(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + (rows * DRAWER_CELL_HEIGHT) + ((rows - 1) * DRAWER_PAD) + DRAWER_BOTTOM_PAD + drawerPanel.footerHeight + FO_INSET, panelScale))
+        drawerPanel:SetHeight(Orbit.Engine.Pixel:Snap(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + (rows * DRAWER_CELL_HEIGHT) + ((rows - 1) * DRAWER_PAD) + bottomRegion + drawerPanel.footerHeight + FO_INSET, panelScale))
     else
-        drawerPanel:SetHeight(Orbit.Engine.Pixel:Snap(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + DRAWER_BOTTOM_PAD + drawerPanel.footerHeight + FO_INSET, panelScale))
+        drawerPanel:SetHeight(Orbit.Engine.Pixel:Snap(DRAWER_HEADER_HEIGHT + DRAWER_OUTER_PAD + bottomRegion + drawerPanel.footerHeight + FO_INSET, panelScale))
     end
 end
 

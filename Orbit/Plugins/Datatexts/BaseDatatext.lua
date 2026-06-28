@@ -10,6 +10,11 @@ local DEFAULT_TEXT_SIZE = 12
 local TEXT_PADDING = 0
 local ICON_SIZE = 14
 local ICON_PADDING = 4
+local SNAP_THROTTLE = 1 / 30
+local OPPOSITE_EDGES = { TOP = "BOTTOM", BOTTOM = "TOP", LEFT = "RIGHT", RIGHT = "LEFT" }
+local MAX_PADDING = 500
+local SHIFT_MULTIPLIER = Orbit.Constants.Selection.ShiftMultiplier
+local WHEEL_DEBOUNCE = Orbit.Constants.Selection.WheelDebounce
 
 -- [ BASE DATATEXT ] ---------------------------------------------------------------------------------
 local BaseDatatext = {}
@@ -89,11 +94,15 @@ function BaseDatatext:CreateFrame(width, height)
             DT.DatatextManager:UnplaceDatatext(self.name)
         end
     end)
+    f.overlay:EnableMouseWheel(true)
+    f.overlay:SetScript("OnMouseWheel", function(_, delta) self:OnMouseWheel(delta) end)
     f.overlay:SetScript("OnHide", function()
         f.overlay:SetScript("OnUpdate", nil)
         if not self.isSecure then self.frame:StopMovingOrSizing() end
         self.isDragging = false
         if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = false end
+        Orbit.Engine.AnchorLines:Hide(self.frame)
+        if self._dtLastTarget then Orbit.Engine.AnchorLines:Hide(self._dtLastTarget); self._dtLastTarget = nil end
     end)
     f.overlay:Hide()
     
@@ -419,7 +428,15 @@ function BaseDatatext:OnDragStart()
     else
         self.frame:StartMoving()
     end
-    self.frame.overlay:SetScript("OnUpdate", function()
+    -- Detach any existing anchor so the re-drag is free and re-detects; snap targets are stable for one drag, so cache them.
+    Orbit.Engine.FrameAnchor:BreakAnchor(self.frame, true)
+    self.frame._dtSnapTargets = DT.DatatextManager:GetSnapTargets(self.frame)
+    self._snapElapsed = 0
+    self._dtLastTarget = nil
+    self._dtLastAlign = nil
+    self._dtAnchorLabel = nil
+    Orbit.Engine.AnchorLines:Ensure(self.frame)
+    self.frame.overlay:SetScript("OnUpdate", function(_, elapsed)
         if self.isSecure and not InCombatLockdown() then
             local curX, curY = GetCursorPosition()
             local uipScale = UIParent:GetEffectiveScale()
@@ -430,10 +447,40 @@ function BaseDatatext:OnDragStart()
             self.frame:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
         end
         DT.DrawerUI:OnDatatextDragUpdate(self.name)
+        self:UpdateDragSnap(elapsed)
         if Orbit.Engine.SelectionTooltip then
-            Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, true)
+            Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, true, self._dtAnchorLabel)
         end
     end)
+end
+
+-- Throttled snap detection during drag: lights the target's edge + this datatext's opposite edge, mirroring Edit Mode.
+function BaseDatatext:UpdateDragSnap(elapsed)
+    if not self.frame._dtSnapTargets then return end
+    self._snapElapsed = (self._snapElapsed or 0) + (elapsed or 0)
+    if self._snapElapsed < SNAP_THROTTLE then return end
+    self._snapElapsed = 0
+    local _, _, target, edge, align = Orbit.Engine.FrameSnap:DetectSnap(self.frame, true, self.frame._dtSnapTargets, nil)
+    if target and edge then
+        if target ~= self._dtLastTarget or align ~= self._dtLastAlign then
+            if self._dtLastTarget then Orbit.Engine.AnchorLines:Hide(self._dtLastTarget) end
+            Orbit.Engine.AnchorLines:Ensure(target)
+            target.AnchorLineFrame:SetFrameStrata(Orbit.Constants.Strata.Topmost)
+            Orbit.Engine.AnchorLines:ShowOn(target, edge, align)
+            Orbit.Engine.AnchorLines:ShowOn(self.frame, OPPOSITE_EDGES[edge], align)
+            self._dtLastTarget = target
+            self._dtLastAlign = align
+        end
+        self._dtAnchorLabel = Orbit.Engine.SelectionTooltip:BuildAnchorLabel(align)
+    elseif self._dtLastTarget then
+        Orbit.Engine.AnchorLines:Hide(self._dtLastTarget)
+        Orbit.Engine.AnchorLines:Hide(self.frame)
+        self._dtLastTarget = nil
+        self._dtLastAlign = nil
+        self._dtAnchorLabel = nil
+    else
+        self._dtAnchorLabel = nil
+    end
 end
 
 function BaseDatatext:OnDragStop()
@@ -441,8 +488,15 @@ function BaseDatatext:OnDragStop()
     self.frame:SetFrameStrata(Orbit.Constants.Strata.HUD)
     self.frame:SetFrameLevel(500)
 
+    local target, edge, align
+    if self.frame._dtSnapTargets then
+        local _, _, t, e, a = Orbit.Engine.FrameSnap:DetectSnap(self.frame, false, self.frame._dtSnapTargets, nil)
+        target, edge, align = t, e, a
+    end
+    self.frame._dtPendingAnchor = (target and edge) and { target = target, edge = edge, align = align } or nil
+
     local cx, cy = self.frame:GetCenter()
-    if cx and cy then
+    if not self.frame._dtPendingAnchor and cx and cy then
         local uipW = UIParent:GetWidth()
         local uipH = UIParent:GetHeight()
         local uipX = uipW / 2
@@ -502,7 +556,31 @@ function BaseDatatext:OnDragStop()
     
     self.isDragging = false
     if Orbit.Engine.SelectionDrag then Orbit.Engine.SelectionDrag.isDragging = false end
+    Orbit.Engine.AnchorLines:Hide(self.frame)
+    if self._dtLastTarget then Orbit.Engine.AnchorLines:Hide(self._dtLastTarget) end
+    self._dtLastTarget = nil
+    self._dtLastAlign = nil
+    self._dtAnchorLabel = nil
+    self.frame._dtSnapTargets = nil
     self.frame.overlay:SetScript("OnUpdate", nil)
     if Orbit.Engine.SelectionTooltip then Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, false) end
     DT.DatatextManager:OnDatatextDragStop(self.name)
+end
+
+-- Scroll over an anchored datatext to grow/shrink its gap from the target edge (Shift = coarse), mirroring Edit Mode.
+function BaseDatatext:OnMouseWheel(delta)
+    if not DT.DatatextManager:CanDrag() or InCombatLockdown() then return end
+    if self._wheelDebounce then return end
+    local anchor = Orbit.Engine.FrameAnchor.anchors[self.frame]
+    if not anchor then return end
+    self._wheelDebounce = true
+    C_Timer.After(WHEEL_DEBOUNCE, function() self._wheelDebounce = nil end)
+    local current = anchor.padding or 0
+    local change = (delta > 0 and 1 or -1) * (IsShiftKeyDown() and SHIFT_MULTIPLIER or 1)
+    local newPadding = Clamp(current + change, -MAX_PADDING, MAX_PADDING)
+    if newPadding ~= current then
+        Orbit.Engine.FrameAnchor:CreateAnchor(self.frame, anchor.parent, anchor.edge, newPadding, anchor.syncOptions, anchor.align, true)
+        if Orbit.Engine.SelectionTooltip then Orbit.Engine.SelectionTooltip:ShowPosition(self.frame, nil, true) end
+        DT.DatatextManager:SavePositions()
+    end
 end

@@ -119,7 +119,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             type = "checkbox",
             key = "ShowBorder",
             label = L.PLU_OBJ_SHOW_BORDER,
-            default = true,
+            default = false,
             onChange = OnChange(self, systemIndex, "ShowBorder"),
         })
 

@@ -119,15 +119,6 @@ local function GetOppositeEdge(edge)
     return OPPOSITE_EDGES[edge]
 end
 
-local ANCHOR_ALIGN_COLORS = {
-    LEFT = { 1.0, 0.55, 0.15 },
-    RIGHT = { 0.8, 0.4, 1.0 },
-    TOP = { 1.0, 0.55, 0.15 },
-    BOTTOM = { 0.8, 0.4, 1.0 },
-    CENTER = { 0.2, 0.9, 0.85 },
-}
-local DEFAULT_ANCHOR_COLOR = { 0, 1, 0 }
-
 -- One permanent combat-end drain; registering per-defer would leak a listener each time and clobber an earlier deferred action.
 local function DeferUntilOutOfCombat(callback)
     if not InCombatLockdown() then
@@ -226,6 +217,18 @@ function Selection:GetSnapTargets(excludeFrame)
     return targets
 end
 
+-- Read-only snapshot of registered Orbit frames (visible, anchorable) for external snap consumers like datatexts.
+function Selection:GetRegisteredFrames()
+    local Graph = Engine.AnchorGraph
+    local frames = {}
+    for f in pairs(self.selections) do
+        if not f:IsForbidden() and f:IsVisible() and not Graph:IsSkipped(f) then
+            frames[#frames + 1] = f
+        end
+    end
+    return frames
+end
+
 function Selection:Attach(frame, dragCallback, selectionCallback)
     if self.selections[frame] then
         return
@@ -238,31 +241,7 @@ function Selection:Attach(frame, dragCallback, selectionCallback)
     selection:SetFrameLevel(frame:GetFrameLevel() + Orbit.Constants.Levels.EditModeSelection)
     selection.isOrbitSelection = true
 
-    -- Create anchor line gradient textures (two halves per edge for center-out fade)
-    local lineThickness = C.Selection.AnchorLineThickness
-    local lineContainer = CreateFrame("Frame", nil, selection)
-    lineContainer:SetFrameLevel(selection:GetFrameLevel() + 10)
-    lineContainer:SetAllPoints(selection)
-    selection.AnchorLineFrame = lineContainer
-    local function MakeHalf(p1, rp1, x1, y1, p2, rp2, x2, y2)
-        local t = lineContainer:CreateTexture(nil, "OVERLAY")
-        t:SetColorTexture(1, 1, 1, 1)
-        t:SetPoint(p1, selection, rp1, x1, y1)
-        t:SetPoint(p2, selection, rp2, x2, y2)
-        t.isAnchorLine = true
-        t:Hide()
-        return t
-    end
-    selection.AnchorLines = {
-        TOP    = { MakeHalf("TOPLEFT", "TOPLEFT", 0, lineThickness, "BOTTOMRIGHT", "TOP", 0, 0),
-                   MakeHalf("TOPLEFT", "TOP", 0, lineThickness, "BOTTOMRIGHT", "TOPRIGHT", 0, 0) },
-        BOTTOM = { MakeHalf("BOTTOMLEFT", "BOTTOMLEFT", 0, -lineThickness, "TOPRIGHT", "BOTTOM", 0, 0),
-                   MakeHalf("TOPLEFT", "BOTTOM", 0, 0, "BOTTOMRIGHT", "BOTTOMRIGHT", 0, -lineThickness) },
-        LEFT   = { MakeHalf("TOPLEFT", "TOPLEFT", -lineThickness, 0, "BOTTOMRIGHT", "LEFT", 0, 0),
-                   MakeHalf("TOPLEFT", "LEFT", -lineThickness, 0, "BOTTOMRIGHT", "BOTTOMLEFT", 0, 0) },
-        RIGHT  = { MakeHalf("TOPRIGHT", "TOPRIGHT", lineThickness, 0, "BOTTOMLEFT", "RIGHT", 0, 0),
-                   MakeHalf("TOPRIGHT", "RIGHT", lineThickness, 0, "BOTTOMLEFT", "BOTTOMRIGHT", 0, 0) },
-    }
+    Engine.AnchorLines:Ensure(selection)
 
     -- Wire up event handlers using extracted modules
     local Drag = Engine.SelectionDrag
@@ -509,49 +488,6 @@ function Selection:DisableKeyboardNudge()
     Engine.SelectionNudge:Disable(self)
 end
 
--- [ ANCHOR LINE VISIBILITY ] ------------------------------------------------------------------------
-local START_SOLID = { LEFT = true, TOP = true }
-local END_SOLID = { RIGHT = true, BOTTOM = true }
-
-function Selection:ShowAnchorLine(selection, side, align)
-    if not selection or not selection.AnchorLines then return end
-    for _, pair in pairs(selection.AnchorLines) do
-        pair[1]:Hide()
-        pair[2]:Hide()
-    end
-    if not side then
-        if selection.AnchorLineFrame then selection.AnchorLineFrame:Hide() end
-        return
-    end
-    local pair = selection.AnchorLines[side]
-    if not pair then return end
-    local c = (align and ANCHOR_ALIGN_COLORS[align]) or DEFAULT_ANCHOR_COLOR
-    local orient = (side == "TOP" or side == "BOTTOM") and "HORIZONTAL" or "VERTICAL"
-    local a1s, a1e, a2s, a2e
-    if orient == "HORIZONTAL" then
-        if align == "LEFT" then
-            a1s, a1e, a2s, a2e = 1, 0.7, 0.7, 0.15
-        elseif align == "RIGHT" then
-            a1s, a1e, a2s, a2e = 0.15, 0.7, 0.7, 1
-        else
-            a1s, a1e, a2s, a2e = 0.15, 1, 1, 0.15
-        end
-    else
-        if align == "TOP" then
-            a1s, a1e, a2s, a2e = 0.7, 1, 0.15, 0.7
-        elseif align == "BOTTOM" then
-            a1s, a1e, a2s, a2e = 0.7, 0.15, 1, 0.7
-        else
-            a1s, a1e, a2s, a2e = 1, 0.15, 0.15, 1
-        end
-    end
-    pair[1]:SetGradient(orient, CreateColor(c[1], c[2], c[3], a1s), CreateColor(c[1], c[2], c[3], a1e))
-    pair[2]:SetGradient(orient, CreateColor(c[1], c[2], c[3], a2s), CreateColor(c[1], c[2], c[3], a2e))
-    if selection.AnchorLineFrame then selection.AnchorLineFrame:Show() end
-    pair[1]:Show()
-    pair[2]:Show()
-end
-
 -- [ FORCE UPDATE ]-----------------------------------------------------------------------------------
 function Selection:ForceUpdate(frame)
     local selection = self.selections[frame]
@@ -631,7 +567,7 @@ function Selection:UpdateVisuals(frame, selection)
             selection.Label:Hide()
         end
 
-        Selection:ShowAnchorLine(selection, nil)
+        Engine.AnchorLines:Hide(selection)
         return
     end
 
@@ -673,10 +609,10 @@ function Selection:UpdateVisuals(frame, selection)
         if isAnchored then
             local anchor = Engine.FrameAnchor.anchors[selection.parent]
             if anchor and anchor.edge then
-                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge), anchor.align)
+                Engine.AnchorLines:ShowOn(selection, GetOppositeEdge(anchor.edge), anchor.align)
             end
         else
-            Selection:ShowAnchorLine(selection, nil)
+            Engine.AnchorLines:Hide(selection)
         end
     elseif EditModeManagerFrame and EditModeManagerFrame:IsShown() then
         -- Edit Mode Active (not selected)
@@ -737,7 +673,7 @@ function Selection:UpdateVisuals(frame, selection)
             end
             local anchor = Engine.FrameAnchor.anchors[selection.parent]
             if anchor and anchor.edge then
-                Selection:ShowAnchorLine(selection, GetOppositeEdge(anchor.edge), anchor.align)
+                Engine.AnchorLines:ShowOn(selection, GetOppositeEdge(anchor.edge), anchor.align)
             end
         else
             if selection.isOrbitSelection then
@@ -766,7 +702,7 @@ function Selection:UpdateVisuals(frame, selection)
                     return
                 end
             end
-            Selection:ShowAnchorLine(selection, nil)
+            Engine.AnchorLines:Hide(selection)
         end
     else
         selection:Hide()

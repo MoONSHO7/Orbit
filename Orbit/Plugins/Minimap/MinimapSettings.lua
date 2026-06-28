@@ -40,7 +40,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 { value = "round", label = L.PLU_MINIMAP_ROUND },
                 { value = "splatter", label = L.PLU_MINIMAP_SPLATTER },
             },
-            default = "round",
+            default = "square",
             onChange = function(val)
                 self:SetSetting(SYSTEM_ID, "Shape", val)
                 self:ApplySettings()

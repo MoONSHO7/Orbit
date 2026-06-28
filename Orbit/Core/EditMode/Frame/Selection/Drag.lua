@@ -187,20 +187,20 @@ local function OnDragUpdate(selectionOverlay, elapsed)
     then
         if selectionOverlay.lastAnchorTarget then
             local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
-            Selection:ShowAnchorLine(oldSel, nil)
+            Engine.AnchorLines:Hide(oldSel)
         end
-        Selection:ShowAnchorLine(selectionOverlay, nil)
+        Engine.AnchorLines:Hide(selectionOverlay)
 
         local targetSel = Selection.selections[anchorTarget]
-        Selection:ShowAnchorLine(targetSel, anchorEdge, lineAlign)
-        Selection:ShowAnchorLine(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
+        Engine.AnchorLines:ShowOn(targetSel, anchorEdge, lineAlign)
+        Engine.AnchorLines:ShowOn(selectionOverlay, GetOppositeEdge(anchorEdge), lineAlign)
 
         selectionOverlay.lastAnchorTarget = anchorTarget
         selectionOverlay.lastAnchorAlign = lineAlign
     elseif not anchorTarget and selectionOverlay.lastAnchorTarget then
         local oldSel = Selection.selections[selectionOverlay.lastAnchorTarget]
-        Selection:ShowAnchorLine(oldSel, nil)
-        Selection:ShowAnchorLine(selectionOverlay, nil)
+        Engine.AnchorLines:Hide(oldSel)
+        Engine.AnchorLines:Hide(selectionOverlay)
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
@@ -307,11 +307,11 @@ local function TeardownDrag(selectionOverlay, parent)
 
     local Selection = Engine.FrameSelection
     if selectionOverlay.lastAnchorTarget then
-        Selection:ShowAnchorLine(Selection.selections[selectionOverlay.lastAnchorTarget], nil)
+        Engine.AnchorLines:Hide(Selection.selections[selectionOverlay.lastAnchorTarget])
         selectionOverlay.lastAnchorTarget = nil
         selectionOverlay.lastAnchorAlign = nil
     end
-    Selection:ShowAnchorLine(selectionOverlay, nil)
+    Engine.AnchorLines:Hide(selectionOverlay)
     selectionOverlay:SetScript("OnUpdate", nil)
     SetBlizzardSnapPreview(parent, false)
 

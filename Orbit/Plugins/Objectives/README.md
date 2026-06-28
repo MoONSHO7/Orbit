@@ -143,9 +143,9 @@ on first load, `MigrateColorSettings` converts any legacy colour-curve format (`
 | key | type | default | description |
 |---|---|---|---|
 | `Scale` | slider 50..200 | 100 | container scale (%) |
-| `Width` | slider 180..400 | 248 | container width (px) |
-| `Height` | slider 200..1200 | 700 | container height (px) |
-| `ShowBorder` | checkbox | true | orbit border around container |
+| `Width` | slider 180..400 | 300 | container width (px) |
+| `Height` | slider 200..1200 | 334 | container height (px) |
+| `ShowBorder` | checkbox | false | orbit border around container |
 | `BackgroundOpacity` | slider 0..100 | 0 | solid backdrop opacity (%) |
 | `HeaderSeparators` | checkbox | true | thin line under each module header |
 | `HeaderColor` | solidcolor | white | module header + separator colour (supports the picker's Class Color pin) |

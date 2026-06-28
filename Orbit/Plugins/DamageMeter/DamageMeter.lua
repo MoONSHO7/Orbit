@@ -16,7 +16,6 @@ local Plugin = Orbit:RegisterPlugin("Damage Meter", SYSTEM_ID, {
     defaults = {
         MeterDefs   = {},
         DisabledComponents = {},
-        AutoSwitchToCurrent = true,
         ComponentPositions = {
             Rank       = { anchorX = "LEFT",  offsetX = 4,  anchorY = "CENTER", offsetY = 0, justifyH = "LEFT"  },
             Name       = { anchorX = "LEFT",  offsetX = 26, anchorY = "CENTER", offsetY = 0, justifyH = "LEFT"  },
@@ -48,6 +47,7 @@ local DEF_KEY_MAP = {
     Title               = "title",
     TitleSize           = "titleSize",
     BreakdownMode       = "breakdownMode",
+    AutoSwitch          = "autoSwitch",
     Position            = "position",
     Anchor              = "anchor",
     ComponentPositions  = "componentPositions",
@@ -325,16 +325,16 @@ function Plugin:ReturnToChart(id)
     self:RenderAllMeters()
 end
 
--- Combat-start flip: force every meter to Current / chart so users don't stare at stale Overall data.
-function Plugin:SnapAllMetersToCurrent()
+-- Combat-start flip: snap each meter that opted into autoSwitch to Current / chart so it doesn't stare at stale Overall data.
+function Plugin:SnapAutoSwitchMeters()
     local defs = self:GetMeterDefs()
     local changed = false
     for _, def in pairs(defs) do
         -- breakdownGUID can be secret (race); treat secret as "needs reset" so the `~= nil` compare never throws.
         local hasBreakdown = issecretvalue(def.breakdownGUID) or def.breakdownGUID ~= nil
-        if def.sessionType ~= DM.SessionType.Current or def.sessionID ~= nil
+        if def.autoSwitch and (def.sessionType ~= DM.SessionType.Current or def.sessionID ~= nil
            or (def.viewMode ~= nil and def.viewMode ~= "chart")
-           or hasBreakdown or def.scrollOffset ~= 0 then
+           or hasBreakdown or def.scrollOffset ~= 0) then
             def.sessionType         = DM.SessionType.Current
             def.sessionID           = nil
             def.sessionName         = nil
@@ -399,7 +399,13 @@ end
 function Plugin:NormalizeMeterDefs()
     local defs = self:GetMeterDefs()
     local changed = false
+    -- autoSwitch was one plugin-global toggle; seed each pre-existing def from it before the default backfill flips nils to true, so a user who turned it off doesn't get it forced back on.
+    local legacyAutoSwitch = self:GetSetting(SYSTEM_INDEX, "AutoSwitchToCurrent")
     for _, def in pairs(defs) do
+        if def.autoSwitch == nil and legacyAutoSwitch ~= nil then
+            def.autoSwitch = legacyAutoSwitch
+            changed = true
+        end
         for k, v in pairs(DM.DefaultDef) do
             if def[k] == nil then def[k] = v; changed = true end
         end
@@ -432,9 +438,7 @@ function Plugin:OnLoad()
     self:RegisterStandardEvents()
 
     Orbit.EventBus:On("PLAYER_REGEN_DISABLED", function()
-        if self:GetSetting(SYSTEM_INDEX, "AutoSwitchToCurrent") then
-            self:SnapAllMetersToCurrent()
-        end
+        self:SnapAutoSwitchMeters()
     end, self)
 
     -- Leaving combat fires no DAMAGE_METER update; flag a re-fetch so bars drop the mid-fight secret GUIDs that keep the breakdown issecretvalue-blocked (the UITicker render lands past the transition race).
