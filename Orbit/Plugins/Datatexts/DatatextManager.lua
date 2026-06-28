@@ -46,6 +46,34 @@ end
 function DatatextManager:GetDatatext(id) return datatexts[id] end
 function DatatextManager:GetAllDatatexts() return datatexts end
 
+-- [ SNAP TARGETS ] ----------------------------------------------------------------------------------
+local function IsAnchorDescendant(frame, ancestor)
+    local FA = Orbit.Engine.FrameAnchor
+    local cur = FA:GetAnchorParent(frame)
+    local guard = 0
+    while cur and guard < 64 do
+        if cur == ancestor then return true end
+        cur = FA:GetAnchorParent(cur)
+        guard = guard + 1
+    end
+    return false
+end
+
+-- Skip candidates anchored (directly or transitively) to the dragged frame — anchoring to them would form a cycle that CreateAnchor rejects.
+function DatatextManager:GetSnapTargets(excludeFrame)
+    local targets = {}
+    for _, f in ipairs(Orbit.Engine.FrameSelection:GetRegisteredFrames()) do
+        if f ~= excludeFrame and not IsAnchorDescendant(f, excludeFrame) then targets[#targets + 1] = f end
+    end
+    for _, dt in pairs(datatexts) do
+        local f = dt.frame
+        if dt.isPlaced and f and f ~= excludeFrame and f:IsShown() and not IsAnchorDescendant(f, excludeFrame) then
+            targets[#targets + 1] = f
+        end
+    end
+    return targets
+end
+
 -- [ LOCK / UNLOCK ] ---------------------------------------------------------------------------------
 function DatatextManager:CanDrag() return not isLocked end
 
@@ -143,7 +171,8 @@ function DatatextManager:UnplaceDatatext(id, skipLayout)
     local datatext = datatexts[id]
     if not datatext then return end
     datatext.isPlaced = false
-    if datatext.frame then 
+    if datatext.frame then
+        Orbit.Engine.FrameAnchor:BreakAnchor(datatext.frame, true)
         datatext.frame:Hide()
         datatext.frame:SetMovable(false)
         if Orbit.OOCFadeMixin then
@@ -206,6 +235,7 @@ function DatatextManager:OnDatatextDragStop(datatextId)
     local datatext = datatexts[datatextId]
     if not datatext then return false end
     if drawerFrame and drawerFrame:IsShown() and (wasHovering or self:IsCursorOverFrame(drawerFrame)) then
+        if datatext.frame then datatext.frame._dtPendingAnchor = nil end
         self:UnplaceDatatext(datatextId)
         return true
     end
@@ -214,7 +244,13 @@ function DatatextManager:OnDatatextDragStop(datatextId)
     if datatext.frame and datatext.frame.resizeHandle then datatext.frame.resizeHandle:Show() end
     if datatext.frame and datatext.frame.overlay then datatext.frame.overlay:Show() end
     if datatext.frame then self:SetActiveHighlight(datatext.frame, true) end
-    self:ApplyGrowthAnchor(datatext.frame)
+    local pending = datatext.frame and datatext.frame._dtPendingAnchor
+    if datatext.frame then datatext.frame._dtPendingAnchor = nil end
+    -- A frame-relative anchor (CreateAnchor SetPoints to the target edge) replaces the UIParent-edge growth anchor used for free drops.
+    local committed = pending and Orbit.Engine.FrameAnchor:CreateAnchor(datatext.frame, pending.target, pending.edge, nil, nil, pending.align, true)
+    if not committed then
+        self:ApplyGrowthAnchor(datatext.frame)
+    end
     self:SavePositions()
     return false
 end
@@ -240,14 +276,30 @@ function DatatextManager:GetPositionData()
     return plugin:GetSetting(1, "datatextPositions")
 end
 
+-- A UIParent-CENTER position near the frame's current spot, persisted with an anchor so the datatext stays visible if its target later disappears.
+function DatatextManager:GetFreeFallback(frame)
+    local cx, cy = frame:GetCenter()
+    if not cx then return nil end
+    local s = frame:GetScale()
+    return { point = "CENTER", x = (cx * s - UIParent:GetWidth() / 2) / s, y = (cy * s - UIParent:GetHeight() / 2) / s }
+end
+
 function DatatextManager:SavePositions()
     local plugin = Orbit:GetPlugin("Datatexts")
     if not plugin then return end
     local positions = {}
     for id, datatext in pairs(datatexts) do
         if datatext.isPlaced and datatext.frame then
-            local point, _, _, x, y = datatext.frame:GetPoint(1)
-            positions[id] = { placed = true, point = point, x = x, y = y, scale = math.floor((datatext.frame:GetScale() * 100) + 0.5) / 100 }
+            local scale = math.floor((datatext.frame:GetScale() * 100) + 0.5) / 100
+            local anchor = Orbit.Engine.FrameAnchor.anchors[datatext.frame]
+            local targetName = anchor and anchor.parent and anchor.parent:GetName()
+            -- A frame-relative anchor persists by the target's global name; a nameless target degrades to a free UIParent position.
+            if anchor and targetName then
+                positions[id] = { placed = true, scale = scale, anchor = { target = targetName, edge = anchor.edge, align = anchor.align, padding = anchor.padding, fallback = self:GetFreeFallback(datatext.frame) } }
+            else
+                local point, _, _, x, y = datatext.frame:GetPoint(1)
+                positions[id] = { placed = true, point = point, x = x, y = y, scale = scale }
+            end
         else
             positions[id] = { placed = false }
         end
@@ -262,13 +314,70 @@ function DatatextManager:RestorePositions()
     end
     local positions = self:GetPositionData()
     if not positions then return end
+    -- Two passes: place free datatexts first so anchor targets (incl. other datatexts) exist before pass 2 resolves them.
     for id, data in pairs(positions) do
         local datatext = datatexts[id]
         if datatext and data.placed then
             datatext:SetScale(data.scale or 1.0)
-            self:PlaceDatatext(id, data.point, data.x, data.y, true)
+            if not data.anchor then
+                self:PlaceDatatext(id, data.point, data.x, data.y, true)
+            end
         end
     end
+    local pending = nil
+    for id, data in pairs(positions) do
+        if datatexts[id] and data.placed and data.anchor then
+            local target = _G[data.anchor.target]
+            if target then
+                self:ApplyAnchor(id, target, data.anchor)
+            else
+                -- Target not loaded yet: show the datatext at its free fallback so it isn't invisible, and retry the anchor on world entry.
+                self:PlaceAtAnchorFallback(id, data.anchor)
+                pending = pending or {}
+                pending[#pending + 1] = { id = id, anchor = data.anchor }
+            end
+        end
+    end
+    self.pendingAnchors = pending
+end
+
+-- Place an anchored datatext at its saved free fallback (or screen centre) so it stays visible while its target is unavailable.
+function DatatextManager:PlaceAtAnchorFallback(id, anchor)
+    local fb = anchor.fallback
+    self:PlaceDatatext(id, fb and fb.point or "CENTER", fb and fb.x or 0, fb and fb.y or 0, true)
+end
+
+-- Set up the frame like a placed datatext, then glue it to the target frame's edge; fall back to a free edge anchor if the target edge can't be occupied.
+function DatatextManager:ApplyAnchor(id, target, anchor)
+    if InCombatLockdown() then
+        Orbit.CombatManager:QueueUpdate(function()
+            local t = _G[anchor.target]
+            if t then self:ApplyAnchor(id, t, anchor) end
+        end)
+        return
+    end
+    self:PlaceDatatext(id, "CENTER", 0, 0, true)
+    local datatext = datatexts[id]
+    if not datatext or not datatext.frame then return end
+    if not Orbit.Engine.FrameAnchor:CreateAnchor(datatext.frame, target, anchor.edge, anchor.padding, nil, anchor.align, true) then
+        self:ApplyGrowthAnchor(datatext.frame)
+    end
+end
+
+-- Retry anchors whose target frame didn't exist at restore (loaded later); driven by the instance watcher on world entry.
+function DatatextManager:DrainPendingAnchors()
+    if not self.pendingAnchors or InCombatLockdown() then return end
+    local stillPending = nil
+    for _, entry in ipairs(self.pendingAnchors) do
+        local target = _G[entry.anchor.target]
+        if target then
+            self:ApplyAnchor(entry.id, target, entry.anchor)
+        else
+            stillPending = stillPending or {}
+            stillPending[#stillPending + 1] = entry
+        end
+    end
+    self.pendingAnchors = stillPending
 end
 
 -- [ INSTANCE VISIBILITY ] ---------------------------------------------------------------------------
@@ -312,7 +421,10 @@ end
 -- Re-evaluate "only in instance" visibility on every world/instance transition; the plugin does not run ApplySettings on PLAYER_ENTERING_WORLD.
 local instanceWatcher = CreateFrame("Frame")
 instanceWatcher:RegisterEvent("PLAYER_ENTERING_WORLD")
-instanceWatcher:SetScript("OnEvent", function() DatatextManager:ApplyInstanceVisibility() end)
+instanceWatcher:SetScript("OnEvent", function()
+    DatatextManager:ApplyInstanceVisibility()
+    DatatextManager:DrainPendingAnchors()
+end)
 
 -- [ ENABLE/DISABLE ALL DRAWER DATATEXTS ] -----------------------------------------------------------
 function DatatextManager:EnableDrawerDatatexts()

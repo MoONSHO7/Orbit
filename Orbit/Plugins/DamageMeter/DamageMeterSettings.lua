@@ -84,17 +84,17 @@ function Plugin:AddSettings(dialog, systemFrame)
     })
 
     if currentTab == L.PLU_DM_TAB_BEHAVIOUR then
-        -- Plugin-global; stored on SYSTEM_INDEX so all meters share the toggle.
+        -- Per-meter: routed into MeterDefs[systemIndex] via the AutoSwitch key map.
         table.insert(schema.controls, {
             type = "checkbox",
-            key = "AutoSwitchToCurrent",
+            key = "AutoSwitch",
             label = L.PLU_DM_AUTO_SWITCH_CURRENT,
             tooltip = L.PLU_DM_AUTO_SWITCH_CURRENT_TT,
-            default = true,
-            getValue = function() return self:GetSetting(DM.SystemIndex, "AutoSwitchToCurrent") end,
-            onChange = function(v) self:SetSetting(DM.SystemIndex, "AutoSwitchToCurrent", v) end,
+            default = DM.DefaultDef.autoSwitch,
+            getValue = function() return self:GetSetting(systemIndex, "AutoSwitch") end,
+            onChange = function(v) self:SetSetting(systemIndex, "AutoSwitch", v) end,
         })
-        -- CVar proxy: read/write Blizzard state directly so our checkbox stays in sync with /console.
+        -- CVar proxy: read/write Blizzard state directly so our checkbox stays in sync with /console. Stays plugin-global — it controls Blizzard's shared session pipeline, not a per-meter render.
         table.insert(schema.controls, {
             type = "checkbox",
             key = "_AutoResetDamageMeter",

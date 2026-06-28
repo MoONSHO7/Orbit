@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="ObjectivesConstants.lua"/>
+    <Script file="ObjectivesPlugin.lua"/>
+    <Script file="ObjectivesSkin.lua"/>
+    <Script file="ObjectivesSettings.lua"/>
+</Ui>

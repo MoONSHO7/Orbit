@@ -31,6 +31,7 @@ local PLUGIN_GROUPS = {
         { label = L.PLG_NAME_TALKING_HEAD, plugins = { "Talking Head" }, triState = true },
         "Minimap", "Minimap Button", "Datatexts",
         { label = L.PLG_NAME_STATUS_BAR_V2,  plugins = { "Status Widget" } },
+        "Objectives",
     }},
 }
 

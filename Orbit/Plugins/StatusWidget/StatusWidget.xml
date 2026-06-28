@@ -9,6 +9,7 @@
     <Script file="LootRoll.lua"/>
     <Script file="Milestones.lua"/>
     <Script file="AlertToasts.lua"/>
+    <Script file="Repair.lua"/>
     <Script file="FillModes.lua"/>
     <Script file="Housing.lua"/>
     <Script file="MythicPlus.lua"/>

@@ -12,6 +12,7 @@ anchor graph (`../Position/Anchor.lua`) and persistence.
 
 | file | responsibility |
 |---|---|
+| AnchorLines.lua | `Engine.AnchorLines` — the gradient edge-bar renderer (`Ensure`/`ShowOn`/`Hide`). builds two half-textures per edge for a centre-out fade; shared by Edit Mode selection overlays (`../Selection.lua`, `Drag.lua`) and the in-world datatext snap preview (`Plugins/Datatexts/BaseDatatext.lua`). |
 | Drag.lua | drag-to-move, mouse-down selection, mouse-wheel padding adjustment. owns the drag lifecycle. |
 | Nudge.lua | arrow-key pixel nudge of the selected frame. |
 | Resize.lua | drag-to-resize handle; writes width/height settings. |

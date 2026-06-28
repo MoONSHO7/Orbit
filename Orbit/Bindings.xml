@@ -6,4 +6,8 @@
         local plugin = Orbit and Orbit:GetPlugin("Orbit_Minimap")
         if plugin and plugin.ToggleView then plugin:ToggleView() end
     </Binding>
+    <Binding name="ORBIT_OBJECTIVES_TOGGLE" category="BINDING_HEADER_ORBIT">
+        local plugin = Orbit and Orbit:GetPlugin("Orbit_Objectives")
+        if plugin and plugin.frame then plugin.frame:SetShown(not plugin.frame:IsShown()) end
+    </Binding>
 </Bindings>

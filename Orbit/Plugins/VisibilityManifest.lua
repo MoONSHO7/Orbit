@@ -43,6 +43,7 @@ local FRAMES = {
     { key = "Minimap",              display = L.PLU_VE_MINIMAP,          plugin = "Minimap",            index = 1,  category = "HUD" },
     { key = "MinimapButton",        display = L.PLU_VE_MINIMAP_BUTTON,   plugin = "Minimap Button",     index = 1,  category = "HUD" },
     { key = "Datatexts",            display = L.PLU_VE_DATATEXTS,        plugin = "Datatexts",          index = 1,  category = "HUD" },
+    { key = "Objectives",           display = L.PLU_VE_OBJECTIVE_TRACKER, plugin = "Objectives",        index = 1,  category = "HUD" },
     { key = "StatusWidget",         display = L.PLU_STATUS_BAR_V2_NAME,  plugin = "Status Widget",      index = 1,  category = "HUD" },
     { key = "PortalDock",           display = L.PLU_VE_PORTAL_DOCK,      plugin = "Portal Dock",        index = 1,  category = "HUD" },
     { key = "RaidPanel",            display = L.PLU_VE_RAID_PANEL,       plugin = "Raid Panel",         index = 1,  category = "UnitFrames" },

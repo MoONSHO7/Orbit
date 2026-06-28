@@ -59,6 +59,7 @@ Plugins\Datatexts\Datatexts.xml
 Plugins\DamageMeter\DamageMeter.xml
 Plugins\StatusWidget\StatusWidget.xml
 Plugins\RaidPanel\RaidPanel.xml
+Plugins\Objectives\Objectives.xml
 Plugins\Extras\TalkingHead.lua
 Plugins\Extras\MinimapButton.lua
 
@@ -68,4 +69,6 @@ Plugins\Extras\MinimapButton.lua
 QoL\UserInterface.lua
 QoL\MoveMore.lua
 QoL\Mouse.lua
+QoL\QuestAutomation.lua
+QoL\NpcAutomation.lua
 QoL\Spotlight\Spotlight.xml

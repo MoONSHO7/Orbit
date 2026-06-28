@@ -65,8 +65,8 @@ function Plugin:ApplyShape()
         Orbit.Skin:ClearNineSliceBorder(frame)
         Orbit.Skin:SkinBorder(frame, frame, 0, bc, false, true)
     else
-        -- Square stays square even under a rounded global Border Style — SetMaskTexture stretches, can't round Minimap corners to match.
-        Orbit.Skin:SkinBorder(frame, frame, borderSize, bc, false, true)
+        -- Square fully inherits the global Border Style (nil colour → global tint); flat + LSM edge files match the surface exactly, but a rounded style's corners can't be followed by the SetMaskTexture'd render surface (stretched flat mask).
+        Orbit.Skin:SkinBorder(frame, frame, borderSize, nil, false)
     end
     self:ApplyBorderRing(bc)
 end

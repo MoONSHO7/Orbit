@@ -40,7 +40,7 @@ function Plugin:AddSettings(dialog, systemFrame)
                 { value = "round", label = L.PLU_MINIMAP_ROUND },
                 { value = "splatter", label = L.PLU_MINIMAP_SPLATTER },
             },
-            default = "round",
+            default = "square",
             onChange = function(val)
                 self:SetSetting(SYSTEM_ID, "Shape", val)
                 self:ApplySettings()
@@ -65,6 +65,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = function(val)
                 self:SetSetting(SYSTEM_ID, "BorderRing", val)
                 self:ApplySettings()
+                if dialog.orbitTabCallback then dialog.orbitTabCallback() end
             end,
         })
 
@@ -79,12 +80,17 @@ function Plugin:AddSettings(dialog, systemFrame)
             default = DEFAULT_SIZE,
         })
 
-        -- Border Colour
+        -- Border (round only, and only for rings with a tinted element — blizzard/round/void; none + fadedcircle draw no tintable ring, and the square border inherits the global Border Style's colour)
         table.insert(schema.controls, {
             type = "color",
             key = "BorderColor",
             label = L.PLU_MINIMAP_BORDER,
             default = { r = 0, g = 0, b = 0, a = 1 },
+            visibleIf = function()
+                if self:GetSetting(SYSTEM_ID, "Shape") ~= "round" then return false end
+                local opt = Orbit.MinimapConstants.BORDER_RING_OPTIONS[self:GetSetting(SYSTEM_ID, "BorderRing") or "none"]
+                return (opt and (opt.fill or opt.atlas or opt.texture)) and true or false
+            end,
             onChange = function(val)
                 self:SetSetting(SYSTEM_ID, "BorderColor", val)
                 self:ApplySettings()

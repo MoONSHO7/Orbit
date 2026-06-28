@@ -32,7 +32,7 @@ local Plugin = Orbit:RegisterPlugin("Minimap", SYSTEM_ID, {
         Size = 300,
         Scale = 100,
         Opacity = 100,
-        Shape = "round",
+        Shape = "square",
         BorderRing = "fadedcircle",
         BorderColor = { r = 0, g = 0, b = 0, a = 1 },
         DifficultyDisplay = "icon",

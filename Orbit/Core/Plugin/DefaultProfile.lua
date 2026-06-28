@@ -16,10 +16,10 @@ Orbit.Profile.defaults = {
                 ["Orbit_TalkingHead"] = { Anchor = false, Position = { y = 233, x = 577, point = "LEFT" } },
             },
             ["Orbit_StatusWidget"] = {
-                ["Orbit_StatusWidget"] = { Anchor = false, Position = { point = "TOPLEFT", x = 24, y = -24 } },
+                ["Orbit_StatusWidget"] = { Anchor = false, Scale = 70, Position = { point = "TOPLEFT", x = 25, y = -25 } },
             },
             ["Orbit_MinimapButton"] = {
-                ["Orbit_MinimapButton"] = { Anchor = false, Position = { y = -27, x = -22, point = "TOPRIGHT" } },
+                ["Orbit_MinimapButton"] = { Anchor = false, Position = { y = -7, x = -7, point = "TOPRIGHT" } },
             },
             ["Orbit_DamageMeter"] = {
                 [1] = {
@@ -27,7 +27,7 @@ Orbit.Profile.defaults = {
                     MeterDefs = {
                         [1] = {
                             id = 1, meterType = 0, sessionType = 0,
-                            barCount = 7, barHeight = 34, border = 2, background = 2,
+                            barCount = 7, barHeight = 34,
                             scrollOffset = 0, anchor = false,
                             position = { y = 52, x = -103, point = "BOTTOMRIGHT" },
                             disabledComponents = { "Status" },
@@ -39,10 +39,10 @@ Orbit.Profile.defaults = {
                             },
                         },
                         [2] = {
-                            id = 2, meterType = 0, sessionType = 0,
-                            barCount = 3, barHeight = 34, border = 2, background = 2,
+                            id = 2, meterType = 0, sessionType = 1, autoSwitch = false,
+                            barCount = 3, barHeight = 34,
                             scrollOffset = 0,
-                            anchor = { target = "OrbitDamageMeter1", align = "CENTER", padding = 42, edge = "TOP", fallback = "OrbitDamageMeter1" },
+                            anchor = { target = "OrbitDamageMeter1", align = "CENTER", padding = 35, edge = "TOP", fallback = "OrbitDamageMeter1" },
                             disabledComponents = { "Status" },
                             componentPositions = {
                                 Rank       = { posY = -1, offsetX = 4,  justifyH = "LEFT",  posX = -91, selfAnchorY = "CENTER", overrides = { FontSize = 8 },  offsetY = 0, anchorX = "LEFT",  anchorY = "CENTER" },
@@ -72,6 +72,12 @@ Orbit.Profile.defaults = {
                 },
                 [30] = { Anchor = false, Position = { y = -190, x = -325, point = "CENTER" } },
             },
+            ["Orbit_Objectives"] = {
+                ["Orbit_Objectives"] = {
+                    Anchor = { target = "OrbitMinimapContainer", fallback = "OrbitMinimapContainer", padding = 2, edge = "BOTTOM", align = "CENTER" },
+                    ShowBorder = false, Width = 300, Height = 334,
+                },
+            },
             ["Orbit_BagBar"] = {
                 ["Orbit_BagBar"] = {
                     Anchor = { target = "OrbitMicroMenuContainer", padding = 2, edge = "TOP", align = "RIGHT" },
@@ -81,8 +87,8 @@ Orbit.Profile.defaults = {
                 [1] = { Anchor = { target = "OrbitTargetCastBar", padding = 2, edge = "TOP", align = "LEFT" } },
             },
             ["Orbit_Tour"] = {
-                ["A"] = { Anchor = false, Position = { y = 9, x = -89, point = "CENTER" } },
-                ["B"] = { Anchor = { target = "OrbitTourFrameA", fallback = "OrbitTourFrameA", padding = 44, edge = "RIGHT", align = "BOTTOM" } },
+                ["A"] = { Anchor = false, Position = { y = 37, x = -40, point = "CENTER" }, Width = 113, Height = 32 },
+                ["B"] = { Anchor = { target = "OrbitTourFrameA", fallback = "OrbitTourFrameA", padding = 11, edge = "RIGHT", align = "TOP" } },
             },
             ["Orbit_TargetOfFocusFrame"] = {
                 [101] = { Anchor = { target = "OrbitFocusBuffsFrame", padding = 10, edge = "BOTTOM", align = "RIGHT" } },
@@ -91,7 +97,7 @@ Orbit.Profile.defaults = {
                 [1] = { Anchor = { target = "OrbitFocusFrame", padding = 0, edge = "BOTTOM", align = "CENTER" } },
             },
             ["Orbit_Minimap"] = {
-                ["Orbit_Minimap"] = { Anchor = false, Position = { y = -3, x = -3, point = "TOPRIGHT" } },
+                ["Orbit_Minimap"] = { Anchor = false, Position = { y = -3, x = -3, point = "TOPRIGHT" }, Shape = "square" },
             },
             ["Orbit_FocusFrame"] = {
                 [3] = { Anchor = { target = "OrbitTargetFrame", padding = 42, edge = "RIGHT", align = "CENTER" } },
@@ -124,12 +130,12 @@ Orbit.Profile.defaults = {
                 },
             },
             ["Orbit_ActionBars"] = {
-                [1] = { Anchor = false, Position = { y = 42, x = 0, point = "BOTTOM" } },
-                [2] = { Anchor = { align = "LEFT", target = "OrbitActionBar1", fallback = "OrbitActionBar1", edge = "TOP", padding = 1 } },
-                [3] = { Anchor = { target = "OrbitActionBar2", padding = 40, edge = "LEFT", align = "TOP" }, NumIcons = 8, Rows = 2 },
-                [4] = { Anchor = { target = "OrbitActionBar2", padding = 40, edge = "RIGHT", align = "TOP" }, NumIcons = 8, Rows = 2 },
-                [5] = { Anchor = { align = "CENTER", target = "OrbitActionBar6", fallback = "OrbitActionBar6", edge = "LEFT", padding = 1 }, Rows = 12 },
-                [6] = { Anchor = false, Position = { y = -48, x = -2, point = "RIGHT" }, Rows = 12 },
+                [1] = { Anchor = false, Position = { y = 14, x = 0, point = "BOTTOM" }, NumActionBars = 4, IconSize = 32 },
+                [2] = { Anchor = { align = "LEFT", target = "OrbitActionBar1", fallback = "OrbitActionBar1", edge = "TOP", padding = 1 }, IconSize = 32 },
+                [3] = { Anchor = { target = "OrbitActionBar2", fallback = "OrbitActionBar1", ancestry = { "OrbitActionBar1" }, padding = 30, edge = "LEFT", align = "TOP" }, NumIcons = 8, Rows = 2, IconSize = 32 },
+                [4] = { Anchor = { target = "OrbitActionBar2", fallback = "OrbitActionBar1", ancestry = { "OrbitActionBar1" }, padding = 30, edge = "RIGHT", align = "TOP" }, NumIcons = 8, Rows = 2, IconSize = 32 },
+                [5] = { Anchor = false, Position = { y = 110, x = 0, point = "BOTTOMRIGHT" }, Rows = 12 },
+                [6] = { Anchor = false, Position = { y = 110, x = -38, point = "BOTTOMRIGHT" }, Rows = 12 },
                 [7] = { Anchor = false, Position = { y = -45, x = -91, point = "RIGHT" }, Scale = 90, Rows = 12, IconPadding = 2 },
                 [8] = { Anchor = false, Position = { y = -46, x = -45, point = "RIGHT" }, Scale = 90, Rows = 12, IconPadding = 2 },
                 [9] = { Anchor = { align = "CENTER", target = "OrbitActionBar2", fallback = "OrbitActionBar1", edge = "TOP", padding = 4, ancestry = { "OrbitActionBar1" } }, Scale = 80, HideEmptyButtons = true, IconPadding = 2, IconSize = 24 },
@@ -160,7 +166,7 @@ Orbit.Profile.defaults = {
                 ["Orbit_MicroMenu"] = { Anchor = false, Position = { y = 1, x = 0, point = "BOTTOMRIGHT" } },
             },
             ["Orbit_RaidPanel"] = {
-                [1] = { Anchor = false, Position = { y = 0, x = 77, point = "LEFT" } },
+                [1] = { Anchor = false, Position = { y = -1, x = 41, point = "LEFT" } },
             },
             ["Orbit_TargetCastBar"] = {
                 [1] = { Anchor = { target = "OrbitTargetFrame", padding = 0, edge = "TOP", align = "CENTER" } },
@@ -190,10 +196,10 @@ Orbit.Profile.defaults = {
                 [1] = {
                     -- datatextPositions is per-instance placement state, no schema seed.
                     datatextPositions = {
-                        Performance = { placed = true, x = -567, y = 63, point = "BOTTOMRIGHT", scale = 1 },
-                        Spec        = { placed = true, x = 573,  y = 56, point = "BOTTOMLEFT",  scale = 1 },
-                        Hearthstone = { placed = true, x = -515, y = 47, point = "BOTTOMRIGHT", scale = 1.23 },
-                        CombatTimer = { placed = true, x = 314,  y = 66, point = "BOTTOMLEFT",  scale = 1.83 },
+                        Performance = { placed = true, scale = 1,    anchor = { target = "OrbitDatatextHearthstone", fallback = { x = 447,  y = -514, point = "CENTER" }, padding = 20, edge = "RIGHT", align = "CENTER" } },
+                        Spec        = { placed = true, scale = 1,    anchor = { target = "OrbitActionBar3",          fallback = { x = -421, y = -514, point = "CENTER" }, padding = 30, edge = "LEFT",  align = "CENTER" } },
+                        Hearthstone = { placed = true, scale = 1.23, anchor = { target = "OrbitActionBar4",          fallback = { x = 321,  y = -418, point = "CENTER" }, padding = 30, edge = "RIGHT", align = "CENTER" } },
+                        CombatTimer = { placed = true, scale = 1.83, anchor = { target = "OrbitPlayerFrame",         fallback = { x = -239, y = -162, point = "CENTER" }, padding = 50, edge = "LEFT",  align = "CENTER" } },
                         Time = { placed = false }, Gold = { placed = false }, Speed = { placed = false },
                         ItemLevel = { placed = false }, Crit = { placed = false }, Volume = { placed = false },
                         Friends = { placed = false }, Mastery = { placed = false }, Versatility = { placed = false },
@@ -225,9 +231,9 @@ Orbit.Profile.defaults = {
         BarColor = { a = 1, b = 0.2, g = 0.8, r = 0.2 },
         AbsorbColor = { a = 0.85, r = 0.165, g = 0.71, b = 1 },
         AlwaysShowAbsorb = true,
-        Font = "Barlow Condensed Bold", HideWhenMounted = false, BorderSize = 1,
-        PixelBorderSize = 1, IconPixelBorderSize = 1,
-        ClassColorBackground = false, IconBorderSize = 1, OverlayAllFrames = false,
+        Font = "Barlow Condensed Bold", HideWhenMounted = false, BorderSize = 2,
+        PixelBorderSize = 2, IconPixelBorderSize = 2,
+        ClassColorBackground = false, IconBorderSize = 2, OverlayAllFrames = false,
         IconBorderColor = { none = true },
         FontOutline = "OUTLINE", FontShadow = false, UseClassColors = true, Texture = "Orbit Gradient Top-Bottom",
         TrackedContainers = {}, NextTrackedContainerId = 1000,

@@ -14,8 +14,6 @@ local HISTORY_SIZE = 60
 local HISTORY_INTERVAL_SEC = 60
 local SECONDS_PER_HOUR = 3600
 local SECONDS_PER_DAY = 86400
-local BAG_COUNT = 4
-local JUNK_QUALITY = 0
 local MIN_HISTORY_POINTS = 2
 local DAILY_HISTORY_DAYS = 7
 
@@ -27,7 +25,6 @@ W.history = RingBuffer:New(HISTORY_SIZE)
 W.sessionStart = 0
 W.sessionStartTime = 0
 W.lastHistoryTime = 0
-W.autoSellEnabled = false
 
 -- [ HELPERS ] ---------------------------------------------------------------------------------------
 local function FormatProfit(profit)
@@ -100,30 +97,6 @@ function W:OnMoneyChange()
     self:SaveCharacterGold(GetMoney())
 end
 
--- [ AUTO SELL ] -------------------------------------------------------------------------------------
-function W:AutoSellJunk()
-    if not self.autoSellEnabled then return end
-    local profit = 0
-    for bag = 0, BAG_COUNT do
-        for slot = 1, C_Container.GetContainerNumSlots(bag) do
-            local info = C_Container.GetContainerItemInfo(bag, slot)
-            if info and info.quality == JUNK_QUALITY and not info.isLocked then
-                local price = select(11, GetItemInfo(info.hyperlink))
-                if price and price > 0 then C_Container.UseContainerItem(bag, slot); profit = profit + (price * info.stackCount) end
-            end
-        end
-    end
-    if profit > 0 then print("|cff00ff00" .. L.MSG_DT_AUTOSELL_F:format(Fmt:FormatMoney(profit)) .. "|r") end
-end
-
--- [ CONTEXT MENU ] ----------------------------------------------------------------------------------
-function W:GetMenuItems()
-    return {
-        { text = L.PLU_DT_GOLD_AUTOSELL, checked = self.autoSellEnabled, func = function() self.autoSellEnabled = not self.autoSellEnabled end, closeOnClick = false },
-        { text = L.PLU_DT_GOLD_RESET_SESSION, func = function() self.sessionStart = GetMoney(); self.sessionStartTime = GetTime(); self.history:Clear(); self:Update() end },
-    }
-end
-
 -- [ TOOLTIP ] ---------------------------------------------------------------------------------------
 function W:ShowTooltip()
     GameTooltip:SetOwner(self.frame, "ANCHOR_TOP")
@@ -158,7 +131,6 @@ function W:ShowTooltip()
     end
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine(L.CMN_LEFT_CLICK, L.PLU_DT_BAG_OPEN_BAGS, 0.7, 0.7, 0.7, 1, 1, 1)
-    GameTooltip:AddDoubleLine(L.CMN_RIGHT_CLICK, L.PLU_DT_GOLD_SETTINGS, 0.7, 0.7, 0.7, 1, 1, 1)
     GameTooltip:Show()
     -- Graph
     if self.history:Count() > MIN_HISTORY_POINTS then
@@ -187,12 +159,10 @@ function W:Init()
     self.lastHistoryTime = GetTime()
     self:SetUpdateFunc(function() self:Update() end)
     self:SetTooltipFunc(function() self:ShowTooltip() end)
-    self:SetClickFunc(function(_, btn) if btn == "RightButton" then self:ShowContextMenu() else ToggleAllBags() end end)
+    self:SetClickFunc(function(_, btn) if btn == "LeftButton" then ToggleAllBags() end end)
     self.leftClickHint = L.PLU_DT_BAG_OPEN_BAGS
-    self.rightClickHint = L.PLU_DT_GOLD_SETTINGS
     self:RegisterEvent("PLAYER_MONEY", function() self:OnMoneyChange() end)
     self:RegisterEvent("PLAYER_ENTERING_WORLD", function() self:OnMoneyChange() end)
-    self:RegisterEvent("MERCHANT_SHOW", function() self:AutoSellJunk() end)
     self:Register()
     self:Update()
 end
