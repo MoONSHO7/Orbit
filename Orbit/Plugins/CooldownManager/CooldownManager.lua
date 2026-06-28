@@ -203,14 +203,16 @@ function Plugin:OnLoad()
         -- Text sources
         local fontPath = buffBarPlugin:GetGlobalFont()
         local textSize = 8
-        local name = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+        local name = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
         name:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(name)
         name:SetPoint("LEFT", preview, "LEFT", 5, 0)
         name:SetText(L.PLU_COOLDOWN_PREVIEW_BUFF)
         name:SetTextColor(1, 1, 1, 1)
 
-        local timer = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+        local timer = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
         timer:SetFont(fontPath, textSize, Orbit.Skin:GetFontOutline())
+        Orbit.Skin:ApplyFontShadow(timer)
         timer:SetPoint("RIGHT", preview, "RIGHT", -5, 0)
         timer:SetText("12.4")
         timer:SetTextColor(1, 1, 1, 1)

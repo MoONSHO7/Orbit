@@ -2,16 +2,17 @@ local _, Orbit = ...
 local Layout = Orbit.Engine.Layout
 
 -- [ DUAL RANGE SLIDER WIDGET ]-----------------------------------------------------------------------
--- Two MinimalSliderWithSteppers diamond thumbs that can't cross (minGap apart); opts {onChange,minGap,dual,lowTip,highTip}, dual=false hides the high thumb.
+-- Two diamond thumbs (low/high) that can't cross (kept minGap apart). The drag is driven manually — OnMouseDown starts it and an OnUpdate poll on the mouse-button state stops it — because WoW's OnDragStart/OnDragStop fire unreliably mid-hold. Callbacks (set via Configure): onPreview(low,high) fires live while dragging, onCommit(low,high) fires once on release. The widget knows nothing about what it edits; the caller binds onCommit to its own data.
 local STEP = 1
 local FILL_H = 4
-local THUMB_HIT_PAD = 8
+local HIT_PAD = 8
+local EDGE_PAD = 6
 
-function Layout:CreateRangeSlider(parent, width, opts)
-    opts = opts or {}
+function Layout:CreateRangeSlider(parent, width)
     local rs = CreateFrame("Frame", nil, parent)
     rs:SetSize(width, 20)
     rs.low, rs.high = 0, 100
+    rs._minGap, rs._dual = 0, true
 
     local bi = C_Texture.GetAtlasInfo("Minimal_SliderBar_Button")
     local thumbW, thumbH = (bi and bi.width or 14), (bi and bi.height or 14)
@@ -27,35 +28,32 @@ function Layout:CreateRangeSlider(parent, width, opts)
     mid:SetPoint("TOPLEFT", capL, "TOPRIGHT")
     mid:SetPoint("TOPRIGHT", capR, "TOPLEFT")
 
-    local trackRef = CreateFrame("Frame", nil, rs)
-    trackRef:SetPoint("LEFT", thumbW / 2, 0)
-    trackRef:SetPoint("RIGHT", -thumbW / 2, 0)
-    trackRef:SetHeight(1)
+    -- Thumb travel is inset past the bar's end caps (EDGE_PAD) so the diamonds at 0%/100% sit inside the widget rather than off its edges. The width is set EXPLICITLY (not derived from a RIGHT anchor) so track:GetWidth() is valid even while the row is built under a momentarily-hidden accordion body — otherwise Reposition would read 0 and the high thumb would not render until the next interaction.
+    local trackW = width - thumbW - 2 * EDGE_PAD
+    local track = CreateFrame("Frame", nil, rs)
+    track:SetPoint("LEFT", thumbW / 2 + EDGE_PAD, 0)
+    track:SetSize(trackW, 1)
 
     local fill = rs:CreateTexture(nil, "ARTWORK")
     fill:SetColorTexture(1, 0.82, 0, 0.5)
     fill:SetHeight(FILL_H)
 
     local function Snap(v) return math.floor(v / STEP + 0.5) * STEP end
+    local function ValueX(v) return (v / 100) * track:GetWidth() end
 
-    local function Thumb()
+    local function MakeThumb()
         local t = CreateFrame("Button", nil, rs)
-        t:SetSize(thumbW + THUMB_HIT_PAD, thumbH + THUMB_HIT_PAD)
-        local tex = t:CreateTexture(nil, "OVERLAY")
-        tex:SetSize(thumbW, thumbH)
-        tex:SetPoint("CENTER")
-        tex:SetAtlas("Minimal_SliderBar_Button")
-        t.tex = tex
+        t:SetSize(thumbW + HIT_PAD, thumbH + HIT_PAD)
+        t.tex = t:CreateTexture(nil, "OVERLAY")
+        t.tex:SetSize(thumbW, thumbH)
+        t.tex:SetPoint("CENTER")
+        t.tex:SetAtlas("Minimal_SliderBar_Button")
         local hl = t:CreateTexture(nil, "HIGHLIGHT")
         hl:SetSize(thumbW, thumbH)
         hl:SetPoint("CENTER")
         hl:SetAtlas("Minimal_SliderBar_Button")
         hl:SetBlendMode("ADD")
         hl:SetAlpha(0.4)
-        t:RegisterForDrag("LeftButton")
-        -- Press/grab feedback — the diamond pops while held.
-        t:SetScript("OnMouseDown", function(self) self.tex:SetScale(1.2) end)
-        t:SetScript("OnMouseUp", function(self) self.tex:SetScale(1) end)
         t:SetScript("OnEnter", function(self)
             if not self._tip then return end
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -65,64 +63,75 @@ function Layout:CreateRangeSlider(parent, width, opts)
         t:SetScript("OnLeave", GameTooltip_Hide)
         return t
     end
-    local lowThumb, highThumb = Thumb(), Thumb()
+    local lowThumb, highThumb = MakeThumb(), MakeThumb()
 
-    local function ValueX(v) return (v / 100) * trackRef:GetWidth() end
     local function Reposition()
-        if trackRef:GetWidth() <= 0 then return end
+        if track:GetWidth() <= 0 then return end
         lowThumb:ClearAllPoints()
-        lowThumb:SetPoint("CENTER", trackRef, "LEFT", ValueX(rs.low), 0)
+        lowThumb:SetPoint("CENTER", track, "LEFT", ValueX(rs.low), 0)
         fill:ClearAllPoints()
         if rs._dual then
             highThumb:Show()
             highThumb:ClearAllPoints()
-            highThumb:SetPoint("CENTER", trackRef, "LEFT", ValueX(rs.high), 0)
-            fill:SetPoint("LEFT", trackRef, "LEFT", ValueX(rs.low), 0)
-            fill:SetPoint("RIGHT", trackRef, "LEFT", ValueX(rs.high), 0)
+            highThumb:SetPoint("CENTER", track, "LEFT", ValueX(rs.high), 0)
+            fill:SetPoint("LEFT", track, "LEFT", ValueX(rs.low), 0)
+            fill:SetPoint("RIGHT", track, "LEFT", ValueX(rs.high), 0)
         else
             highThumb:Hide()
-            fill:SetPoint("LEFT", trackRef, "LEFT", 0, 0)
-            fill:SetPoint("RIGHT", trackRef, "LEFT", ValueX(rs.low), 0)
+            fill:SetPoint("LEFT", track, "LEFT", 0, 0)
+            fill:SetPoint("RIGHT", track, "LEFT", ValueX(rs.low), 0)
         end
     end
 
-    -- GetCursorPosition is screen pixels; divide by effective scale to land in trackRef's coordinate space.
+    -- GetCursorPosition is screen pixels; divide by effective scale to land in the track's coordinate space.
     local function CursorVal()
-        local left, w = trackRef:GetLeft(), trackRef:GetWidth()
+        local left, w = track:GetLeft(), track:GetWidth()
         if not left or w <= 0 then return nil end
         local frac = (GetCursorPosition() / rs:GetEffectiveScale() - left) / w
-        if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
-        return Snap(frac * 100)
+        return Snap(math.max(0, math.min(1, frac)) * 100)
     end
 
     local active
-    local function DragUpdate()
-        local v = active and CursorVal()
+    local function Stop()
+        if not active then return end
+        active.tex:SetScale(1)
+        active = nil
+        rs:SetScript("OnUpdate", nil)
+        if rs._onDragStop then rs._onDragStop() end
+        if rs._onCommit then rs._onCommit(rs.low, rs.high) end
+    end
+    local function DragTick()
+        if not IsMouseButtonDown("LeftButton") then Stop() return end
+        local v = CursorVal()
         if not v then return end
         local oldLow, oldHigh = rs.low, rs.high
         if active == lowThumb then
-            local ceil = rs._dual and (rs.high - rs._minGap) or 100
-            rs.low = math.max(0, math.min(v, ceil))
+            rs.low = math.max(0, math.min(v, rs._dual and rs.high - rs._minGap or 100))
         else
             rs.high = math.min(100, math.max(v, rs.low + rs._minGap))
         end
-        -- Values snap to whole percents, so most frames land on the same value — skip the repaint/callback unless it actually moved.
+        -- Snapped to whole percents, so most frames land on the same value — skip repaint/preview unless it actually moved.
         if rs.low == oldLow and rs.high == oldHigh then return end
         Reposition()
-        if rs._onChange then rs._onChange(rs.low, rs.high) end
+        if rs._onPreview then rs._onPreview(rs.low, rs.high) end
     end
-    local function Start(t) active = t; rs:SetScript("OnUpdate", DragUpdate) end
-    local function Stop()
-        if active then active.tex:SetScale(1) end
-        active = nil
-        rs:SetScript("OnUpdate", nil)
+    local function StartDrag(t)
+        if active then return end
+        active = t
+        t.tex:SetScale(1.2)
+        if rs._onDragStart then rs._onDragStart() end
+        rs:SetScript("OnUpdate", DragTick)
     end
-    lowThumb:SetScript("OnDragStart", function() Start(lowThumb) end)
-    highThumb:SetScript("OnDragStart", function() Start(highThumb) end)
-    lowThumb:SetScript("OnDragStop", Stop)
-    highThumb:SetScript("OnDragStop", Stop)
+    lowThumb:SetScript("OnMouseDown", function() StartDrag(lowThumb) end)
+    highThumb:SetScript("OnMouseDown", function() StartDrag(highThumb) end)
+    lowThumb:SetScript("OnMouseUp", Stop)
+    highThumb:SetScript("OnMouseUp", Stop)
+    -- Hidden mid-drag (recycled / panel closing) must end the drag so a pooled slider never resumes a stale drag on reuse.
+    rs:SetScript("OnHide", Stop)
+    rs:SetScript("OnShow", Reposition)
+    rs:SetScript("OnSizeChanged", Reposition)
 
-    -- Repositions only; never pushes a clamped value back into onChange (avoids drifting saved data on load).
+    -- Repositions only; never fires onPreview/onCommit (avoids drifting saved data on load/rebuild).
     function rs:SetRange(low, high)
         self.low = math.max(0, math.min(100, Snap(low or 0)))
         self.high = math.max(0, math.min(100, Snap(high or 100)))
@@ -135,14 +144,14 @@ function Layout:CreateRangeSlider(parent, width, opts)
     function rs:Configure(o)
         o = o or {}
         self._minGap = o.minGap or 0
-        self._onChange = o.onChange
         self._dual = o.dual ~= false
+        self._onPreview = o.onPreview
+        self._onCommit = o.onCommit
+        self._onDragStart = o.onDragStart
+        self._onDragStop = o.onDragStop
         lowThumb._tip = o.lowTip
         highThumb._tip = o.highTip
     end
 
-    rs:Configure(opts)
-    rs:SetScript("OnShow", Reposition)
-    rs:SetScript("OnSizeChanged", Reposition)
     return rs
 end

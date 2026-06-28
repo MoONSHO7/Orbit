@@ -65,6 +65,57 @@ local function MigrateDefaultLayout(layouts)
 end
 Orbit.Profile.MigrateDefaultLayout = MigrateDefaultLayout
 
+-- Per-profile visibility store: each profile owns { frames = <VisibilityEngine per-frame settings>, fade = <FadeProfiles> }. Resolved fresh on each access (like the Orbit.runtime.Layouts pointer) so a profile switch needs no clone-in/out and there is no account-wide layer — VisibilityEngine and FadeProfiles both read the active profile's copy.
+local function NewFadeStore() return { profiles = {}, revealAll = false, nextId = 1 } end
+function Orbit.Profile:GetActiveVisibility()
+    local profile = Orbit.db and Orbit.db.profiles and Orbit.db.profiles[Orbit.db.activeProfile]
+    if not profile then return nil end
+    local vis = profile.Visibility
+    if not vis then vis = {}; profile.Visibility = vis end
+    if not vis.frames then vis.frames = {} end
+    if not vis.fade then vis.fade = NewFadeStore() end
+    return vis
+end
+
+-- One-time: visibility moved from the account-wide roots (Orbit.db.VisibilityEngine / .FadeProfiles) into the per-profile blob so each profile is independent, and the stale per-plugin opacity/fade keys the removed VE:Migrate left behind are stripped from every layout. Frames start clean (they have no editing UI and were the source of the old "locked" values); the shared fade profiles are preserved by copying them into every profile.
+local LEGACY_VIS_KEYS = { "Opacity", "OutOfCombatFade", "ShowOnMouseover" }
+local function MigrateVisibilityToProfiles()
+    if not Orbit.db then return end
+    local acct = Orbit.db.AccountSettings
+    if not acct then acct = {}; Orbit.db.AccountSettings = acct end
+    if acct.VisibilityPerProfileV1 then return end
+    local rootFade = Orbit.db.FadeProfiles
+    local profiles = Orbit.db.profiles
+    if type(profiles) == "table" then
+        for _, profile in pairs(profiles) do
+            if type(profile) == "table" then
+                local layouts = profile.Layouts
+                if type(layouts) == "table" then
+                    for _, sysMap in pairs(layouts) do
+                        if type(sysMap) == "table" then
+                            for _, idxMap in pairs(sysMap) do
+                                if type(idxMap) == "table" then
+                                    for _, node in pairs(idxMap) do
+                                        if type(node) == "table" then
+                                            for _, k in ipairs(LEGACY_VIS_KEYS) do node[k] = nil end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                profile.Visibility = profile.Visibility or {}
+                profile.Visibility.frames = {}
+                profile.Visibility.fade = type(rootFade) == "table" and CopyTable(rootFade, {}) or NewFadeStore()
+            end
+        end
+    end
+    Orbit.db.VisibilityEngine = nil
+    Orbit.db.FadeProfiles = nil
+    acct.VisibilityPerProfileV1 = true
+end
+
 local function NormalizeBorderStyle(gs) Orbit.Constants.BorderStyle.Migrate(gs) end
 
 local function SafeApplyPlugin(plugin)
@@ -130,7 +181,7 @@ function Orbit.Profile:Initialize()
         MigrateDefaultLayout(profileData.Layouts)
     end
 
-
+    MigrateVisibilityToProfiles()
 
     self:InitializeSpecSwitching()
 end

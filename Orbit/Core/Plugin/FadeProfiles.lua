@@ -1,5 +1,5 @@
 -- [ FADE PROFILES ENGINE ]---------------------------------------------------------------------------
--- Resolved alpha is the lowest firing profile's target (lowest-alpha-wins), consumed as a multiplicative cap by OOCFadeMixin and ApplySecureBlizzardFrame.
+-- Profiles are stored highest-priority first; the first firing profile that owns a frame wins outright (its target becomes the cap), so a high-priority reveal can override a lower-priority dim. The cap is consumed as a multiplicative math.min by OOCFadeMixin and ApplySecureBlizzardFrame.
 local _, Orbit = ...
 
 Orbit.FadeProfiles = {}
@@ -66,13 +66,8 @@ end
 
 -- [ DB ACCESS ]--------------------------------------------------------------------------------------
 local function GetDB()
-    if not Orbit.db then return nil end
-    local db = Orbit.db.FadeProfiles
-    if not db then
-        db = { profiles = {}, revealAll = false, nextId = 1 }
-        Orbit.db.FadeProfiles = db
-    end
-    return db
+    local vis = Orbit.Profile and Orbit.Profile:GetActiveVisibility()
+    return vis and vis.fade
 end
 
 local function FindProfile(id)
@@ -84,9 +79,39 @@ local function FindProfile(id)
     return nil
 end
 
+-- Mint an id strictly greater than every id already in the store (not merely db.nextId, which a migrated/legacy store can leave under-advanced) so a new profile can never collide with an existing one.
+local function NextProfileId(db)
+    local maxId = (db.nextId or 1) - 1
+    for _, p in ipairs(db.profiles) do
+        if type(p.id) == "number" and p.id > maxId then maxId = p.id end
+    end
+    local id = maxId + 1
+    db.nextId = id + 1
+    return id
+end
+
+-- Self-heal a store that already holds colliding ids: FindProfile's first-match would otherwise route a profile's commit onto the wrong one (e.g. dragging profile 2's fade slider edits profile 1). Reassign every duplicate/non-number id to a fresh unique value and resync nextId. Idempotent.
+local function RepairIds(db)
+    if not db or not db.profiles then return end
+    local seen, maxId = {}, 0
+    for _, p in ipairs(db.profiles) do
+        if type(p.id) == "number" and p.id > maxId then maxId = p.id end
+    end
+    for _, p in ipairs(db.profiles) do
+        if type(p.id) ~= "number" or seen[p.id] then
+            maxId = maxId + 1
+            p.id = maxId
+        end
+        seen[p.id] = true
+    end
+    if (db.nextId or 1) <= maxId then db.nextId = maxId + 1 end
+end
+
 -- [ EVALUATION & RESOLUTION ]------------------------------------------------------------------------
 local resolved = {}
 local mouseoverProfiles = {}
+local winnerByKey = {}
+local claimed = {}
 local fired = {}
 local movementPoll
 local hoverByKey = {}
@@ -160,11 +185,14 @@ end
 function FP:Recompute()
     wipe(resolved)
     wipe(mouseoverProfiles)
+    wipe(winnerByKey)
+    wipe(claimed)
     wipe(fired)
     wipe(anyHovered)
     hasLinked = false
     local db = GetDB()
     if db and not db.revealAll then
+        -- db.profiles is ordered highest-priority first; the first firing profile to own a frame claims it, so lower-priority profiles never override the winner.
         for _, p in ipairs(db.profiles) do
             local firing = self:IsFiring(p)
             fired[p.id] = firing
@@ -180,13 +208,19 @@ function FP:Recompute()
                         end
                     end
                     for veKey in pairs(p.members) do
-                        local list = mouseoverProfiles[veKey]
-                        if not list then list = {}; mouseoverProfiles[veKey] = list end
-                        list[#list + 1] = { target = a, profileId = p.id, linked = linked, maxAlpha = (p.maxOpacity or 100) / 100 }
+                        if not claimed[veKey] then
+                            claimed[veKey] = true
+                            winnerByKey[veKey] = p.id
+                            mouseoverProfiles[veKey] = { target = a, profileId = p.id, linked = linked, maxAlpha = (p.maxOpacity or 100) / 100 }
+                        end
                     end
                 else
                     for veKey in pairs(p.members) do
-                        if not resolved[veKey] or a < resolved[veKey] then resolved[veKey] = a end
+                        if not claimed[veKey] then
+                            claimed[veKey] = true
+                            winnerByKey[veKey] = p.id
+                            resolved[veKey] = a
+                        end
                     end
                 end
             end
@@ -201,19 +235,18 @@ function FP:GetResolvedAlpha(veKey)
     return resolved[veKey] or 1
 end
 
--- Live mouseover resolution: caller passes the member's current hover state (the secure Blizzard path has no hover ticker, so mouseover conditions never reach it — matching VisibilityEngine's "secure frames, no mouseOver" rule).
+-- The highest-priority firing profile that owns this frame (the one whose target became the cap), or nil if none fires. Drives the config UI's "winner" highlight.
+function FP:GetWinningProfile(veKey)
+    return winnerByKey[veKey]
+end
+
+-- Live mouseover resolution: caller passes the member's current hover state (the secure Blizzard path has no hover ticker, so mouseover conditions never reach it — matching VisibilityEngine's "secure frames, no mouseOver" rule). At most one mouseover profile wins a frame (priority claim), so this reads the single winning entry.
 function FP:GetMouseoverAlpha(veKey, isMouseOver)
-    local list = mouseoverProfiles[veKey]
-    if not list then return 1 end
-    local a = 1
-    for _, e in ipairs(list) do
-        local hovered
-        if e.linked then hovered = anyHovered[e.profileId] or false else hovered = isMouseOver end
-        local cap
-        if hovered then cap = e.maxAlpha or 1 else cap = e.target end
-        if cap < a then a = cap end
-    end
-    return a
+    local e = mouseoverProfiles[veKey]
+    if not e then return 1 end
+    local hovered
+    if e.linked then hovered = anyHovered[e.profileId] or false else hovered = isMouseOver end
+    return hovered and (e.maxAlpha or 1) or e.target
 end
 
 function FP:FrameHasMouseoverProfile(veKey)
@@ -293,8 +326,7 @@ end
 function FP:CreateProfile(name)
     local db = GetDB()
     if not db then return nil end
-    local id = db.nextId or 1
-    db.nextId = id + 1
+    local id = NextProfileId(db)
     db.profiles[#db.profiles + 1] = { id = id, name = UniqueName(db, name), enabled = true, fade = 50, maxOpacity = 100, conditions = {}, members = {} }
     Changed(self)
     return id
@@ -304,8 +336,7 @@ function FP:DuplicateProfile(id, name)
     local db = GetDB()
     local src = FindProfile(id)
     if not db or not src then return nil end
-    local newId = db.nextId or 1
-    db.nextId = newId + 1
+    local newId = NextProfileId(db)
     local conds = {}
     for _, c in ipairs(src.conditions) do conds[#conds + 1] = { key = c.key, state = c.state, connector = c.connector } end
     local members = {}
@@ -326,6 +357,16 @@ function FP:DeleteProfile(id)
     Changed(self)
 end
 
+-- List position is priority (index 1 = highest). Swapping a profile one slot earlier promotes it above the profile it overlapped.
+function FP:MoveProfileUp(id)
+    local db = GetDB()
+    if not db then return end
+    local _, index = FindProfile(id)
+    if not index or index <= 1 then return end
+    db.profiles[index], db.profiles[index - 1] = db.profiles[index - 1], db.profiles[index]
+    Changed(self)
+end
+
 function FP:SetEnabled(id, state)
     local p = FindProfile(id)
     if p then p.enabled = state and true or false; Changed(self) end
@@ -339,9 +380,8 @@ function FP:SetName(id, name)
     Changed(self)
 end
 
--- fade = opacity when dimmed (low handle); maxOpacity = ceiling when mouseover-revealed (high handle). Clamped so max >= fade.
-function FP:SetFadeRange(id, fade, maxOpacity)
-    local p = FindProfile(id)
+-- Commit directly onto the profile TABLE the slider was built for — never an id lookup — so a row's slider can only ever edit its own profile, independent of id state. fade = dimmed opacity (low handle); maxOpacity = mouseover reveal ceiling (high handle). Clamped so max >= fade.
+function FP:SetProfileFade(p, fade, maxOpacity)
     if not p then return end
     fade = math.max(0, math.min(100, fade))
     maxOpacity = math.max(0, math.min(100, maxOpacity))
@@ -455,12 +495,16 @@ initFrame:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     C_Timer.After(0.5, function()
         local db = GetDB()
-        if db then MigrateProfiles(db) end
+        if db then RepairIds(db); MigrateProfiles(db) end
         FP:Recompute()
     end)
 end)
 
--- Profiles persist at the OrbitDB root (account-wide). Re-apply caps on profile switch in case member frames were rebuilt.
+-- Fade profiles are per-profile (Orbit.db.profiles[name].Visibility.fade). On profile switch GetDB resolves the new set — recompute caps and refresh the config UI.
 C_Timer.After(0, function()
-    if Orbit.EventBus then Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function() FP:Recompute() end) end
+    if Orbit.EventBus then Orbit.EventBus:On("ORBIT_PROFILE_CHANGED", function()
+        RepairIds(GetDB())
+        FP:Recompute()
+        Orbit.EventBus:Fire("ORBIT_FADE_PROFILES_CHANGED")
+    end) end
 end)

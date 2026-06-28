@@ -332,6 +332,7 @@ function Layout:CreateAccordion(parent, name)
     bar:SetScript("OnLeave", GameTooltip_Hide)
     -- Public API
     function section:GetBody() return body end
+    function section:GetBar() return bar end
     function section:SetStatus(text) status:SetText(text or "") end
     function section:SetContentHeight(h)
         self._contentHeight = h

@@ -66,7 +66,7 @@ end
 
 -- [ CREATOR ] ---------------------------------------------------------------------------------------
 local function Create(container, preview, key, source, data)
-    local visual = container:CreateFontString(nil, "OVERLAY")
+    local visual = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 
     local fontPath, fontSize, fontFlags = source:GetFont()
     local flags = (fontFlags and fontFlags ~= "") and fontFlags or Orbit.Skin:GetFontOutline()

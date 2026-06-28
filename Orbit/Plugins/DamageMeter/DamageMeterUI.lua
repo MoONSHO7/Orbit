@@ -50,6 +50,11 @@ end
 local function GetFontOutline() return Orbit.Skin:GetFontOutline() end
 local function GetBorderSize()  return Orbit.db.GlobalSettings.BorderSize end
 
+local function SetTextFont(fs, size)
+    fs:SetFont(GetFont(), size, GetFontOutline())
+    Orbit.Skin:ApplyFontShadow(fs)
+end
+
 local function GetClassColorRGBA(classFilename)
     if not classFilename or classFilename == "" then return 0.5, 0.5, 0.5, 1 end
     local c = RAID_CLASS_COLORS[classFilename]
@@ -286,23 +291,23 @@ local function CreateBar(parent)
     bar.TextFrame = CreateFrame("Frame", nil, bar)
     bar.TextFrame:SetFrameLevel(bar.StatusBar:GetFrameLevel() + Constants.Levels.Overlay)
 
-    bar.Rank = bar.TextFrame:CreateFontString(nil, "OVERLAY")
-    bar.Rank:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+    bar.Rank = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(bar.Rank, BAR_FONT_SIZE)
     bar.Rank:SetJustifyH("LEFT")
     bar.Rank:SetTextColor(1, 1, 1)
 
-    bar.Name = bar.TextFrame:CreateFontString(nil, "OVERLAY")
-    bar.Name:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+    bar.Name = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(bar.Name, BAR_FONT_SIZE)
     bar.Name:SetJustifyH("LEFT")
     bar.Name:SetTextColor(1, 1, 1)
 
-    bar.DPS = bar.TextFrame:CreateFontString(nil, "OVERLAY")
-    bar.DPS:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+    bar.DPS = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(bar.DPS, BAR_FONT_SIZE)
     bar.DPS:SetJustifyH("RIGHT")
     bar.DPS:SetTextColor(1, 1, 1)
 
-    bar.DamageDone = bar.TextFrame:CreateFontString(nil, "OVERLAY")
-    bar.DamageDone:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+    bar.DamageDone = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(bar.DamageDone, BAR_FONT_SIZE)
     bar.DamageDone:SetJustifyH("RIGHT")
     bar.DamageDone:SetTextColor(1, 1, 1)
     return bar
@@ -674,6 +679,7 @@ local function LayoutBars(frame, def)
     RefreshBorders(frame, def)
     RefreshBackgrounds(frame, def)
     frame._title:SetFont(titleFont, def.titleSize, titleOutline)
+    Orbit.Skin:ApplyFontShadow(frame._title)
     AttachCanvasComponents(frame)
 end
 
@@ -899,8 +905,8 @@ local function BuildMeterFrame(id, def)
     Orbit.Skin:RegisterMaskedSurface(frame._visibleRect, frame._backdrop)
 
     -- Parented to outer frame so it can render outside _visibleRect bounds; anchors track the rect.
-    frame._title = frame:CreateFontString(nil, "OVERLAY")
-    frame._title:SetFont(GetFont(), def.titleSize, GetFontOutline())
+    frame._title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(frame._title, def.titleSize)
     frame._title:SetTextColor(1, 1, 1)
     frame._title:SetScript("OnMouseUp", function(_, button)
         if button == "LeftButton" and not InEditMode() then
@@ -1067,13 +1073,13 @@ local function BuildMeterFrame(id, def)
         bg:SetColorTexture(previewBg.r, previewBg.g, previewBg.b, previewBg.a)
         Orbit.Skin:RegisterMaskedSurface(preview, bg)
 
-        local rank = preview:CreateFontString(nil, "OVERLAY")
-        rank:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+        local rank = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        SetTextFont(rank, BAR_FONT_SIZE)
         rank:SetText("1.")
         rank:SetTextColor(1, 1, 1)
 
-        local name = preview:CreateFontString(nil, "OVERLAY")
-        name:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+        local name = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        SetTextFont(name, BAR_FONT_SIZE)
         name:SetText(playerName or L.PLU_DM_PREVIEW_PLAYER)
         name:SetTextColor(1, 1, 1)
 
@@ -1085,13 +1091,13 @@ local function BuildMeterFrame(id, def)
         local dpsOverrides    = positions.DPS        and positions.DPS.overrides        or nil
         local totalOverrides  = positions.DamageDone and positions.DamageDone.overrides or nil
 
-        local dps = preview:CreateFontString(nil, "OVERLAY")
-        dps:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+        local dps = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        SetTextFont(dps, BAR_FONT_SIZE)
         dps:SetTextColor(1, 1, 1)
         WriteNumberField(dps, PREVIEW_DPS_VALUE, dpsOverrides)
 
-        local damageDone = preview:CreateFontString(nil, "OVERLAY")
-        damageDone:SetFont(GetFont(), BAR_FONT_SIZE, GetFontOutline())
+        local damageDone = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        SetTextFont(damageDone, BAR_FONT_SIZE)
         damageDone:SetTextColor(1, 1, 1)
         WriteNumberField(damageDone, PREVIEW_TOTAL_VALUE, totalOverrides)
 
@@ -1541,8 +1547,8 @@ function Plugin:BuildBreakdownFrame()
     frame._backdrop:SetAllPoints(frame._visibleRect)
     Orbit.Skin:RegisterMaskedSurface(frame._visibleRect, frame._backdrop)
 
-    frame._title = frame:CreateFontString(nil, "OVERLAY")
-    frame._title:SetFont(GetFont(), DM.DefaultDef.titleSize, GetFontOutline())
+    frame._title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    SetTextFont(frame._title, DM.DefaultDef.titleSize)
     frame._title:SetTextColor(1, 1, 1)
     frame._title:Hide()
 

@@ -121,7 +121,7 @@ function Mixin:SetupAuraIcon(icon, aura, size, unit, skinSettings, componentPosi
         icon.Overlay:EnableMouse(false)
     end
     if not icon.count then
-        icon.count = icon.Overlay:CreateFontString(nil, "OVERLAY")
+        icon.count = icon.Overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     end
     local fontPath, fontOutline = GetAuraFont()
     icon.count:SetFont(fontPath, AURA_COUNT_SIZE, fontOutline)

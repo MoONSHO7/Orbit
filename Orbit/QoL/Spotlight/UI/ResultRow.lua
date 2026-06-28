@@ -209,7 +209,7 @@ function ResultRow:Create(parent, width)
 
     AButtonSkin:Apply(iconBtn, { hideName = true })
 
-    local countText = iconBtn:CreateFontString(nil, "OVERLAY")
+    local countText = iconBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     Skin:SkinText(countText, { font = GetGlobalFontName(), textSize = COUNT_FONT_SIZE, textColor = COUNT_COLOR })
     countText:SetPoint("BOTTOMRIGHT", iconBtn, "BOTTOMRIGHT", -1, 1)
     countText:SetJustifyH("RIGHT")
@@ -238,13 +238,13 @@ function ResultRow:Create(parent, width)
     qualityOverlay:Hide()
     iconBtn.qualityOverlay = qualityOverlay
 
-    local kindLabel = row:CreateFontString(nil, "OVERLAY")
+    local kindLabel = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     Skin:SkinText(kindLabel, { font = GetGlobalFontName(), textSize = KIND_FONT_SIZE, textColor = KIND_LABEL_COLOR })
     kindLabel:SetPoint("RIGHT", row, "RIGHT", -LABEL_RIGHT_PAD, 0)
     kindLabel:SetJustifyH("RIGHT")
     row.kindLabel = kindLabel
 
-    local label = row:CreateFontString(nil, "OVERLAY")
+    local label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     Skin:SkinText(label, { font = GetGlobalFontName(), textSize = LABEL_FONT_SIZE, textColor = LABEL_COLOR })
     label:SetPoint("LEFT", iconBtn, "RIGHT", LABEL_PAD_LEFT, 0)
     label:SetPoint("RIGHT", kindLabel, "LEFT", -KIND_LABEL_GAP, 0)

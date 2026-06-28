@@ -189,7 +189,7 @@ local function CreateRollPanel()
     panel.RollButton = roll
 
     -- Item name (quality-coloured), between the disc and the buttons.
-    local name = panel:CreateFontString(nil, "ARTWORK")
+    local name = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     name:SetPoint("TOPLEFT", iconBtn, "TOPRIGHT", 6, -1)
     name:SetPoint("RIGHT", panel.NeedButton, "LEFT", -6, 0)
     name:SetJustifyH("LEFT")
@@ -224,7 +224,7 @@ local function CreateRollPanel()
     glow:SetAtlas("lootroll-animdiceglow"); glow:SetSize(70, 76); glow:SetPoint("CENTER"); glow:SetAlpha(0)
     local dice = anim:CreateTexture(nil, "ARTWORK")
     dice:SetAtlas("lootroll-animdice"); dice:SetSize(58, 74); dice:SetPoint("CENTER")
-    local number = anim:CreateFontString(nil, "OVERLAY")
+    local number = anim:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     number:SetPoint("CENTER", anim, "CENTER", 0, -2)
     number:SetAlpha(0)
     panel.RollNumber = number

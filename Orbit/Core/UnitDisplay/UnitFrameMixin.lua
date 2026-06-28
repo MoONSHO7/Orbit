@@ -125,13 +125,17 @@ function Mixin:UpdateTextSize(frame, textSize)
     local outline = Orbit.Skin:GetFontOutline()
     if frame.Name then
         frame.Name:SetFont(fontPath, textSize, outline)
+        Orbit.Skin:ApplyFontShadow(frame.Name)
         if frame._fullName then frame.Name:SetText(frame._fullName) end
         if frame.GetNameAvailableWidth then
             local available = frame:GetNameAvailableWidth()
             if available then frame.Name:SetWidth(math.max(available, 20)) end
         end
     end
-    if frame.HealthText then frame.HealthText:SetFont(fontPath, textSize, outline) end
+    if frame.HealthText then
+        frame.HealthText:SetFont(fontPath, textSize, outline)
+        Orbit.Skin:ApplyFontShadow(frame.HealthText)
+    end
     ReapplyTextOverride(self, frame, "Name", textSize, fontPath)
     ReapplyTextOverride(self, frame, "HealthText", textSize, fontPath)
 end

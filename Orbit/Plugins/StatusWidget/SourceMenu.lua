@@ -44,6 +44,12 @@ function Plugin:_AddSourceSubmenu(root, title, sourceKey, currencyKey, headValue
             function() return self:GetSetting(self.system, sourceKey) == value end,
             function() self:SetSetting(self.system, sourceKey, value); self:UpdateBar() end)
     end
+    -- Housing only appears while a house is tracked (matches Blizzard surfacing the House Favor bar only then).
+    if self:_HousingTracked() then
+        submenu:CreateRadio(L.PLU_SB_V2_SOURCE_HOUSE,
+            function() return self:GetSetting(self.system, sourceKey) == "house" end,
+            function() self:SetSetting(self.system, sourceKey, "house"); self:UpdateBar() end)
+    end
     self:_AddCurrencySubmenu(submenu, sourceKey, currencyKey)
 end
 

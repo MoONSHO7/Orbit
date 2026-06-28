@@ -42,7 +42,7 @@ local function CreateSubText(parent, parentContainer, subKey, subPos, text, just
     subFrame:SetMovable(true)
     subFrame:RegisterForDrag("LeftButton")
 
-    local fs = subFrame:CreateFontString(nil, "OVERLAY")
+    local fs = subFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     fs:SetFont(fontPath, cbTextSize, fontFlags)
     Orbit.Skin:ApplyFontShadow(fs)
     fs:SetText(text)

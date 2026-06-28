@@ -43,7 +43,7 @@ function Plugin:SetupMythicPlus()
     -- Centre timer (top) + forces-remaining % (bottom) + ticks are rebuilt every OnLoad: a live re-enable recreates self.frame (like SetupFillModes' cracked metal).
     local size = self.frame:GetWidth()
     -- Timer (top) + forces % (bottom): same size, both centred, the pair straddling the orb's middle (timer +CENTER_LINE, forces -CENTER_LINE).
-    local timer = self.frame.Center:CreateFontString(nil, "OVERLAY")
+    local timer = self.frame.Center:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     timer:SetPoint("CENTER", self.frame.Center, "CENTER", 0, CENTER_LINE)
     timer:SetJustifyH("CENTER")
     timer:SetShadowColor(0, 0, 0, 0.95)
@@ -51,7 +51,7 @@ function Plugin:SetupMythicPlus()
     timer:Hide()
     self.frame.MPlusTimer = timer
 
-    local forces = self.frame.Center:CreateFontString(nil, "OVERLAY")
+    local forces = self.frame.Center:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     forces:SetPoint("CENTER", self.frame.Center, "CENTER", 0, -CENTER_LINE)
     forces:SetJustifyH("CENTER")
     forces:SetShadowColor(0, 0, 0, 0.95)
@@ -452,8 +452,8 @@ end
 
 -- [ INFO PANEL ]-------------------------------------------------------------------------------------
 local function MakeStat(panel)
-    local l = panel:CreateFontString(nil, "ARTWORK"); l:SetJustifyH("LEFT")
-    local v = panel:CreateFontString(nil, "ARTWORK"); v:SetJustifyH("RIGHT")
+    local l = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); l:SetJustifyH("LEFT")
+    local v = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); v:SetJustifyH("RIGHT")
     panel._stats[#panel._stats + 1] = l
     panel._stats[#panel._stats + 1] = v
     return l, v
@@ -474,8 +474,8 @@ function Plugin:_BuildMPlusPanel()
     panel.bg = bg
     Orbit.Skin:RegisterMaskedSurface(panel, bg)
 
-    panel.Header = panel:CreateFontString(nil, "ARTWORK"); panel.Header:SetJustifyH("LEFT"); panel.Header:SetWordWrap(false)
-    panel.KeyLevel = panel:CreateFontString(nil, "ARTWORK"); panel.KeyLevel:SetJustifyH("RIGHT")
+    panel.Header = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); panel.Header:SetJustifyH("LEFT"); panel.Header:SetWordWrap(false)
+    panel.KeyLevel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); panel.KeyLevel:SetJustifyH("RIGHT")
 
     panel.Affix = {}
     for _ = 1, MAX_AFFIX do
@@ -505,13 +505,13 @@ function Plugin:_BuildMPlusPanel()
     panel.Divider:SetColorTexture(1, 1, 1, 0.12)
     panel.Divider:SetHeight(1)
     panel.Divider:Hide()
-    panel.BossHeader = panel:CreateFontString(nil, "ARTWORK"); panel.BossHeader:SetJustifyH("LEFT"); panel.BossHeader:Hide()
+    panel.BossHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); panel.BossHeader:SetJustifyH("LEFT"); panel.BossHeader:Hide()
 
     panel.Boss = {}
     for _ = 1, MAX_BOSS do
         local check = panel:CreateTexture(nil, "ARTWORK"); check:SetSize(12, 12); check:Hide()
-        local name = panel:CreateFontString(nil, "ARTWORK"); name:SetJustifyH("LEFT"); name:SetWordWrap(false); name:Hide()
-        local time = panel:CreateFontString(nil, "ARTWORK"); time:SetJustifyH("RIGHT"); time:Hide()
+        local name = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); name:SetJustifyH("LEFT"); name:SetWordWrap(false); name:Hide()
+        local time = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight"); time:SetJustifyH("RIGHT"); time:Hide()
         panel.Boss[#panel.Boss + 1] = { Check = check, Name = name, Time = time }
     end
 

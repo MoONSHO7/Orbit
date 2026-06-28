@@ -227,7 +227,7 @@ function Plugin:OnLoad()
         local fontName = Plugin:GetSetting(SYSTEM_INDEX, "Font")
         local fontPath = LSM:Fetch("font", fontName)
         local fontSize = 18
-        local fs = preview:CreateFontString(nil, "OVERLAY", nil, 7)
+        local fs = preview:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
         fs:SetFont(fontPath, fontSize, Orbit.Skin:GetFontOutline())
         Orbit.Skin:ApplyFontShadow(fs)
         if isContinuous then

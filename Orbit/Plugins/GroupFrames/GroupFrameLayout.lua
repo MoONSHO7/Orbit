@@ -166,11 +166,12 @@ function Orbit.GroupFrameLayoutMixin:UpdateGroupLabels(sortMode, groupOrder, wid
     local fontPath = (LSM and LSM:Fetch("font", Orbit.db.GlobalSettings.Font)) or STANDARD_TEXT_FONT
     for idx, groupNum in ipairs(groupOrder) do
         if not self.groupLabels[idx] then
-            self.groupLabels[idx] = self.groupLabelOverlay:CreateFontString(nil, "OVERLAY")
+            self.groupLabels[idx] = self.groupLabelOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             self.groupLabels[idx]:SetTextColor(1, 1, 1, GROUP_LABEL_ALPHA)
         end
         local label = self.groupLabels[idx]
         label:SetFont(fontPath, GROUP_LABEL_FONT_SIZE, "OUTLINE")
+        Orbit.Skin:ApplyFontShadow(label)
         label:SetText("G" .. groupNum)
         label:ClearAllPoints()
 

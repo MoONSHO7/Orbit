@@ -54,7 +54,7 @@ end
 
 function CDM:CreateKeybindText(icon)
     local overlay = self:GetTextOverlay(icon)
-    local keybind = overlay:CreateFontString(nil, "OVERLAY", nil, 7)
+    local keybind = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight", 7)
     keybind:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -2, -2)
     keybind:Hide()
     icon.OrbitKeybind = keybind
