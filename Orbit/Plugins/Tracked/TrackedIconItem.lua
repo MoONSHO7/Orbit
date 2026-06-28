@@ -44,6 +44,7 @@ function IconItem:ApplyFont(plugin, icon)
     local font = plugin:GetGlobalFont() or STANDARD_TEXT_FONT
     local outline = Orbit.Skin and Orbit.Skin:GetFontOutline() or "OUTLINE"
     icon.ChargeText:SetFont(font, FONT_SIZE_DEFAULT, outline)
+    Orbit.Skin:ApplyFontShadow(icon.ChargeText)
     self:StyleCooldownText(icon.Cooldown, font, outline)
     self:StyleCooldownText(icon.ActiveCooldown, font, outline)
 end
@@ -141,7 +142,7 @@ function IconItem:Build(container, removeCallback)
     icon.TextOverlay:SetAllPoints()
     icon.TextOverlay:SetFrameLevel(icon:GetFrameLevel() + Constants.Levels.IconOverlay)
 
-    icon.ChargeText = icon.TextOverlay:CreateFontString(nil, "OVERLAY")
+    icon.ChargeText = icon.TextOverlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     icon.ChargeText:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
     icon.ChargeText:SetFont(STANDARD_TEXT_FONT, FONT_SIZE_DEFAULT, Orbit.Skin and Orbit.Skin:GetFontOutline() or "OUTLINE")
     icon.ChargeText:Hide()

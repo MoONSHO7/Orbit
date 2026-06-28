@@ -161,6 +161,7 @@ function FrameFactory:AddText(frame, opts)
 
         local text = overlay:CreateFontString(nil, layer, font)
         text:SetPoint(point, relativeTo, relativePoint, ox, oy)
+        Orbit.Skin:ApplyFontShadow(text)
         frame.Text = text
         return text
     end

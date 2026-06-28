@@ -11,6 +11,7 @@
     <Script file="AlertToasts.lua"/>
     <Script file="Repair.lua"/>
     <Script file="FillModes.lua"/>
+    <Script file="Housing.lua"/>
     <Script file="MythicPlus.lua"/>
     <Script file="SourceMenu.lua"/>
 </Ui>
