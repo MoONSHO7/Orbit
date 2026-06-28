@@ -13,18 +13,7 @@ local STATUS_GROUP_KEYS = { "PhaseIcon", "ReadyCheckIcon", "ResIcon", "SummonIco
 -- [ TIER-AWARE CALLBACKS ]---------------------------------------------------------------------------
 local function MakeTierPositionCallback(plugin, key)
 	return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV)
-		local posX, posY
-		local compParent = comp:GetParent()
-		if compParent then
-			local cx, cy = comp:GetCenter()
-			local px, py = compParent:GetCenter()
-			if cx and px then
-				posX = cx - px
-			end
-			if cy and py then
-				posY = cy - py
-			end
-		end
+		local posX, posY = OrbitEngine.ComponentDrag:GetRelativeOffset(comp)
 		local posData = {
 			anchorX = anchorX,
 			anchorY = anchorY,
@@ -48,18 +37,7 @@ end
 
 local function MakeTierAuraPositionCallback(plugin, key)
 	return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV, selfAnchorY)
-		local posX, posY
-		local compParent = comp:GetParent()
-		if compParent then
-			local cx, cy = comp:GetCenter()
-			local px, py = compParent:GetCenter()
-			if cx and px then
-				posX = cx - px
-			end
-			if cy and py then
-				posY = cy - py
-			end
-		end
+		local posX, posY = OrbitEngine.ComponentDrag:GetRelativeOffset(comp)
 		local posData = {
 			anchorX = anchorX,
 			anchorY = anchorY,
@@ -84,18 +62,7 @@ end
 
 local function MakeStatusIconsPositionCallback(plugin)
 	return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-		local posX, posY
-		local compParent = comp:GetParent()
-		if compParent then
-			local cx, cy = comp:GetCenter()
-			local px, py = compParent:GetCenter()
-			if cx and px then
-				posX = cx - px
-			end
-			if cy and py then
-				posY = cy - py
-			end
-		end
+		local posX, posY = OrbitEngine.ComponentDrag:GetRelativeOffset(comp)
 		local posData = {
 			anchorX = anchorX,
 			anchorY = anchorY,

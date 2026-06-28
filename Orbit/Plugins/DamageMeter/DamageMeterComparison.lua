@@ -586,17 +586,8 @@ local function LayoutOverall(f, perPlayer)
     local snappedBarH = Pixel:Multiple(barH, overallScale)
 
     for i, slot in ipairs(perPlayer) do
-        local bar = f.Overall._bars[i]
-        if not bar then
-            bar = {}
-            bar.bg = f.Overall:CreateTexture(nil, "BACKGROUND")
-            bar.bg:SetColorTexture(1, 1, 1, 0.06)
-            bar.fill = f.Overall:CreateTexture(nil, "ARTWORK")
-            bar.fill:SetTexture(GetBarTexture())
-            bar.hit = CreateFrame("Frame", nil, f.Overall)
-            bar.hit:EnableMouse(true)
-            f.Overall._bars[i] = bar
-        end
+        local bar = f.Overall._bars[i] or BuildSubBar(f.Overall)
+        f.Overall._bars[i] = bar
         local yTop = -Pixel:Snap(stackTopOffset + (i - 1) * barH, overallScale)
         local r, g, b = ColorFor(slot.colorIndex or i)
         local amount = slot.totalDamage or 0

@@ -28,9 +28,8 @@ end
 local _cachedFont              = nil  -- nil until first ApplySkins(); falls back to STANDARD_TEXT_FONT
 local _cachedTitleFontSize     = C.TITLE_FONT_SIZE_DEFAULT
 local _cachedObjectiveFontSize = C.OBJECTIVE_FONT_SIZE_DEFAULT
-local _cachedProgressBarMode   = "Percent"
-local _cachedSkinProgressBars  = true
-local _cachedCustomColors      = true
+local _cachedHeaderFontSize    = C.HEADER_FONT_SIZE_DEFAULT
+local _cachedProgressSegs      = nil
 local _cachedNormalColor       = C.TITLE_COLOR_DEFAULT
 local _cachedCompletedColor    = C.COMPLETED_COLOR_DEFAULT
 local _cachedFocusColor        = C.FOCUS_COLOR_DEFAULT
@@ -57,6 +56,7 @@ end
 
 local function GetTitleFontSize()     return _cachedTitleFontSize     end
 local function GetObjectiveFontSize() return _cachedObjectiveFontSize end
+local function GetHeaderFontSize()    return _cachedHeaderFontSize    end
 local function GetNormalQuestColor()    return _cachedNormalColor    end
 local function GetCompletedQuestColor() return _cachedCompletedColor end
 local function GetFocusQuestColor()     return _cachedFocusColor     end
@@ -89,21 +89,19 @@ local function SkinHeader(header)
     header._orbitSkinned = true
 end
 
-local function ApplyHeaderColors(header, classColor)
+local function ApplyHeaderColors(header, color)
     if not header or not header.Text then return end
-    if classColor then
-        local color = C_ClassColor.GetClassColor(select(2, UnitClass("player")))
-        if color then
-            header.Text:SetTextColor(color.r, color.g, color.b)
-            return
-        end
-    end
-    header.Text:SetTextColor(1, 1, 1)
+    header.Text:SetTextColor(color.r, color.g, color.b)
 end
 
-local function ApplyHeaderFont(header)
+-- Blizzard's header frames are a fixed 32/26px regardless of font; size them to the font (floored at the 16px minimize button) so the bar hugs the text. minHeight omitted = font only (Scenario keeps its native height — its slide math depends on it). Returns the applied height.
+local function ApplyHeaderFont(header, minHeight)
     if not header or not header.Text then return end
-    ApplyFont(header.Text)
+    ApplyFont(header.Text, GetHeaderFontSize())
+    if not minHeight then return end
+    local target = OrbitEngine.Pixel:Snap(math.max(GetHeaderFontSize() + 2 * C.HEADER_VPADDING, minHeight), header:GetEffectiveScale())
+    header:SetHeight(target)
+    return target
 end
 
 -- [ SKIN: HEADER SEPARATOR ]-------------------------------------------------------------------------
@@ -112,15 +110,11 @@ local function EnsureSeparator(header)
     if header._orbitSeparator then return header._orbitSeparator end
 
     local sep = header:CreateTexture(nil, "ARTWORK", nil, 1)
-    sep:SetHeight(C.HEADER_SEPARATOR_HEIGHT)
-    sep:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 0, -2)
-    sep:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, -2)
-    sep:SetColorTexture(1, 1, 1, C.SEPARATOR_ALPHA)
     header._orbitSeparator = sep
     return sep
 end
 
-local function ApplyHeaderSeparator(header, show, classColor)
+local function ApplyHeaderSeparator(header, show, color, isClass)
     local sep = EnsureSeparator(header)
     if not sep then return end
 
@@ -129,15 +123,15 @@ local function ApplyHeaderSeparator(header, show, classColor)
         return
     end
 
-    if classColor then
-        local color = C_ClassColor.GetClassColor(select(2, UnitClass("player")))
-        if color then
-            sep:SetColorTexture(color.r, color.g, color.b, C.SEPARATOR_ALPHA_CLASS)
-            sep:Show()
-            return
-        end
-    end
-    sep:SetColorTexture(1, 1, 1, C.SEPARATOR_ALPHA)
+    -- Pixel-perfect divider: an exact physical-pixel thickness sitting that same distance below the header, re-applied here so it tracks UI-scale changes.
+    local thickness = OrbitEngine.Pixel:Multiple(C.HEADER_SEPARATOR_HEIGHT, header:GetEffectiveScale())
+    sep:SetHeight(thickness)
+    sep:ClearAllPoints()
+    sep:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 0, -thickness)
+    sep:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, -thickness)
+
+    local alpha = isClass and C.SEPARATOR_ALPHA_CLASS or C.SEPARATOR_ALPHA
+    sep:SetColorTexture(color.r, color.g, color.b, alpha)
     sep:Show()
 end
 
@@ -194,6 +188,14 @@ local function EnableHeaderClickCollapse(header)
     if not header or header._orbitClickCollapse then return end
     if not header.MinimizeButton then return end
 
+    -- Route both the master "All Objectives" header and the sub-headers through the plugin's toggle (the master animates, sub-headers are instant).
+    local target = header:GetParent()
+    if target and target.SetCollapsed then
+        header.MinimizeButton:SetScript("OnClick", function()
+            Plugin:ToggleCollapse(target)
+        end)
+    end
+
     header:EnableMouse(true)
     header:SetScript("OnMouseDown", function(self)
         local btn = self.MinimizeButton
@@ -210,7 +212,7 @@ local function EnsureQuestCounter(header)
     if not header then return nil end
     if header._orbitQuestCount then return header._orbitQuestCount end
 
-    local fs = header:CreateFontString(nil, "OVERLAY")
+    local fs = header:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     if header.MinimizeButton then
         fs:SetPoint("RIGHT", header.MinimizeButton, "LEFT", -5, 0)
     else
@@ -343,10 +345,6 @@ local function GetPOIColor(block)
 
     if block.poiIsComplete then return GetCompletedQuestColor() end
     if not questID then return GetNormalQuestColor() end
-
-    if not _cachedCustomColors then
-        return GetNormalQuestColor()
-    end
 
     -- Legendary outranks tags (a legendary raid quest is still legendary)
     local classification = C_QuestInfoSystem.GetQuestClassification(questID)
@@ -513,25 +511,74 @@ local function OnAddObjective(block, key)
 end
 
 -- [ SKIN: PROGRESS BAR LABEL ]-----------------------------------------------------------------------
+-- Progress values are non-secret, so the % math here is safe (unlike health bars).
+local PB_FORMATTERS = {
+    ["%"]        = function(cur, max) return string.format("%.0f%%", (cur / max) * 100) end,
+    ["CurrentK"] = function(cur, max) return AbbreviateNumbers(math.floor(cur)) end,
+    ["Current"]  = function(cur, max) return tostring(math.floor(cur)) end,
+    ["MaxK"]     = function(cur, max) return AbbreviateNumbers(math.floor(max)) end,
+    ["Max"]      = function(cur, max) return tostring(math.floor(max)) end,
+}
+
+-- Token keys longest-first so "CurrentK"/"MaxK" match before "Current"/"Max".
+local PB_KEYS = {}
+for _, t in ipairs(C.PROGRESS_TOKENS) do PB_KEYS[#PB_KEYS + 1] = t.key end
+table.sort(PB_KEYS, function(a, b) return #a > #b end)
+
+local function ParseProgressFormat(str)
+    str = strtrim(str or "")
+    local segs, buffer = {}, ""
+    local function flush()
+        if buffer ~= "" then segs[#segs + 1] = { sep = buffer }; buffer = "" end
+    end
+    local i, n = 1, #str
+    while i <= n do
+        local matched
+        for _, key in ipairs(PB_KEYS) do
+            if str:sub(i, i + #key - 1):lower() == key:lower() then matched = key; break end
+        end
+        if matched then
+            flush()
+            segs[#segs + 1] = { token = matched }
+            i = i + #matched
+        else
+            buffer = buffer .. str:sub(i, i)
+            i = i + 1
+        end
+    end
+    flush()
+    return segs
+end
+
+-- Valid when the format contains at least one value token — drives the input's valid/invalid border.
+function Plugin:ValidateProgressFormat(str)
+    if type(str) ~= "string" then return false end
+    for _, seg in ipairs(ParseProgressFormat(str)) do
+        if seg.token then return true end
+    end
+    return false
+end
+
 local function FormatProgressLabel(bar)
     if not bar or not bar.Label then return end
     local _, max = bar:GetMinMaxValues()
-    local val = bar:GetValue()
+    local cur = bar:GetValue()
     if not max or max == 0 then return end
 
-    local mode = _cachedProgressBarMode
-    local text
-    if mode == "XY" then
-        text = math.floor(val) .. " / " .. math.floor(max)
-    elseif mode == "Both" then
-        local pct = math.floor((val / max) * 100 + 0.5)
-        text = math.floor(val) .. " / " .. math.floor(max) .. "  (" .. pct .. "%)"
-    else -- "Percent"
-        text = math.floor((val / max) * 100 + 0.5) .. "%"
+    local segs = _cachedProgressSegs
+    if not segs then return end
+
+    local out = {}
+    for _, seg in ipairs(segs) do
+        if seg.token then
+            out[#out + 1] = tostring(PB_FORMATTERS[seg.token](cur, max))
+        else
+            out[#out + 1] = seg.sep
+        end
     end
 
     bar._orbitUpdating = true
-    bar.Label:SetText(text)
+    bar.Label:SetText(table.concat(out))
     bar._orbitUpdating = false
 end
 
@@ -564,18 +611,36 @@ local function ApplyOrbitBarStyle(bar)
         bar._orbitBG = bg
     end
     local gs = Orbit.db and Orbit.db.GlobalSettings
-    local bgColor = gs and gs.BackdropColour or { r = 0, g = 0, b = 0 }
-    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, C.BAR_BG_ALPHA)
-    Orbit.Skin:SkinBorder(bar, bar, nil, nil, false, true)
+    local bgColor = Orbit.Skin:GetBackgroundColor()
+    bar._orbitBG:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a or C.BAR_BG_ALPHA)
+
+    -- Register surfaces so a rounded border style masks them (cast-bar pattern).
+    Orbit.Skin:RegisterMaskedSurface(bar, bar._orbitBG)
+    local fill = bar:GetStatusBarTexture()
+    if fill then Orbit.Skin:RegisterMaskedSurface(bar, fill) end
+
+    local borderSize = gs and gs.BorderSize or 1
+    Orbit.Skin:SkinBorder(bar, bar, borderSize)
 end
 
 -- [ SKIN: PROGRESS BAR ]-----------------------------------------------------------------------------
+-- Size the progressBar container off the stable Orbit tracker frame (the width FitTrackerWidths applies to modules/headers), NOT the per-module ContentsFrame, which Blizzard resets to 260 mid-layout. The Bar anchors to this container so it follows; a RIGHT anchor instead would fight the lone TOPLEFT into the block chain and flicker during the collapse slide.
+local function FitProgressBarWidth(progressBar, trackerWidth)
+    if not progressBar or not trackerWidth or trackerWidth <= 0 then return end
+    progressBar:SetWidth(OrbitEngine.Pixel:Snap(trackerWidth - C.PROGRESS_BAR_WIDTH_INSET, progressBar:GetEffectiveScale()))
+end
+
 local function SkinProgressBar(tracker, key)
     if not _enabled then return end
-    if not _cachedSkinProgressBars then return end
     local progressBar = tracker.usedProgressBars and tracker.usedProgressBars[key]
     local bar = progressBar and progressBar.Bar
     if not bar then return end
+
+    -- While our slide owns this module (or the master), leave an already-skinned bar untouched — re-fitting it on the frames it is being translated reads as a flicker. Width is constant across a collapse (only height animates), so the prior fit still holds.
+    if bar._orbitSkinned and (tracker._orbitAnimating or ObjectiveTrackerFrame._orbitAnimating) then return end
+
+    FitProgressBarWidth(progressBar, ObjectiveTrackerFrame and ObjectiveTrackerFrame:GetWidth() or 0)
+
     if bar._orbitSkinned then return end
 
     -- Strip Blizzard textures
@@ -584,36 +649,64 @@ local function SkinProgressBar(tracker, key)
     else
         for i = 1, bar:GetNumRegions() do
             local region = select(i, bar:GetRegions())
-            if region and region:IsObjectType("Texture") and region ~= bar:GetStatusBarTexture() then
+            if region and region:IsObjectType("Texture") and region ~= bar:GetStatusBarTexture() and region ~= bar.Icon then
                 region:SetTexture(nil)
             end
         end
     end
 
-    -- Resize bar to fill the block width and set a clean height
     bar:SetHeight(C.PROGRESS_BAR_HEIGHT)
     bar:ClearAllPoints()
     bar:SetPoint("TOPLEFT", progressBar, "TOPLEFT", 0, 0)
     bar:SetPoint("TOPRIGHT", progressBar, "TOPRIGHT", 0, 0)
-    
-    if tracker.ContentsFrame then
-        progressBar:SetPoint("RIGHT", tracker.ContentsFrame, "RIGHT", -15, 0)
-    end
+
     progressBar:SetHeight(C.PROGRESS_BAR_CONTAINER_HEIGHT)
+
+    -- Icon at the bar's left; set even when hidden — Blizzard shows the reward icon after GetProgressBar but never re-anchors.
+    local icon = bar.Icon
+    local iconWidth = 0
+    if icon then
+        if icon.SetMask then icon:SetMask("") end
+        icon:ClearAllPoints()
+        icon:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+        icon:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+        icon:SetWidth(C.PROGRESS_BAR_HEIGHT)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        icon:SetDrawLayer("OVERLAY")
+        Orbit.Skin:RegisterMaskedSurface(bar, icon)
+        iconWidth = C.PROGRESS_BAR_HEIGHT
+    end
+
+    -- Plain glow (drop the reward-ring cut-out), inset from the bar edges.
+    if bar.BarGlow and not bar.BarGlow._orbitGlowHooked then
+        local function styleGlow(glow)
+            glow:ClearAllPoints()
+            glow:SetPoint("TOPLEFT", bar, "TOPLEFT", C.BAR_GLOW_INSET, 0)
+            glow:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -C.BAR_GLOW_INSET, 0)
+        end
+        hooksecurefunc(bar.BarGlow, "SetAtlas", function(self, atlas)
+            if atlas == "bonusobjectives-bar-glow-ring" then
+                self:SetAtlas("bonusobjectives-bar-glow")
+            elseif atlas == "bonusobjectives-bar-glow" then
+                styleGlow(self)
+            end
+        end)
+        if bar.BarGlow:GetAtlas() == "bonusobjectives-bar-glow-ring" then
+            bar.BarGlow:SetAtlas("bonusobjectives-bar-glow")
+        end
+        bar.BarGlow._orbitGlowHooked = true
+    end
 
     ApplyOrbitBarStyle(bar)
 
-    -- Skin the icon if present
-    local icon = bar.Icon
-    if icon and icon:IsShown() then
-        if icon.SetMask then icon:SetMask("") end
-        if OrbitEngine.Skin and OrbitEngine.Skin.SkinIcon then
-            OrbitEngine.Skin:SkinIcon(icon)
-        end
+    -- Label centred in the space to the right of the icon
+    if bar.Label then
+        ApplyFont(bar.Label, C.PROGRESS_BAR_FONT_SIZE)
+        bar.Label:ClearAllPoints()
+        bar.Label:SetPoint("LEFT", bar, "LEFT", iconWidth + C.PROGRESS_BAR_LABEL_PADDING, 0)
+        bar.Label:SetPoint("RIGHT", bar, "RIGHT", -C.PROGRESS_BAR_LABEL_PADDING, 0)
+        bar.Label:SetJustifyH("CENTER")
     end
-
-    -- Skin label font
-    if bar.Label then ApplyFont(bar.Label, C.PROGRESS_BAR_FONT_SIZE) end
 
     bar._orbitSkinned = true
     EnsureProgressLabelHook(bar)
@@ -848,6 +941,12 @@ function Plugin:FitTrackerWidths()
             if tracker.MawBuffsBlock then
                 tracker.MawBuffsBlock:SetWidth(width)
             end
+            -- Reflow already-rendered progress bars (they size explicitly now, not via a RIGHT anchor) so a live Width change resizes them without waiting for a re-layout.
+            if tracker.usedProgressBars then
+                for _, pb in pairs(tracker.usedProgressBars) do
+                    FitProgressBarWidth(pb, width)
+                end
+            end
         end
     end
 end
@@ -864,14 +963,17 @@ function Plugin:ApplySkins()
     end
     _cachedTitleFontSize     = self:GetSetting(SYSTEM_ID, "TitleFontSize") or C.TITLE_FONT_SIZE_DEFAULT
     _cachedObjectiveFontSize = self:GetSetting(SYSTEM_ID, "ObjectiveFontSize") or C.OBJECTIVE_FONT_SIZE_DEFAULT
-    _cachedProgressBarMode   = self:GetSetting(SYSTEM_ID, "ProgressBarMode") or "Percent"
-    _cachedSkinProgressBars  = self:GetSetting(SYSTEM_ID, "SkinProgressBars") ~= false
-    _cachedCustomColors      = self:GetSetting(SYSTEM_ID, "CustomColors") ~= false
+    _cachedHeaderFontSize    = self:GetSetting(SYSTEM_ID, "HeaderFontSize") or C.HEADER_FONT_SIZE_DEFAULT
+    local pbFormat = self:GetSetting(SYSTEM_ID, "ProgressBarLabelFormat")
+    if not pbFormat or pbFormat == "" then pbFormat = C.PROGRESS_FORMAT_DEFAULT end
+    _cachedProgressSegs      = ParseProgressFormat(pbFormat)
     _cachedNormalColor       = ResolveColor(self:GetSetting(SYSTEM_ID, "TitleColor"), POI_COLOR_DEFAULT_FALLBACK)
     _cachedCompletedColor    = ResolveColor(self:GetSetting(SYSTEM_ID, "CompletedColor"), POI_COLOR_COMPLETE_FALLBACK)
     _cachedFocusColor        = ResolveColor(self:GetSetting(SYSTEM_ID, "FocusColor"), C.FOCUS_COLOR_DEFAULT)
 
-    local classColorHeaders = self:GetSetting(SYSTEM_ID, "ClassColorHeaders")
+    local headerRaw = self:GetSetting(SYSTEM_ID, "HeaderColor")
+    local headerColor = ResolveColor(headerRaw, C.HEADER_COLOR_DEFAULT)
+    local headerIsClass = type(headerRaw) == "table" and headerRaw.type == "class"
     local headerSeparators = self:GetSetting(SYSTEM_ID, "HeaderSeparators")
 
     -- Fit all widths to our container
@@ -880,9 +982,11 @@ function Plugin:ApplySkins()
     -- Main tracker header
     local trackerFrame = ObjectiveTrackerFrame
     if trackerFrame and trackerFrame.Header then
-        ApplyHeaderColors(trackerFrame.Header, classColorHeaders)
-        ApplyHeaderFont(trackerFrame.Header)
-        ApplyHeaderSeparator(trackerFrame.Header, headerSeparators ~= false, classColorHeaders)
+        ApplyHeaderColors(trackerFrame.Header, headerColor)
+        -- Size the master header to the font and lockstep topModulePadding (the first-module offset Blizzard reserves). The gap below the master uses the content inset so master->module spacing matches the box's top/bottom inset — uniform throughout, and the master's divider clears its neighbour by the same margin the last divider clears the border.
+        local masterH = ApplyHeaderFont(trackerFrame.Header, C.HEADER_MIN_HEIGHT)
+        if masterH then trackerFrame.topModulePadding = masterH + self:GetContentInset() end
+        ApplyHeaderSeparator(trackerFrame.Header, headerSeparators ~= false, headerColor, headerIsClass)
 
         -- Quest counter
         local showCount = self:GetSetting(SYSTEM_ID, "ShowQuestCount") ~= false
@@ -903,11 +1007,20 @@ function Plugin:ApplySkins()
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
         if tracker and tracker.Header then
-            ApplyHeaderColors(tracker.Header, classColorHeaders)
-            ApplyHeaderFont(tracker.Header)
-            ApplyHeaderSeparator(tracker.Header, headerSeparators ~= false, classColorHeaders)
+            ApplyHeaderColors(tracker.Header, headerColor)
+            -- Scenario derives its collapse/slide math from headerHeight, so leave it native (font only); every other module's header tracks the font and updates headerHeight in lockstep so its content height stays correct.
+            if moduleName == "ScenarioObjectiveTracker" then
+                ApplyHeaderFont(tracker.Header)
+            else
+                local mH = ApplyHeaderFont(tracker.Header, C.MODULE_HEADER_MIN_HEIGHT)
+                if mH then tracker.headerHeight = mH end
+            end
+            ApplyHeaderSeparator(tracker.Header, headerSeparators ~= false, headerColor, headerIsClass)
         end
     end
+
+    -- Separators are coloured/shown above; hide the trailing one (collapsed header at the box bottom) synchronously so it doesn't flash before the next relayout's UpdateSeparators.
+    self:UpdateSeparators()
 
     -- Propagate live setting changes to already-rendered blocks and bars
     self:ReSkinExistingBlocks()
@@ -931,14 +1044,23 @@ function Plugin:ReSkinExistingBlocks()
                 end
             end
 
-            -- Progress bar label hooks (gated on SkinProgressBars)
-            if _cachedSkinProgressBars and tracker.usedProgressBars then
+            -- Re-apply bar styling so global texture/border/background changes apply live
+            if tracker.usedProgressBars then
                 for _, progressBar in pairs(tracker.usedProgressBars) do
                     local bar = progressBar and progressBar.Bar
                     if bar then
+                        ApplyOrbitBarStyle(bar)
                         EnsureProgressLabelHook(bar)
                         FormatProgressLabel(bar)
                     end
+                end
+            end
+
+            -- Timer bars: same restyle for live global changes
+            if tracker.usedTimerBars then
+                for _, timerBar in pairs(tracker.usedTimerBars) do
+                    local bar = timerBar and timerBar.Bar
+                    if bar then ApplyOrbitBarStyle(bar) end
                 end
             end
         end

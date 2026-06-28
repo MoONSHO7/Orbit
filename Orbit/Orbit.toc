@@ -70,4 +70,5 @@ QoL\UserInterface.lua
 QoL\MoveMore.lua
 QoL\Mouse.lua
 QoL\QuestAutomation.lua
+QoL\NpcAutomation.lua
 QoL\Spotlight\Spotlight.xml

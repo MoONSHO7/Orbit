@@ -1,6 +1,6 @@
 # quality of life modules
 
-the `QoL/` directory contains standalone, lightweight quality-of-life adjustments to the blizzard ui. current modules: `MoveMore` (makes blizzard panels draggable), `Mouse` (cursor highlight overlay), `UserInterface` (UI scale below blizzard's floor + class color tweaks), and `Spotlight` (hotkey-driven universal search, decomposed into `QoL/Spotlight/`).
+the `QoL/` directory contains standalone, lightweight quality-of-life adjustments to the blizzard ui. current modules: `MoveMore` (makes blizzard panels draggable), `Mouse` (cursor highlight overlay), `UserInterface` (UI scale below blizzard's floor + class color tweaks), `QuestAutomation` (auto accept/turn-in quests), `NpcAutomation` (auto gossip/sell-junk/repair at NPCs), and `Spotlight` (hotkey-driven universal search, decomposed into `QoL/Spotlight/`).
 
 these modules differ from standard orbit plugins because they are **account-wide** and do not participate in the orbit profile system. they also have no edit-mode or canvas-mode footprint — they're not user-arranged ui.
 
@@ -28,7 +28,7 @@ to add a new section, update `Orbit/Core/Config/Advanced/QoL.lua`:
    ```
 5. the accordion and scroll infrastructure handle the rest.
 
-current sections (in order): UserInterface, Colors, MoveMore, Mouse, Spotlight.
+current sections (in order): UserInterface, Colors, MoveMore, Mouse, Automation (Questing + NPCs groups), Spotlight.
 
 ## saving & reading settings
 

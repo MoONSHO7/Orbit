@@ -334,32 +334,75 @@ local function BuildSpotlight(body)
     return math.abs(yPos)
 end
 
+local AUTO_PADDING = 8
+local AUTO_ROW_H = 26
+local AUTO_HEADER_H = 28
+local AUTO_TOP = -6
+local AUTO_COLUMNS = 3
+local AUTO_GROUP_GAP = 14
+
+local AUTO_GROUPS = {
+    { header = "PLU_AUTO_QUESTING", entries = {
+        { "PLU_AUTO_ACCEPT",               nil,                                "AutoAcceptQuests",       false },
+        { "PLU_AUTO_TURNIN",               nil,                                "AutoTurnInQuests",       false },
+        { "PLU_AUTO_TURNIN_HOLD_SHIFT",    "PLU_AUTO_TURNIN_HOLD_SHIFT_TT",    "AutoTurnInHoldShift",    true  },
+        { "PLU_AUTO_ACCEPT_PREVENT_MULTI", "PLU_AUTO_ACCEPT_PREVENT_MULTI_TT", "AutoAcceptPreventMulti", true  },
+    } },
+    { header = "PLU_NPC_HEADER", entries = {
+        { "PLU_AUTO_GOSSIP",    "PLU_AUTO_GOSSIP_TT",    "AutomateGossip", false },
+        { "PLU_AUTO_SELL_JUNK", "PLU_AUTO_SELL_JUNK_TT", "AutoSellJunk",   false },
+        { "PLU_AUTO_REPAIR",    "PLU_AUTO_REPAIR_TT",    "AutoRepair",     false },
+    } },
+}
+
 local function BuildAutomation(body)
-    -- Auto Accept
-    local acceptCb = Layout:CreateCheckbox(body, L.PLU_AUTO_ACCEPT, nil, GetAccountSetting("AutoAcceptQuests", false), function(checked)
-        SetAccountSetting("AutoAcceptQuests", checked)
-    end)
-    Layout:AddControl(body, acceptCb)
+    local layout = {}
+    local yPos = AUTO_TOP
+    for _, group in ipairs(AUTO_GROUPS) do
+        -- Group header + gold divider, matching the Plugin Manager's plain sections.
+        local hdr = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        hdr:SetPoint("TOPLEFT", body, "TOPLEFT", AUTO_PADDING, yPos)
+        hdr:SetJustifyH("LEFT")
+        hdr:SetText(L[group.header])
+        local divider = body:CreateTexture(nil, "ARTWORK")
+        divider:SetColorTexture(1, 0.82, 0, 0.3)
+        divider:SetHeight(1)
+        divider:SetPoint("TOPLEFT", body, "TOPLEFT", AUTO_PADDING, yPos - 18)
+        divider:SetPoint("TOPRIGHT", body, "TOPRIGHT", -AUTO_PADDING, yPos - 18)
 
-    -- Prevent Multi-Accept (sub-option)
-    local preventCb = Layout:CreateCheckbox(body, L.PLU_AUTO_ACCEPT_PREVENT_MULTI, L.PLU_AUTO_ACCEPT_PREVENT_MULTI_TT, GetAccountSetting("AutoAcceptPreventMulti", true), function(checked)
-        SetAccountSetting("AutoAcceptPreventMulti", checked)
-    end)
-    Layout:AddControl(body, preventCb)
+        local gridY = yPos - AUTO_HEADER_H
+        local boxes = {}
+        for i, entry in ipairs(group.entries) do
+            local key = entry[3]
+            local cb = Layout:CreateCheckbox(body, L[entry[1]], entry[2] and L[entry[2]] or nil, GetAccountSetting(key, entry[4]), function(checked)
+                SetAccountSetting(key, checked)
+            end, { compact = true })
+            Layout:AddControl(body, cb)
+            boxes[i] = cb
+        end
+        layout[#layout + 1] = { boxes = boxes, gridY = gridY }
+        yPos = gridY - math.ceil(#group.entries / AUTO_COLUMNS) * AUTO_ROW_H - AUTO_GROUP_GAP
+    end
 
-    -- Auto Turn In
-    local turninCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN, nil, GetAccountSetting("AutoTurnInQuests", false), function(checked)
-        SetAccountSetting("AutoTurnInQuests", checked)
-    end)
-    Layout:AddControl(body, turninCb)
+    -- colWidth is width-dependent; reflow on resize since the accordion body may be 0-wide at build.
+    local function Reflow()
+        local width = body:GetWidth()
+        if width < 1 then return end
+        local colWidth = (width - AUTO_PADDING * 2) / AUTO_COLUMNS
+        for _, g in ipairs(layout) do
+            for i, cb in ipairs(g.boxes) do
+                local col = (i - 1) % AUTO_COLUMNS
+                local row = math_floor((i - 1) / AUTO_COLUMNS)
+                cb:ClearAllPoints()
+                cb:SetPoint("TOPLEFT", body, "TOPLEFT", AUTO_PADDING + col * colWidth, g.gridY - row * AUTO_ROW_H)
+                cb:SetWidth(colWidth)
+            end
+        end
+    end
+    body:SetScript("OnSizeChanged", Reflow)
+    Reflow()
 
-    -- Hold Shift to Skip (sub-option)
-    local shiftCb = Layout:CreateCheckbox(body, L.PLU_AUTO_TURNIN_HOLD_SHIFT, L.PLU_AUTO_TURNIN_HOLD_SHIFT_TT, GetAccountSetting("AutoTurnInHoldShift", true), function(checked)
-        SetAccountSetting("AutoTurnInHoldShift", checked)
-    end)
-    Layout:AddControl(body, shiftCb)
-
-    return Layout:Stack(body, 0, STACK_GAP)
+    return math.abs(yPos)
 end
 
 local function BuildColors(body)
@@ -548,6 +591,8 @@ function Orbit._AC.CreateQoLContent(parent)
                     if c.Label and c.Label.GetText then parts[#parts + 1] = (c.Label:GetText() or ""):lower() end
                     if c.text and c.text.GetText then parts[#parts + 1] = (c.text:GetText() or ""):lower() end
                     if c.Text and c.Text.GetText then parts[#parts + 1] = (c.Text:GetText() or ""):lower() end
+                    -- Compact checkboxes (Automation, Spotlight) keep their label on the inner button, not the outer frame.
+                    if c._cb and c._cb.text and c._cb.text.GetText then parts[#parts + 1] = (c._cb.text:GetText() or ""):lower() end
                 end
                 section.searchName = table.concat(parts, " ")
             end

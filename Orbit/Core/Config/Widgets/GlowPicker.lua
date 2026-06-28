@@ -32,7 +32,6 @@ local function BuildChoices(engineOptions)
 end
 
 function Layout:CreateGlowPicker(parent, label, initialValue, callback, valueColorCfg, engineOptions)
-    if not self.glowPool then self.glowPool = {} end
     local frame = table.remove(self.glowPool)
 
     if not frame then

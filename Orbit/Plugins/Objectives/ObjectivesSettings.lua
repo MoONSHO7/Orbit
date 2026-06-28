@@ -12,9 +12,18 @@ local Plugin = Orbit:GetPlugin("Objectives")
 local function OnChange(plugin, systemIndex, key)
     return function(val)
         plugin:SetSetting(systemIndex, key, val)
-        plugin:ApplySettings()
+        -- Coalesce rapid changes: a slider drag fires onChange every frame and each ApplySettings runs a full re-skin, so apply once on the next frame rather than per tick.
+        if not plugin._applyPending then
+            plugin._applyPending = true
+            RunNextFrame(function()
+                plugin._applyPending = false
+                plugin:ApplySettings()
+            end)
+        end
     end
 end
+
+local function FontSizePx(v) return v .. "px" end
 
 function Plugin:AddSettings(dialog, systemFrame)
     local systemIndex = systemFrame and systemFrame.systemIndex or SYSTEM_ID
@@ -53,13 +62,43 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "Height"),
         })
 
-        -- Show Border
+        -- Header Font Size
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ShowBorder",
-            label = L.PLU_OBJ_SHOW_BORDER,
-            default = true,
-            onChange = OnChange(self, systemIndex, "ShowBorder"),
+            type = "slider",
+            key = "HeaderFontSize",
+            label = L.PLU_OBJ_HEADER_FONT_SIZE,
+            min = C.HEADER_FONT_SIZE_MIN,
+            max = C.HEADER_FONT_SIZE_MAX,
+            step = C.HEADER_FONT_SIZE_STEP,
+            default = C.HEADER_FONT_SIZE_DEFAULT,
+            formatter = FontSizePx,
+            onChange = OnChange(self, systemIndex, "HeaderFontSize"),
+        })
+
+        -- Title Font Size
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "TitleFontSize",
+            label = L.PLU_OBJ_TITLE_FONT_SIZE,
+            min = C.TITLE_FONT_SIZE_MIN,
+            max = C.TITLE_FONT_SIZE_MAX,
+            step = C.TITLE_FONT_SIZE_STEP,
+            default = C.TITLE_FONT_SIZE_DEFAULT,
+            formatter = FontSizePx,
+            onChange = OnChange(self, systemIndex, "TitleFontSize"),
+        })
+
+        -- Objective Font Size
+        table.insert(schema.controls, {
+            type = "slider",
+            key = "ObjectiveFontSize",
+            label = L.PLU_OBJ_OBJECTIVE_FONT_SIZE,
+            min = C.OBJECTIVE_FONT_SIZE_MIN,
+            max = C.OBJECTIVE_FONT_SIZE_MAX,
+            step = C.OBJECTIVE_FONT_SIZE_STEP,
+            default = C.OBJECTIVE_FONT_SIZE_DEFAULT,
+            formatter = FontSizePx,
+            onChange = OnChange(self, systemIndex, "ObjectiveFontSize"),
         })
 
         -- Background Opacity
@@ -75,7 +114,33 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "BackgroundOpacity"),
         })
 
+        -- Show Border (rendered last)
+        table.insert(schema.controls, {
+            type = "checkbox",
+            key = "ShowBorder",
+            label = L.PLU_OBJ_SHOW_BORDER,
+            default = true,
+            onChange = OnChange(self, systemIndex, "ShowBorder"),
+        })
+
     elseif currentTab == L.PLU_OBJ_TAB_BEHAVIOUR then
+        -- Progress Bar Label (token format string, e.g. "Current / Max (%)") — rendered first
+        local progressTooltip = { { title = L.CFG_FORMAT_TOOLTIP_TITLE } }
+        for _, token in ipairs(C.PROGRESS_TOKENS) do
+            table.insert(progressTooltip, { key = token.key, value = token.sample })
+        end
+        table.insert(progressTooltip, { hint = L.CFG_FORMAT_TOOLTIP_HINT })
+
+        table.insert(schema.controls, {
+            type = "formatinput",
+            key = "ProgressBarLabelFormat",
+            label = L.PLU_OBJ_PROGRESS_BAR_LABEL,
+            default = C.PROGRESS_FORMAT_DEFAULT,
+            tooltipLines = progressTooltip,
+            validate = function(str) return self:ValidateProgressFormat(str) end,
+            onChange = OnChange(self, systemIndex, "ProgressBarLabelFormat"),
+        })
+
         -- Header Separators
         table.insert(schema.controls, {
             type = "checkbox",
@@ -83,29 +148,6 @@ function Plugin:AddSettings(dialog, systemFrame)
             label = L.PLU_OBJ_HEADER_SEPARATORS,
             default = true,
             onChange = OnChange(self, systemIndex, "HeaderSeparators"),
-        })
-
-        -- Skin Progress Bars
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "SkinProgressBars",
-            label = L.PLU_OBJ_SKIN_PROGRESS_BARS,
-            default = true,
-            onChange = OnChange(self, systemIndex, "SkinProgressBars"),
-        })
-
-        -- Progress Bar Label Mode
-        table.insert(schema.controls, {
-            type = "dropdown",
-            key = "ProgressBarMode",
-            label = L.PLU_OBJ_PROGRESS_BAR_LABEL,
-            default = "Percent",
-            options = {
-                { label = L.PLU_OBJ_PB_PERCENT, value = "Percent" },
-                { label = L.PLU_OBJ_PB_XY, value = "XY" },
-                { label = L.PLU_OBJ_PB_BOTH, value = "Both" },
-            },
-            onChange = OnChange(self, systemIndex, "ProgressBarMode"),
         })
 
         -- Auto-Collapse in Combat
@@ -127,51 +169,16 @@ function Plugin:AddSettings(dialog, systemFrame)
         })
 
     elseif currentTab == L.PLU_OBJ_TAB_COLOURS then
-        -- Custom Quest Colors (classification / tag colouring)
+        -- Module Header (supports the picker's Class Color pin)
         table.insert(schema.controls, {
-            type = "checkbox",
-            key = "CustomColors",
-            label = L.PLU_OBJ_CUSTOM_COLORS,
-            default = true,
-            onChange = OnChange(self, systemIndex, "CustomColors"),
+            type = "solidcolor",
+            key = "HeaderColor",
+            label = L.PLU_OBJ_HEADER_COLOUR,
+            default = C.HEADER_COLOR_DEFAULT,
+            onChange = OnChange(self, systemIndex, "HeaderColor"),
         })
 
-        -- Class Color Headers (moved from Behaviour)
-        table.insert(schema.controls, {
-            type = "checkbox",
-            key = "ClassColorHeaders",
-            label = L.PLU_OBJ_CLASS_COLOR_HEADERS,
-            default = false,
-            onChange = OnChange(self, systemIndex, "ClassColorHeaders"),
-        })
-
-        -- Title Font Size
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "TitleFontSize",
-            label = L.PLU_OBJ_TITLE_FONT_SIZE,
-            min = C.TITLE_FONT_SIZE_MIN,
-            max = C.TITLE_FONT_SIZE_MAX,
-            step = C.TITLE_FONT_SIZE_STEP,
-            default = C.TITLE_FONT_SIZE_DEFAULT,
-            formatter = function(v) return v .. "pt" end,
-            onChange = OnChange(self, systemIndex, "TitleFontSize"),
-        })
-
-        -- Objective Font Size
-        table.insert(schema.controls, {
-            type = "slider",
-            key = "ObjectiveFontSize",
-            label = L.PLU_OBJ_OBJECTIVE_FONT_SIZE,
-            min = C.OBJECTIVE_FONT_SIZE_MIN,
-            max = C.OBJECTIVE_FONT_SIZE_MAX,
-            step = C.OBJECTIVE_FONT_SIZE_STEP,
-            default = C.OBJECTIVE_FONT_SIZE_DEFAULT,
-            formatter = function(v) return v .. "pt" end,
-            onChange = OnChange(self, systemIndex, "ObjectiveFontSize"),
-        })
-
-        -- Quest Title Colour
+        -- Quest Title
         table.insert(schema.controls, {
             type = "solidcolor",
             key = "TitleColor",
@@ -180,7 +187,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "TitleColor"),
         })
 
-        -- Completed Quest Colour
+        -- Completed Quest
         table.insert(schema.controls, {
             type = "solidcolor",
             key = "CompletedColor",
@@ -189,7 +196,7 @@ function Plugin:AddSettings(dialog, systemFrame)
             onChange = OnChange(self, systemIndex, "CompletedColor"),
         })
 
-        -- Focused Quest Colour
+        -- Focused Quest
         table.insert(schema.controls, {
             type = "solidcolor",
             key = "FocusColor",

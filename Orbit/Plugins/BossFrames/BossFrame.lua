@@ -265,14 +265,7 @@ function Plugin:OnLoad()
             OrbitEngine.ComponentDrag:Attach(firstFrame.CastBar, self.container, {
                 key = "CastBar",
                 onPositionChange = function(comp, anchorX, anchorY, offsetX, offsetY, justifyH)
-                    local compParent = comp:GetParent()
-                    local posX, posY
-                    if compParent then
-                        local cx, cy = comp:GetCenter()
-                        local px, py = compParent:GetCenter()
-                        if cx and px then posX = cx - px end
-                        if cy and py then posY = cy - py end
-                    end
+                    local posX, posY = OrbitEngine.ComponentDrag:GetRelativeOffset(comp)
                     local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, posX = posX, posY = posY }
                     local Txn = OrbitEngine.CanvasMode and OrbitEngine.CanvasMode.Transaction
                     if Txn and Txn:IsActive() and Txn:GetPlugin() == pluginRef then

@@ -7,6 +7,7 @@
     <Script file="Durability.lua"/>
     <Script file="BagSpace.lua"/>
     <Script file="Speed.lua"/>
+    <Script file="StatDatatext.lua"/>
     <Script file="Haste.lua"/>
     <Script file="Crit.lua"/>
     <Script file="Versatility.lua"/>

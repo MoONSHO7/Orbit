@@ -272,20 +272,18 @@ function ComponentDrag:MakePositionCallback(plugin, systemIndex, key)
     end
 end
 
+-- Parent-relative screen offset of a dragged component; nil-safe (missing parent / zero coords -> nil).
+function ComponentDrag:GetRelativeOffset(comp)
+    local parent = comp:GetParent()
+    if not parent then return end
+    local cx, cy = comp:GetCenter()
+    local px, py = parent:GetCenter()
+    return (cx and px) and cx - px or nil, (cy and py) and cy - py or nil
+end
+
 function ComponentDrag:MakeAuraPositionCallback(plugin, systemIndex, key)
     return function(comp, anchorX, anchorY, offsetX, offsetY, justifyH, justifyV, selfAnchorY)
-        local posX, posY
-        local compParent = comp:GetParent()
-        if compParent then
-            local cx, cy = comp:GetCenter()
-            local px, py = compParent:GetCenter()
-            if cx and px then
-                posX = cx - px
-            end
-            if cy and py then
-                posY = cy - py
-            end
-        end
+        local posX, posY = ComponentDrag:GetRelativeOffset(comp)
         local posData = { anchorX = anchorX, anchorY = anchorY, offsetX = offsetX, offsetY = offsetY, justifyH = justifyH, justifyV = justifyV, posX = posX, posY = posY, selfAnchorY = selfAnchorY,}
         local Txn = GetTransaction()
         if Txn and Txn:IsActive() and Txn:GetPlugin() == plugin then Txn:SetPosition(key, posData) return end

@@ -16,6 +16,7 @@ Layout.colorPool = Layout.colorPool or {}
 Layout.colorCurvePool = Layout.colorCurvePool or {}
 Layout.fontPool = Layout.fontPool or {}
 Layout.texturePool = Layout.texturePool or {}
+Layout.glowPool = Layout.glowPool or {}
 Layout.containerControls = Layout.containerControls or {} -- Container -> List of controls
 
 -- [ PICKER ANCHOR ]----------------------------------------------------------------------------------
@@ -132,6 +133,9 @@ function Layout:RecycleControls(controls)
         elseif control.OrbitType == "Texture" then
             if control.Dropdown then control.Dropdown:Hide() end
             table.insert(self.texturePool, control)
+        elseif control.OrbitType == "Glow" then
+            if control.Dropdown then control.Dropdown:Hide() end
+            table.insert(self.glowPool, control)
         end
     end
 end
@@ -512,6 +516,10 @@ function Layout:InitializeWidgetTypes()
 
     self:RegisterWidgetType("editbox", function(container, def, getValue, callback)
         return self:CreateEditBox(container, def.label, getValue(), callback, def.width, def.height, def.multiline, def)
+    end)
+
+    self:RegisterWidgetType("formatinput", function(container, def, getValue, callback)
+        return self:CreateFormatInput(container, def.label, getValue(), callback, def.tooltipLines, def.validate)
     end)
 
     self:RegisterWidgetType("header", function(container, def)

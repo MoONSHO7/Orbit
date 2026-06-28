@@ -11,6 +11,11 @@ local function GetAccountSetting(key, default)
     return v
 end
 
+-- Hold-Shift pauses all quest automation (accept + turn-in) so a quest can be handled manually.
+local function ShiftSkip()
+    return GetAccountSetting("AutoTurnInHoldShift", true) and IsShiftKeyDown()
+end
+
 -- [ EVENT HANDLER ]----------------------------------------------------------------------------------
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("QUEST_DETAIL")
@@ -21,11 +26,12 @@ frame:RegisterEvent("GOSSIP_SHOW")
 frame:SetScript("OnEvent", function(_, event, ...)
     if event == "QUEST_DETAIL" then
         if not GetAccountSetting("AutoAcceptQuests", false) then return end
+        if ShiftSkip() then return end
         AcceptQuest()
 
     elseif event == "QUEST_COMPLETE" then
         if not GetAccountSetting("AutoTurnInQuests", false) then return end
-        if GetAccountSetting("AutoTurnInHoldShift", true) and IsShiftKeyDown() then return end
+        if ShiftSkip() then return end
         local numChoices = GetNumQuestChoices()
         if numChoices <= 1 then
             GetQuestReward(numChoices)
@@ -36,15 +42,15 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if questID then ShowQuestComplete(questID) end
 
     elseif event == "GOSSIP_SHOW" then
+        if ShiftSkip() then return end
+
         -- Auto turn-in: look for a completable active quest
         if GetAccountSetting("AutoTurnInQuests", false) then
-            if not (GetAccountSetting("AutoTurnInHoldShift", true) and IsShiftKeyDown()) then
-                local activeQuests = C_GossipInfo.GetActiveQuests()
-                for _, questInfo in ipairs(activeQuests) do
-                    if questInfo.isComplete then
-                        C_GossipInfo.SelectActiveQuest(questInfo.questID)
-                        return
-                    end
+            local activeQuests = C_GossipInfo.GetActiveQuests()
+            for _, questInfo in ipairs(activeQuests) do
+                if questInfo.isComplete then
+                    C_GossipInfo.SelectActiveQuest(questInfo.questID)
+                    return
                 end
             end
         end

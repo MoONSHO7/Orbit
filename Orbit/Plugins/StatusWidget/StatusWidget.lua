@@ -75,6 +75,15 @@ local FLOURISH_TITLE_COLOR = { r = 1.0, g = 0.82, b = 0.35 }
 local SOCIAL_ICON_RATIO = 0.45   -- social toast's own icon (BN logo / game icon) shown in the centre
 local LOOT_ICON_RATIO = CENTER_RATIO   -- loot icon fills the hollow centre, circular-masked to a disc
 local LOOT_MASK_TEX = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- soft circular alpha mask (Blizzard portrait mask)
+-- Auto-repair summary: the repair-NPC crosshair marker on the centre vignette, sized small enough (like the social icon) that the circular backdrop reads around it. The atlas art sits slightly right in its cell — nudge left to centre it.
+local REPAIR_FX_ATLAS = "Crosshair_repairnpc_128"
+local REPAIR_FX_RATIO = 0.55
+local REPAIR_FX_OFFSET_X = -2
+-- "Being hammered into place": the marker is set down — shrinks in from slightly large and untilts to its natural centre, with a subtle impact squash on landing then a rebound to rest. Subtle.
+local REPAIR_SET_SCALE = 1.12      -- starts this much larger, shrinks to natural
+local REPAIR_SET_SQUASH = 0.97     -- impact overshoot just below natural before settling
+local REPAIR_SET_TILT = 5          -- starts tilted this many degrees, rotates back to 0 on impact
+local REPAIR_SET_DOWN, REPAIR_SET_SETTLE = 0.22, 0.14   -- press-down (impact) then rebound to rest
 -- Inner-border vignette tint: the metal border's inner-edge hue (~RGB 40,37,44), kept dim so it reads as a backdrop.
 local INNER_BACKDROP_COLOR = { r = 0.13, g = 0.12, b = 0.16 }
 local INNER_BACKDROP_ALPHA = 0.55
@@ -336,6 +345,28 @@ function Plugin:SetupCenterFX(frame)
     social:SetSize(BASE_SIZE * SOCIAL_ICON_RATIO, BASE_SIZE * SOCIAL_ICON_RATIO)
     social:Hide()
     frame.SocialIcon = social
+
+    -- Auto-repair marker: the repair-NPC crosshair on the centre vignette (mirrors the social icon — small enough that the circular backdrop reads around it).
+    local repairFX = frame.Center:CreateTexture(nil, "ARTWORK")
+    repairFX:SetAtlas(REPAIR_FX_ATLAS, false)
+    repairFX:SetPoint("CENTER", REPAIR_FX_OFFSET_X, 0)
+    repairFX:SetSize(BASE_SIZE * REPAIR_FX_RATIO, BASE_SIZE * REPAIR_FX_RATIO)
+    repairFX:Hide()
+    frame.RepairFX = repairFX
+    -- Set-down settle: the marker fades + shrinks in and untilts to natural with an impact squash, then rebounds to rest — reads as being hammered into place. OnFinished pins the natural rotation so it doesn't revert to the tilted base set in _RenderRepair.
+    local setDown = repairFX:CreateAnimationGroup()
+    local aIn = setDown:CreateAnimation("Alpha")
+    aIn:SetFromAlpha(0); aIn:SetToAlpha(1); aIn:SetDuration(REPAIR_SET_DOWN * 0.7)
+    local sDown = setDown:CreateAnimation("Scale")
+    sDown:SetScaleFrom(REPAIR_SET_SCALE, REPAIR_SET_SCALE); sDown:SetScaleTo(REPAIR_SET_SQUASH, REPAIR_SET_SQUASH)
+    sDown:SetOrigin("CENTER", 0, 0); sDown:SetDuration(REPAIR_SET_DOWN); sDown:SetSmoothing("IN")
+    local rDown = setDown:CreateAnimation("Rotation")
+    rDown:SetDegrees(-REPAIR_SET_TILT); rDown:SetOrigin("CENTER", 0, 0); rDown:SetDuration(REPAIR_SET_DOWN); rDown:SetSmoothing("IN")
+    local sSettle = setDown:CreateAnimation("Scale")
+    sSettle:SetScaleFrom(REPAIR_SET_SQUASH, REPAIR_SET_SQUASH); sSettle:SetScaleTo(1, 1)
+    sSettle:SetOrigin("CENTER", 0, 0); sSettle:SetStartDelay(REPAIR_SET_DOWN); sSettle:SetDuration(REPAIR_SET_SETTLE); sSettle:SetSmoothing("OUT")
+    setDown:SetScript("OnFinished", function() repairFX:SetRotation(0) end)
+    frame.RepairFXAnim = setDown
 
     -- Loot reel: the dropped item's icon, circular-masked to fill the centre, on OVERLAY above the glow so it stays crisp through the per-item quality burst.
     local loot = frame.Center:CreateTexture(nil, "OVERLAY", nil, 3)
@@ -655,6 +686,7 @@ function Plugin:_ClearCenterFX()
     frame.BurstFXAnim:Stop(); frame.BurstFX:Hide()
     if frame.Shards then frame.ShardsAnim:Stop(); frame.Shards:Hide() end
     frame.SocialIcon:Hide()
+    frame.RepairFXAnim:Stop(); frame.RepairFX:Hide()
     frame.LootIcon:Hide()
     frame.LootCount:Hide()
     if frame.LevelNumber then
@@ -786,6 +818,18 @@ function Plugin:_RenderIcon(icon, color, title, subtitle, coords)
         frame.LootIcon:Show()
     end
     self:_ShowFlourishText(title, subtitle, color)
+end
+
+-- Repair.lua calls this after an auto-repair: gold glow + the repair-NPC crosshair on the centre vignette (like the social icon) + the coin cost beside the orb.
+function Plugin:PlayRepairFlourish(coinText)
+    self:Enqueue({ kind = "repair", render = function(p) p:_RenderRepair(coinText) end })
+end
+function Plugin:_RenderRepair(coinText)
+    local frame = self.frame
+    frame.RepairFX:SetRotation(math.rad(REPAIR_SET_TILT))   -- tilted start; the settle animation rotates it back to natural (OnFinished pins it there)
+    frame.RepairFX:Show()
+    frame.RepairFXAnim:Restart()
+    self:_ShowFlourishText(coinText, nil, self.FlourishColors.gold)
 end
 
 -- A tinted celebration burst atlas + glow + text — level-up, renown, etc.
