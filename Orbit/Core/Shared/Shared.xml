@@ -5,6 +5,8 @@
     <Script file="WhitelistedSpells.lua"/>
     <Script file="PlayerDummies.lua"/>
     <Script file="SecretValueUtils.lua"/>
+    <Script file="CooldownData.lua"/>
+    <Script file="CooldownLearn.lua"/>
     <Script file="TooltipParser.lua"/>
     <Script file="CooldownUtils.lua"/>
     <Script file="CooldownDragDrop.lua"/>

@@ -28,13 +28,13 @@ end
 function DragDrop:HasCooldown(itemType, id)
     if itemType == "spell" then
         local activeId = GetActiveSpellID(id)
+        if Orbit.CooldownData:IsTracked(id) or Orbit.CooldownData:IsTracked(activeId) then return true end
         local cd = GetSpellBaseCooldown(activeId)
         if cd and not issecretvalue(cd) and cd > 0 then return true end
         local ci = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(activeId)
         if ci and ci.maxCharges and not issecretvalue(ci.maxCharges) and ci.maxCharges > 1 then return true end
-        return ParseCooldownDuration("spell", activeId) ~= nil
+        return false
     elseif itemType == "item" then
-        if ParseCooldownDuration("item", id) ~= nil then return true end
         return GetItemSpell(id) ~= nil
     end
     return false
@@ -114,8 +114,14 @@ end
 function DragDrop:BuildTrackedItemEntry(itemType, itemId, x, y)
     if not (itemType and itemId) then return nil end
     local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
-    local actDur = ParseActiveDuration(itemType, parseId)
-    local cdDur = ParseCooldownDuration(itemType, parseId)
+    local actDur, cdDur
+    if itemType == "spell" then
+        actDur = Orbit.CooldownData:GetActiveDurationOverride(parseId)
+        cdDur = Orbit.CooldownData:GetBaseCooldownSeconds(parseId)
+    else
+        actDur = ParseActiveDuration(itemType, parseId)
+        cdDur = ParseCooldownDuration(itemType, parseId)
+    end
     local useSpellId = (itemType == "item") and select(2, GetItemSpell(itemId)) or nil
     local slotId = (itemType == "item") and self:ResolveEquipmentSlot(itemId) or nil
     return {
@@ -127,6 +133,7 @@ function DragDrop:BuildTrackedItemEntry(itemType, itemId, x, y)
         cooldownDuration = cdDur,
         useSpellId = useSpellId,
         slotId = slotId,
+        aura = (itemType == "spell") and Orbit.CooldownData:IsAuraCategory(parseId) or nil,
     }
 end
 
@@ -136,7 +143,12 @@ function DragDrop:BuildInjectedItemEntry(itemType, itemId, afterNativeIndex)
     local parseId = (itemType == "spell") and GetActiveSpellID(itemId) or itemId
     local useSpellId = (itemType == "item") and select(2, GetItemSpell(itemId)) or nil
     local slotId = (itemType == "item") and self:ResolveEquipmentSlot(itemId) or nil
-    local activeDuration = ParseActiveDuration(itemType, parseId)
+    local activeDuration
+    if itemType == "spell" then
+        activeDuration = Orbit.CooldownData:GetActiveDurationOverride(parseId)
+    else
+        activeDuration = ParseActiveDuration(itemType, parseId)
+    end
     return {
         type = itemType,
         id = itemId,
@@ -158,14 +170,22 @@ function DragDrop:BuildTrackedBarPayload(itemType, id)
             maxCharges = ci.maxCharges
         end
     end
+    local actDur, cdDur
+    if itemType == "spell" then
+        actDur = Orbit.CooldownData:GetActiveDurationOverride(parseId)
+        cdDur = Orbit.CooldownData:GetBaseCooldownSeconds(parseId)
+    else
+        actDur = ParseActiveDuration(itemType, parseId)
+        cdDur = ParseCooldownDuration(itemType, parseId)
+    end
     local useSpellId = (itemType == "item") and select(2, GetItemSpell(id)) or nil
     local slotId = (itemType == "item") and self:ResolveEquipmentSlot(id) or nil
     return {
         type = itemType,
         id = id,
         maxCharges = maxCharges,
-        activeDuration = ParseActiveDuration(itemType, parseId),
-        cooldownDuration = ParseCooldownDuration(itemType, parseId),
+        activeDuration = actDur,
+        cooldownDuration = cdDur,
         useSpellId = useSpellId,
         slotId = slotId,
     }

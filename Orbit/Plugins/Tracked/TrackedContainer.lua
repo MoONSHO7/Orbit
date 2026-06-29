@@ -174,9 +174,11 @@ function Container:Apply(plugin, frame, record)
     if GU then glowTypeName, glowOptions = GU:BuildOptions(plugin, record.id, "ActiveGlow", Constants.Glow.DefaultColor, "orbitActive") end
 
     for key, data in pairs(grid) do
+        if not data.aura then plugin:RequestActiveDurationLearn(record, key, data) end
         local icon = frame.iconItems[key] or self:AcquireIcon(plugin, frame, key)
         icon.trackedType = data.type
         icon.trackedId = data.id
+        icon._isAura = data.aura
         icon._activeDuration = data.activeDuration
         icon._cooldownDuration = data.cooldownDuration
         icon._useSpellId = data.useSpellId
@@ -189,7 +191,7 @@ function Container:Apply(plugin, frame, record)
         if data.type == "spell" then
             local isCharge, ci = DragDrop:IsChargeSpell(data.id)
             icon._isChargeSpell = isCharge
-            icon._maxCharges = ci and ci.maxCharges or nil
+            icon._maxCharges = (ci and ci.maxCharges and not issecretvalue(ci.maxCharges)) and ci.maxCharges or nil
         else
             icon._isChargeSpell = false
             icon._maxCharges = nil
@@ -305,7 +307,7 @@ function Container:ComputeBounds(grid)
 end
 
 -- [ DROP ZONE EDGE EXPANSION ] ----------------------------------------------------------------------
--- Find empty cardinal neighbors of grid items; blocked directions prevent growth into anchored edges.
+-- Find empty 8-way neighbors (4 cardinal + 4 diagonal) of grid items; blocked directions prevent growth into anchored edges.
 function Container:ComputeEdgePositions(frame, grid, minX, maxX, minY, maxY, hasItems)
     local positions = {}
     if not hasItems then
@@ -328,6 +330,10 @@ function Container:ComputeEdgePositions(frame, grid, minX, maxX, minY, maxY, has
             if not blockRight then neighbors[#neighbors + 1] = { x + 1, y } end
             if not blockTop then neighbors[#neighbors + 1] = { x, y - 1 } end
             if not blockBottom then neighbors[#neighbors + 1] = { x, y + 1 } end
+            if not (blockLeft or blockTop) then neighbors[#neighbors + 1] = { x - 1, y - 1 } end
+            if not (blockRight or blockTop) then neighbors[#neighbors + 1] = { x + 1, y - 1 } end
+            if not (blockLeft or blockBottom) then neighbors[#neighbors + 1] = { x - 1, y + 1 } end
+            if not (blockRight or blockBottom) then neighbors[#neighbors + 1] = { x + 1, y + 1 } end
             for _, n in ipairs(neighbors) do
                 local nx, ny = n[1], n[2]
                 local nKey = GridKey(nx, ny)
@@ -528,6 +534,7 @@ function Container:StartUpdateTicker(plugin, frame)
     evtFrame:RegisterEvent("BAG_UPDATE_COOLDOWN")
     evtFrame:RegisterEvent("BAG_UPDATE")
     evtFrame:RegisterEvent("SPELLS_CHANGED")
+    evtFrame:RegisterUnitEvent("UNIT_AURA", "player")
     evtFrame:SetScript("OnEvent", function(_, event)
         local now = GetTime()
         if now < nextUpdate then return end
@@ -535,8 +542,9 @@ function Container:StartUpdateTicker(plugin, frame)
         if not frame:IsShown() then return end
         local p = Orbit.Profiler
         local s = p and p:Begin()
+        local auraOnly = (event == "UNIT_AURA")
         for _, icon in pairs(frame.iconItems) do
-            if icon.trackedId then IconItem:Update(icon) end
+            if icon.trackedId and (not auraOnly or icon._isAura) then IconItem:Update(icon) end
         end
         if p then p:End(plugin, event, s) end
     end)
@@ -606,20 +614,29 @@ function Container:StartSpellCastWatcher(plugin, frame)
 end
 
 -- [ ACTIVE DURATION REPARSE ] -----------------------------------------------------------------------
--- Re-reads tooltip durations after talent changes and rebuilds phase curves.
+-- After talent changes: re-resolve spell cooldowns from API + re-arm aura-learn; items still re-read from tooltip.
 function Container:ReparseActiveDurations(plugin, frame)
     local record = plugin:GetContainerRecord(frame.recordId)
     if not record or not record.grid then return end
     local changed = false
     for key, data in pairs(record.grid) do
         if data.id then
-            local parseId = (data.type == "spell") and GetActiveSpellID(data.id) or data.id
-            local newActDur = ParseActiveDuration(data.type, parseId)
-            local newCdDur = ParseCooldownDuration(data.type, parseId)
-            if newActDur ~= data.activeDuration or newCdDur ~= data.cooldownDuration then
-                data.activeDuration = newActDur
-                data.cooldownDuration = newCdDur
+            if data.type == "spell" then
+                local activeId = GetActiveSpellID(data.id)
+                local newCdDur = Orbit.CooldownData:GetBaseCooldownSeconds(activeId)
+                if newCdDur ~= data.cooldownDuration then data.cooldownDuration = newCdDur end
+                data.activeDurationLearned = nil
+                plugin:RequestActiveDurationLearn(record, key, data)
                 changed = true
+            else
+                local parseId = data.id
+                local newActDur = ParseActiveDuration("item", parseId)
+                local newCdDur = ParseCooldownDuration("item", parseId)
+                if newActDur ~= data.activeDuration or newCdDur ~= data.cooldownDuration then
+                    data.activeDuration = newActDur
+                    data.cooldownDuration = newCdDur
+                    changed = true
+                end
             end
         end
     end

@@ -307,6 +307,7 @@ function Injection:RefreshFrames(systemIndex)
         frame.trackedType = data.type
         frame.trackedId = data.id
         frame.useSpellId = data.useSpellId
+        self:RequestActiveDurationLearn(systemIndex, data)
         frame.activeDuration = data.activeDuration
         frame.injectedIndex = i
         frame.afterNativeIndex = data.afterNativeIndex or 0
@@ -322,6 +323,39 @@ function Injection:RefreshFrames(systemIndex)
             end
         end)
     end
+end
+
+-- [ ACTIVE DURATION LEARN ] -------------------------------------------------------------------------
+-- Spell-only: override applies synchronously, else a one-shot aura watch fills activeDuration on first application (matches Tracked).
+function Injection:RequestActiveDurationLearn(systemIndex, data)
+    if not data or data.type ~= "spell" or not data.id or data.activeDurationLearned then return end
+    local value, watch = Orbit.CooldownData:ResolveActiveDuration(data.id)
+    if value ~= nil then
+        data.activeDuration = value
+        data.activeDurationLearned = true
+        return
+    end
+    if not watch then return end
+    self._learning = self._learning or {}
+    local slot = systemIndex .. ":" .. tostring(data.id)
+    if self._learning[slot] then return end
+    self._learning[slot] = true
+    Orbit.CooldownLearn:Request(watch, function(duration)
+        self._learning[slot] = nil
+        local items = self:GetInjectedItems(systemIndex)
+        local changed = false
+        for _, e in ipairs(items) do
+            if e.type == "spell" and e.id == data.id and not e.activeDurationLearned then
+                e.activeDuration = duration
+                e.activeDurationLearned = true
+                changed = true
+            end
+        end
+        if changed then
+            self:SetInjectedItems(systemIndex, items)
+            self:RefreshFrames(systemIndex)
+        end
+    end)
 end
 
 -- [ PUBLIC API ] ------------------------------------------------------------------------------------

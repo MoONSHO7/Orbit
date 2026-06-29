@@ -437,6 +437,31 @@ function Plugin:RefreshBarPayloads()
     end
 end
 
+-- [ ACTIVE DURATION LEARN ] -------------------------------------------------------------------------
+-- Spell-only: override applies synchronously, else a one-shot UNIT_AURA watch fills data.activeDuration on first application (items stay parser-sourced).
+function Plugin:RequestActiveDurationLearn(record, key, data)
+    if not data or data.type ~= "spell" or not data.id or data.activeDurationLearned then return end
+    local value, watch = Orbit.CooldownData:ResolveActiveDuration(data.id)
+    if value ~= nil then
+        data.activeDuration = value
+        data.activeDurationLearned = true
+        return
+    end
+    if not watch then return end
+    self._learning = self._learning or {}
+    local slot = record.id .. ":" .. tostring(key)
+    if self._learning[slot] then return end
+    self._learning[slot] = true
+    Orbit.CooldownLearn:Request(watch, function(duration)
+        self._learning[slot] = nil
+        if data.activeDurationLearned then return end
+        data.activeDuration = duration
+        data.activeDurationLearned = true
+        local frame = self.containers[record.id]
+        if frame then self:ApplySettings(frame) end
+    end)
+end
+
 function Plugin:GetFrameBySystemIndex(systemIndex)
     return self.containers[systemIndex]
 end

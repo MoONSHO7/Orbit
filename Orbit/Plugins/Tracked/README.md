@@ -194,7 +194,7 @@ text FontStrings have to render ABOVE the border or they get clipped behind the 
 
 ## icons mode — free-form 2D grid
 
-the algorithm is the one from the pre-redesign tracked plugin (commit 8ed3a8c, `TrackedLayout.lua`). sparse grid keyed by `"x,y"` strings. when a user drags a cooldown ability over the container, every existing item exposes its empty cardinal neighbors as drop zones. the grid extends in any direction up to `MAX_GRID_REACH` (10 cells in any direction from origin).
+the algorithm is the one from the pre-redesign tracked plugin (commit 8ed3a8c, `TrackedLayout.lua`). sparse grid keyed by `"x,y"` strings. when a user drags a cooldown ability over the container, every existing item exposes its empty 8-way neighbors (4 cardinal + 4 diagonal) as drop zones — so the grid can grow in any of the eight directions around an icon, including the corners. a diagonal zone is suppressed only when either of its component edges is anchor-blocked (e.g. top-left needs both left and top free). the grid extends in any direction up to `MAX_GRID_REACH` (10 cells in any direction from origin).
 
 `blockedDirections` walks `OrbitEngine.FrameAnchor.anchors` to find the container's parent edge and any docked children, and refuses to grow into those directions so the drag preview can't push the grid into another orbit frame.
 

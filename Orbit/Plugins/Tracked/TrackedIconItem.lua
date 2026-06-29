@@ -32,7 +32,6 @@ local ONCD_CURVE = C_CurveUtil and C_CurveUtil.CreateCurve and (function()
 end)()
 
 local GC = OrbitEngine.GlowController
-local Parser = Orbit.TooltipParser
 
 -- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.TrackedIconItem = {}
@@ -163,9 +162,35 @@ function IconItem:Build(container, removeCallback)
     return icon
 end
 
+-- [ AURA UPDATE ] -----------------------------------------------------------------------------------
+-- Buff/debuff cell: render the live player aura's remaining time + stacks via C++ sinks (secret-safe — no Lua math on aura times).
+function IconItem:UpdateAura(icon)
+    if not icon.trackedId then icon:Hide(); icon._visShown = nil; icon._lastState = "ready"; return "ready" end
+    icon.Icon:SetTexture(C_Spell.GetSpellTexture(icon.trackedId))
+    -- GetAuraDuration is AllowedWhenUntainted: a secret auraInstanceID (restricted combat) would throw, so treat secret/absent the same.
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(icon.trackedId)
+    if not aura or issecretvalue(aura.auraInstanceID) then
+        icon.Cooldown:Clear()
+        icon.Icon:SetDesaturation(1)
+        if not icon._chargeTextDisabled then icon.ChargeText:SetText(""); icon.ChargeText:Hide() end
+        icon._lastState = "ready"
+        return "ready"
+    end
+    local durObj = C_UnitAuras.GetAuraDuration("player", aura.auraInstanceID)
+    if durObj then icon.Cooldown:SetCooldownFromDurationObject(durObj) else icon.Cooldown:Clear() end
+    icon.Icon:SetDesaturation(0)
+    if not icon._chargeTextDisabled then
+        icon.ChargeText:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", aura.auraInstanceID))
+        icon.ChargeText:Show()
+    end
+    icon._lastState = "active"
+    return "active"
+end
+
 -- [ UPDATE ] ----------------------------------------------------------------------------------------
 -- Update helpers return a curve-derived (secret-safe) numeric state consumed by ApplyVisibilityAlpha.
 function IconItem:Update(icon)
+    if icon._isAura then return self:UpdateAura(icon) end
     if not icon.trackedId then icon:Hide(); icon._visShown = nil; icon._lastState = "ready"; return "ready" end
 
     local texture, state

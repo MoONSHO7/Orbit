@@ -519,6 +519,7 @@ function Bar:Apply(plugin, frame, record)
     frame.RechargeSegment:GetStatusBarTexture():SetVertexColor(cc.r, cc.g, cc.b, cc.a)
 
     -- Mode-specific layout; perpDim = bar's perpendicular dimension for tick sizing.
+    plugin:RequestActiveDurationLearn(record, "bar", payload)
     local mode = DetermineMode(payload)
     frame._barMode = mode
     local perpDim = isVertical and frameW or frameH
