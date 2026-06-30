@@ -367,7 +367,7 @@ function Bar:StartCastWatcher(plugin, frame)
         local record = plugin:GetContainerRecord(frame.recordId)
         if not record or not record.payload or record.payload.type ~= "spell" then return end
         local trackedId = record.payload.id
-        if spellId ~= trackedId and spellId ~= FindSpellOverrideByID(trackedId) then return end
+        if spellId ~= trackedId and spellId ~= Orbit.CooldownData:GetActiveSpellID(trackedId) then return end
         frame._castTime = GetTime()
         Bar:_EnsureTicker(plugin, frame)
     end)
@@ -543,7 +543,7 @@ function Bar:CacheImmutableState(frame, payload)
         return
     end
     if payload.type == "spell" then
-        local activeId = FindSpellOverrideByID(payload.id) or payload.id
+        local activeId = Orbit.CooldownData:GetActiveSpellID(payload.id)
         local spellInfo = C_Spell.GetSpellInfo(activeId)
         if spellInfo then
             frame._cachedActiveId = activeId
@@ -784,7 +784,7 @@ end
 -- [ CHARGES MODE UPDATE ] ---------------------------------------------------------------------------
 -- Pure sink: currentCharges (secret) piped directly into SetValue/SetText.
 function Bar:UpdateChargesMode(frame, payload)
-    local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
+    local activeId = frame._cachedActiveId or Orbit.CooldownData:GetActiveSpellID(payload.id)
     local ci = C_Spell.GetSpellCharges(activeId)
     if not ci then return "cooldown" end
 
@@ -818,7 +818,7 @@ end
 -- Spell path uses curves piped to C++ sinks; item path uses numeric GetItemCooldown.
 function Bar:UpdateCdOnlyMode(frame, payload)
     if payload.type == "spell" then
-        local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
+        local activeId = frame._cachedActiveId or Orbit.CooldownData:GetActiveSpellID(payload.id)
         local cdInfo = C_Spell.GetSpellCooldown(activeId)
         -- All three checks needed; GetSpellCooldownDuration otherwise returns the GCD durObj and flashes "cooldown".
         if not cdInfo or not cdInfo.isActive or cdInfo.isOnGCD or not payload.cooldownDuration then
@@ -895,7 +895,7 @@ function Bar:UpdateActiveCdMode(frame, payload)
     if not breakpoint then return "ready" end
 
     if payload.type == "spell" then
-        local activeId = frame._cachedActiveId or FindSpellOverrideByID(payload.id) or payload.id
+        local activeId = frame._cachedActiveId or Orbit.CooldownData:GetActiveSpellID(payload.id)
         local cdInfo = C_Spell.GetSpellCooldown(activeId)
         -- Real cd for active+cd spells is longer than GCD, so isOnGCD stays false during the legitimate cycle.
         if not cdInfo or not cdInfo.isActive or cdInfo.isOnGCD then
@@ -909,13 +909,9 @@ function Bar:UpdateActiveCdMode(frame, payload)
             self:ApplyBarVisibilityAlpha(frame, "ready")
             return "ready"
         end
-        -- Bar fill via V-curve → SetValue (C++ sink, secret-safe).
         local fillCurve = frame._barFillCurve
         if not fillCurve then self:SetBarFull(frame); self:ApplyBarVisibilityAlpha(frame, "ready"); return "ready" end
-        local barFill = durObj:EvaluateRemainingPercent(fillCurve)
         frame.StatusBar:SetMinMaxValues(0, 1)
-        frame.StatusBar:SetValue(barFill)
-        frame.TickBar:SetValue(barFill)
         if frame.TickMark then frame.TickMark:SetAlpha(1) end
         local castTime = frame._castTime
         local activeDur = payload.activeDuration
@@ -923,17 +919,23 @@ function Bar:UpdateActiveCdMode(frame, payload)
         local state = "cooldown"
         if castTime and activeDur and cdDur then
             local elapsed = GetTime() - castTime
-            local phaseRem
+            local phaseRem, barFill
             if elapsed < activeDur then
                 phaseRem = activeDur - elapsed
                 state = "active"
+                barFill = 1 - (elapsed / activeDur)
             elseif elapsed < cdDur then
                 phaseRem = cdDur - elapsed
                 state = "cooldown"
+                barFill = (elapsed - activeDur) / (cdDur - activeDur)
             else
                 state = "ready"
                 frame._castTime = nil
+                barFill = 1
             end
+            -- Fill driven by the same cast clock as the text, so the bar and timer stay in lockstep (the durObj V-curve drifts when the live cd differs from the base cd).
+            frame.StatusBar:SetValue(barFill)
+            frame.TickBar:SetValue(barFill)
             self:SetBarColor(frame, state)
             if not frame._timeTextDisabled and phaseRem and phaseRem > 0 then
                 frame.TimeText:SetText(FormatTime(phaseRem))
@@ -942,7 +944,10 @@ function Bar:UpdateActiveCdMode(frame, payload)
                 frame.TimeText:Hide()
             end
         else
-            -- No cast tracked (e.g. post-/reload mid-cycle): use phase curve for color only.
+            -- No cast tracked (e.g. post-/reload mid-cycle): durObj V-curve drives fill + colour.
+            local barFill = durObj:EvaluateRemainingPercent(fillCurve)
+            frame.StatusBar:SetValue(barFill)
+            frame.TickBar:SetValue(barFill)
             local phaseCurve = frame._phaseCurve
             if phaseCurve then
                 local phaseVal = durObj:EvaluateRemainingPercent(phaseCurve)

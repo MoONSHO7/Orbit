@@ -43,7 +43,8 @@ end
 
 -- [ CORE SHOW / HIDE ] ------------------------------------------------------------------------------
 function GC:Show(frame, glowKey, typeName, options)
-    if not frame or not LCG or not typeName then return end
+    -- Empty typeName means "no glow" (e.g. an unmapped enum like Blizzard resolves to ""); never forward it — lib.Show errors on an unknown type.
+    if not frame or not LCG or not typeName or typeName == "" then return end
     local state = GetState(frame)
     local entry = state.active[glowKey]
     

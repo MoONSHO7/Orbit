@@ -84,7 +84,13 @@ function CDM:HookProcGlow()
         local si = FindSystemIndexForButton(button)
         if not si then return end
         pendingProcHides[button] = nil
-        GC:ShowProc(button, function(k) return self:GetSetting(si, k) end, "ProcGlow", Constants.Glow.DefaultColor)
+        local lookup = function(k) return self:GetSetting(si, k) end
+        local cid = button.GetCooldownID and button:GetCooldownID()
+        if cid then
+            lookup = Orbit.SpellGlows:CDMLookup(cid, "ProcGlow", lookup)
+            Orbit.SpellGlows:FireAlert(Orbit.SpellGlows:GetCDMAlert(cid, "proc"), button.GetSpellID and button:GetSpellID())
+        end
+        GC:ShowProc(button, lookup, "ProcGlow", Constants.Glow.DefaultColor)
     end)
     hooksecurefunc(ActionButtonSpellAlertManager, "HideAlert", function(_, button)
         local si = FindSystemIndexForButton(button)
@@ -92,6 +98,46 @@ function CDM:HookProcGlow()
         DeferProcHide(button)
     end)
     self.procGlowHooked = true
+end
+
+-- [ NATIVE GLOW MENU ] ------------------------------------------------------------------------------
+-- Shift-right-click a native CDM icon → per-spell glow menu. Uses GLOBAL_MOUSE_DOWN + GetMouseFoci, NOT HookScript on the native frames — hooking their scripts taints the CDM viewer children (same reason CooldownSettingsDragBridge avoids it).
+function CDM:HookNativeGlowMenu()
+    if self._nativeGlowMenuHooked then return end
+    self._nativeGlowMenuHooked = true
+    local plugin = self
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("GLOBAL_MOUSE_DOWN")
+    f:SetScript("OnEvent", function(_, _, button)
+        if button ~= "RightButton" or not IsShiftKeyDown() or InCombatLockdown() then return end
+        -- Native CDM item frames are click-through (mouse not click-enabled), so GetMouseFoci never returns them. Hit-test by geometry instead — IsMouseOver works regardless of mouse-enabled state.
+        for _, entry in pairs(plugin.viewerMap) do
+            local viewer = entry.viewer
+            if viewer and viewer:IsShown() and viewer.GetItemFrames then
+                for _, item in ipairs(viewer:GetItemFrames()) do
+                    if item:IsShown() and item.GetCooldownID and item:IsMouseOver() then
+                        local cid = item:GetCooldownID()
+                        local sid = item.GetSpellID and item:GetSpellID()
+                        if Orbit.DEBUG_GLOWMENU then print("|cff66ccff[GlowMenu]|r hit item sid:", tostring(sid), "cid:", tostring(cid)) end
+                        if sid and cid then
+                            Orbit.SpellGlows:OpenMenu(item, {
+                                id = sid, itemType = "spell",
+                                supported = { proc = true, pandemic = true },
+                                get = function(cond) return Orbit.SpellGlows:GetCDM(cid, cond) end,
+                                set = function(cond, t) Orbit.SpellGlows:SetCDM(cid, cond, t); plugin:MarkPandemicDirty() end,
+                                getColor = function(cond) return Orbit.SpellGlows:GetCDMColor(cid, cond) end,
+                                setColor = function(cond, c) Orbit.SpellGlows:SetCDMColor(cid, cond, c); plugin:MarkPandemicDirty() end,
+                                getAlert = function(cond) return Orbit.SpellGlows:GetCDMAlert(cid, cond) end,
+                                setAlert = function(cond, v) Orbit.SpellGlows:SetCDMAlert(cid, cond, v) end,
+                            })
+                            return
+                        end
+                    end
+                end
+            end
+        end
+        if Orbit.DEBUG_GLOWMENU then print("|cff66ccff[GlowMenu]|r shift-rclick: no CDM item under cursor") end
+    end)
 end
 
 -- [ GLOW TRANSPARENCY FIX ] -------------------------------------------------------------------------
@@ -147,7 +193,14 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
     icon._orbitPandemicHooked = true
     local function OnPandemicShow(self)
         pendingPandemicHides[self] = nil
-        local glowType = plugin:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
+        local cid = self.GetCooldownID and self:GetCooldownID()
+        if cid and not self._orbitPandemicAlerted then
+            self._orbitPandemicAlerted = true
+            Orbit.SpellGlows:FireAlert(Orbit.SpellGlows:GetCDMAlert(cid, "pandemic"), self.GetSpellID and self:GetSpellID())
+        end
+        local lk = function(k) return plugin:GetSetting(systemIndex, k) end
+        if cid then lk = Orbit.SpellGlows:CDMLookup(cid, "PandemicGlow", lk) end
+        local glowType = lk("PandemicGlowType") or GlowType.None
         SetPandemicSuppress(self, true)
         SuppressPandemicIcon(self)
         if glowType == GlowType.None then
@@ -155,7 +208,7 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
             return
         end
         if not GC:IsActive(self, PANDEMIC_KEY) then
-            local typeName, options = GU:BuildOptions(plugin, systemIndex, "PandemicGlow", Constants.Glow.DefaultColor, PANDEMIC_KEY)
+            local typeName, options = GU:BuildOptionsFromLookup(lk, "PandemicGlow", Constants.Glow.DefaultColor, PANDEMIC_KEY)
             if typeName and options then
                 options.frameLevel = Constants.Levels.IconGlow
                 GC:ShowPandemic(self, typeName, options, 1)
@@ -165,6 +218,7 @@ HookPandemicIcon = function(icon, plugin, systemIndex)
         end
     end
     local function OnPandemicHide(self)
+        self._orbitPandemicAlerted = nil
         if GC:IsActive(self, PANDEMIC_KEY) then
             DeferPandemicHide(self)
         end
@@ -187,10 +241,13 @@ function CDM:CheckPandemicFrames(viewer, systemIndex)
     if not viewer then return end
     local icons = viewer.GetItemFrames and viewer:GetItemFrames()
     if not icons then return end
-    local glowType = self:GetSetting(systemIndex, "PandemicGlowType") or GlowType.None
-    local typeName, options, hash = GU:BuildOptions(self, systemIndex, "PandemicGlow", Constants.Glow.DefaultColor, PANDEMIC_KEY)
     for _, icon in ipairs(icons) do
         HookPandemicIcon(icon, self, systemIndex)
+        local cid = icon.GetCooldownID and icon:GetCooldownID()
+        local lk = function(k) return self:GetSetting(systemIndex, k) end
+        if cid then lk = Orbit.SpellGlows:CDMLookup(cid, "PandemicGlow", lk) end
+        local glowType = lk("PandemicGlowType") or GlowType.None
+        local typeName, options, hash = GU:BuildOptionsFromLookup(lk, "PandemicGlow", Constants.Glow.DefaultColor, PANDEMIC_KEY)
         local activeType = GC:GetActiveType(icon, PANDEMIC_KEY)
         if activeType and (activeType ~= typeName or (icon._orbitGlow and icon._orbitGlow.active[PANDEMIC_KEY] and icon._orbitGlow.active[PANDEMIC_KEY].hash ~= hash)) then
             GC:StopPandemic(icon)

@@ -20,7 +20,7 @@ Topics/              -- one file per topic, pure localized data
   Minimap.lua        -- explainers
   RaidMarkers.lua    -- explainers
   DamageMeter.lua    -- explainers
-  CooldownManager.lua -- explainers (topic "CDM": inject/remove cooldowns, edit-mode vs. move/style)
+  CooldownManager.lua -- explainers (topic "CDM": inject/remove cooldowns, edit-mode vs. move/style, per-icon glow/colour/sound menu)
   Tracked.lua        -- explainers (topic "CDM": create/fill/remove tracked icons & bars)
   PortalDock.lua     -- explainers + rescan action
   Profiles.lua       -- explainers

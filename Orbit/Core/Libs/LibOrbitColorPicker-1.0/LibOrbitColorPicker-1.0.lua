@@ -387,8 +387,10 @@ function lib:CreatePinHandle(gradientBar)
     end)
 
     handle:SetScript("OnKeyDown", function(self, key)
+        -- SetPropagateKeyboardInput is protected in combat; skip it there (the picker closes on PLAYER_REGEN_DISABLED).
+        local inCombat = InCombatLockdown()
         if not lib.multiPinMode or not self.pinData then
-            self:SetPropagateKeyboardInput(true)
+            if not inCombat then self:SetPropagateKeyboardInput(true) end
             return
         end
         local step = IsShiftKeyDown() and PIN_NUDGE_FINE or PIN_NUDGE_STEP
@@ -397,10 +399,10 @@ function lib:CreatePinHandle(gradientBar)
         elseif key == "RIGHT" then
             self.pinData.position = ClampPosition(self.pinData.position + step)
         else
-            self:SetPropagateKeyboardInput(true)
+            if not inCombat then self:SetPropagateKeyboardInput(true) end
             return
         end
-        self:SetPropagateKeyboardInput(false)
+        if not inCombat then self:SetPropagateKeyboardInput(false) end
         gradientBar:Refresh()
         lib:UpdateCurve()
         lib:UpdateApplyButtonState()
@@ -862,11 +864,12 @@ function lib:CreatePickerFrame()
     f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 
     f:SetScript("OnKeyDown", function(self, key)
+        -- SetPropagateKeyboardInput is protected in combat; skip it there (the picker is closed on PLAYER_REGEN_DISABLED anyway).
         if key == "ESCAPE" then
-            self:SetPropagateKeyboardInput(false)
+            if not InCombatLockdown() then self:SetPropagateKeyboardInput(false) end
             lib.wasCancelled = true
             lib:CloseFrame()
-        else
+        elseif not InCombatLockdown() then
             self:SetPropagateKeyboardInput(true)
         end
     end)

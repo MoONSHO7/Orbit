@@ -34,6 +34,7 @@ function CDM:HookBlizzardViewers()
     end
 
     self:HookProcGlow()
+    self:HookNativeGlowMenu()
     self:MonitorViewers()
     self:HookEssentialUtilityMixins()
 end
@@ -189,6 +190,7 @@ function CDM:MonitorViewers()
     frame:RegisterUnitEvent("UNIT_AURA", "player")
     frame:RegisterEvent("PLAYER_REGEN_DISABLED")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    frame:RegisterEvent("TRAIT_CONFIG_UPDATED")
 
     local function OOCUpdate()
         if not (oocThrottled and oocDirty) then return end
@@ -215,6 +217,17 @@ function CDM:MonitorViewers()
                 CheckAll()
                 CheckPandemicIfDirty()
             end
+            return
+        end
+        if event == "TRAIT_CONFIG_UPDATED" then
+            -- Talents can add or remove a spell's pandemic/proc alerts; re-evaluate every viewer after Blizzard reconfigures (debounced — TRAIT_CONFIG_UPDATED fires several times per commit).
+            if plugin._traitGlowTimer then plugin._traitGlowTimer:Cancel() end
+            plugin._traitGlowTimer = C_Timer.NewTimer(Constants.Timing.KeyboardRestoreDelay, function()
+                plugin._traitGlowTimer = nil
+                pandemicDirty = true
+                CheckAll()
+                CheckPandemicAll()
+            end)
             return
         end
         local inCombat = (event == "PLAYER_REGEN_DISABLED")

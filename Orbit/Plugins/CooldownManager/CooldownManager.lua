@@ -101,6 +101,7 @@ function Plugin:IsComponentDisabled()
     return false
 end
 function Plugin:HookProcGlow() end
+function Plugin:HookNativeGlowMenu() end
 function Plugin:CheckPandemicFrames() end
 function Plugin:MarkPandemicDirty() end
 function Plugin:FixGlowTransparency() end

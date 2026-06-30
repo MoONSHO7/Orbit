@@ -94,6 +94,17 @@ local function ApplyHeaderColors(header, color)
     header.Text:SetTextColor(color.r, color.g, color.b)
 end
 
+-- Blizzard style only: the native header Background is a fixed-width atlas anchored CENTER, so once FitTrackerWidths sizes the header narrower than the atlas it bleeds past the box edges and the ScrollFrame clips it (the "cut off on the left" artifact). Re-anchor it to the header width — keeping its atlas height — so the bar fits. The LEFT extends back by BLIZZARD_LEFT_PAD to undo the content right-shift (ApplySettings) that keeps the block POI icons inside the clip, so the bar still spans the full box width edge-to-edge.
+local function FitNativeHeaderBackground(header)
+    local bg = header and header.Background
+    if not bg then return end
+    local h = bg:GetHeight()
+    bg:ClearAllPoints()
+    bg:SetPoint("LEFT", header, "LEFT", -C.BLIZZARD_LEFT_PAD, 0)
+    bg:SetPoint("RIGHT", header, "RIGHT", 0, 0)
+    if h and h > 0 then bg:SetHeight(h) end
+end
+
 -- Blizzard's header frames are a fixed 32/26px regardless of font; size them to the font (floored at the 16px minimize button) so the bar hugs the text. minHeight omitted = font only (Scenario keeps its native height — its slide math depends on it). Returns the applied height.
 local function ApplyHeaderFont(header, minHeight)
     if not header or not header.Text then return end
@@ -163,10 +174,11 @@ local function SkinMinimizeButton(header)
     end
     SuppressNativeTextures()
 
-    -- Create chevron FontString
+    -- Create chevron FontString. The master header's minimize button sits ~1px left of the module ones, so nudge its chevron right to line the column up.
     local chevron = btn:CreateFontString(nil, "OVERLAY")
     chevron:SetFont(GetGlobalFont(), 14, Orbit.Skin:GetFontOutline())
-    chevron:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    local chevronX = (header == ObjectiveTrackerFrame.Header) and OrbitEngine.Pixel:Multiple(4, btn:GetEffectiveScale()) or 0
+    chevron:SetPoint("CENTER", btn, "CENTER", chevronX, 0)
     chevron:SetTextColor(C.CHEVRON_COLOR.r, C.CHEVRON_COLOR.g, C.CHEVRON_COLOR.b)
     btn._orbitChevron = chevron
 
@@ -225,9 +237,16 @@ end
 local function UpdateQuestCounter(header)
     local fs = header and header._orbitQuestCount
     if not fs then return end
-    local count = C_QuestLog.GetNumQuestWatches() or 0
-    local max = (Constants and Constants.QuestWatchConsts and Constants.QuestWatchConsts.MAX_QUEST_WATCHES) or C.MAX_QUESTS
-    fs:SetText(count .. "/" .. max)
+    -- Count visible standard quests so the number matches the quest log. GetNumQuestLogEntries' quest total counts hidden meta/account/task quests too (can exceed the cap), so walk the entries and drop headers/hidden/tasks/bounties. Show just the count — the quest cap carries no useful information.
+    local count = 0
+    local numEntries = C_QuestLog.GetNumQuestLogEntries()
+    for i = 1, numEntries do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHeader and not info.isHidden and not info.isTask and not info.isBounty then
+            count = count + 1
+        end
+    end
+    fs:SetText(tostring(count))
 end
 
 -- [ SKIN: QUEST ITEM BUTTON ]------------------------------------------------------------------------
@@ -837,28 +856,32 @@ end)
 function Plugin:InstallSkinHooks()
     if self._hooksInstalled then return end
 
-    -- Skin the main container header
+    -- Blizzard style keeps the native header chrome (background, minimize button, collapse animation) — skip the cosmetic passes. The AddBlock/GetProgressBar/widget hooks below still install but self-gate on the _enabled flag (SetSkinEnabled), so they no-op until Orbit style turns them on. Reload-gated, so this re-evaluates fresh each session.
+    local orbitStyle = self:IsOrbitStyle()
+
+    -- Skin the main container header (Orbit style only)
     local trackerFrame = ObjectiveTrackerFrame
-    if trackerFrame and trackerFrame.Header then
+    if orbitStyle and trackerFrame and trackerFrame.Header then
         SkinHeader(trackerFrame.Header)
         SkinMinimizeButton(trackerFrame.Header)
         EnableHeaderClickCollapse(trackerFrame.Header)
-    end
 
-    -- Quest counter: update whenever the quest log changes
-    local questCountFrame = CreateFrame("Frame")
-    questCountFrame:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
-    questCountFrame:SetScript("OnEvent", function()
-        if ObjectiveTrackerFrame and ObjectiveTrackerFrame.Header then
-            UpdateQuestCounter(ObjectiveTrackerFrame.Header)
-        end
-    end)
+        -- Quest counter tracks the log size (accept/turn-in/abandon), not the watch list, so it stays put across zone changes.
+        local questCountFrame = CreateFrame("Frame")
+        questCountFrame:RegisterEvent("QUEST_ACCEPTED")
+        questCountFrame:RegisterEvent("QUEST_REMOVED")
+        questCountFrame:SetScript("OnEvent", function()
+            if ObjectiveTrackerFrame and ObjectiveTrackerFrame.Header then
+                UpdateQuestCounter(ObjectiveTrackerFrame.Header)
+            end
+        end)
+    end
 
     -- Skin each module's header and hook AddBlock / GetProgressBar / GetTimerBar.
     for _, moduleName in pairs(C.TRACKER_MODULES) do
         local tracker = _G[moduleName]
         if tracker then
-            if tracker.Header then
+            if orbitStyle and tracker.Header then
                 SkinHeader(tracker.Header)
                 SkinMinimizeButton(tracker.Header)
                 EnableHeaderClickCollapse(tracker.Header)
@@ -915,6 +938,8 @@ function Plugin:FitTrackerWidths()
     local width = trackerFrame:GetWidth()
     if width <= 0 then return end
 
+    local orbitStyle = self:IsOrbitStyle()
+
     -- Hide the Blizzard NineSlice background (we provide our own backdrop/border)
     if trackerFrame.NineSlice then
         trackerFrame.NineSlice:Hide()
@@ -923,6 +948,7 @@ function Plugin:FitTrackerWidths()
     -- Resize main header
     if trackerFrame.Header then
         trackerFrame.Header:SetWidth(width)
+        if not orbitStyle then FitNativeHeaderBackground(trackerFrame.Header) end
     end
 
     -- Resize each module and its header
@@ -932,6 +958,7 @@ function Plugin:FitTrackerWidths()
             tracker:SetWidth(width)
             if tracker.Header then
                 tracker.Header:SetWidth(width)
+                if not orbitStyle then FitNativeHeaderBackground(tracker.Header) end
             end
             -- ContentsFrame holds blocks
             if tracker.ContentsFrame then
@@ -941,8 +968,8 @@ function Plugin:FitTrackerWidths()
             if tracker.MawBuffsBlock then
                 tracker.MawBuffsBlock:SetWidth(width)
             end
-            -- Reflow already-rendered progress bars (they size explicitly now, not via a RIGHT anchor) so a live Width change resizes them without waiting for a re-layout.
-            if tracker.usedProgressBars then
+            -- Reflow already-rendered progress bars (they size explicitly now, not via a RIGHT anchor) so a live Width change resizes them without waiting for a re-layout. Orbit style only — Blizzard's native bars size via their own anchors.
+            if orbitStyle and tracker.usedProgressBars then
                 for _, pb in pairs(tracker.usedProgressBars) do
                     FitProgressBarWidth(pb, width)
                 end
@@ -971,13 +998,16 @@ function Plugin:ApplySkins()
     _cachedCompletedColor    = ResolveColor(self:GetSetting(SYSTEM_ID, "CompletedColor"), POI_COLOR_COMPLETE_FALLBACK)
     _cachedFocusColor        = ResolveColor(self:GetSetting(SYSTEM_ID, "FocusColor"), C.FOCUS_COLOR_DEFAULT)
 
+    -- Fit all widths to our container (structural — applies in both Orbit and Blizzard styles)
+    self:FitTrackerWidths()
+
+    -- Blizzard style keeps the native tracker chrome (larger bars/headers); only the Orbit skin recolours/resizes headers, draws separators, and re-skins blocks, bars, and POI icons.
+    if not self:IsOrbitStyle() then return end
+
     local headerRaw = self:GetSetting(SYSTEM_ID, "HeaderColor")
     local headerColor = ResolveColor(headerRaw, C.HEADER_COLOR_DEFAULT)
     local headerIsClass = type(headerRaw) == "table" and headerRaw.type == "class"
     local headerSeparators = self:GetSetting(SYSTEM_ID, "HeaderSeparators")
-
-    -- Fit all widths to our container
-    self:FitTrackerWidths()
 
     -- Main tracker header
     local trackerFrame = ObjectiveTrackerFrame

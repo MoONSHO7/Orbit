@@ -41,9 +41,6 @@ local BuildPhaseCurve = function(activeDuration, cooldownDuration)
     return curve
 end
 
--- [ SPELL OVERRIDE ALIAS ] --------------------------------------------------------------------------
-local function GetActiveSpellID(spellID) return FindSpellOverrideByID(spellID) end
-
 -- [ MODULE ] ----------------------------------------------------------------------------------------
 Orbit.TrackedContainer = {}
 local Container = Orbit.TrackedContainer
@@ -174,19 +171,60 @@ function Container:Apply(plugin, frame, record)
     if GU then glowTypeName, glowOptions = GU:BuildOptions(plugin, record.id, "ActiveGlow", Constants.Glow.DefaultColor, "orbitActive") end
 
     for key, data in pairs(grid) do
-        if not data.aura then plugin:RequestActiveDurationLearn(record, key, data) end
+        plugin:RequestActiveDurationLearn(record, key, data)
         local icon = frame.iconItems[key] or self:AcquireIcon(plugin, frame, key)
+        local prevId = icon.trackedId
         icon.trackedType = data.type
         icon.trackedId = data.id
-        icon._isAura = data.aura
+        -- Reused cell now holds a different spell: clear last state so a ready icon doesn't fire a spurious ready-flash.
+        if prevId ~= data.id then icon._lastState = nil end
         icon._activeDuration = data.activeDuration
         icon._cooldownDuration = data.cooldownDuration
         icon._useSpellId = data.useSpellId
         icon._showGCDSwipe = showGCDSwipe
         icon._hideOnCooldown = hideOnCd
         icon._hideOnAvailable = hideOnReady
-        icon._activeGlowTypeName = glowTypeName
-        icon._activeGlowOptions = glowOptions
+        icon._glows = data.glows
+        icon._alerts = data.alerts
+        icon._glowColors = data.glowColors
+        -- Per-icon active glow (set via shift-right-click menu) overrides the container default; a per-icon colour tints either.
+        local activeGlowType = data.glows and data.glows.active
+        local activeColor = data.glowColors and data.glowColors.active
+        if activeGlowType ~= nil then
+            icon._activeGlowTypeName, icon._activeGlowOptions = Orbit.SpellGlows:BuildGlowOptions(activeGlowType, "orbitActive", activeColor or Constants.Glow.DefaultColor)
+        elseif activeColor and glowOptions then
+            icon._activeGlowTypeName = glowTypeName
+            local tinted = {}
+            for k, v in pairs(glowOptions) do tinted[k] = v end
+            local cr, cg, cb, ca = OrbitEngine.ClassColor:ResolveValueUnpacked(activeColor)
+            tinted.color = { cr, cg, cb, ca }
+            icon._activeGlowOptions = tinted
+        else
+            icon._activeGlowTypeName = glowTypeName
+            icon._activeGlowOptions = glowOptions
+        end
+        local glowSupported = { proc = true, active = true }
+        icon._openGlowMenu = function(ic)
+            Orbit.SpellGlows:OpenMenu(ic, {
+                id = data.id,
+                itemType = data.type,
+                supported = glowSupported,
+                get = function(cond) return data.glows and data.glows[cond] end,
+                set = function(cond, t) data.glows = data.glows or {}; data.glows[cond] = t; ic._glows = data.glows end,
+                getAlert = function(cond) return data.alerts and data.alerts[cond] end,
+                setAlert = function(cond, v) data.alerts = data.alerts or {}; data.alerts[cond] = v; ic._alerts = data.alerts end,
+                getColor = function(cond) return data.glowColors and data.glowColors[cond] end,
+                setColor = function(cond, c) data.glowColors = data.glowColors or {}; data.glowColors[cond] = c; ic._glowColors = data.glowColors end,
+                onChange = function() if not InCombatLockdown() then Container:Apply(plugin, frame, record) end end,
+                removeCallback = function() if not InCombatLockdown() then Container:RemoveIconAt(plugin, frame, ic) end end,
+            })
+        end
+        if data.type == "spell" then
+            Orbit.SpellGlows:RegisterProc(icon, function() return icon.trackedId end,
+                function(cond) return icon._glows and icon._glows[cond] end,
+                function(cond) return icon._alerts and icon._alerts[cond] end,
+                function(cond) return icon._glowColors and icon._glowColors[cond] end)
+        end
         -- Charge spell detection
         if data.type == "spell" then
             local isCharge, ci = DragDrop:IsChargeSpell(data.id)
@@ -208,6 +246,9 @@ function Container:Apply(plugin, frame, record)
         Orbit.TrackedIconItem:ApplySwipeColor(plugin, icon, record.id)
         Orbit.TrackedIconItem:ApplyCanvasComponents(plugin, icon, record.id)
         Orbit.TrackedIconItem:Update(icon)
+        if data.type == "spell" then
+            Orbit.IconCastState:Track(icon, function() return icon.trackedId end)
+        end
     end
 
     local extMinX, extMaxX, extMinY, extMaxY = minX, maxX, minY, maxY
@@ -534,7 +575,6 @@ function Container:StartUpdateTicker(plugin, frame)
     evtFrame:RegisterEvent("BAG_UPDATE_COOLDOWN")
     evtFrame:RegisterEvent("BAG_UPDATE")
     evtFrame:RegisterEvent("SPELLS_CHANGED")
-    evtFrame:RegisterUnitEvent("UNIT_AURA", "player")
     evtFrame:SetScript("OnEvent", function(_, event)
         local now = GetTime()
         if now < nextUpdate then return end
@@ -542,9 +582,8 @@ function Container:StartUpdateTicker(plugin, frame)
         if not frame:IsShown() then return end
         local p = Orbit.Profiler
         local s = p and p:Begin()
-        local auraOnly = (event == "UNIT_AURA")
         for _, icon in pairs(frame.iconItems) do
-            if icon.trackedId and (not auraOnly or icon._isAura) then IconItem:Update(icon) end
+            if icon.trackedId then IconItem:Update(icon) end
         end
         if p then p:End(plugin, event, s) end
     end)
@@ -593,7 +632,7 @@ function Container:StartSpellCastWatcher(plugin, frame)
         end
         if unit ~= "player" then return end
         for _, icon in pairs(frame.iconItems) do
-            local activeId = (icon.trackedType == "spell") and GetActiveSpellID(icon.trackedId) or nil
+            local activeId = (icon.trackedType == "spell") and Orbit.CooldownData:GetActiveSpellID(icon.trackedId) or nil
             local isMatch = (icon.trackedType == "spell" and (icon.trackedId == spellId or activeId == spellId)) or (icon.trackedType == "item" and icon._useSpellId == spellId)
             if isMatch then
                 if icon._activeDuration then
@@ -601,11 +640,14 @@ function Container:StartSpellCastWatcher(plugin, frame)
                     local expectedId = icon.trackedId
                     C_Timer.After(icon._activeDuration, function()
                         if icon.trackedId ~= expectedId then return end
+                        -- A recast before this fires pushed _activeGlowExpiry later; let that newer timer clear it.
+                        if icon._activeGlowExpiry and GetTime() < icon._activeGlowExpiry then return end
                         local GC = OrbitEngine.GlowController
                         if GC:IsActive(icon, "orbitActive") then GC:Hide(icon, "orbitActive") end
                         icon._activeGlowExpiry = nil
                     end)
                 end
+                if icon._alerts and icon._alerts.active then Orbit.SpellGlows:FireAlert(icon._alerts.active, icon.trackedId) end
                 if icon._isChargeSpell then CooldownUtils:OnChargeCast(icon) end
             end
         end
@@ -622,7 +664,7 @@ function Container:ReparseActiveDurations(plugin, frame)
     for key, data in pairs(record.grid) do
         if data.id then
             if data.type == "spell" then
-                local activeId = GetActiveSpellID(data.id)
+                local activeId = Orbit.CooldownData:GetActiveSpellID(data.id)
                 local newCdDur = Orbit.CooldownData:GetBaseCooldownSeconds(activeId)
                 if newCdDur ~= data.cooldownDuration then data.cooldownDuration = newCdDur end
                 data.activeDurationLearned = nil

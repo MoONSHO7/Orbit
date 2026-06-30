@@ -154,46 +154,25 @@ function IconItem:Build(container, removeCallback)
     icon:EnableMouse(true)
     icon:RegisterForDrag("LeftButton")
     icon:SetScript("OnMouseDown", function(self, button)
-        if button == "RightButton" and IsShiftKeyDown() and not InCombatLockdown() then
-            if removeCallback then removeCallback(self) end
+        if button == "RightButton" and IsShiftKeyDown() then
+            if self._openGlowMenu then self._openGlowMenu(self)
+            elseif removeCallback and not InCombatLockdown() then removeCallback(self) end
         end
     end)
 
     return icon
 end
 
--- [ AURA UPDATE ] -----------------------------------------------------------------------------------
--- Buff/debuff cell: render the live player aura's remaining time + stacks via C++ sinks (secret-safe — no Lua math on aura times).
-function IconItem:UpdateAura(icon)
-    if not icon.trackedId then icon:Hide(); icon._visShown = nil; icon._lastState = "ready"; return "ready" end
-    icon.Icon:SetTexture(C_Spell.GetSpellTexture(icon.trackedId))
-    -- GetAuraDuration is AllowedWhenUntainted: a secret auraInstanceID (restricted combat) would throw, so treat secret/absent the same.
-    local aura = C_UnitAuras.GetPlayerAuraBySpellID(icon.trackedId)
-    if not aura or issecretvalue(aura.auraInstanceID) then
-        icon.Cooldown:Clear()
-        icon.Icon:SetDesaturation(1)
-        if not icon._chargeTextDisabled then icon.ChargeText:SetText(""); icon.ChargeText:Hide() end
-        icon._lastState = "ready"
-        return "ready"
-    end
-    local durObj = C_UnitAuras.GetAuraDuration("player", aura.auraInstanceID)
-    if durObj then icon.Cooldown:SetCooldownFromDurationObject(durObj) else icon.Cooldown:Clear() end
-    icon.Icon:SetDesaturation(0)
-    if not icon._chargeTextDisabled then
-        icon.ChargeText:SetText(C_UnitAuras.GetAuraApplicationDisplayCount("player", aura.auraInstanceID))
-        icon.ChargeText:Show()
-    end
-    icon._lastState = "active"
-    return "active"
-end
-
 -- [ UPDATE ] ----------------------------------------------------------------------------------------
 -- Update helpers return a curve-derived (secret-safe) numeric state consumed by ApplyVisibilityAlpha.
 function IconItem:Update(icon)
-    if icon._isAura then return self:UpdateAura(icon) end
     if not icon.trackedId then icon:Hide(); icon._visShown = nil; icon._lastState = "ready"; return "ready" end
 
+    local prevState = icon._lastState
     local texture, state
+
+    -- DrawEdge is a charge-recharge-only ring; reset here so a pooled icon reused from a charge spell can't leak it.
+    if icon.Cooldown.SetDrawEdge then icon.Cooldown:SetDrawEdge(false) end
 
     if icon.trackedType == "spell" then
         texture, state = self:UpdateSpell(icon)
@@ -218,19 +197,20 @@ function IconItem:Update(icon)
     state = state or "ready"
     icon._lastState = state
     self:ApplyVisibilityAlpha(icon, state)
+    if prevState and prevState ~= "ready" and state == "ready" then Orbit.IconCastState:Flash(icon) end
     return state
 end
 
 -- [ SPELL UPDATE ] ----------------------------------------------------------------------------------
 function IconItem:UpdateSpell(icon)
     if not IsSpellKnown(icon.trackedId) and not IsPlayerSpell(icon.trackedId) then
-        local activeId = FindSpellOverrideByID(icon.trackedId)
+        local activeId = Orbit.CooldownData:GetActiveSpellID(icon.trackedId)
         if activeId == icon.trackedId or (not IsSpellKnown(activeId) and not IsPlayerSpell(activeId)) then
             return nil, nil
         end
     end
 
-    local activeId = FindSpellOverrideByID(icon.trackedId) or icon.trackedId
+    local activeId = Orbit.CooldownData:GetActiveSpellID(icon.trackedId)
     local texture = C_Spell.GetSpellTexture(activeId)
     if not texture then return nil, nil end
     icon.Icon:SetTexture(texture)
@@ -319,6 +299,8 @@ function IconItem:UpdateChargeSpell(icon, activeId, chargeInfo, onGCD)
     local chargeDurObj = C_Spell.GetSpellChargeDuration and C_Spell.GetSpellChargeDuration(activeId)
     if chargeDurObj then
         icon.Cooldown:SetCooldownFromDurationObject(chargeDurObj, true)
+        -- Bright recharge ring like CooldownViewer's secondary cooldown; zero-span at max charges clears the swipe so nothing draws.
+        if icon.Cooldown.SetDrawEdge then icon.Cooldown:SetDrawEdge(true) end
     else
         icon.Cooldown:Clear()
         icon._charges = icon._maxCharges

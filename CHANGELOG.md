@@ -1,21 +1,14 @@
 [start]
 
-### New!
-- Added `Objectives Frame` — a movable, resizable, restylable quest/objective tracker. Colour quests by type, set custom title/objective/header colours and font sizes, hover-fade, collapse-in-combat, show quest count.
-- Added `Automation` (QoL > Automation):
-  - Auto-accept quests
-  - Auto-turn-in quests (hold Shift to skip)
-  - Auto-select single gossip options
-  - Auto-sell junk (grey items) at merchants
-  - Auto-repair (uses guild funds when they cover it, otherwise your own)
-
-The above thanks to `LarsMartin`
-
 ### Updates
-- `Damage Meter`: "Switch to Current on combat" is now a per-meter toggle, so each meter can be set independently (was one shared setting).
-- `Minimap`: the square minimap now follows your global Border Style and colour.
-- `Datatexts` can now be dragged onto another Orbit frame's edge to anchor to it, resized with a corner grip, and scrolled to change their distance. Alignment guide lines now show while you drag.
-- Added Repair summary to the `Status Widget` (shows your repair total after auto-repair).
+- [ObjectiveFrame] Objective Frame Scroll works properly now if quest log is rather full.
+- [ObjectiveFrame] Added "Blizzard Style" to Objective Frame
+- [ObjectiveFrame] Added more behaviour options (Auto Add/Remove Quests & WQ - based on Zone)
+- [CDM] Shift-Right clicking icons now brings up a menu (Tracked CD and CDM)
+- [CDM] Custom Glows and Sounds for events per icon
+- [ActionBars] A few bug fixes with how they are created/destroyed
+- [Spotlight] Addeed more help commands to explain glows on CDM
+- [ColorPicker] Fixed a rare combat lua error
 
 [end]
 

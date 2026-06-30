@@ -81,4 +81,12 @@ Orbit.Spotlight.Index.Help:Register({
         desc = L.PLU_SPT_HELP_PERF_STOP_TT,
         onClick = function() if Orbit.Profiler then Orbit.Profiler:Stop() end end,
     },
+    {
+        id = "tool_glow_showcase", topic = L.PLU_SPT_HELP_TOP_TOOLS, name = L.PLU_SPT_HELP_GLOW_SHOWCASE,
+        desc = L.PLU_SPT_HELP_GLOW_SHOWCASE_TT, keywords = L.PLU_SPT_HELP_GLOW_SHOWCASE_KW,
+        onClick = function()
+            local lib = LibStub and LibStub("LibOrbitGlow-1.0", true)
+            if lib and lib.Showcase then lib.Showcase:Toggle() end
+        end,
+    },
 })

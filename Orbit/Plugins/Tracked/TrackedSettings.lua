@@ -70,7 +70,7 @@ function Plugin:_BuildIconSettings(dialog, systemFrame, record)
         SB:AddGlowSettings(self, schema, systemIndex, dialog, systemFrame, {
             prefix = "ActiveGlow",
             label = L.PLU_TRK_ACTIVE_GLOW,
-            default = Constants.Glow.DefaultType,
+            default = Constants.Glow.Type.None,
         })
     elseif currentTab == L.PLU_TRK_TAB_VISIBILITY then
         table.insert(schema.controls, {

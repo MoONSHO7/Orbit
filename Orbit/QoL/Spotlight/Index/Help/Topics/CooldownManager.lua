@@ -16,4 +16,12 @@ Orbit.Spotlight.Index.Help:Register({
         id = "cdm_editmode", topic = L.PLU_SPT_HELP_TOP_CDM, name = L.PLU_SPT_HELP_CDM_EDIT,
         desc = L.PLU_SPT_HELP_CDM_EDIT_TT, keywords = KW, keepOpen = true,
     },
+    {
+        id = "glow_menu", topic = L.PLU_SPT_HELP_TOP_CDM, name = L.PLU_SPT_HELP_GLOW_MENU,
+        trigger = L.PLU_SPT_HELP_T_SRC, desc = L.PLU_SPT_HELP_GLOW_MENU_TT, note = L.PLU_SPT_HELP_GLOW_MENU_NOTE, keywords = KW, keepOpen = true,
+    },
+    {
+        id = "glow_sound", topic = L.PLU_SPT_HELP_TOP_CDM, name = L.PLU_SPT_HELP_GLOW_SOUND,
+        trigger = L.PLU_SPT_HELP_T_SRC, desc = L.PLU_SPT_HELP_GLOW_SOUND_TT, keywords = KW, keepOpen = true,
+    },
 })

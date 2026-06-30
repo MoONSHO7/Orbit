@@ -630,8 +630,17 @@ function Plugin:ApplySettings(frame)
     if enabled == false then
         UnregisterStateDriver(actualFrame, "visibility")
         if blizzBar then OrbitEngine.NativeFrame:SecureHide(blizzBar) end
-        local point, _, _, x, y = actualFrame:GetPoint(1)
+        local point, x, y = OrbitEngine.FrameSnap:NormalizePosition(actualFrame)
         if point then self:SetSetting(index, "Position", { point = point, x = x, y = y }) end
+        -- Capture dependents at their live spot before this bar parks, so they hold position instead of following it to default.
+        for _, child in ipairs(OrbitEngine.FrameAnchor:GetAnchoredChildren(actualFrame)) do
+            if not child.orbitDisabled and child.orbitPlugin == self and child.systemIndex then
+                local cp, cx, cy = OrbitEngine.FrameSnap:NormalizePosition(child)
+                if cp then child.orbitPlugin:SetSetting(child.systemIndex, "Position", { point = cp, x = cx, y = cy }) end
+                OrbitEngine.FrameAnchor:BreakAnchor(child, true, false, true)
+            end
+        end
+        OrbitEngine.FrameAnchor:BreakAnchor(actualFrame, true, false, true)
         local buttons = self.buttons[index]
         if buttons and #buttons > 0 then
             local hiddenFrame = EnsureHiddenFrame()

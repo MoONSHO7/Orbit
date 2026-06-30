@@ -32,6 +32,8 @@ local Plugin = Orbit:RegisterPlugin("Tracked Items", "Orbit_Tracked", {
         IconSize = Constants.Cooldown.DefaultIconSize,
         IconPadding = Constants.Cooldown.DefaultPadding,
         aspectRatio = "1:1",
+        -- Tracked Icons ship with no active-phase glow; without this GetSetting returns nil and BuildOptionsFromLookup falls back to the global Medium default.
+        ActiveGlowType = Constants.Glow.Type.None,
         Opacity = 100,
         Width = 200,
         Height = 20,
@@ -440,21 +442,27 @@ end
 -- [ ACTIVE DURATION LEARN ] -------------------------------------------------------------------------
 -- Spell-only: override applies synchronously, else a one-shot UNIT_AURA watch fills data.activeDuration on first application (items stay parser-sourced).
 function Plugin:RequestActiveDurationLearn(record, key, data)
-    if not data or data.type ~= "spell" or not data.id or data.activeDurationLearned then return end
+    if not data or data.type ~= "spell" or not data.id then return end
     local value, watch = Orbit.CooldownData:ResolveActiveDuration(data.id)
     if value ~= nil then
         data.activeDuration = value
-        data.activeDurationLearned = true
         return
     end
-    if not watch then return end
+    -- Tooltip-parsed duration is authoritative (the source main used); re-assert it each apply so a stale aura-learned value can't skew the active phase. The aura learn is only a fallback for spells with no parseable tooltip duration.
+    if Orbit.TooltipParser then
+        local parsed = Orbit.TooltipParser:ParseActiveDuration("spell", Orbit.CooldownData:GetActiveSpellID(data.id))
+        if parsed and parsed > 0 then
+            data.activeDuration = parsed
+            return
+        end
+    end
+    if not watch or data.activeDurationLearned then return end
     self._learning = self._learning or {}
     local slot = record.id .. ":" .. tostring(key)
     if self._learning[slot] then return end
     self._learning[slot] = true
     Orbit.CooldownLearn:Request(watch, function(duration)
         self._learning[slot] = nil
-        if data.activeDurationLearned then return end
         data.activeDuration = duration
         data.activeDurationLearned = true
         local frame = self.containers[record.id]

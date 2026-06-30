@@ -41,8 +41,9 @@ end
 -- [ READS ] -----------------------------------------------------------------------------------------------
 -- Returned table is owned by the cache and replaced on the next Rebuild; never hold it across a spec/talent change.
 function CooldownData:GetInfo(spellID)
+    if not spellID or issecretvalue(spellID) then return nil end
     if not built then self:Rebuild() end
-    return spellID and bySpell[spellID] or nil
+    return bySpell[spellID] or nil
 end
 
 function CooldownData:IsTracked(spellID)
@@ -67,13 +68,6 @@ end
 function CooldownData:GetAuraSpellIDs(spellID)
     local info = self:GetInfo(spellID)
     return info and info.linkedSpellIDs or nil
-end
-
--- True when the spell is a CDM buff/debuff entry (TrackedBuff/TrackedBar category) — render as a live-aura cell, not a cooldown.
-function CooldownData:IsAuraCategory(spellID)
-    local info = self:GetInfo(spellID)
-    if not info or not (Enum and Enum.CooldownViewerCategory) then return false end
-    return info.category == Enum.CooldownViewerCategory.TrackedBuff or info.category == Enum.CooldownViewerCategory.TrackedBar
 end
 
 -- Mirrors Blizzard's charge-query precedence (overrideSpellID or spellID); falls back to the live override API. Never nil for a valid id.
